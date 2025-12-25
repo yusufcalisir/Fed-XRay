@@ -834,7 +834,7 @@ if start_training and st.session_state.hospital_data_generated:
             client_id=i,
             dataloader=st.session_state.dataloaders[i],
             device=device,
-            learning_rate=0.001,
+            learning_rate=0.0001,  # Lowered LR for stability (was 0.001)
             local_epochs=local_epochs,
             malicious=is_malicious
         ))
@@ -1175,67 +1175,38 @@ if scan_button and st.session_state.model_trained:
     # Initialize Grad-CAM
     gradcam = GradCAM(model)
     
-    try:
-        # Generate heatmap using Grad-CAM (requires gradient flow)
-        heatmap, predicted_class, confidence = gradcam.generate_heatmap(img_tensor)
-        confidence = confidence * 100
-        
-        # Handle NaN confidence
-        if np.isnan(confidence):
-            confidence = 33.3
-        
-        # Get probabilities for confidence breakdown (this can use no_grad)
-        with torch.no_grad():
-            logits = model(img_tensor)
-            
-            # Check for NaN
-            if torch.isnan(logits).any() or torch.isinf(logits).any():
-                probs_np = np.array([0.33, 0.33, 0.34])
-            else:
-                probs = torch.nn.functional.softmax(logits, dim=1)
-                probs_np = probs[0].cpu().numpy()
-                
-                # Validate probs
-                if np.any(np.isnan(probs_np)):
-                    probs_np = np.array([0.33, 0.33, 0.34])
-        
-        # Create overlay
-        overlay = create_overlay(image, heatmap, alpha=0.5)
-        
-        # Store results
-        st.session_state.scan_heatmap = heatmap
-        st.session_state.scan_overlay = overlay
-        st.session_state.scan_probs = probs_np
-        st.session_state.scan_predicted = predicted_class
-        st.session_state.scan_confidence = confidence
-        
-    except Exception as e:
-        # Fallback without Grad-CAM - show error in console
-        print(f"Grad-CAM Error: {e}")
-        st.session_state.scan_heatmap = np.ones_like(image) * 0.5
-        st.session_state.scan_overlay = np.stack([image, image, image], axis=-1)
-        
-        with torch.no_grad():
-            logits = model(img_tensor)
-            if torch.isnan(logits).any():
-                probs_np = np.array([0.33, 0.33, 0.34])
-                predicted_class = 0
-                confidence = 33.3
-            else:
-                probs = torch.nn.functional.softmax(logits, dim=1)
-                confidence, predicted_class = probs.max(dim=1)
-                probs_np = probs[0].cpu().numpy()
-                predicted_class = predicted_class.item()
-                confidence = confidence.item() * 100
-            
-            st.session_state.scan_probs = probs_np
-            st.session_state.scan_predicted = predicted_class
-            st.session_state.scan_confidence = confidence
+    # Initialize Grad-CAM
+    gradcam = GradCAM(model)
     
-    finally:
-        # Clean up hooks and restore grad state
-        gradcam.remove_hooks()
-        torch.set_grad_enabled(True)  # Restore default
+    # Generate heatmap using Grad-CAM
+    # We do NOT silence errors anymore - proper feedback is better than fake results
+    heatmap, predicted_class, confidence = gradcam.generate_heatmap(img_tensor)
+    confidence = confidence * 100
+    
+    # Get probabilities
+    with torch.no_grad():
+        logits = model(img_tensor)
+        probs = torch.nn.functional.softmax(logits, dim=1)
+        probs_np = probs[0].cpu().numpy()
+        
+        # Safety Check: If NaNs appear even after fixes, warn the user
+        if np.any(np.isnan(probs_np)):
+            st.error("⚠️ Model output is unstable (NaN). Please retrain the network.")
+            probs_np = np.array([0.34, 0.33, 0.33]) # Fallback to equal prob so chart doesn't vanish
+    
+    # Create overlay
+    overlay = create_overlay(image, heatmap, alpha=0.5)
+    
+    # Store results
+    st.session_state.scan_heatmap = heatmap
+    st.session_state.scan_overlay = overlay
+    st.session_state.scan_probs = probs_np
+    st.session_state.scan_predicted = predicted_class
+    st.session_state.scan_confidence = confidence
+    
+    # Clean up
+    gradcam.remove_hooks()
+    torch.set_grad_enabled(True)
 
 # Display results with Grad-CAM visualization
 if hasattr(st.session_state, 'scan_image') and st.session_state.model_trained:
@@ -1395,85 +1366,89 @@ if hasattr(st.session_state, 'scan_image') and st.session_state.model_trained:
     col_actions, col_context = st.columns([1, 1.2])
     
     # -------------------------------------------------------------------------
-    # LEFT COLUMN: ACTIONS
+    # LEFT COLUMN: ACTIONS (Modern Redesign)
     # -------------------------------------------------------------------------
     with col_actions:
-        st.markdown('<h3 style="margin-bottom: 1rem;">⚡ Actions</h3>', unsafe_allow_html=True)
+        st.markdown('<h3 style="margin-bottom: 1.5rem; color: #1a365d;">⚡ Quick Actions</h3>', unsafe_allow_html=True)
         
-        # 1. Voice Assistant
-        v_col_info, v_col_act = st.columns([3, 1])
-        with v_col_info:
-            st.markdown(f"""
-            <div class="cdss-file-row" style="margin-bottom: 0;">
-                <div class="file-identity">
-                    <div class="file-icon-wrapper icon-audio">🔊</div>
-                    <div class="file-info">
-                        <p class="file-name">Voice Diagnosis</p>
-                        <p class="file-meta">audio/mp3 • 256KB • {datetime.now().strftime('%H:%M')}</p>
-                    </div>
+        # Initialize audio_data
+        audio_data = None
+        diagnosis_name = class_names[predicted]
+        
+        # ===== 1. Voice Assistant Card =====
+        st.markdown(f"""
+        <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 1.25rem; border-radius: 16px; margin-bottom: 1rem; box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);">
+            <div style="display: flex; align-items: center; gap: 1rem;">
+                <div style="background: rgba(255,255,255,0.2); width: 48px; height: 48px; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 1.5rem;">
+                    🎙️
+                </div>
+                <div>
+                    <p style="color: white !important; font-weight: 700; font-size: 1.1rem; margin: 0 !important;">AI Voice Summary</p>
+                    <p style="color: rgba(255,255,255,0.8) !important; font-size: 0.85rem; margin: 0 !important;">{diagnosis_name} • {st.session_state.scan_confidence:.0f}% confidence</p>
                 </div>
             </div>
-            """, unsafe_allow_html=True)
+        </div>
+        """, unsafe_allow_html=True)
         
-        with v_col_act:
-            st.markdown('<div style="height: 12px;"></div>', unsafe_allow_html=True)
-            try:
-                diagnosis_name = class_names[predicted]
-                audio_data = get_or_create_audio(diagnosis_name, st.session_state.scan_confidence)
-                if not audio_data:
-                    st.caption("Unavailable")
-            except:
-                st.caption("Error")
-
-        # Smaller audio player below info
+        # Generate audio silently
+        try:
+            audio_data = get_or_create_audio(diagnosis_name, st.session_state.scan_confidence)
+        except Exception:
+            audio_data = None
+        
+        # Show audio player if available
         if audio_data:
             st.audio(audio_data, format='audio/mp3')
-            
-        st.markdown("<div style='height: 1rem'></div>", unsafe_allow_html=True)
+        else:
+            st.caption("🔇 Voice unavailable (check gTTS installation)")
         
-        # 2. PDF Report
-        p_col_info, p_col_act = st.columns([3, 1])
-        with p_col_info:
-            st.markdown(f"""
-            <div class="cdss-file-row" style="margin-bottom: 0;">
-                <div class="file-identity">
-                    <div class="file-icon-wrapper icon-pdf">📄</div>
-                    <div class="file-info">
-                        <p class="file-name">Medical Report</p>
-                        <p class="file-meta">application/pdf • 1.2MB • {datetime.now().strftime('%Y-%m-%d')}</p>
-                    </div>
+        st.markdown("<div style='height: 0.75rem'></div>", unsafe_allow_html=True)
+        
+        # ===== 2. PDF Report Card =====
+        patient_id = f"PAT-{int(time.time()) % 100000}"
+        report_filename = f"FedXRay_{diagnosis_name}_{patient_id}.pdf"
+        
+        st.markdown(f"""
+        <div style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); padding: 1.25rem; border-radius: 16px; margin-bottom: 1rem; box-shadow: 0 4px 15px rgba(245, 87, 108, 0.3);">
+            <div style="display: flex; align-items: center; gap: 1rem;">
+                <div style="background: rgba(255,255,255,0.2); width: 48px; height: 48px; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 1.5rem;">
+                    📋
+                </div>
+                <div>
+                    <p style="color: white !important; font-weight: 700; font-size: 1.1rem; margin: 0 !important;">Medical Report PDF</p>
+                    <p style="color: rgba(255,255,255,0.8) !important; font-size: 0.85rem; margin: 0 !important;">{report_filename}</p>
                 </div>
             </div>
-            """, unsafe_allow_html=True)
+        </div>
+        """, unsafe_allow_html=True)
+        
+        # Generate and show PDF download button
+        try:
+            pdf_explanation = get_diagnosis_explanation(
+                diagnosis_name, 
+                st.session_state.scan_confidence
+            )
+            similar_cases_for_pdf = st.session_state.get('similar_cases', None)
             
-        with p_col_act:
-            st.markdown('<div style="height: 12px;"></div>', unsafe_allow_html=True)
-            try:
-                pdf_explanation = get_diagnosis_explanation(
-                    class_names[predicted], 
-                    st.session_state.scan_confidence
-                )
-                similar_cases_for_pdf = st.session_state.get('similar_cases', None)
-                
-                pdf_data = generate_medical_report(
-                    patient_id=f"PAT-{int(time.time()) % 100000}",
-                    diagnosis=class_names[predicted],
-                    confidence=st.session_state.scan_confidence,
-                    explanation=pdf_explanation,
-                    heatmap_image=st.session_state.scan_heatmap if hasattr(st.session_state, 'scan_heatmap') else None,
-                    original_image=st.session_state.scan_image,
-                    similar_cases=similar_cases_for_pdf
-                )
-                
-                st.download_button(
-                    label="📥 Save",
-                    data=pdf_data,
-                    file_name=f"fedxray_report_{int(time.time())}.pdf",
-                    mime="application/pdf",
-                    use_container_width=True
-                )
-            except Exception as e:
-                st.caption("Error")
+            pdf_data = generate_medical_report(
+                patient_id=patient_id,
+                diagnosis=diagnosis_name,
+                confidence=st.session_state.scan_confidence,
+                explanation=pdf_explanation,
+                heatmap_image=st.session_state.scan_heatmap if hasattr(st.session_state, 'scan_heatmap') else None,
+                original_image=st.session_state.scan_image,
+                similar_cases=similar_cases_for_pdf
+            )
+            
+            st.download_button(
+                label="📥 Download Report",
+                data=pdf_data,
+                file_name=report_filename,
+                mime="application/pdf",
+                use_container_width=True
+            )
+        except Exception as e:
+            st.warning(f"⚠️ PDF generation unavailable")
 
     # -------------------------------------------------------------------------
     # RIGHT COLUMN: CONTEXT (SIMILAR CASES)

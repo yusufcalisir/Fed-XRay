@@ -200,13 +200,27 @@ class HospitalClient:
         avg_loss = total_loss / max(total_samples, 1)
         accuracy = correct / max(total_samples, 1)
         
-        if math.isnan(avg_loss):
-            avg_loss = 0.0
+        if math.isnan(avg_loss) or math.isinf(avg_loss):
+            avg_loss = 100.0  # High penalty for instability
+            
+        # Verify weights before sending (Check ALL state_dict items including BatchNorm buffers)
+        is_valid = True
+        for name, tensor in self.model.state_dict().items():
+            if torch.isnan(tensor).any() or torch.isinf(tensor).any():
+                print(f"[ERROR] Client {self.client_id}: Found NaN in {name}")
+                is_valid = False
+                break
         
-        updated_weights = {
-            name: param.clone().detach().cpu()
-            for name, param in self.model.state_dict().items()
-        }
+        updated_weights = {}
+        if is_valid:
+            updated_weights = {
+                name: param.clone().detach().cpu()
+                for name, param in self.model.state_dict().items()
+            }
+        else:
+            # Fallback to global weights if training failed
+            print(f"[WARNING] Client {self.client_id} produced NaN weights. Discarding update.")
+            updated_weights = copy.deepcopy(global_weights)
         
         metrics = TrainingMetrics(
             loss=avg_loss,
@@ -290,6 +304,11 @@ class CentralServer:
                 batch_labels = test_labels[i:i+batch_size].to(self.device)
                 
                 outputs = temp_model(batch_images)
+                
+                # Check for NaNs during validation
+                if torch.isnan(outputs).any():
+                    return 0.0
+                    
                 _, predicted = outputs.max(1)
                 
                 correct += predicted.eq(batch_labels).sum().item()
@@ -388,7 +407,13 @@ class CentralServer:
             aggregated[key] = torch.zeros_like(client_weights[0][key], dtype=torch.float32)
             
             for client_weight, coeff in zip(client_weights, weight_coefficients):
-                aggregated[key] += coeff * client_weight[key].float()
+                weight_tensor = client_weight[key].float()
+                
+                # Skip if weight is corrupted
+                if torch.isnan(weight_tensor).any():
+                    continue
+                    
+                aggregated[key] += coeff * weight_tensor
             
             if param_dtype in (torch.int64, torch.int32, torch.long):
                 aggregated[key] = aggregated[key].to(param_dtype)

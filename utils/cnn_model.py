@@ -10,6 +10,13 @@ In FL, this same model architecture is shared across all hospital clients.
 Each hospital trains a local copy on their private data, then sends only
 the model WEIGHTS (not the data!) back to the central server.
 This preserves patient privacy while enabling collaborative learning.
+
+STABILITY NOTE:
+---------------
+BatchNorm has been REMOVED from this model. In federated learning with 
+synthetic/small batch data, BatchNorm's running statistics can become 
+unstable (NaN/Inf), causing inference failures. This simplified architecture
+is more robust for the demo use case.
 """
 
 import torch
@@ -22,68 +29,82 @@ class XRayClassifier(nn.Module):
     """
     Convolutional Neural Network for X-Ray image classification.
     
-    Architecture:
+    Architecture (Simplified for Stability):
     - 2 Convolutional layers with ReLU activation and MaxPooling
-    - Dropout for regularization (crucial in medical AI to prevent overconfidence)
+    - NO BatchNorm (removed for FL stability)
+    - Dropout for regularization
     - 2 Fully connected layers for final classification
     
     Input: 28x28 grayscale images (1 channel)
     Output: 3 classes (Normal, Pneumonia, COVID-19)
-    
-    This architecture is intentionally lightweight to:
-    1. Enable fast training on each hospital's local device
-    2. Minimize communication overhead in FL (smaller model = faster sync)
-    3. Still capture essential visual patterns in medical images
     """
     
-    def __init__(self, num_classes: int = 3, dropout_rate: float = 0.5):
+    def __init__(self, num_classes: int = 3, dropout_rate: float = 0.3):
         """
         Initialize the XRayClassifier.
         
         Args:
             num_classes: Number of output classes (default 3)
-            dropout_rate: Dropout probability for regularization
+            dropout_rate: Dropout probability for regularization (lowered for stability)
         """
         super(XRayClassifier, self).__init__()
         
         # ===== Convolutional Feature Extractor =====
-        # These layers learn to detect patterns like edges, textures,
-        # and consolidation patterns relevant to lung diseases
-        
         # First conv block: 1 input channel -> 32 filters
-        # Learns low-level features (edges, basic textures)
         self.conv1 = nn.Conv2d(
             in_channels=1,      # Grayscale X-Ray
             out_channels=32,    # 32 feature maps
             kernel_size=3,      # 3x3 filter
             padding=1           # Same padding
         )
-        self.bn1 = nn.BatchNorm2d(32)  # Stabilizes training
         self.pool1 = nn.MaxPool2d(2, 2)  # Downsample: 28x28 -> 14x14
         
         # Second conv block: 32 -> 64 filters
-        # Learns higher-level features (opacity patterns, consolidations)
         self.conv2 = nn.Conv2d(
             in_channels=32,
             out_channels=64,
             kernel_size=3,
             padding=1
         )
-        self.bn2 = nn.BatchNorm2d(64)
         self.pool2 = nn.MaxPool2d(2, 2)  # Downsample: 14x14 -> 7x7
         
         # ===== Classifier Head =====
-        # Dropout helps prevent overfitting - especially important in 
-        # medical AI where training data may be limited
         self.dropout = nn.Dropout(dropout_rate)
         
         # After conv layers: 64 channels * 7 * 7 = 3136 features
-        # (assuming 28x28 input with two 2x2 max pools)
         self.fc1 = nn.Linear(64 * 7 * 7, 128)
         self.fc2 = nn.Linear(128, num_classes)
         
         # Track number of classes for logging
         self.num_classes = num_classes
+        
+        # Initialize weights for stability
+        self._initialize_weights()
+    
+    def _initialize_weights(self):
+        """
+        Initialize weights using Kaiming He initialization.
+        Crucial for deep networks to prevent vanishing/exploding gradients.
+        """
+        for m in self.modules():
+            if isinstance(m, nn.Conv2d):
+                nn.init.kaiming_normal_(m.weight, mode='fan_out', nonlinearity='relu')
+                if m.bias is not None:
+                    nn.init.constant_(m.bias, 0)
+            elif isinstance(m, nn.Linear):
+                nn.init.kaiming_normal_(m.weight, mode='fan_in', nonlinearity='relu')
+                nn.init.constant_(m.bias, 0)
+
+    def check_valid(self) -> bool:
+        """
+        Check if model parameters are valid (no NaNs or Infs).
+        Returns True if model is healthy.
+        """
+        for name, param in self.state_dict().items():
+            if torch.isnan(param).any() or torch.isinf(param).any():
+                print(f"[ERROR] Parameter {name} contains NaN/Inf!")
+                return False
+        return True
     
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         """
@@ -95,15 +116,13 @@ class XRayClassifier(nn.Module):
         Returns:
             Output logits of shape (batch, num_classes)
         """
-        # First convolutional block
+        # First convolutional block (No BatchNorm)
         x = self.conv1(x)           # -> (batch, 32, 28, 28)
-        x = self.bn1(x)
         x = F.relu(x)
         x = self.pool1(x)           # -> (batch, 32, 14, 14)
         
-        # Second convolutional block
+        # Second convolutional block (No BatchNorm)
         x = self.conv2(x)           # -> (batch, 64, 14, 14)
-        x = self.bn2(x)
         x = F.relu(x)
         x = self.pool2(x)           # -> (batch, 64, 7, 7)
         
@@ -160,7 +179,7 @@ class XRayClassifier(nn.Module):
         self.load_state_dict(weights)
 
 
-def create_model(num_classes: int = 3, dropout_rate: float = 0.5) -> XRayClassifier:
+def create_model(num_classes: int = 3, dropout_rate: float = 0.3) -> XRayClassifier:
     """
     Factory function to create a new XRayClassifier model.
     
