@@ -8,7 +8,7 @@
   </a>
 </div>
 
-A production-grade Federated Learning (FL) framework combining state-of-the-art distributed AI algorithms with a modern, high-end Medical SaaS interface. **Fed-XRay** simulates a collaborative network of hospitals training robust diagnostic models (Normal, Pneumonia, COVID-19) **without sharing patient data**.
+A production-grade Federated Learning (FL) framework combining state-of-the-art distributed AI algorithms with a modern, high-end Medical SaaS interface. **Fed-XRay** simulates a collaborative network of hospitals training robust diagnostic models (Normal, Pneumonia, COVID-19) **without sharing patient data**. 
 
 <p align="center">
   <img src="https://img.shields.io/badge/Python-3.9+-blue?logo=python" alt="Python">
