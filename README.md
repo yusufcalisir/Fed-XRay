@@ -3,11 +3,10 @@
 **Privacy-Preserving AI Network & Clinical Decision Support System**
 
 <div align="center">
-  <a href="https://i.imgyukle.com/2025/12/24/SkQLz1.mp4">
-    <img src="https://img.shields.io/badge/Watch-Demo_Video-red](https://yusuf-cancerfedxlearning.streamlit.app/?style=for-the-badge&logo=youtube" alt="Watch Demo Video">
-  </a>
+<a href="https://yusuf-cancerfedxlearning.streamlit.app/">
+<img src="https://img.shields.io/badge/Live_Demo-Access_Platform-emerald?style=for-the-badge&logo=streamlit&logoColor=white" alt="Live Demo">
+</a>
 </div>
-
 A production-grade Federated Learning (FL) framework combining state-of-the-art distributed AI algorithms with a modern, high-end Medical SaaS interface. **Fed-XRay** simulates a collaborative network of hospitals training robust diagnostic models (Normal, Pneumonia, COVID-19) **without sharing patient data**. 
 
 <p align="center">
