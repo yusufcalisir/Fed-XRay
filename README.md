@@ -4,7 +4,7 @@
 
 <div align="center">
   <a href="https://i.imgyukle.com/2025/12/24/SkQLz1.mp4">
-    <img src="https://img.shields.io/badge/Watch-Demo_Video-red?style=for-the-badge&logo=youtube" alt="Watch Demo Video">
+    <img src="https://img.shields.io/badge/Watch-Demo_Video-red](https://yusuf-cancerfedxlearning.streamlit.app/?style=for-the-badge&logo=youtube" alt="Watch Demo Video">
   </a>
 </div>
 
