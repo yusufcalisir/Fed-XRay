@@ -491,7 +491,7 @@ with st.sidebar:
     
     dashboard_view = st.selectbox(
         "🧭 Select Dashboard View",
-        ["🏥 Clinical AI Dashboard", "🛡️ Enterprise Security & Governance"],
+        ["🏥 Clinical AI Dashboard", "🛡️ Security & Governance"],
         help="Toggle between the AI diagnostic view and the enterprise IT/Security architecture control plane"
     )
     
@@ -606,7 +606,7 @@ with st.sidebar:
 # ============================================================================
 
 # Enterprise Security Routing
-if dashboard_view == "🛡️ Enterprise Security & Governance":
+if dashboard_view == "🛡️ Security & Governance":
     st.markdown("""
     <div class="hero-container">
         <h1 class="hero-title">🛡️ Enterprise Security & Governance</h1>

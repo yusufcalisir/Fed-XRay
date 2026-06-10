@@ -360,7 +360,7 @@ def render_zero_trust_section():
             <div style="background:#f8fafc; border:1px solid #edf2f7; border-radius:8px; padding:0.6rem 0.8rem; margin-bottom:0.4rem; display:flex; justify-content:between; align-items:center;">
                 <div>
                     <span style="font-weight:600; color:#2d3748;">{node} Access Check</span><br>
-                    <code style="font-size:0.75rem; color:#4a5568;">{checks_rendered}</code>
+                    <span style="font-size:0.75rem; color:#4a5568; font-family:monospace; background:transparent;">{checks_rendered}</span>
                 </div>
                 <div>
                     {auth_status}
@@ -498,7 +498,7 @@ def render_soc_siem_section():
             elif log['level'] in ["CRITICAL", "ERROR"]:
                 color = "#ef4444" # Red
                 
-            line = f"<span style='color:#64748b;'>[{log['time']}]</span> <span style='color:#a78bfa;'>[{log['source']}]</span> <span style='color:{color}; font-weight:bold;'>[{log['level']}]</span> {log['event']}"
+            line = f"<span style='color:#64748b;'>[{log['time']}]</span> <span style='color:#a78bfa;'>[{log['source']}]</span> <span style='color:{color}; font-weight:bold;'>[{log['level']}]</span> <span style='color:#e2e8f0;'>{log['event']}</span>"
             log_lines.append(line)
             
         logs_html = "<br>".join(log_lines)
@@ -556,7 +556,7 @@ def render_pam_section():
                     session["mfa_token"] = str(random.randint(100000, 999999))
                     st.rerun()
             else:
-                st.markdown(f"**Mock MFA Token Generated on Administrator Device:** `<strong style='color:#2b6cb0; font-size:1.2rem;'>{session['mfa_token']}</strong>`", unsafe_allow_html=True)
+                st.markdown(f"**Mock MFA Token Generated on Administrator Device:** <strong style='color:#2b6cb0; font-size:1.2rem;'>{session['mfa_token']}</strong>", unsafe_allow_html=True)
                 mfa_input = st.text_input("Enter 6-Digit Verification Code", max_chars=6)
                 
                 col1, col2 = st.columns(2)
