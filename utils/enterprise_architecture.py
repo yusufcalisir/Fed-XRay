@@ -318,6 +318,8 @@ def render_zero_trust_section():
         # Render a structured list showing each hospital's access authentication logs
         nodes = ["Hospital 1", "Hospital 2", "Hospital 3", "Hospital 4"]
         
+        is_attack_active = st.sidebar.checkbox("⚠️ Simulate Attack (Hospital #3)", key="mock_att_zt_dummy", value=False)
+        
         for idx, node in enumerate(nodes):
             checks = []
             authenticated = True
@@ -331,8 +333,7 @@ def render_zero_trust_section():
             # Check 2: Posture
             if st.session_state.zt_policies["device_compliance"]:
                 # Let's say Hospital 3 is compromised or failing compliance if attack is active
-                is_compromised = (st.sidebar.checkbox("⚠️ Simulate Attack (Hospital #3)", key="mock_att_zt_dummy", value=False) or idx == 2)
-                if is_compromised and idx == 2:
+                if is_attack_active and idx == 2:
                     checks.append("❌ OS: Outdated Patches")
                     authenticated = False
                 else:
