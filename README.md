@@ -122,22 +122,28 @@ Fed-XRay/
 
 ---
 
-## 🔎 Deep Dive: Privacy & Security
+## 🔎 Deep Dive: Enterprise Security & Governance Control Plane
 
-### Adversarial Defense
+Fed-XRay features a complete **Enterprise Security & Governance Control Plane** showing the alignment of Federated Learning networks with production enterprise standards:
 
-The system includes a simulated **SOC (Security Operations Center)**.
+### 🌐 Architectural Blueprint
+- **Deployments:** Nodes distributed across multiple environments (AWS, Azure, GCP, and On-Premises).
+- **Zero Trust Network Access (ZTNA):** Continuous authorization enforcing mutual TLS (mTLS v1.3) and device posture compliance check.
+- **Web Application Firewall (WAF):** Active filtering on API payloads (mitigating SQLi, DDoS, and parameter shape anomalies).
+- **SIEM & SOC Center:** Real-time log ingestion and immediate quarantine/isolation of adversarial nodes.
+- **Privileged Access Management (PAM):** Just-In-Time (JIT) session elevation with Multi-Factor Authentication (MFA).
+- **Standards Mapping (ITIL & COBIT 2019):** Full mapping to service designs and governance frameworks, including downloadable Compliance Audit PDF reports.
 
-1.  **Attack:** You can toggle a "Label Flipping Attack" on Hospital #3.
-2.  **Defense:** The server uses validation-based outlier detection to identify and **block** malicious updates, logging the security event in real-time.
+---
 
-### Single-Page Intelligence Reports
+## 🧪 Testing Suite
 
-The PDF engine has been engineered for **strict A4 compliance**:
+Run the comprehensive unit test suite to verify the framework:
 
-- **Auto-Page Break Disabled:** Ensuring content never spills over.
-- **Dynamic Rescaling:** X-Ray and Heatmap images are automatically resized to fit the layout.
-- **Compact Hierarchy:** Patient info, Diagnosis, and AI Confidence are presented in a high-density, readable format.
+```bash
+python -m unittest tests/test_all.py
+```
+
 
 ---
 

@@ -37,6 +37,17 @@ from utils.xai_engine import GradCAM, create_overlay, get_explanation_text
 from utils.similarity_engine import HistoricalCaseBank, extract_embedding, LABEL_NAMES, LABEL_COLORS
 from utils.voice_engine import get_or_create_audio
 from utils.report_generator import generate_medical_report, get_diagnosis_explanation
+from utils.enterprise_architecture import (
+    init_enterprise_state,
+    log_event,
+    render_cloud_section,
+    render_zero_trust_section,
+    render_waf_section,
+    render_soc_siem_section,
+    render_pam_section,
+    render_compliance_section
+)
+
 
 
 # ============================================================================
@@ -458,6 +469,9 @@ def init_session_state():
     # CDSS Features: Historical case bank for similarity search
     if 'case_bank' not in st.session_state:
         st.session_state.case_bank = None
+    
+    # Initialize enterprise security features
+    init_enterprise_state()
 
 
 init_session_state()
@@ -470,12 +484,19 @@ init_session_state()
 with st.sidebar:
     st.markdown("""
     <div style="text-align: center; padding: 1rem 0;">
-        <h2 style="color: white; margin: 0;">⚙️ Configuration</h2>
-        <h4 style="color: white; font-size: 0.9rem;">Federated Learning Parameters</p>
+        <h2 style="color: white; margin: 0;">🫁 Fed-XRay</h2>
+        <h4 style="color: white; font-size: 0.85rem;">Federated AI & Security</p>
     </div>
     """, unsafe_allow_html=True)
     
+    dashboard_view = st.selectbox(
+        "🧭 Select Dashboard View",
+        ["🏥 Clinical AI Dashboard", "🛡️ Enterprise Security & Governance"],
+        help="Toggle between the AI diagnostic view and the enterprise IT/Security architecture control plane"
+    )
+    
     st.markdown("---")
+
     
     # Network Configuration
     st.markdown("##### 🏥 Hospital Network")
@@ -584,6 +605,51 @@ with st.sidebar:
 # MAIN CONTENT
 # ============================================================================
 
+# Enterprise Security Routing
+if dashboard_view == "🛡️ Enterprise Security & Governance":
+    st.markdown("""
+    <div class="hero-container">
+        <h1 class="hero-title">🛡️ Enterprise Security & Governance</h1>
+        <p class="hero-subtitle">Production Architecture Blueprint & Security Control Plane</p>
+    </div>
+    """, unsafe_allow_html=True)
+    
+    ent_tabs = st.tabs([
+        "☁️ Cloud & Multi-Cloud",
+        "🛡️ Zero Trust Security",
+        "🔥 Web Application Firewall (WAF)",
+        "🚨 SOC & SIEM",
+        "🔑 Privileged Access (PAM)",
+        "🏛️ ITIL & COBIT Governance"
+    ])
+    
+    with ent_tabs[0]:
+        render_cloud_section()
+        
+    with ent_tabs[1]:
+        render_zero_trust_section()
+        
+    with ent_tabs[2]:
+        render_waf_section()
+        
+    with ent_tabs[3]:
+        render_soc_siem_section()
+        
+    with ent_tabs[4]:
+        render_pam_section()
+        
+    with ent_tabs[5]:
+        render_compliance_section()
+        
+    st.markdown("---")
+    st.markdown("""
+    <div style="text-align: center; padding: 1rem; background: #f7fafc; border-radius: 8px;">
+        <p style="font-size: 0.8rem; color: #4a5568 !important; margin: 0;">Fed-XRay Security Control Plane | Managed Compliance & Auditing | Built with PyTorch & Streamlit</p>
+    </div>
+    """, unsafe_allow_html=True)
+    
+    st.stop()
+
 # Header
 st.markdown("""
 <div class="hero-container">
@@ -591,6 +657,7 @@ st.markdown("""
     <p class="hero-subtitle">Privacy-Preserving Federated Learning for Lung Disease Detection</p>
 </div>
 """, unsafe_allow_html=True)
+
 
 # Quick metrics row (CSS Grid)
 total_samples = n_hospitals * samples_per_hospital
@@ -850,13 +917,19 @@ if start_training and st.session_state.hospital_data_generated:
         with progress_placeholder.container():
             st.progress(round_num / n_rounds, text=f"Round {round_num}/{n_rounds}")
         
-        # Run federated round with security
+        # Run federated round with security, filtering out quarantined nodes
+        active_clients = [c for c in clients if c.client_id not in st.session_state.get('quarantined_nodes', set())]
+        if not active_clients:
+            st.error("🚨 All client nodes are quarantined! Lift quarantine in Security Dashboard to continue.")
+            st.stop()
+            
         metrics, client_metrics, test_metrics, security_report = run_federated_round(
-            server, clients, round_num,
+            server, active_clients, round_num,
             test_images=test_images,
             test_labels=test_labels,
             use_defense=activate_defense
         )
+
         
         # Update history with training metrics
         st.session_state.training_history['loss'].append(metrics['loss'])
