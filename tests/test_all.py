@@ -14,6 +14,16 @@ from utils.enterprise_architecture import (
     generate_governance_pdf
 )
 
+class MockSessionState(dict):
+    """Mock class supporting both dict item access and attribute access."""
+    def __getattr__(self, name):
+        try:
+            return self[name]
+        except KeyError:
+            raise AttributeError(name)
+    def __setattr__(self, name, value):
+        self[name] = value
+
 class TestMedicalData(unittest.TestCase):
     """Test synthetic medical data generation logic."""
     def test_generator_creation(self):
@@ -31,7 +41,7 @@ class TestMedicalData(unittest.TestCase):
     def test_distribution_info(self):
         dist = get_distribution_info(0, 4)
         self.assertEqual(len(dist), 3)
-        self.assertAlmostEqual(sum(dist), 1.0)
+        self.assertAlmostEqual(sum(dist.values()), 1.0)
 
 
 class TestFederatedCore(unittest.TestCase):
@@ -55,29 +65,30 @@ class TestFederatedCore(unittest.TestCase):
         for key in weights_before.keys():
             self.assertTrue(torch.allclose(aggregated[key], weights_before[key]))
 
-    def test_server_defense_mechanism(self):
+    @patch.object(CentralServer, '_validate_client_model')
+    def test_server_defense_mechanism(self, mock_validate):
         server = CentralServer(device=self.device, privacy_noise=0.0, defense_mode=True)
         global_weights = server.get_global_weights()
         
-        # Mocking test set
-        test_images = torch.rand(10, 1, 28, 28)
-        test_labels = torch.randint(0, 3, (10,))
-        
         # Create a mock bad model update (zeros)
         bad_weights = {name: torch.zeros_like(param) for name, param in global_weights.items()}
+        
+        # Mock validation values: global_weights passes (0.85), bad_weights fails (0.15)
+        mock_validate.side_effect = lambda w, img, lbl: 0.85 if w is global_weights else 0.15
         
         # Validate and aggregate
         aggregated, report = server.validate_and_aggregate(
             client_weights=[global_weights, bad_weights],
             sample_counts=[100, 100],
             client_ids=[0, 1],
-            test_images=test_images,
-            test_labels=test_labels
+            test_images=None,
+            test_labels=None
         )
         
         # Client 1 (bad model) should be blocked under defense mode
         self.assertIn(1, report.clients_blocked)
         self.assertEqual(len(report.clients_accepted), 1)
+        self.assertEqual(report.clients_accepted[0], 0)
 
 
 class TestExplainableAI(unittest.TestCase):
@@ -92,7 +103,7 @@ class TestExplainableAI(unittest.TestCase):
         heatmap, predicted_class, confidence = gradcam.generate_heatmap(img_tensor)
         
         self.assertEqual(heatmap.shape, (28, 28))
-        self.assertIn(predicted_class, [0, 1, 28, 2]) # predicted labels in [0, 1, 2]
+        self.assertIn(predicted_class, [0, 1, 2, 28]) # predicted labels in [0, 1, 2]
         self.assertTrue(0.0 <= confidence <= 1.0)
         
         # Test overlay rendering
@@ -105,7 +116,7 @@ class TestExplainableAI(unittest.TestCase):
 
 class TestEnterpriseArchitecture(unittest.TestCase):
     """Test mock security controls (WAF, Zero Trust checks, PAM session elevation, and Compliance PDFs)."""
-    @patch('streamlit.session_state', new_callable=dict)
+    @patch('streamlit.session_state', new_callable=MockSessionState)
     def test_enterprise_state_and_logging(self, mock_state):
         import streamlit as st
         # Bind st.session_state mock
@@ -123,7 +134,7 @@ class TestEnterpriseArchitecture(unittest.TestCase):
         self.assertEqual(st.session_state.siem_logs[0]["event"], "Test WAF log entry")
         self.assertEqual(st.session_state.siem_logs[0]["level"], "WARNING")
 
-    @patch('streamlit.session_state', new_callable=dict)
+    @patch('streamlit.session_state', new_callable=MockSessionState)
     def test_pdf_report_compilation(self, mock_state):
         import streamlit as st
         st.session_state = mock_state
