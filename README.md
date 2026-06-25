@@ -19,7 +19,7 @@ A production-grade Federated Learning (FL) framework combining state-of-the-art 
 
 ---
 
-## ✨ Key Features
+## ✨Key Features
 
 ### 🖥️ Modern SaaS Experience
 
