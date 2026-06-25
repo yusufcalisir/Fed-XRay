@@ -27,7 +27,7 @@ A production-grade Federated Learning (FL) framework combining state-of-the-art 
 - **Vibrant Data Viz:** Modern "Donut" charts with white-bordered aesthetics for patient distribution.
 - **Hero Section:** Clean, centered, and high-impact landing area for a professional first impression.
 
-### 🛡️ Advanced Federated Core
+### 🛡️Advanced Federated Core
 
 We support multiple state-of-the-art FL algorithms to handle **Non-IID Data** (heterogeneous client distributions):
 
