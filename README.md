@@ -15,7 +15,7 @@ A production-grade Federated Learning (FL) framework combining state-of-the-art 
   <img src="https://img.shields.io/badge/Streamlit-1.32+-green?logo=streamlit" alt="Streamlit">
   <img src="https://img.shields.io/badge/Algorithms-FedAvg%20%7C%20FedProx%20%7C%20MOON%20%7C%20SCAFFOLD-purple" alt="Algorithms">
   <img src="https://img.shields.io/badge/License-MIT-yellow" alt="License">
-</p>
+</p> 
 
 ---
 
