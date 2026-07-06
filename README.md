@@ -15,11 +15,11 @@ A production-grade Federated Learning (FL) framework combining state-of-the-art 
   <img src="https://img.shields.io/badge/Streamlit-1.32+-green?logo=streamlit" alt="Streamlit">
   <img src="https://img.shields.io/badge/Algorithms-FedAvg%20%7C%20FedProx%20%7C%20MOON%20%7C%20SCAFFOLD-purple" alt="Algorithms">
   <img src="https://img.shields.io/badge/License-MIT-yellow" alt="License">
-</p>
+</p> 
 
 ---
 
-## ✨ Key Features
+## ✨Key Features
 
 ### 🖥️ Modern SaaS Experience
 
@@ -27,7 +27,7 @@ A production-grade Federated Learning (FL) framework combining state-of-the-art 
 - **Vibrant Data Viz:** Modern "Donut" charts with white-bordered aesthetics for patient distribution.
 - **Hero Section:** Clean, centered, and high-impact landing area for a professional first impression.
 
-### 🛡️ Advanced Federated Core
+### 🛡️Advanced Federated Core
 
 We support multiple state-of-the-art FL algorithms to handle **Non-IID Data** (heterogeneous client distributions):
 
