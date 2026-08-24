@@ -2,6 +2,7 @@
 
 import React from "react";
 import { useLanguage } from "@/context/LanguageContext";
+import { useApi } from "@/context/ApiContext";
 import { FileText, Download } from "lucide-react";
 import { getPdfReportUrl } from "@/lib/api";
 
@@ -12,7 +13,8 @@ interface ReportDownloadProps {
 
 export default function ReportDownload({ diagnosisName, confidence }: ReportDownloadProps) {
   const { t } = useLanguage();
-  const pdfUrl = getPdfReportUrl(diagnosisName, confidence);
+  const { apiUrl } = useApi();
+  const pdfUrl = getPdfReportUrl(apiUrl, diagnosisName, confidence);
 
   return (
     <div className="p-6 rounded-3xl bg-gradient-to-br from-rose-900/40 via-slate-900 to-slate-900 border border-rose-500/20 shadow-sm flex flex-col justify-between">

@@ -11,11 +11,14 @@ import RagDigitalTwins from "@/components/RagDigitalTwins";
 import VoiceAssistant from "@/components/VoiceAssistant";
 import ReportDownload from "@/components/ReportDownload";
 import { HospitalCohort, TelemetryRound, DiagnosisResult, RagCase } from "@/types";
-import { generateHospitalCohorts, runClinicalDiagnosis, fetchRagTwins, checkBackendHealth, API_BASE } from "@/lib/api";
+import { fetchHospitalCohorts, fetchClinicalDiagnosis, fetchRagTwins } from "@/lib/api";
 import { useLanguage } from "@/context/LanguageContext";
+import { useApi } from "@/context/ApiContext";
+import { AlertCircle, Server } from "lucide-react";
 
 export default function DashboardPage() {
   const { t } = useLanguage();
+  const { apiUrl, isConnected, isChecking, lastError } = useApi();
 
   // Consortium State
   const [numHospitals, setNumHospitals] = useState<number>(4);
@@ -23,7 +26,7 @@ export default function DashboardPage() {
   const [samplesPerHospital, setSamplesPerHospital] = useState<number>(200);
   const [hospitals, setHospitals] = useState<HospitalCohort[]>([]);
   const [isCohortLoading, setIsCohortLoading] = useState<boolean>(false);
-  const [backendStatus, setBackendStatus] = useState<"online" | "offline">("offline");
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   // FL Telemetry State
   const [isTraining, setIsTraining] = useState<boolean>(false);
@@ -36,34 +39,32 @@ export default function DashboardPage() {
   const [isDiagLoading, setIsDiagLoading] = useState<boolean>(false);
   const [ragTwins, setRagTwins] = useState<RagCase[]>([]);
 
-  // Check health on mount
-  useEffect(() => {
-    checkBackendHealth().then((res) => setBackendStatus(res.status));
-  }, []);
-
-  // 1. Generate Multi-Hospital Cohorts
+  // 1. Generate Multi-Hospital Cohorts (Real FastAPI Call)
   const handleGenerateCohorts = async () => {
+    setErrorMessage(null);
     try {
       setIsCohortLoading(true);
-      const res = await generateHospitalCohorts(numHospitals, samplesPerHospital);
+      const res = await fetchHospitalCohorts(apiUrl, numHospitals, samplesPerHospital);
       if (res.success && res.hospitals) {
         setHospitals(res.hospitals);
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error("Cohort generation error:", err);
+      setErrorMessage(`Backend API Hatası: ${err.message || "Sunucuya bağlanılamadı"}. Lütfen sağ üstteki 'Backend' butonundan Render API adresinizi kontrol edin.`);
     } finally {
       setIsCohortLoading(false);
     }
   };
 
-  // 2. Start Live Streaming Federated Learning
+  // 2. Start Live Streaming Federated Learning (Real FastAPI SSE Stream)
   const handleStartTraining = () => {
+    setErrorMessage(null);
     setIsTraining(true);
     setHistory([]);
     setCurrentRound(0);
 
     try {
-      const sseUrl = `${API_BASE}/api/fl/train-stream?num_rounds=${totalRounds}&local_epochs=2&learning_rate=0.0001&simulate_attack=false&activate_defense=true`;
+      const sseUrl = `${apiUrl.replace(/\/$/, "")}/api/fl/train-stream?num_rounds=${totalRounds}&local_epochs=2&learning_rate=0.0001&simulate_attack=false&activate_defense=true`;
       const eventSource = new EventSource(sseUrl);
 
       eventSource.onmessage = (event) => {
@@ -79,77 +80,48 @@ export default function DashboardPage() {
       };
 
       eventSource.onerror = (err) => {
-        console.warn("SSE stream unavailable or timed out, executing fallback simulation:", err);
+        console.error("SSE connection error:", err);
         eventSource.close();
-        runFallbackTraining();
+        setIsTraining(false);
+        setErrorMessage("Federe eğitim akışı kesildi veya sunucu yanıt vermedi. Lütfen backend bağlantısını kontrol edin.");
       };
-    } catch (e) {
-      runFallbackTraining();
+    } catch (e: any) {
+      setIsTraining(false);
+      setErrorMessage(e.message || "Federe eğitim başlatılamadı");
     }
   };
 
-  // Fallback Training Simulation if backend is sleeping
-  const runFallbackTraining = () => {
-    let r = 0;
-    const interval = setInterval(() => {
-      r += 1;
-      const acc = Math.min(96.5, 45.0 + r * 10.2 + (Math.random() * 2 - 1));
-      const loss = Math.max(0.12, 1.2 - r * 0.2 + (Math.random() * 0.05));
-      const f1 = Math.min(95.8, 42.0 + r * 10.5);
-
-      const update: TelemetryRound = {
-        round_num: r,
-        total_rounds: totalRounds,
-        train_loss: parseFloat(loss.toFixed(4)),
-        train_accuracy: parseFloat(acc.toFixed(2)),
-        test_loss: parseFloat(loss.toFixed(4)),
-        test_accuracy: parseFloat(acc.toFixed(2)),
-        precision: parseFloat((acc - 1.2).toFixed(2)),
-        recall: parseFloat((acc - 0.8).toFixed(2)),
-        f1_score: parseFloat(f1.toFixed(2)),
-        threat_detected: false,
-        blocked_nodes: [],
-        status: r < totalRounds ? "training" : "complete",
-      };
-
-      setCurrentRound(r);
-      setHistory((prev) => [...prev, update]);
-
-      if (r >= totalRounds) {
-        clearInterval(interval);
-        setIsTraining(false);
-        setIsTrained(true);
-      }
-    }, 450);
-  };
-
-  // 3. Execute CDSS Inference & RAG Twin Matching
+  // 3. Execute CDSS Inference & RAG Twin Matching (Real FastAPI Call)
   const handleRunDiagnosis = async (classIndex?: number, opacity: number = 0.55, colormap: string = "Hot") => {
+    setErrorMessage(null);
     try {
       setIsDiagLoading(true);
-      const result = await runClinicalDiagnosis(classIndex, opacity, colormap);
+      const result = await fetchClinicalDiagnosis(apiUrl, classIndex, opacity, colormap);
       setDiagnosis(result);
 
       // Fetch RAG Twin Cases
       try {
-        const twinRes = await fetchRagTwins();
+        const twinRes = await fetchRagTwins(apiUrl);
         if (twinRes && twinRes.matched_cases) {
           setRagTwins(twinRes.matched_cases);
         }
       } catch (ragErr) {
         console.error("RAG fetch error:", ragErr);
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error("Diagnosis error:", err);
+      setErrorMessage(`Teşhis API Hatası: ${err.message}. Lütfen backend sunucunuzun ayakta olduğundan emin olun.`);
     } finally {
       setIsDiagLoading(false);
     }
   };
 
-  // Initial Auto-Generate on Mount
+  // Initial Attempt on Mount if connected
   useEffect(() => {
-    handleGenerateCohorts();
-  }, []);
+    if (isConnected) {
+      handleGenerateCohorts();
+    }
+  }, [isConnected, apiUrl]);
 
   const totalCohortSamples = numHospitals * samplesPerHospital;
   const currentDiagnosisName = diagnosis ? diagnosis.predicted_name.split(" ")[0] : "Normal";
@@ -161,6 +133,30 @@ export default function DashboardPage() {
 
       <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8">
         
+        {/* Backend Disconnected Warning Banner */}
+        {!isConnected && !isChecking && (
+          <div className="mb-6 p-4 rounded-2xl bg-amber-500/10 border border-amber-500/30 text-amber-800 dark:text-amber-300 text-xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-sm">
+            <div className="flex items-center gap-2.5">
+              <AlertCircle className="w-5 h-5 text-amber-500 shrink-0" />
+              <div>
+                <strong>Backend Bağlantısı Bekleniyor:</strong> Şu anda <code className="bg-amber-500/20 px-1.5 py-0.5 rounded font-mono">{apiUrl}</code> adresine ulaşılamıyor.
+                <p className="text-[11px] opacity-85 mt-0.5">Render ücretsiz sunucusu ilk açılışta uyanıyor olabilir (~30sn) veya sağ üstteki <strong>&quot;Backend&quot;</strong> butonundan Render API adresinizi güncelleyebilirsiniz.</p>
+              </div>
+            </div>
+            <div className="text-right shrink-0">
+              <span className="font-mono text-[11px] text-amber-600 dark:text-amber-400">FastAPI Port 8000 / Render</span>
+            </div>
+          </div>
+        )}
+
+        {/* Dynamic Error Toast */}
+        {errorMessage && (
+          <div className="mb-6 p-4 rounded-2xl bg-rose-500/10 border border-rose-500/30 text-rose-800 dark:text-rose-300 text-xs flex items-center justify-between">
+            <span>⚠️ {errorMessage}</span>
+            <button onClick={() => setErrorMessage(null)} className="font-bold underline text-rose-600 ml-3">Kapat</button>
+          </div>
+        )}
+
         {/* Hero Banner & KPI Counters */}
         <Hero
           numHospitals={numHospitals}

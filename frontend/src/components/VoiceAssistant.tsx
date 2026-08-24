@@ -2,7 +2,8 @@
 
 import React, { useState } from "react";
 import { useLanguage } from "@/context/LanguageContext";
-import { Mic, Volume2, Play, Pause } from "lucide-react";
+import { useApi } from "@/context/ApiContext";
+import { Mic } from "lucide-react";
 import { getVoiceBriefingUrl } from "@/lib/api";
 
 interface VoiceAssistantProps {
@@ -12,8 +13,9 @@ interface VoiceAssistantProps {
 
 export default function VoiceAssistant({ diagnosisName, confidence }: VoiceAssistantProps) {
   const { t } = useLanguage();
+  const { apiUrl } = useApi();
   const [isPlaying, setIsPlaying] = useState(false);
-  const audioUrl = getVoiceBriefingUrl(diagnosisName, confidence);
+  const audioUrl = getVoiceBriefingUrl(apiUrl, diagnosisName, confidence);
 
   return (
     <div className="p-6 rounded-3xl bg-gradient-to-br from-indigo-900/40 via-slate-900 to-slate-900 border border-indigo-500/20 shadow-sm flex flex-col justify-between">
