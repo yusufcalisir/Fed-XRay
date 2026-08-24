@@ -87,6 +87,27 @@ INSTITUTION_NAMES = [
 ]
 
 
+@app.get("/")
+@app.head("/")
+async def root_index():
+    """Root endpoint for load balancer health probes and service status."""
+    return {
+        "status": "healthy",
+        "service": "Fed-XRay Clinical AI API Engine",
+        "version": "2.0.0",
+        "device": str(state.device),
+        "docs_url": "/docs",
+        "model_trained": state.model_trained
+    }
+
+
+@app.get("/favicon.ico")
+async def favicon():
+    """Favicon endpoint to prevent 404 logs."""
+    return Response(content=b"", media_type="image/x-icon")
+
+
+@app.get("/health")
 @app.get("/api/health")
 async def health_check():
     """Health check endpoint."""
