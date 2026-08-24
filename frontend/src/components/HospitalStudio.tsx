@@ -42,19 +42,21 @@ export default function HospitalStudio({ hospitals, onGenerate, isLoading }: Hos
       <div className="card p-3.5 sm:p-5">
         {hospitals.length > 0 && active ? (
           <>
-            {/* Hospital Tabs */}
-            <div className="flex items-center gap-1.5 sm:gap-2 mb-4 sm:mb-5 overflow-x-auto pb-1.5">
+            {/* Hospital Tabs - Equal 4-Column Row (No scroll, No line break) */}
+            <div className="grid grid-cols-4 gap-1 sm:gap-2 mb-4 sm:mb-5 w-full">
               {hospitals.map((h, idx) => (
                 <button
                   key={h.hospital_id}
                   onClick={() => setActiveTab(idx)}
-                  className={`px-3 sm:px-3.5 py-1.5 rounded-lg text-[11px] sm:text-xs font-semibold transition-all whitespace-nowrap shrink-0 ${
+                  className={`py-1.5 px-1 sm:px-3 rounded-lg text-center font-semibold transition-all truncate text-[10px] sm:text-xs ${
                     activeTab === idx
                       ? "bg-accent-500/15 text-accent-600 dark:text-accent-400 border border-accent-500/30"
-                      : "text-slate-500 hover:text-[var(--text-heading)] border border-transparent"
+                      : "text-slate-500 hover:text-[var(--text-heading)] border border-transparent hover:bg-black/5 dark:hover:bg-white/5"
                   }`}
                 >
-                  {t("sec1_hospital_prefix")} {h.hospital_id}
+                  <span className="hidden sm:inline">{t("sec1_hospital_prefix")} </span>
+                  <span className="inline sm:hidden">Hosp. </span>
+                  <span>{h.hospital_id}</span>
                 </button>
               ))}
             </div>
