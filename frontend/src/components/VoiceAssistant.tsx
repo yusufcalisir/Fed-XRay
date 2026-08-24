@@ -6,36 +6,21 @@ import { useApi } from "@/context/ApiContext";
 import { Mic } from "lucide-react";
 import { getVoiceBriefingUrl } from "@/lib/api";
 
-interface VoiceAssistantProps {
-  diagnosisName: string;
-  confidence: number;
-}
+interface VoiceAssistantProps { diagnosisName: string; confidence: number; }
 
 export default function VoiceAssistant({ diagnosisName, confidence }: VoiceAssistantProps) {
   const { t } = useLanguage();
   const { apiUrl } = useApi();
-  const [isPlaying, setIsPlaying] = useState(false);
   const audioUrl = getVoiceBriefingUrl(apiUrl, diagnosisName, confidence);
 
   return (
-    <div className="p-6 rounded-3xl bg-gradient-to-br from-indigo-900/40 via-slate-900 to-slate-900 border border-indigo-500/20 shadow-sm flex flex-col justify-between">
-      <div>
-        <div className="flex items-center gap-2.5 text-sm font-bold text-white mb-1">
-          <Mic className="w-5 h-5 text-indigo-400" />
-          <span>{t("sec3_voice_title")}</span>
-        </div>
-        <p className="text-xs text-slate-400 mb-4">{t("sec3_voice_desc")}</p>
+    <div className="card p-5">
+      <div className="flex items-center gap-2 mb-1">
+        <Mic className="w-4 h-4 text-purple-400" />
+        <span className="text-sm font-bold text-white">{t("sec3_voice_title")}</span>
       </div>
-
-      <div className="pt-2">
-        <audio
-          controls
-          src={audioUrl}
-          className="w-full h-10 accent-indigo-500 rounded-xl"
-          onPlay={() => setIsPlaying(true)}
-          onPause={() => setIsPlaying(false)}
-        />
-      </div>
+      <p className="text-[11px] text-slate-500 mb-4">{t("sec3_voice_desc")}</p>
+      <audio controls src={audioUrl} className="w-full h-9 rounded-lg" />
     </div>
   );
 }

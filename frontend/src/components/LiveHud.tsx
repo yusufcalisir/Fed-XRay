@@ -2,7 +2,7 @@
 
 import React from "react";
 import { useLanguage } from "@/context/LanguageContext";
-import { Cpu, ShieldCheck, Network, CheckCircle2 } from "lucide-react";
+import { Cpu, ShieldCheck, CheckCircle2 } from "lucide-react";
 
 interface LiveHudProps {
   numHospitals: number;
@@ -14,32 +14,24 @@ export default function LiveHud({ numHospitals, isDefenseActive, isTrained }: Li
   const { t } = useLanguage();
 
   return (
-    <div className="w-full rounded-2xl bg-slate-900 border border-slate-800 p-4 mb-8 shadow-xl flex flex-wrap items-center justify-between gap-4 text-xs font-medium text-slate-300">
-      <div className="flex items-center gap-2.5">
-        <span className="pulse-dot"></span>
-        <span className="text-white font-bold tracking-wide">
-          {t("live_hud_active")}:
-        </span>
-        <span className="text-slate-400">
-          {numHospitals} / {numHospitals} {t("live_hud_nodes")}
-        </span>
+    <div className="card-inner flex flex-wrap items-center justify-between gap-x-6 gap-y-2 px-5 py-3 mb-6 text-[11px] font-medium text-slate-400">
+      <div className="flex items-center gap-2">
+        <span className="pulse-dot" />
+        <span className="text-white font-semibold">{t("live_hud_active")}</span>
+        <span className="text-slate-500">|</span>
+        <span>{numHospitals}/{numHospitals} {t("live_hud_nodes")}</span>
       </div>
-
-      <div className="flex items-center gap-2 text-slate-300">
-        <Cpu className="w-4 h-4 text-brand-400" />
+      <div className="flex items-center gap-2">
+        <Cpu className="w-3.5 h-3.5 text-blue-400" />
         <span>{t("live_hud_model")}</span>
       </div>
-
-      <div className="flex items-center gap-2 text-slate-300">
-        <ShieldCheck className="w-4 h-4 text-clinical-emerald" />
+      <div className="flex items-center gap-2">
+        <ShieldCheck className="w-3.5 h-3.5 text-accent-400" />
         <span>{isDefenseActive ? t("live_hud_shield") : t("sec2_shield_off")}</span>
       </div>
-
-      <div className="flex items-center gap-2 text-slate-300">
-        <CheckCircle2 className={`w-4 h-4 ${isTrained ? "text-clinical-emerald" : "text-brand-400"}`} />
-        <span>
-          {t("kpi_status")}: <strong className="text-white">{isTrained ? t("kpi_status_trained") : t("kpi_status_ready")}</strong>
-        </span>
+      <div className="flex items-center gap-2">
+        <CheckCircle2 className={`w-3.5 h-3.5 ${isTrained ? "text-accent-400" : "text-slate-500"}`} />
+        <span>{isTrained ? t("kpi_status_trained") : t("kpi_status_ready")}</span>
       </div>
     </div>
   );

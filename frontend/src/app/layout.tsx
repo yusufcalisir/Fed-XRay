@@ -8,14 +8,10 @@ export const metadata: Metadata = {
   description: "Privacy-Preserving Federated Medical Imaging & Multimodal CDSS Platform",
 };
 
-export default function RootLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
+export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en" className="dark">
-      <body className="antialiased selection:bg-brand-500 selection:text-white">
+      <body className="antialiased">
         <LanguageProvider>
           <ApiProvider>
             {children}
