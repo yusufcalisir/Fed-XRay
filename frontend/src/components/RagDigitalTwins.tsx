@@ -21,9 +21,9 @@ export default function RagDigitalTwins({ twins }: RagDigitalTwinsProps) {
       </div>
       <p className="text-[10px] sm:text-[11px] text-[var(--text-muted)] mb-3 sm:mb-4">{t("sec3_rag_desc")}</p>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5 sm:gap-3">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
         {twins.map((c) => (
-          <div key={c.case_id} className="card-inner p-3 sm:p-4">
+          <div key={c.case_id} className="p-3 sm:p-4 rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-app)]">
             <div className="flex items-center justify-between mb-2">
               <div>
                 <div className="text-xs font-mono font-bold text-[var(--text-heading)]">{c.case_id}</div>

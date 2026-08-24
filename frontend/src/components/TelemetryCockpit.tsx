@@ -39,7 +39,7 @@ export default function TelemetryCockpit({ history, onStartTraining, isTraining,
 
       {/* Progress Bar */}
       {isTraining && (
-        <div className="card-inner px-3.5 sm:px-4 py-2.5 sm:py-3 mb-3.5 sm:mb-4">
+        <div className="card px-3.5 sm:px-4 py-2.5 sm:py-3 mb-3.5 sm:mb-4">
           <div className="flex items-center justify-between mb-1.5 text-[10px] sm:text-[11px]">
             <span className="flex items-center gap-1.5 sm:gap-2 text-accent-600 dark:text-accent-400 font-semibold">
               <span className="pulse-dot" />
@@ -87,15 +87,15 @@ export default function TelemetryCockpit({ history, onStartTraining, isTraining,
         {/* Right: Shield + Economics */}
         <div className="flex flex-col gap-3.5 sm:gap-4">
 
-          {/* Byzantine Shield */}
-          <div className="card p-3.5 sm:p-5 flex-1">
-            <div className="flex items-center gap-2.5 sm:gap-3 mb-3 sm:mb-4">
+          {/* Byzantine Shield - Sleek flat card */}
+          <div className="card p-3.5 sm:p-5 flex-1 flex flex-col justify-between">
+            <div className="flex items-center gap-2.5 sm:gap-3 mb-3">
               {latestRound?.threat_detected ? (
-                <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-red-500/10 flex items-center justify-center shrink-0">
+                <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-red-500/10 border border-red-500/20 flex items-center justify-center shrink-0">
                   <ShieldAlert className="w-4 h-4 sm:w-5 sm:h-5 text-red-500 animate-pulse" />
                 </div>
               ) : (
-                <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-accent-500/10 flex items-center justify-center shrink-0">
+                <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-accent-500/10 border border-accent-500/20 flex items-center justify-center shrink-0">
                   <ShieldCheck className="w-4 h-4 sm:w-5 sm:h-5 text-accent-500" />
                 </div>
               )}
@@ -104,33 +104,39 @@ export default function TelemetryCockpit({ history, onStartTraining, isTraining,
                 <div className="text-[10px] sm:text-[11px] text-[var(--text-muted)]">Hold-out Reference Validation</div>
               </div>
             </div>
-            <div className="card-inner p-2.5 sm:p-3 text-[11px] sm:text-xs">
-              {latestRound?.threat_detected ? (
-                <span className="badge badge-danger">{t("sec2_shield_alert")}: Node(s) {latestRound.blocked_nodes.join(", ")}</span>
-              ) : (
-                <span className="badge badge-success">{t("sec2_shield_secure")}</span>
-              )}
+            
+            <div className="pt-3 border-t border-[var(--border-subtle)] flex items-center gap-2 text-xs">
+              <span className={`w-2 h-2 rounded-full shrink-0 ${latestRound?.threat_detected ? "bg-red-500" : "bg-emerald-500 shadow-[0_0_8px_#10b981]"}`} />
+              <span className={`font-semibold text-[11px] sm:text-xs ${latestRound?.threat_detected ? "text-red-500" : "text-emerald-600 dark:text-emerald-400"}`}>
+                {latestRound?.threat_detected ? `${t("sec2_shield_alert")}: Node(s) ${latestRound.blocked_nodes.join(", ")}` : t("sec2_shield_secure")}
+              </span>
             </div>
           </div>
 
-          {/* Communication Economics */}
-          <div className="card p-3.5 sm:p-5 flex-1">
-            <div className="flex items-center gap-2 mb-2.5 sm:mb-3">
-              <Zap className="w-4 h-4 text-amber-500 shrink-0" />
-              <span className="metric-label">{t("sec2_economics_title")}</span>
+          {/* Communication Economics - Sleek flat card */}
+          <div className="card p-3.5 sm:p-5 flex-1 flex flex-col justify-between">
+            <div>
+              <div className="flex items-center gap-2 mb-2.5 sm:mb-3">
+                <Zap className="w-4 h-4 text-amber-500 shrink-0" />
+                <span className="metric-label">{t("sec2_economics_title")}</span>
+              </div>
+              <div className="space-y-2 text-[11px] sm:text-xs">
+                <div className="flex justify-between text-[var(--text-muted)]">
+                  <span>{t("sec2_economics_full")}</span>
+                  <span className="font-mono font-bold text-[var(--text-heading)]">2.43 GB</span>
+                </div>
+                <div className="flex justify-between text-accent-600 dark:text-accent-400 font-semibold">
+                  <span>{t("sec2_economics_peft")}</span>
+                  <span className="font-mono font-bold">1.60 MB</span>
+                </div>
+              </div>
             </div>
-            <div className="space-y-2 text-[11px] sm:text-xs">
-              <div className="flex justify-between text-[var(--text-muted)]">
-                <span>{t("sec2_economics_full")}</span>
-                <span className="font-mono font-bold text-[var(--text-heading)]">2.43 GB</span>
-              </div>
-              <div className="flex justify-between text-accent-600 dark:text-accent-400 font-semibold">
-                <span>{t("sec2_economics_peft")}</span>
-                <span className="font-mono font-bold">1.60 MB</span>
-              </div>
-              <div className="card-inner p-2 sm:p-2.5 text-center text-accent-600 dark:text-accent-400 font-bold text-[10px] sm:text-[11px]">
+
+            <div className="mt-3 pt-2.5 border-t border-[var(--border-subtle)] flex items-center justify-between text-[11px] sm:text-xs">
+              <span className="text-[var(--text-muted)]">Optimization</span>
+              <span className="font-bold text-accent-600 dark:text-accent-400 bg-accent-500/10 px-2 py-0.5 rounded border border-accent-500/20">
                 {t("sec2_economics_savings")}
-              </div>
+              </span>
             </div>
           </div>
 

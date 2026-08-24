@@ -141,7 +141,7 @@ export default function DiagnosticStudio({ diagnosis, onDiagnose, isLoading }: D
                 <input type="range" min="0.1" max="1.0" step="0.05" value={opacity} onChange={(e) => setOpacity(parseFloat(e.target.value))} className="w-full accent-accent-500 h-1.5" />
                 <div className="flex items-center justify-between text-[10px] sm:text-[11px]">
                   <span className="text-[var(--text-muted)]">{t("sec3_xai_colormap")}</span>
-                  <select value={colormap} onChange={(e) => setColormap(e.target.value)} className="bg-[var(--bg-card-inner)] text-[var(--text-heading)] text-[10px] sm:text-[11px] font-semibold rounded-md px-2 py-1 border border-[var(--border-card)]">
+                  <select value={colormap} onChange={(e) => setColormap(e.target.value)} className="bg-[var(--bg-app)] text-[var(--text-heading)] text-[10px] sm:text-[11px] font-semibold rounded-md px-2 py-1 border border-[var(--border-card)]">
                     <option value="Hot">Hot</option>
                     <option value="Jet">Jet</option>
                   </select>
@@ -149,29 +149,32 @@ export default function DiagnosticStudio({ diagnosis, onDiagnose, isLoading }: D
               </div>
             </div>
 
-            {/* Probabilities */}
-            <div className="card p-3.5 sm:p-4 flex flex-col">
-              <div className="flex items-center gap-1.5 metric-label mb-2.5 sm:mb-3">
-                <Activity className="w-3.5 h-3.5 text-accent-500" />
-                <span>{t("sec3_results_header")}</span>
-              </div>
-              <div className="space-y-2.5 sm:space-y-3 flex-1">
-                {classLabels.map((lbl, idx) => {
-                  const pct = Math.round((diagnosis.probabilities[idx] || 0) * 100);
-                  return (
-                    <div key={idx}>
-                      <div className="flex justify-between text-[11px] sm:text-xs mb-1">
-                        <span className="text-[var(--text-main)]">{lbl}</span>
-                        <span className="font-mono font-bold text-[var(--text-heading)]">{pct}%</span>
+            {/* Probabilities & Clinical Findings */}
+            <div className="card p-3.5 sm:p-4 flex flex-col justify-between">
+              <div>
+                <div className="flex items-center gap-1.5 metric-label mb-2.5 sm:mb-3">
+                  <Activity className="w-3.5 h-3.5 text-accent-500" />
+                  <span>{t("sec3_results_header")}</span>
+                </div>
+                <div className="space-y-2.5">
+                  {classLabels.map((lbl, idx) => {
+                    const pct = Math.round((diagnosis.probabilities[idx] || 0) * 100);
+                    return (
+                      <div key={idx}>
+                        <div className="flex justify-between text-[11px] sm:text-xs mb-1">
+                          <span className="text-[var(--text-main)]">{lbl}</span>
+                          <span className="font-mono font-bold text-[var(--text-heading)]">{pct}%</span>
+                        </div>
+                        <div className="w-full h-1.5 rounded-full bg-slate-200 dark:bg-navy-800 overflow-hidden">
+                          <div className={`h-full rounded-full ${CLASS_COLORS_BAR[idx]} transition-all duration-300`} style={{ width: `${pct}%` }} />
+                        </div>
                       </div>
-                      <div className="w-full h-1.5 rounded-full bg-slate-200 dark:bg-navy-800 overflow-hidden">
-                        <div className={`h-full rounded-full ${CLASS_COLORS_BAR[idx]} transition-all duration-300`} style={{ width: `${pct}%` }} />
-                      </div>
-                    </div>
-                  );
-                })}
+                    );
+                  })}
+                </div>
               </div>
-              <div className="card-inner p-2.5 sm:p-3 mt-3 text-[10px] sm:text-[11px] text-[var(--text-muted)] leading-relaxed">
+              
+              <div className="mt-3.5 pt-3 border-t border-[var(--border-subtle)] text-[10px] sm:text-[11px] text-[var(--text-muted)] leading-relaxed">
                 {diagnosis.findings}
               </div>
             </div>
