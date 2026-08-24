@@ -11,7 +11,7 @@ interface DiagnosticStudioProps {
   isLoading: boolean;
 }
 
-const CLASS_COLORS_BAR = ["bg-accent-400", "bg-amber-400", "bg-red-400"];
+const CLASS_COLORS_BAR = ["bg-accent-500", "bg-amber-500", "bg-red-500"];
 
 export default function DiagnosticStudio({ diagnosis, onDiagnose, isLoading }: DiagnosticStudioProps) {
   const { t } = useLanguage();
@@ -80,11 +80,11 @@ export default function DiagnosticStudio({ diagnosis, onDiagnose, isLoading }: D
       <div className="section-bar mb-4 flex-col sm:flex-row">
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-xl bg-purple-500/10 flex items-center justify-center shrink-0">
-            <Stethoscope className="w-5 h-5 text-purple-400" />
+            <Stethoscope className="w-5 h-5 text-purple-500 dark:text-purple-400" />
           </div>
           <div>
-            <h2 className="font-display text-lg font-bold text-white">{t("sec3_title")}</h2>
-            <p className="text-xs text-slate-500">{t("sec3_subtitle")}</p>
+            <h2 className="font-display text-lg font-bold text-[var(--text-heading)]">{t("sec3_title")}</h2>
+            <p className="text-xs text-[var(--text-muted)]">{t("sec3_subtitle")}</p>
           </div>
         </div>
         <button onClick={() => onDiagnose(undefined, opacity, colormap)} disabled={isLoading} className="btn-primary mt-3 sm:mt-0">
@@ -103,13 +103,13 @@ export default function DiagnosticStudio({ diagnosis, onDiagnose, isLoading }: D
           }`}>
             <div>
               <div className="metric-label mb-1">{t("sec3_diagnosis")}</div>
-              <div className="font-display text-xl font-extrabold text-white">
+              <div className="font-display text-xl font-extrabold text-[var(--text-heading)]">
                 {classLabels[diagnosis.predicted_class]}
               </div>
             </div>
-            <div className="text-right">
+            <div className="text-left sm:text-right">
               <div className="metric-label mb-1">{t("sec3_confidence")}</div>
-              <div className="font-display text-xl font-black text-white">{diagnosis.confidence}%</div>
+              <div className="font-display text-xl font-black text-accent-600 dark:text-accent-400">{diagnosis.confidence}%</div>
             </div>
           </div>
 
@@ -122,8 +122,8 @@ export default function DiagnosticStudio({ diagnosis, onDiagnose, isLoading }: D
               <div className="xray-frame flex-1 flex items-center justify-center">
                 <canvas ref={rawRef} />
               </div>
-              <div className="text-[11px] text-slate-500 mt-2 text-center">
-                {t("sec3_ground_truth")}: <span className="text-white font-semibold">{classLabels[diagnosis.true_class]}</span>
+              <div className="text-[11px] text-[var(--text-muted)] mt-2 text-center">
+                {t("sec3_ground_truth")}: <span className="text-[var(--text-heading)] font-semibold">{classLabels[diagnosis.true_class]}</span>
               </div>
             </div>
 
@@ -135,13 +135,13 @@ export default function DiagnosticStudio({ diagnosis, onDiagnose, isLoading }: D
               </div>
               <div className="mt-2 space-y-1.5">
                 <div className="flex items-center justify-between text-[11px]">
-                  <span className="text-slate-500">{t("sec3_xai_opacity")}</span>
-                  <span className="font-mono text-white">{Math.round(opacity * 100)}%</span>
+                  <span className="text-[var(--text-muted)]">{t("sec3_xai_opacity")}</span>
+                  <span className="font-mono text-[var(--text-heading)] font-bold">{Math.round(opacity * 100)}%</span>
                 </div>
                 <input type="range" min="0.1" max="1.0" step="0.05" value={opacity} onChange={(e) => setOpacity(parseFloat(e.target.value))} className="w-full accent-accent-500 h-1" />
                 <div className="flex items-center justify-between text-[11px]">
-                  <span className="text-slate-500">{t("sec3_xai_colormap")}</span>
-                  <select value={colormap} onChange={(e) => setColormap(e.target.value)} className="bg-navy-800 text-white text-[11px] rounded-md px-2 py-0.5 border border-white/[0.06]">
+                  <span className="text-[var(--text-muted)]">{t("sec3_xai_colormap")}</span>
+                  <select value={colormap} onChange={(e) => setColormap(e.target.value)} className="bg-[var(--bg-card-inner)] text-[var(--text-heading)] text-[11px] font-semibold rounded-md px-2 py-1 border border-[var(--border-card)]">
                     <option value="Hot">Hot</option>
                     <option value="Jet">Jet</option>
                   </select>
@@ -152,7 +152,7 @@ export default function DiagnosticStudio({ diagnosis, onDiagnose, isLoading }: D
             {/* Probabilities */}
             <div className="card p-4 flex flex-col">
               <div className="flex items-center gap-1.5 metric-label mb-3">
-                <Activity className="w-3.5 h-3.5 text-accent-400" />
+                <Activity className="w-3.5 h-3.5 text-accent-500" />
                 <span>{t("sec3_results_header")}</span>
               </div>
               <div className="space-y-3 flex-1">
@@ -161,17 +161,17 @@ export default function DiagnosticStudio({ diagnosis, onDiagnose, isLoading }: D
                   return (
                     <div key={idx}>
                       <div className="flex justify-between text-xs mb-1">
-                        <span className="text-slate-300">{lbl}</span>
-                        <span className="font-mono font-bold text-white">{pct}%</span>
+                        <span className="text-[var(--text-main)]">{lbl}</span>
+                        <span className="font-mono font-bold text-[var(--text-heading)]">{pct}%</span>
                       </div>
-                      <div className="w-full h-1.5 rounded-full bg-navy-800 overflow-hidden">
+                      <div className="w-full h-1.5 rounded-full bg-slate-200 dark:bg-navy-800 overflow-hidden">
                         <div className={`h-full rounded-full ${CLASS_COLORS_BAR[idx]} transition-all duration-300`} style={{ width: `${pct}%` }} />
                       </div>
                     </div>
                   );
                 })}
               </div>
-              <div className="card-inner p-3 mt-3 text-[11px] text-slate-400 leading-relaxed">
+              <div className="card-inner p-3 mt-3 text-[11px] text-[var(--text-muted)] leading-relaxed">
                 {diagnosis.findings}
               </div>
             </div>
@@ -179,7 +179,7 @@ export default function DiagnosticStudio({ diagnosis, onDiagnose, isLoading }: D
           </div>
         </div>
       ) : (
-        <div className="card text-center py-16 text-sm text-slate-500">
+        <div className="card text-center py-16 text-sm text-[var(--text-muted)]">
           {t("sec3_subtitle")}
         </div>
       )}

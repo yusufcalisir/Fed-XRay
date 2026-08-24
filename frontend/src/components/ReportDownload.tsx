@@ -16,10 +16,10 @@ export default function ReportDownload({ diagnosisName, confidence }: ReportDown
   return (
     <div className="card p-5">
       <div className="flex items-center gap-2 mb-1">
-        <FileText className="w-4 h-4 text-red-400" />
-        <span className="text-sm font-bold text-white">{t("sec3_report_title")}</span>
+        <FileText className="w-4 h-4 text-red-500 dark:text-red-400" />
+        <span className="text-sm font-bold text-[var(--text-heading)]">{t("sec3_report_title")}</span>
       </div>
-      <p className="text-[11px] text-slate-500 mb-4">{t("sec3_report_desc")}</p>
+      <p className="text-[11px] text-[var(--text-muted)] mb-4">{t("sec3_report_desc")}</p>
       <a href={pdfUrl} target="_blank" rel="noopener noreferrer" className="btn-primary w-full !bg-gradient-to-r !from-red-600 !to-red-500 hover:!from-red-500 hover:!to-red-400 !shadow-red-500/20">
         <Download className="w-4 h-4" />
         <span>{t("sec3_btn_download_pdf")}</span>

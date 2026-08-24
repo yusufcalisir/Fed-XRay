@@ -11,7 +11,7 @@ interface HospitalStudioProps {
   isLoading: boolean;
 }
 
-const CLASS_COLORS = ["bg-accent-400", "bg-amber-400", "bg-red-400"];
+const CLASS_COLORS = ["bg-accent-500", "bg-amber-500", "bg-red-500"];
 const CLASS_DOT_COLORS = ["bg-accent-500", "bg-amber-500", "bg-red-500"];
 
 export default function HospitalStudio({ hospitals, onGenerate, isLoading }: HospitalStudioProps) {
@@ -25,11 +25,11 @@ export default function HospitalStudio({ hospitals, onGenerate, isLoading }: Hos
       <div className="section-bar mb-4 flex-col sm:flex-row">
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-xl bg-accent-500/10 flex items-center justify-center shrink-0">
-            <Database className="w-5 h-5 text-accent-400" />
+            <Database className="w-5 h-5 text-accent-600 dark:text-accent-400" />
           </div>
           <div>
-            <h2 className="font-display text-lg font-bold text-white">{t("sec1_title")}</h2>
-            <p className="text-xs text-slate-500">{t("sec1_subtitle")}</p>
+            <h2 className="font-display text-lg font-bold text-[var(--text-heading)]">{t("sec1_title")}</h2>
+            <p className="text-xs text-[var(--text-muted)]">{t("sec1_subtitle")}</p>
           </div>
         </div>
         <button onClick={onGenerate} disabled={isLoading} className="btn-primary mt-3 sm:mt-0">
@@ -50,8 +50,8 @@ export default function HospitalStudio({ hospitals, onGenerate, isLoading }: Hos
                   onClick={() => setActiveTab(idx)}
                   className={`px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all whitespace-nowrap ${
                     activeTab === idx
-                      ? "bg-accent-500/15 text-accent-400 border border-accent-500/20"
-                      : "text-slate-500 hover:text-slate-300 border border-transparent"
+                      ? "bg-accent-500/15 text-accent-600 dark:text-accent-400 border border-accent-500/30"
+                      : "text-slate-500 hover:text-[var(--text-heading)] border border-transparent"
                   }`}
                 >
                   {t("sec1_hospital_prefix")} {h.hospital_id}
@@ -60,14 +60,14 @@ export default function HospitalStudio({ hospitals, onGenerate, isLoading }: Hos
             </div>
 
             {/* Equal 2-Column Layout */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-5 items-start">
 
               {/* Left: Stats */}
               <div className="space-y-4">
                 <div className="card-inner p-4">
-                  <div className="text-sm font-bold text-white mb-0.5">{active.name}</div>
-                  <div className="text-[11px] text-slate-500">
-                    Node <code className="text-accent-400">client_{active.hospital_id}</code> | {active.num_samples} Scans
+                  <div className="text-sm font-bold text-[var(--text-heading)] mb-0.5">{active.name}</div>
+                  <div className="text-[11px] text-[var(--text-muted)]">
+                    Node <code className="text-accent-600 dark:text-accent-400 font-bold">client_{active.hospital_id}</code> | {active.num_samples} Scans
                   </div>
                 </div>
 
@@ -78,22 +78,22 @@ export default function HospitalStudio({ hospitals, onGenerate, isLoading }: Hos
                     { key: "pneumonia", label: t("sec1_pneumonia"), count: active.counts.pneumonia, dist: active.distribution[1], idx: 1 },
                     { key: "covid", label: t("sec1_covid"), count: active.counts.covid, dist: active.distribution[2], idx: 2 },
                   ].map((item) => (
-                    <div key={item.key} className="flex items-center justify-between py-2 border-b border-white/[0.04] last:border-0">
-                      <div className="flex items-center gap-2 text-xs text-slate-300">
+                    <div key={item.key} className="flex items-center justify-between py-2 border-b border-[var(--border-subtle)] last:border-0">
+                      <div className="flex items-center gap-2 text-xs text-[var(--text-main)]">
                         <span className={`w-2 h-2 rounded-full ${CLASS_DOT_COLORS[item.idx]}`} />
                         <span>{item.label}</span>
                       </div>
                       <div className="flex items-center gap-3">
-                        <div className="w-24 h-1.5 rounded-full bg-navy-800 overflow-hidden">
+                        <div className="w-24 h-1.5 rounded-full bg-slate-200 dark:bg-navy-800 overflow-hidden">
                           <div
                             className={`h-full rounded-full ${CLASS_COLORS[item.idx]}`}
                             style={{ width: `${Math.round(item.dist * 100)}%` }}
                           />
                         </div>
-                        <span className="text-xs font-mono font-bold text-white w-12 text-right">
+                        <span className="text-xs font-mono font-bold text-[var(--text-heading)] w-12 text-right">
                           {item.count}
                         </span>
-                        <span className="text-[10px] text-slate-500 w-8 text-right">
+                        <span className="text-[10px] text-[var(--text-muted)] w-8 text-right">
                           {Math.round(item.dist * 100)}%
                         </span>
                       </div>
@@ -106,13 +106,13 @@ export default function HospitalStudio({ hospitals, onGenerate, isLoading }: Hos
               <div>
                 <div className="flex items-center justify-between mb-3">
                   <div className="flex items-center gap-1.5 metric-label">
-                    <Eye className="w-3.5 h-3.5 text-accent-400" />
+                    <Eye className="w-3.5 h-3.5 text-accent-500" />
                     <span>{t("sec1_sample_gallery")}</span>
                   </div>
                 </div>
                 <div className="grid grid-cols-3 gap-2 card-inner p-3">
                   {active.sample_images.map((imgData, i) => (
-                    <div key={i} className="xray-frame group hover:ring-1 hover:ring-accent-500/30 transition-all">
+                    <div key={i} className="xray-frame group hover:ring-2 hover:ring-accent-500/40 transition-all">
                       <canvas
                         ref={(canvas) => {
                           if (!canvas) return;
@@ -143,7 +143,7 @@ export default function HospitalStudio({ hospitals, onGenerate, isLoading }: Hos
             </div>
           </>
         ) : (
-          <div className="text-center py-16 text-sm text-slate-500">
+          <div className="text-center py-16 text-sm text-[var(--text-muted)]">
             {t("sec1_subtitle")}
           </div>
         )}

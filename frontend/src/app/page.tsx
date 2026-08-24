@@ -104,18 +104,18 @@ export default function DashboardPage() {
         {/* Offline Banner */}
         {!isConnected && !isChecking && (
           <div className="card-inner flex items-start gap-3 p-4 mb-5 border-l-4 border-l-amber-500">
-            <AlertCircle className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
-            <div className="text-xs text-slate-400">
-              <span className="text-amber-400 font-semibold">Backend Offline</span> - <code className="text-slate-500">{apiUrl}</code> adresine ulaşılamadı. Sağ üstteki API butonundan adresinizi kontrol edin.
+            <AlertCircle className="w-4 h-4 text-amber-500 shrink-0 mt-0.5" />
+            <div className="text-xs text-[var(--text-main)]">
+              <span className="text-amber-600 dark:text-amber-400 font-semibold">Backend Offline</span> - <code className="text-[var(--text-muted)] font-bold">{apiUrl}</code> adresine ulaşılamadı. Sağ üstteki API butonundan adresinizi kontrol edin.
             </div>
           </div>
         )}
 
         {/* Error Toast */}
         {errorMessage && (
-          <div className="card-inner flex items-center justify-between p-3 mb-5 border-l-4 border-l-red-500 text-xs text-red-400">
+          <div className="card-inner flex items-center justify-between p-3 mb-5 border-l-4 border-l-red-500 text-xs text-red-500">
             <span>{errorMessage}</span>
-            <button onClick={() => setErrorMessage(null)} className="text-slate-500 hover:text-white ml-3 font-bold">x</button>
+            <button onClick={() => setErrorMessage(null)} className="text-[var(--text-muted)] hover:text-[var(--text-heading)] ml-3 font-bold">x</button>
           </div>
         )}
 
@@ -134,7 +134,7 @@ export default function DashboardPage() {
         )}
       </main>
 
-      <footer className="border-t border-white/[0.04] py-5 text-center text-[11px] text-slate-600">
+      <footer className="border-t border-[var(--navbar-border)] py-5 text-center text-[11px] text-[var(--text-muted)]">
         {t("footer_text")}
       </footer>
     </div>
