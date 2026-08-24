@@ -36,13 +36,17 @@ export default function Hero({ numHospitals, totalRounds, totalSamples, isTraine
       {/* KPI Strip */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-3">
         {metrics.map((m, i) => (
-          <div key={i} className="card p-3 sm:p-4 flex items-center gap-2.5 sm:gap-3">
-            <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-[var(--bg-card-inner)] border border-[var(--border-subtle)] flex items-center justify-center shrink-0">
+          <div key={i} className="card p-2.5 sm:p-4 flex items-center gap-2 sm:gap-3">
+            <div className="w-7 h-7 sm:w-9 sm:h-9 rounded-xl bg-[var(--bg-card-inner)] border border-[var(--border-subtle)] flex items-center justify-center shrink-0">
               <m.icon className={`w-3.5 h-3.5 sm:w-4 sm:h-4 ${m.color}`} />
             </div>
-            <div className="min-w-0">
-              <div className="metric-label truncate text-[10px] sm:text-[11px]">{m.label}</div>
-              <div className="metric-value text-base sm:text-lg truncate">{m.value}</div>
+            <div className="min-w-0 flex-1 overflow-hidden">
+              <div className="metric-label text-[9px] sm:text-[11px] leading-tight mb-0.5 text-[var(--text-muted)] tracking-tight sm:tracking-wider truncate">
+                {m.label}
+              </div>
+              <div className="metric-value text-sm sm:text-base lg:text-lg leading-none font-black text-[var(--text-heading)] truncate">
+                {m.value}
+              </div>
             </div>
           </div>
         ))}
