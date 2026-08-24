@@ -31,6 +31,14 @@ next-env.d.ts
 !frontend/src/lib/
 !frontend/src/lib/**
 
+# Whitelist src/fed_xray and all subpackages
+!src/
+!src/**
+!src/fed_xray/
+!src/fed_xray/**
+!src/fed_xray/data/
+!src/fed_xray/data/**
+
 # ===== Environment Variables =====
 .env
 .env.local
@@ -114,9 +122,9 @@ desktop.ini
 *.log
 logs/
 
-# ===== Datasets & Local Data =====
-data/
-datasets/
+# ===== Datasets & Local Data (Root only) =====
+/data/
+/datasets/
 *.csv
 
 # Unignore necessary JSON and config files
