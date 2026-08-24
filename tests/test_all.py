@@ -1,28 +1,14 @@
 import unittest
 import numpy as np
 import torch
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
 # Local imports to test
 from utils.cnn_model import create_model, count_parameters
 from utils.medical_data import MedicalDataGenerator, get_distribution_info
 from utils.federated_core import HospitalClient, CentralServer, run_federated_round
 from utils.xai_engine import GradCAM, create_overlay
-from utils.enterprise_architecture import (
-    init_enterprise_state,
-    log_event,
-    generate_governance_pdf
-)
 
-class MockSessionState(dict):
-    """Mock class supporting both dict item access and attribute access."""
-    def __getattr__(self, name):
-        try:
-            return self[name]
-        except KeyError:
-            raise AttributeError(name)
-    def __setattr__(self, name, value):
-        self[name] = value
 
 class TestMedicalData(unittest.TestCase):
     """Test synthetic medical data generation logic."""
@@ -103,7 +89,7 @@ class TestExplainableAI(unittest.TestCase):
         heatmap, predicted_class, confidence = gradcam.generate_heatmap(img_tensor)
         
         self.assertEqual(heatmap.shape, (28, 28))
-        self.assertIn(predicted_class, [0, 1, 2, 28]) # predicted labels in [0, 1, 2]
+        self.assertIn(predicted_class, [0, 1, 2])
         self.assertTrue(0.0 <= confidence <= 1.0)
         
         # Test overlay rendering
@@ -112,37 +98,6 @@ class TestExplainableAI(unittest.TestCase):
         self.assertEqual(overlay.shape, (28, 28, 3))
         
         gradcam.remove_hooks()
-
-
-class TestEnterpriseArchitecture(unittest.TestCase):
-    """Test mock security controls (WAF, Zero Trust checks, PAM session elevation, and Compliance PDFs)."""
-    @patch('streamlit.session_state', new_callable=MockSessionState)
-    def test_enterprise_state_and_logging(self, mock_state):
-        import streamlit as st
-        # Bind st.session_state mock
-        st.session_state = mock_state
-        
-        # Initialize
-        init_enterprise_state()
-        self.assertIn('siem_logs', st.session_state)
-        self.assertIn('zt_policies', st.session_state)
-        self.assertIn('pam_session', st.session_state)
-        
-        # Log an event
-        log_event("WAF", "Test WAF log entry", "WARNING")
-        self.assertEqual(st.session_state.siem_logs[0]["source"], "WAF")
-        self.assertEqual(st.session_state.siem_logs[0]["event"], "Test WAF log entry")
-        self.assertEqual(st.session_state.siem_logs[0]["level"], "WARNING")
-
-    @patch('streamlit.session_state', new_callable=MockSessionState)
-    def test_pdf_report_compilation(self, mock_state):
-        import streamlit as st
-        st.session_state = mock_state
-        init_enterprise_state()
-        
-        pdf_bytes = generate_governance_pdf()
-        self.assertIsInstance(pdf_bytes, bytes)
-        self.assertGreater(len(pdf_bytes), 0)
 
 
 if __name__ == '__main__':

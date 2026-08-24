@@ -329,9 +329,10 @@ if __name__ == "__main__":
     plt.grid(True, alpha=0.3)
     plt.legend()
     
-    # Save absolute path
-    save_path = os.path.join(os.getcwd(), 'fedprox_traffic_results.png')
+    # Save path in assets/figures
+    save_path = os.path.join(os.path.dirname(__file__), '..', 'assets', 'figures', 'fedprox_traffic_results.png')
+    os.makedirs(os.path.dirname(save_path), exist_ok=True)
     plt.tight_layout()
     plt.savefig(save_path)
-    print(f"\n✅ Simulation Complete! Results saved to '{save_path}'")
+    print(f"\nSimulation Complete. Results saved to '{save_path}'")
     # plt.show() # Disabled for headless environment

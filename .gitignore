@@ -1,6 +1,29 @@
 # Fed-XRay .gitignore
 
-# ===== Python =====
+# ===== AI Agent Directives & Research (Local Only) =====
+AGENTS.md
+research/
+.agents/
+.gemini/
+
+# ===== Credentials & Sensitive Files =====
+cookies.txt
+*.cookie
+*.cookies
+*.key
+*.pem
+*.token
+token.txt
+credentials.json
+.streamlit/secrets.toml
+
+# ===== Generated Outputs & Reports =====
+*.pdf
+output/
+reports/
+generated_reports/
+
+# ===== Python & Bytecode =====
 __pycache__/
 *.py[cod]
 *$py.class
@@ -32,10 +55,12 @@ env.bak/
 venv.bak/
 .conda/
 
-# ===== PyTorch =====
+# ===== Deep Learning Checkpoints & Weights =====
 *.pt
 *.pth
 *.onnx
+*.bin
+*.safetensors
 checkpoints/
 models/
 saved_models/
@@ -44,7 +69,7 @@ saved_models/
 .ipynb_checkpoints/
 *.ipynb
 
-# ===== IDE =====
+# ===== IDEs & Editors =====
 .idea/
 .vscode/
 *.swp
@@ -54,7 +79,7 @@ saved_models/
 .pydevproject
 .settings/
 
-# ===== OS Generated =====
+# ===== Operating System Files =====
 .DS_Store
 .DS_Store?
 ._*
@@ -64,34 +89,31 @@ ehthumbs.db
 Thumbs.db
 desktop.ini
 
-# ===== Streamlit =====
-.streamlit/secrets.toml
-
 # ===== Logs =====
 *.log
 logs/
 
-# ===== Data =====
+# ===== Datasets & Local Data =====
 data/
 datasets/
 *.csv
 *.json
 !requirements.txt
 
-# ===== Temporary Files =====
+# ===== Temporary & Cache Files =====
 tmp/
 temp/
+scratch/
 *.tmp
 *.bak
 *.cache
 
-# ===== Coverage & Testing =====
+# ===== Testing & Coverage =====
 htmlcov/
 .tox/
 .nox/
 .coverage
 .coverage.*
-.cache
 nosetests.xml
 coverage.xml
 *.cover

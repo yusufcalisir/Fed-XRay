@@ -358,8 +358,10 @@ def main():
     plt.legend()
     
     plt.tight_layout()
-    plt.savefig('moon_results.png')
-    print("Simulation Complete. Results saved to moon_results.png")
+    output_path = os.path.join(os.path.dirname(__file__), '..', 'assets', 'figures', 'moon_results.png')
+    os.makedirs(os.path.dirname(output_path), exist_ok=True)
+    plt.savefig(output_path)
+    print(f"Simulation Complete. Results saved to {output_path}")
 
 if __name__ == "__main__":
     main()

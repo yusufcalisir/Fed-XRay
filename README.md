@@ -1,13 +1,14 @@
-# 🫁 Fed-XRay CDSS | Advanced Federated Learning Platform
+# Fed-XRay: Federated Medical Imaging & Oncology AI Platform
 
-**Privacy-Preserving AI Network & Clinical Decision Support System**
+**Privacy-Preserving AI Network & Vision-Language CDSS Platform**
 
 <div align="center">
 <a href="https://yusuf-cancerfedxlearning.streamlit.app/">
 <img src="https://img.shields.io/badge/Live_Demo-Access_Platform-emerald?style=for-the-badge&logo=streamlit&logoColor=white" alt="Live Demo">
 </a>
 </div>
-A production-grade Federated Learning (FL) framework combining state-of-the-art distributed AI algorithms with a modern, high-end Medical SaaS interface. **Fed-XRay** simulates a collaborative network of hospitals training robust diagnostic models (Normal, Pneumonia, COVID-19) **without sharing patient data**. 
+
+Fed-XRay is a production-grade Federated Learning (FL) and Clinical Decision Support System (CDSS) framework for medical, radiological, and cancer imaging. The platform enables multi-institutional collaborative intelligence across distributed clinical centers without raw patient data ever leaving local hospital firewalls.
 
 <p align="center">
   <img src="https://img.shields.io/badge/Python-3.9+-blue?logo=python" alt="Python">
@@ -15,39 +16,71 @@ A production-grade Federated Learning (FL) framework combining state-of-the-art 
   <img src="https://img.shields.io/badge/Streamlit-1.32+-green?logo=streamlit" alt="Streamlit">
   <img src="https://img.shields.io/badge/Algorithms-FedAvg%20%7C%20FedProx%20%7C%20MOON%20%7C%20SCAFFOLD-purple" alt="Algorithms">
   <img src="https://img.shields.io/badge/License-MIT-yellow" alt="License">
-</p> 
+</p>
 
 ---
 
-## ✨Key Features
+## Core Capabilities
 
-### 🖥️ Modern SaaS Experience
+### 1. Clinical Decision Support System (CDSS)
+- **Explainable AI (Grad-CAM):** Gradient-weighted Class Activation Mapping highlighting anatomical decision regions.
+- **Evidence-Grounded Retrieval (Federated RAG):** Cosine embedding similarity matching against verified reference cases.
+- **Single-Page Diagnostic Reports:** Automated, strictly bounded single-page A4 medical PDF reports with integrated heatmaps and clinical findings.
+- **Voice Intelligence:** Text-to-Speech audio synthesis for diagnostic summaries.
 
-- **Premium UI/UX:** A "Glassmorphism" inspired interface with vibrant, medical-grade color palettes (Emerald/Amber/Red).
-- **Vibrant Data Viz:** Modern "Donut" charts with white-bordered aesthetics for patient distribution.
-- **Hero Section:** Clean, centered, and high-impact landing area for a professional first impression.
-
-### 🛡️Advanced Federated Core
-
-We support multiple state-of-the-art FL algorithms to handle **Non-IID Data** (heterogeneous client distributions):
-
-| Algorithm    | Strengths                     | Use Case                                                |
-| :----------- | :---------------------------- | :------------------------------------------------------ |
-| **FedAvg**   | Simplicity, Low Communication | Standard IID scenarios                                  |
-| **FedProx**  | Robustness to Heterogeneity   | Clients with varying computational power & data drift   |
-| **MOON**     | Representation Alignment      | **Contrastive Learning** to correct local feature drift |
-| **SCAFFOLD** | Control Variates              | Reduces variance in client updates                      |
-
-### 🩺 Clinical Decision Support (CDSS)
-
-- **Strict Single-Page Reports:** Professional PDF generation that strictly fits on one A4 page, guaranteeing no data loss or layout breakage.
-- **Visual Intelligence:** **Grad-CAM** heatmaps show exactly _where_ the AI is looking.
-- **Case Similarity:** Retrieval-Augmented Generation (RAG) style system finding historically similar X-Ray cases.
-- **Voice Assistant:** AI-powered audio diagnosis summaries.
+### 2. Federated Learning Optimization & Drift Resilience
+- **Supported Paradigms:** FedAvg, FedProx (proximal regularization), MOON (model-contrastive representation alignment), and SCAFFOLD (control variates).
+- **Adversarial Resilience:** Real-time Byzantine defense filtering malicious or poisoned gradient updates via trusted hold-out validation.
+- **Client Heterogeneity Handling:** Evaluated under severe non-IID Dirichlet distributions ($\alpha = 0.1$).
 
 ---
 
-## 🚀 Quick Start Guide
+## Architecture & Directory Layout
+
+```text
+Fed-XRay/
+├── assets/
+│   └── figures/                   # Generated benchmark figures and plots
+│       ├── benchmark_results.png
+│       ├── fedprox_traffic_results.png
+│       └── moon_results.png
+├── benchmarks/                    # FL simulation and empirical benchmarks
+│   ├── __init__.py
+│   ├── fed_benchmark.py           # Multi-algorithm benchmark (FedAvg, FedProx, MOON, SCAFFOLD)
+│   ├── fedprox_traffic.py         # FedProx convergence simulation
+│   └── moon_traffic.py            # MOON model-contrastive simulation
+├── src/
+│   └── fed_xray/                  # Modular Python Package
+│       ├── __init__.py
+│       ├── core/                  # Client, Server, Byzantine defense, Metrics
+│       │   ├── __init__.py
+│       │   ├── client.py
+│       │   ├── server.py
+│       │   └── metrics.py
+│       ├── models/                # Neural network architectures
+│       │   ├── __init__.py
+│       │   └── cnn.py
+│       ├── data/                  # Synthetic generation and dataset loaders
+│       │   ├── __init__.py
+│       │   └── generator.py
+│       └── cdss/                  # Diagnostic engines (XAI, Similarity, Voice, Report)
+│           ├── __init__.py
+│           ├── xai.py
+│           ├── similarity.py
+│           ├── voice.py
+│           └── report.py
+├── utils/                         # Backward-compatible proxy shims
+├── tests/                         # Automated unit and integration test suite
+│   └── test_all.py
+├── app.py                         # Interactive Streamlit CDSS Web Application
+├── requirements.txt               # Project dependencies
+├── .gitignore                     # Git exclusion directives
+└── README.md                      # Platform documentation
+```
+
+---
+
+## Quick Start
 
 ### 1. Installation
 
@@ -58,109 +91,56 @@ cd Fed-XRay
 
 # Install dependencies
 pip install -r requirements.txt
-# OR manually:
-pip install streamlit torch torchvision plotly pandas numpy scikit-learn gTTS fpdf matplotlib
 ```
 
-### 2. Run the Main Dashboard (Fed-XRay)
-
-Launch the interactive CDSS interface with the modern SaaS UI.
+### 2. Launch Interactive CDSS Dashboard
 
 ```bash
-python -m streamlit run app.py
+streamlit run app.py
 ```
 
-> Open **http://localhost:8501** in your browser.
+Access the dashboard at `http://localhost:8501`.
 
 ---
 
-## 🔬 Scientific Simulations & Benchmarks
+## Scientific Benchmarks & Simulations
 
-Beyond the dashboard, this repository includes standalone research scripts for network traffic classification tasks using advanced FL methods.
-
-### 🌕 MOON (Model-Contrastive Federated Learning)
-
-Simulates a contrastive learning approach ($L = L_{sup} + \mu L_{con}$) to align local model representations.
+### 1. Multi-Algorithm Federated Benchmark
+Compare FedAvg, FedProx, MOON, and SCAFFOLD under severe label skew ($\alpha=0.1$):
 
 ```bash
-python moon_traffic.py
+python benchmarks/fed_benchmark.py
 ```
+Output saved to: `assets/figures/benchmark_results.png`
 
-- **Output:** Generates `moon_results.png` showing convergence on skewed Dirichlet data.
-- **Architecture:** Split-Head 1D-CNN (Representation Head + Classification Head).
-
-### 📊 Comprehensive Benchmark Framework
-
-Compare **FedAvg, FedProx, MOON, and SCAFFOLD** side-by-side on severe Non-IID data ($\alpha=0.1$).
+### 2. Model-Contrastive Learning (MOON) Simulation
+Execute MOON representation alignment under non-IID Dirichlet distribution:
 
 ```bash
-python fed_benchmark.py
+python benchmarks/moon_traffic.py
 ```
+Output saved to: `assets/figures/moon_results.png`
 
-- **Output:** Generates `benchmark_results.png` with Accuracy & Loss curves for all 4 algorithms.
-- **Settings:** 50 Rounds, 10 Clients, High Heterogeneity.
-
----
-
-## 📁 Project Structure
-
-```text
-Fed-XRay/
-├── app.py                     # 🏥 Main CDSS Dashboard (Streamlit)
-├── fed_benchmark.py           # 📊 All-in-One Benchmark (FedAvg/Prox/MOON/SCAFFOLD)
-├── moon_traffic.py            # 🌕 MOON Algorithm Simulation
-├── fedprox_traffic.py         # 🔗 FedProx Simulation
-├── utils/
-│   ├── medical_data.py        # Synthetic X-ray generator & augmentations
-│   ├── cnn_model.py           # Universal Model Architectures
-│   ├── federated_core.py      # Core FL Server/Client Logic
-│   ├── similarity_engine.py   # Vector Search (Cosine Similarity)
-│   ├── report_generator.py    # PDF Engine (Strict Single-Page)
-│   └── xai_engine.py          # Grad-CAM Implementation
-└── requirements.txt           # Dependencies
-```
-
----
-
-## 🔎 Deep Dive: Enterprise Security & Governance Control Plane
-
-Fed-XRay features a complete **Enterprise Security & Governance Control Plane** showing the alignment of Federated Learning networks with production enterprise standards:
-
-### 🌐 Architectural Blueprint
-- **Deployments:** Nodes distributed across multiple environments (AWS, Azure, GCP, and On-Premises).
-- **Zero Trust Network Access (ZTNA):** Continuous authorization enforcing mutual TLS (mTLS v1.3) and device posture compliance check.
-- **Web Application Firewall (WAF):** Active filtering on API payloads (mitigating SQLi, DDoS, and parameter shape anomalies).
-- **SIEM & SOC Center:** Real-time log ingestion and immediate quarantine/isolation of adversarial nodes.
-- **Privileged Access Management (PAM):** Just-In-Time (JIT) session elevation with Multi-Factor Authentication (MFA).
-- **Standards Mapping (ITIL & COBIT 2019):** Full mapping to service designs and governance frameworks, including downloadable Compliance Audit PDF reports.
-
----
-
-## 🧪 Testing Suite
-
-Run the comprehensive unit test suite to verify the framework:
+### 3. Proximal Regularization (FedProx) Simulation
+Evaluate FedProx drift resilience against local epochs and system heterogeneity:
 
 ```bash
-python -m unittest tests/test_all.py
+python benchmarks/fedprox_traffic.py
+```
+Output saved to: `assets/figures/fedprox_traffic_results.png`
+
+---
+
+## Automated Test Suite
+
+Execute the test suite verifying data generation, federated aggregation, Byzantine security shields, and explainability pipelines:
+
+```bash
+python -m unittest discover -s tests -v
 ```
 
-
 ---
 
-## 🤝 Contributing
+## License
 
-1.  Fork the repository
-2.  Create your feature branch (`git checkout -b feature/AmazingFeature`)
-3.  Commit your changes (`git commit -m 'Add some AmazingFeature'`)
-4.  Push to the branch (`git push origin feature/AmazingFeature`)
-5.  Open a Pull Request
-
----
-
-<p align="center">
-  <strong>🔒 Privacy First | 🏥 Healthcare AI | 🤖 Federated Learning</strong>
-</p>
-
-<!-- Footer -->
-<h1 align="center">Fed-XRay</h1>
-
+This project is licensed under the MIT License.

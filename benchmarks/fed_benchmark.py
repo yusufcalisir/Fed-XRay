@@ -391,8 +391,10 @@ def run_benchmark():
     ax2.legend()
     
     plt.tight_layout()
-    plt.savefig('benchmark_results.png')
-    print("Benchmark Saved: benchmark_results.png")
+    output_path = os.path.join(os.path.dirname(__file__), '..', 'assets', 'figures', 'benchmark_results.png')
+    os.makedirs(os.path.dirname(output_path), exist_ok=True)
+    plt.savefig(output_path)
+    print(f"Benchmark Saved: {output_path}")
 
 if __name__ == "__main__":
     run_benchmark()
