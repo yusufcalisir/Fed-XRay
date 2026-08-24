@@ -1,7 +1,7 @@
 """
-Fed-XRay Bilingual Voice Assistant Engine
-==========================================
-Text-to-Speech for diagnosis announcements using gTTS with full Turkish & English support.
+Fed-XRay Voice Assistant Engine
+================================
+Text-to-Speech for diagnosis announcements using gTTS.
 """
 
 import io
@@ -14,41 +14,24 @@ from typing import Optional
 def generate_diagnosis_audio(
     diagnosis: str,
     confidence: float,
-    language: str = 'tr'
+    language: str = 'en'
 ) -> Optional[bytes]:
-    """Generate localized audio announcement for clinical diagnosis."""
+    """Generate audio announcement for clinical diagnosis."""
     try:
         from gtts import gTTS
         
-        lang_code = 'tr' if language == 'tr' else 'en'
+        confidence_text = f"{confidence:.0f} percent" if confidence > 0 else "uncertain"
         
-        # Normalize diagnosis label
-        is_normal = diagnosis.lower() in ["normal", "normal (sağlıklı)", "normal (healthy)"]
-        is_pneumonia = diagnosis.lower() in ["pneumonia", "zatürre", "zatürre (pneumonia)"]
-        is_covid = "covid" in diagnosis.lower()
-        
-        if lang_code == 'tr':
-            conf_str = f"%{confidence:.0f}" if confidence > 0 else "belirsiz"
-            if is_normal:
-                message = f"Analiz tamamlandı. Akciğer filmi {conf_str} güven oranıyla normal değerlendirildi. Belirgin patoloji tespit edilmedi."
-            elif is_pneumonia:
-                message = f"Analiz tamamlandı. {conf_str} güven oranıyla yüksek olasılıklı Zatürre tespit edildi. Lütfen işaretli odak alanlarını inceleyiniz."
-            elif is_covid:
-                message = f"Analiz tamamlandı. {conf_str} güven oranıyla potansiyel COVID-19 bulguları saptandı. İleri klinik tetkik önerilir."
-            else:
-                message = f"Analiz tamamlandı. Teşhis: {diagnosis}. Güven oranı: {conf_str}."
+        if diagnosis == "Normal":
+            message = f"Analysis complete. The scan appears normal with {confidence_text} confidence. No abnormalities detected."
+        elif diagnosis == "Pneumonia":
+            message = f"Analysis complete. High probability of Pneumonia. Confidence: {confidence_text}. Please review the highlighted regions."
+        elif diagnosis == "COVID-19":
+            message = f"Analysis complete. Potential COVID-19 indicators detected with {confidence_text} confidence. Recommend further testing."
         else:
-            conf_str = f"{confidence:.0f} percent" if confidence > 0 else "uncertain"
-            if is_normal:
-                message = f"Analysis complete. The scan appears normal with {conf_str} confidence. No significant abnormalities detected."
-            elif is_pneumonia:
-                message = f"Analysis complete. High probability of Pneumonia detected with {conf_str} confidence. Please review highlighted regions."
-            elif is_covid:
-                message = f"Analysis complete. Potential COVID-19 indicators detected with {conf_str} confidence. Further clinical testing recommended."
-            else:
-                message = f"Analysis complete. Diagnosis: {diagnosis}. Confidence: {conf_str}."
+            message = f"Analysis complete. Diagnosis: {diagnosis}. Confidence: {confidence_text}."
         
-        tts = gTTS(text=message, lang=lang_code, slow=False)
+        tts = gTTS(text=message, lang=language, slow=False)
         audio_buffer = io.BytesIO()
         tts.write_to_fp(audio_buffer)
         audio_buffer.seek(0)
@@ -59,9 +42,9 @@ def generate_diagnosis_audio(
         return None
 
 
-def get_cached_audio_path(diagnosis: str, confidence: float, language: str = 'tr') -> str:
+def get_cached_audio_path(diagnosis: str, confidence: float) -> str:
     """Generate a cache key path for audio file."""
-    key = f"{diagnosis}_{int(confidence)}_{language}"
+    key = f"{diagnosis}_{int(confidence)}"
     hash_key = hashlib.md5(key.encode()).hexdigest()[:8]
     temp_dir = tempfile.gettempdir()
     return os.path.join(temp_dir, f"fedxray_voice_{hash_key}.mp3")
@@ -70,12 +53,11 @@ def get_cached_audio_path(diagnosis: str, confidence: float, language: str = 'tr
 def get_or_create_audio(
     diagnosis: str,
     confidence: float,
-    language: str = 'tr',
     use_cache: bool = True
 ) -> Optional[bytes]:
     """Get cached audio or synthesize new audio stream."""
     if use_cache:
-        cache_path = get_cached_audio_path(diagnosis, confidence, language)
+        cache_path = get_cached_audio_path(diagnosis, confidence)
         if os.path.exists(cache_path):
             try:
                 with open(cache_path, 'rb') as f:
@@ -83,11 +65,11 @@ def get_or_create_audio(
             except:
                 pass
     
-    audio_data = generate_diagnosis_audio(diagnosis, confidence, language=language)
+    audio_data = generate_diagnosis_audio(diagnosis, confidence)
     
     if audio_data and use_cache:
         try:
-            cache_path = get_cached_audio_path(diagnosis, confidence, language)
+            cache_path = get_cached_audio_path(diagnosis, confidence)
             with open(cache_path, 'wb') as f:
                 f.write(audio_data)
         except:

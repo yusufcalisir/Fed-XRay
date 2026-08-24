@@ -133,27 +133,16 @@ def create_overlay(
     return np.clip(overlay, 0, 1)
 
 
-def get_explanation_text(predicted_class: int, confidence: float, lang: str = "tr") -> str:
-    """Generate dynamic explanation text for the prediction in TR or EN."""
-    is_tr = (lang == "tr")
+def get_explanation_text(predicted_class: int, confidence: float) -> str:
+    """Generate dynamic explanation text for the prediction."""
+    class_names = {0: "Normal", 1: "Pneumonia", 2: "COVID-19"}
+    class_name = class_names.get(predicted_class, "Unknown")
     
-    if is_tr:
-        class_names = {0: "Normal (Sağlıklı)", 1: "Zatürre (Pneumonia)", 2: "COVID-19"}
-        class_name = class_names.get(predicted_class, "Bilinmiyor")
-        explanations = {
-            0: "Model belirgin bir pulmoner anormallik saptamamıştır. Akciğer alanları ve vasküler dallanmalar olağandır.",
-            1: "Model bakteriyel zatürre ile uyumlu fokal konsolidasyon odakları tespit etmiştir. Kırmızı alanlar artmış opasiteyi göstermektedir.",
-            2: "Model COVID-19'a özgü diffüz bilateral buzlu cam opasiteleri tespit etmiştir. Kırmızı alanlar periferik tutulumu vurgulamaktadır."
-        }
-        base_explanation = explanations.get(predicted_class, "Analiz tamamlandı.")
-        return f"**Teşhis: {class_name}** (Güven Skoru: %{confidence*100:.1f})\n\n{base_explanation}"
-    else:
-        class_names = {0: "Normal", 1: "Pneumonia", 2: "COVID-19"}
-        class_name = class_names.get(predicted_class, "Unknown")
-        explanations = {
-            0: "The model found no significant abnormalities. The lung fields appear clear with normal vascular markings.",
-            1: "The model detected focal consolidation patterns consistent with bacterial pneumonia. Red areas show regions of increased opacity.",
-            2: "The model identified diffuse bilateral ground-glass opacities characteristic of COVID-19. Red areas highlight peripheral involvement."
-        }
-        base_explanation = explanations.get(predicted_class, "Analysis complete.")
-        return f"**Diagnosis: {class_name}** (Confidence: {confidence*100:.1f}%)\n\n{base_explanation}"
+    explanations = {
+        0: "The model found no significant abnormalities. The lung fields appear clear with normal vascular markings.",
+        1: "The model detected focal consolidation patterns consistent with bacterial pneumonia. Red areas show regions of increased opacity.",
+        2: "The model identified diffuse bilateral ground-glass opacities characteristic of COVID-19. Red areas highlight peripheral involvement."
+    }
+    
+    base_explanation = explanations.get(predicted_class, "Analysis complete.")
+    return f"**Diagnosis: {class_name}** (Confidence: {confidence*100:.1f}%)\n\n{base_explanation}"

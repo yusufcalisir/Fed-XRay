@@ -17,6 +17,32 @@ token.txt
 credentials.json
 .streamlit/secrets.toml
 
+# ===== Node.js & Next.js =====
+node_modules/
+.next/
+out/
+.vercel
+*.tsbuildinfo
+next-env.d.ts
+
+# ===== Environment Variables =====
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+.venv
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+.conda/
+
+# Keep example env
+!.env.example
+!frontend/.env.example
+
 # ===== Generated Outputs & Reports =====
 *.pdf
 output/
@@ -45,16 +71,6 @@ wheels/
 .installed.cfg
 *.egg
 
-# ===== Virtual Environments =====
-.env
-.venv
-env/
-venv/
-ENV/
-env.bak/
-venv.bak/
-.conda/
-
 # ===== Deep Learning Checkpoints & Weights =====
 *.pt
 *.pth
@@ -62,7 +78,6 @@ venv.bak/
 *.bin
 *.safetensors
 checkpoints/
-models/
 saved_models/
 
 # ===== Jupyter Notebooks =====
@@ -97,7 +112,15 @@ logs/
 data/
 datasets/
 *.csv
-*.json
+
+# Unignore necessary JSON config files
+!package.json
+!frontend/package.json
+!tsconfig.json
+!frontend/tsconfig.json
+!vercel.json
+!frontend/vercel.json
+!render.yaml
 !requirements.txt
 
 # ===== Temporary & Cache Files =====

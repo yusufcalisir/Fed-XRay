@@ -1,8 +1,8 @@
 """
 Fed-XRay Central Server & Federated Aggregation
 ================================================
-Implements FedAvg, trusted validation Byzantine defense, SCAFFOLD control variate aggregation,
-FedDyn dynamic state alignment, and multi-algorithm round orchestration.
+Implements FedAvg, FedProx, Byzantine defense, dispersion-weighted prototype
+synthesis, and round orchestration.
 """
 
 import copy
@@ -22,12 +22,13 @@ from sklearn.metrics import (
 from ..models.cnn import XRayClassifier, create_model
 from .client import HospitalClient
 from .metrics import TrainingMetrics, EvaluationMetrics, SecurityReport
-from .algorithms import ScaffoldController
+from .prototypes import aggregate_prototypes_dispersion_weighted
 
 
 class CentralServer:
     """
-    Central coordinator server with multi-algorithm aggregation and Byzantine defense.
+    Central coordinator server with Byzantine-robust aggregation and
+    dispersion-weighted prototype metric synthesis.
     """
     
     MALICIOUS_THRESHOLD = 0.30
@@ -45,13 +46,7 @@ class CentralServer:
         
         self.blocked_count = 0
         self.last_security_report: Optional[SecurityReport] = None
-        
-        # Algorithm State Trackers
-        self.scaffold_controller = ScaffoldController(self.global_model)
-        self.feddyn_h: Dict[str, torch.Tensor] = {
-            name: torch.zeros_like(param.data)
-            for name, param in self.global_model.named_parameters()
-        }
+        self.global_prototypes: Optional[Dict[int, torch.Tensor]] = None
         
     def get_global_weights(self) -> Dict[str, torch.Tensor]:
         """Get current global model weights."""
@@ -59,6 +54,14 @@ class CentralServer:
             name: param.clone().detach().cpu()
             for name, param in self.global_model.state_dict().items()
         }
+    
+    def get_global_prototypes(self) -> Optional[Dict[int, torch.Tensor]]:
+        """Get current global class prototypes."""
+        return self.global_prototypes
+    
+    def set_global_prototypes(self, prototypes: Dict[int, torch.Tensor]) -> None:
+        """Set or update global prototypes."""
+        self.global_prototypes = prototypes
     
     def _validate_client_model(
         self,
@@ -98,131 +101,89 @@ class CentralServer:
         sample_counts: List[int],
         client_ids: List[int],
         test_images: torch.Tensor,
-        test_labels: torch.Tensor,
-        algorithm: str = "FedAvg",
-        alpha: float = 0.01
+        test_labels: torch.Tensor
     ) -> Tuple[Dict[str, torch.Tensor], SecurityReport]:
-        """Validate clients and aggregate only trusted updates with chosen algorithm."""
+        """Validate clients and aggregate only trusted updates."""
         validation_accuracies: Dict[int, float] = {}
-        malicious_detected: List[int] = []
-        clients_accepted: List[int] = []
+        trusted_weights: List[Dict[str, torch.Tensor]] = []
+        trusted_counts: List[int] = []
         clients_blocked: List[int] = []
         
-        for i, (weights, client_id) in enumerate(zip(client_weights, client_ids)):
-            acc = self._validate_client_model(weights, test_images, test_labels)
-            validation_accuracies[client_id] = acc
+        for weights, count, cid in zip(client_weights, sample_counts, client_ids):
+            val_acc = self._validate_client_model(weights, test_images, test_labels)
+            validation_accuracies[cid] = val_acc
             
-            if self.defense_mode and acc < self.MALICIOUS_THRESHOLD:
-                malicious_detected.append(client_id)
-                clients_blocked.append(client_id)
+            if val_acc < self.MALICIOUS_THRESHOLD:
+                print(f"[SECURITY ALERT] Node {cid} failed validation (Acc: {val_acc:.1%}). BLOCKED!")
+                clients_blocked.append(cid)
                 self.blocked_count += 1
             else:
-                clients_accepted.append(client_id)
+                trusted_weights.append(weights)
+                trusted_counts.append(count)
         
-        if clients_blocked:
-            filtered_weights = []
-            filtered_counts = []
-            for i, client_id in enumerate(client_ids):
-                if client_id not in clients_blocked:
-                    filtered_weights.append(client_weights[i])
-                    filtered_counts.append(sample_counts[i])
-            
-            client_weights = filtered_weights
-            sample_counts = filtered_counts
+        if not trusted_weights:
+            print("[WARNING] All client updates failed validation. Keeping current global model.")
+            aggregated_weights = self.get_global_weights()
+        else:
+            aggregated_weights = self.aggregate(trusted_weights, trusted_counts)
         
-        aggregated = self._fedavg_aggregate(client_weights, sample_counts, algorithm=algorithm, alpha=alpha)
-        
-        report = SecurityReport(
-            total_clients=len(client_ids),
-            malicious_detected=malicious_detected,
-            clients_accepted=clients_accepted,
+        security_report = SecurityReport(
+            clients_evaluated=client_ids,
+            clients_accepted=[cid for cid in client_ids if cid not in clients_blocked],
             clients_blocked=clients_blocked,
             validation_accuracies=validation_accuracies,
-            defense_active=self.defense_mode
+            threat_detected=len(clients_blocked) > 0,
+            details=f"Blocked {len(clients_blocked)} node(s) below {self.MALICIOUS_THRESHOLD:.0%} threshold"
         )
+        self.last_security_report = security_report
         
-        self.last_security_report = report
-        return aggregated, report
-    
-    def _fedavg_aggregate(
-        self,
-        client_weights: List[Dict[str, torch.Tensor]],
-        sample_counts: List[int],
-        algorithm: str = "FedAvg",
-        alpha: float = 0.01
+        return aggregated_weights, security_report
+
+    def aggregate(
+        self, 
+        client_weights: List[Dict[str, torch.Tensor]], 
+        sample_counts: List[int]
     ) -> Dict[str, torch.Tensor]:
-        """Weighted aggregation with optional FedDyn correction and DP noise."""
-        if not client_weights:
-            return self.get_global_weights()
-        
+        """Perform sample-weighted Federated Averaging (FedAvg)."""
         total_samples = sum(sample_counts)
         if total_samples == 0:
             return self.get_global_weights()
-        
-        weight_coefficients = [n_k / total_samples for n_k in sample_counts]
-        aggregated: Dict[str, torch.Tensor] = {}
-        
-        for key in client_weights[0].keys():
-            param_dtype = client_weights[0][key].dtype
-            aggregated[key] = torch.zeros_like(client_weights[0][key], dtype=torch.float32)
             
-            for client_weight, coeff in zip(client_weights, weight_coefficients):
-                weight_tensor = client_weight[key].float()
-                if torch.isnan(weight_tensor).any():
-                    continue
-                aggregated[key] += coeff * weight_tensor
+        aggregated_weights = {}
+        first_client = client_weights[0]
+        
+        for key in first_client.keys():
+            weighted_sum = torch.zeros_like(first_client[key], dtype=torch.float32)
             
-            # FedDyn Server State Update: h^{t+1} = h^t - alpha * (1/K) sum(theta_k - theta_glob)
-            if algorithm == "FedDyn" and key in self.feddyn_h and alpha > 0:
-                current_glob = self.global_model.state_dict()[key].float().cpu()
-                diff_sum = torch.zeros_like(current_glob)
-                for client_weight in client_weights:
-                    diff_sum += (client_weight[key].float() - current_glob)
-                
-                delta_h = (alpha / max(len(client_weights), 1)) * diff_sum
-                self.feddyn_h[key] -= delta_h
-                aggregated[key] = aggregated[key] - (1.0 / alpha) * self.feddyn_h[key]
-
-            if param_dtype in (torch.int64, torch.int32, torch.long):
-                aggregated[key] = aggregated[key].to(param_dtype)
+            for client_w, n_samples in zip(client_weights, sample_counts):
+                weight = n_samples / total_samples
+                weighted_sum += weight * client_w[key].float()
+            
+            if self.privacy_noise > 0.0:
+                noise = torch.randn_like(weighted_sum) * self.privacy_noise
+                weighted_sum += noise
+            
+            aggregated_weights[key] = weighted_sum
         
-        if self.privacy_noise > 0:
-            for key in aggregated.keys():
-                if aggregated[key].dtype not in (torch.int64, torch.int32, torch.long):
-                    noise = torch.randn_like(aggregated[key]) * self.privacy_noise
-                    aggregated[key] += noise
-        
-        self.global_model.load_state_dict(aggregated)
-        return aggregated
-    
-    def aggregate(
-        self,
-        client_weights: List[Dict[str, torch.Tensor]],
-        sample_counts: List[int],
-        algorithm: str = "FedAvg",
-        alpha: float = 0.01
-    ) -> Dict[str, torch.Tensor]:
-        """Standard aggregation without active defense."""
-        return self._fedavg_aggregate(client_weights, sample_counts, algorithm=algorithm, alpha=alpha)
+        self.global_model.load_state_dict(aggregated_weights)
+        return aggregated_weights
     
     def evaluate_on_test_set(
         self,
         test_images: torch.Tensor,
         test_labels: torch.Tensor
     ) -> EvaluationMetrics:
-        """Evaluate global model on hold-out test set."""
+        """Evaluate global model on hold-out validation set."""
         self.global_model.eval()
-        
-        all_preds: List[int] = []
-        all_labels: List[int] = []
-        total_loss = 0.0
-        
         criterion = nn.CrossEntropyLoss()
+        
+        all_preds = []
+        all_labels = []
+        total_loss = 0.0
+        n_samples = test_images.size(0)
         
         with torch.no_grad():
             batch_size = 64
-            n_samples = test_images.size(0)
-            
             for i in range(0, n_samples, batch_size):
                 batch_images = test_images[i:i+batch_size].to(self.device)
                 batch_labels = test_labels[i:i+batch_size].to(self.device)
@@ -244,7 +205,6 @@ class CentralServer:
         recall = recall_score(all_labels, all_preds, average='macro', zero_division=0)
         f1 = f1_score(all_labels, all_preds, average='macro', zero_division=0)
         conf_matrix = confusion_matrix(all_labels, all_preds)
-        
         avg_loss = total_loss / max(n_samples, 1)
         
         return EvaluationMetrics(
@@ -269,92 +229,94 @@ def run_federated_round(
     server: CentralServer,
     clients: List[HospitalClient],
     round_num: int,
+    total_rounds: int = 10,
     test_images: Optional[torch.Tensor] = None,
     test_labels: Optional[torch.Tensor] = None,
     use_defense: bool = False,
     algorithm: str = "FedAvg",
-    mu: float = 0.01,
-    alpha: float = 0.01,
-    temperature: float = 0.5
+    loss_fn_name: str = "CE",
+    enable_prototypes: bool = False,
+    proto_weight: float = 0.1,
+    prox_mu: float = 0.0
 ) -> Tuple[Dict[str, Any], List[TrainingMetrics], Optional[EvaluationMetrics], Optional[SecurityReport]]:
-    """Execute one federated learning round with chosen optimization algorithm and security defense."""
+    """Execute one federated learning round with optional prototype metric alignment."""
     global_weights = server.get_global_weights()
+    global_prototypes = server.get_global_prototypes() if enable_prototypes else None
     
     client_updates: List[Dict[str, torch.Tensor]] = []
     client_metrics: List[TrainingMetrics] = []
     sample_counts: List[int] = []
     client_ids: List[int] = []
-    scaffold_deltas: List[Dict[str, torch.Tensor]] = []
     
-    server_ctrl = server.scaffold_controller.server_controls if algorithm == "SCAFFOLD" else None
+    client_protos: List[Dict[int, torch.Tensor]] = []
+    client_traces: List[Dict[int, float]] = []
+    client_counts: List[Dict[int, int]] = []
     
     for client in clients:
-        client_ctrl = server.scaffold_controller.get_client_controls(client.client_id, client.model) if algorithm == "SCAFFOLD" else None
-        
-        updated_weights, metrics, ctrl_delta = client.train(
+        updated_weights, metrics = client.train(
             global_weights=global_weights,
-            algorithm=algorithm,
-            mu=mu,
-            alpha=alpha,
-            temperature=temperature,
-            server_control=server_ctrl,
-            client_control=client_ctrl
+            loss_fn_name=loss_fn_name,
+            current_round=round_num,
+            total_rounds=total_rounds,
+            global_prototypes=global_prototypes,
+            proto_weight=proto_weight if enable_prototypes else 0.0,
+            prox_mu=prox_mu if algorithm == "FedProx" else 0.0
         )
-        
         client_updates.append(updated_weights)
         client_metrics.append(metrics)
         sample_counts.append(client.get_num_samples())
         client_ids.append(client.client_id)
-        if ctrl_delta is not None:
-            scaffold_deltas.append(ctrl_delta)
-    
-    # Update SCAFFOLD server control variates
-    if algorithm == "SCAFFOLD" and scaffold_deltas:
-        server.scaffold_controller.update_server_controls(scaffold_deltas, len(clients))
+        
+        if enable_prototypes:
+            p_dict, t_dict, c_dict = client.compute_prototypes_and_dispersion()
+            client_protos.append(p_dict)
+            client_traces.append(t_dict)
+            client_counts.append(c_dict)
     
     security_report: Optional[SecurityReport] = None
     
     if use_defense and test_images is not None and test_labels is not None:
         _, security_report = server.validate_and_aggregate(
-            client_weights=client_updates,
-            sample_counts=sample_counts,
-            client_ids=client_ids,
-            test_images=test_images,
-            test_labels=test_labels,
-            algorithm=algorithm,
-            alpha=alpha
+            client_updates, sample_counts, client_ids,
+            test_images, test_labels
         )
         if security_report:
             for metrics in client_metrics:
                 if metrics.client_id in security_report.clients_blocked:
                     metrics.was_blocked = True
     else:
-        server.aggregate(client_updates, sample_counts, algorithm=algorithm, alpha=alpha)
+        server.aggregate(client_updates, sample_counts)
+    
+    # Aggregate prototypes
+    if enable_prototypes and client_protos:
+        synthesized_protos = aggregate_prototypes_dispersion_weighted(
+            client_prototypes=client_protos,
+            client_traces=client_traces,
+            client_counts=client_counts,
+            num_classes=3
+        )
+        server.set_global_prototypes(synthesized_protos)
     
     total_samples = sum(sample_counts)
-    
     if total_samples > 0:
         avg_loss = sum(m.loss * m.samples_trained for m in client_metrics) / total_samples
         avg_accuracy = sum(m.accuracy * m.samples_trained for m in client_metrics) / total_samples
     else:
         avg_loss = 0.0
         avg_accuracy = 0.0
-    
-    if math.isnan(avg_loss):
-        avg_loss = 0.0
-    if math.isnan(avg_accuracy):
-        avg_accuracy = 0.0
-    
+        
     aggregated_metrics = {
         'loss': avg_loss,
         'accuracy': avg_accuracy,
         'total_samples': total_samples,
         'round': round_num,
+        'prototypes_enabled': enable_prototypes,
+        'loss_fn': loss_fn_name,
         'algorithm': algorithm
     }
     
     test_metrics: Optional[EvaluationMetrics] = None
     if test_images is not None and test_labels is not None:
         test_metrics = server.evaluate_on_test_set(test_images, test_labels)
-    
+        
     return aggregated_metrics, client_metrics, test_metrics, security_report

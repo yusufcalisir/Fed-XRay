@@ -1,9 +1,15 @@
 # Fed-XRay Dependencies
-# Federated Learning Medical Diagnosis Application
+# Federated Learning Medical Diagnosis Application & CDSS API
 
 # Core ML Framework
 torch>=2.0.0
 torchvision>=0.15.0
+
+# API Backend (FastAPI & ASGI Server)
+fastapi>=0.110.0
+uvicorn>=0.28.0
+pydantic>=2.6.0
+python-multipart>=0.0.9
 
 # Dashboard & Visualization
 streamlit>=1.28.0

@@ -1,30 +1,39 @@
 """
 Fed-XRay Hospital Client Implementation
 ========================================
-Implements local training, differential data partitioning, adversarial attack simulations,
-and advanced optimization algorithms (FedAvg, FedProx, SCAFFOLD, FedDyn, MOON).
+Implements local training, differential data partitioning, personalized prototype
+learning, imbalance loss functions, and attack simulations.
 """
 
 import copy
 import math
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
 import torch.optim as optim
 from torch.utils.data import DataLoader
-from typing import Dict, Tuple, Optional, Any
+from typing import Dict, Tuple, Optional, Any, List
 
 from ..models.cnn import create_model
 from .metrics import TrainingMetrics
-from .algorithms import (
-    compute_fedprox_loss, 
-    compute_feddyn_loss, 
-    compute_moon_contrastive_loss
+from .imbalance_losses import (
+    DynamicAdaptiveFocalLoss,
+    BalancedSoftmaxLoss,
+    ClassBalancedLoss,
+    LDAMLoss,
+    PrototypeRepelLoss
+)
+from .prototypes import (
+    extract_features,
+    compute_local_prototypes_and_dispersion,
+    compute_prototype_distance_loss
 )
 
 
 class HospitalClient:
     """
-    Hospital client node with multi-algorithm training and adversarial simulation.
+    Hospital client node with standard training, personalized prototypes,
+    imbalance loss functions, and optional adversarial simulation.
     
     Attack Mode: Label Flipping
     - When malicious=True, labels are flipped during training:
@@ -50,10 +59,25 @@ class HospitalClient:
         self.malicious = malicious
         
         self.model = create_model().to(self.device)
-        self.prev_model: Optional[nn.Module] = None
-        self.prev_grads: Dict[str, torch.Tensor] = {}
-        self.criterion = nn.CrossEntropyLoss()
-        self.n_samples = len(dataloader.dataset) if dataloader and hasattr(dataloader, 'dataset') and dataloader.dataset else 0
+        self.n_samples = len(dataloader.dataset) if dataloader and hasattr(dataloader, 'dataset') and dataloader.dataset is not None else 0
+        
+        # Calculate local class distribution counts
+        self.class_counts = self._compute_class_counts()
+    
+    def _compute_class_counts(self) -> List[int]:
+        """Compute sample count per class from local dataloader."""
+        counts = [0, 0, 0]
+        if self.dataloader and hasattr(self.dataloader, 'dataset') and self.dataloader.dataset is not None:
+            for _, labels in self.dataloader:
+                for y in labels:
+                    c = y.item()
+                    if c < 3:
+                        counts[c] += 1
+        # Avoid all zeros
+        for i in range(len(counts)):
+            if counts[i] == 0:
+                counts[i] = 1
+        return counts
     
     def get_num_samples(self) -> int:
         """Return local training sample count."""
@@ -70,52 +94,52 @@ class HospitalClient:
             flipped[labels == old_label] = new_label
         return flipped
     
+    def _get_loss_function(
+        self,
+        loss_fn_name: str,
+        current_round: int,
+        total_rounds: int
+    ) -> nn.Module:
+        """Factory for empirical loss functions."""
+        if loss_fn_name.upper() == "DAFL":
+            return DynamicAdaptiveFocalLoss(
+                class_counts=self.class_counts,
+                current_round=current_round,
+                total_rounds=total_rounds
+            )
+        elif loss_fn_name.upper() in ("BALANCED_SOFTMAX", "BSM"):
+            return BalancedSoftmaxLoss(class_counts=self.class_counts)
+        elif loss_fn_name.upper() in ("CLASS_BALANCED", "CB"):
+            return ClassBalancedLoss(class_counts=self.class_counts)
+        elif loss_fn_name.upper() == "LDAM":
+            return LDAMLoss(class_counts=self.class_counts)
+        else:
+            return nn.CrossEntropyLoss()
+    
     def train(
         self, 
         global_weights: Dict[str, torch.Tensor],
-        algorithm: str = "FedAvg",
-        mu: float = 0.01,
-        alpha: float = 0.01,
-        temperature: float = 0.5,
-        server_control: Optional[Dict[str, torch.Tensor]] = None,
-        client_control: Optional[Dict[str, torch.Tensor]] = None
-    ) -> Tuple[Dict[str, torch.Tensor], TrainingMetrics, Optional[Dict[str, torch.Tensor]]]:
-        """
-        Perform local training with selected federated optimization algorithm.
-        
-        Args:
-            global_weights: Current global model parameters
-            algorithm: One of 'FedAvg', 'FedProx', 'SCAFFOLD', 'FedDyn', 'MOON'
-            mu: Proximal / contrastive parameter for FedProx / MOON
-            alpha: Dynamic penalty for FedDyn
-            temperature: MOON contrastive temperature
-            server_control: Global control variate c for SCAFFOLD
-            client_control: Local control variate c_k for SCAFFOLD
-            
-        Returns:
-            Tuple of (updated_weights, training_metrics, updated_client_control_delta)
-        """
-        # Save previous local model for MOON
-        if algorithm == "MOON" and self.prev_model is None:
-            self.prev_model = create_model().to(self.device)
-            self.prev_model.load_state_dict(copy.deepcopy(global_weights))
-            
-        # Global reference model for MOON
-        global_model_ref = None
-        if algorithm == "MOON":
-            global_model_ref = create_model().to(self.device)
-            global_model_ref.load_state_dict(copy.deepcopy(global_weights))
-            global_model_ref.eval()
-            
+        loss_fn_name: str = "CE",
+        current_round: int = 1,
+        total_rounds: int = 10,
+        global_prototypes: Optional[Dict[int, torch.Tensor]] = None,
+        proto_weight: float = 0.0,
+        prox_mu: float = 0.0
+    ) -> Tuple[Dict[str, torch.Tensor], TrainingMetrics]:
+        """Perform local training on private client dataloader."""
         self.model.load_state_dict(copy.deepcopy(global_weights))
         self.model.train()
         
         optimizer = optim.Adam(self.model.parameters(), lr=self.learning_rate)
+        criterion = self._get_loss_function(loss_fn_name, current_round, total_rounds)
+        repel_criterion = PrototypeRepelLoss(margin=1.0)
+        
+        # Keep copy of initial global weights for FedProx proximal term
+        initial_weights = {k: v.clone().detach().to(self.device) for k, v in global_weights.items()} if prox_mu > 0 else None
         
         total_loss = 0.0
         correct = 0
         total_samples = 0
-        step_count = 0
         
         for epoch in range(self.local_epochs):
             for images, labels in self.dataloader:
@@ -127,71 +151,34 @@ class HospitalClient:
                 
                 optimizer.zero_grad()
                 outputs = self.model(images)
-                loss = self.criterion(outputs, labels)
+                loss = criterion(outputs, labels)
                 
-                # Apply Algorithm-Specific Regularization
-                if algorithm == "FedProx":
-                    loss = loss + compute_fedprox_loss(self.model, global_weights, mu=mu)
-                elif algorithm == "FedDyn":
-                    loss = loss + compute_feddyn_loss(self.model, global_weights, self.prev_grads, alpha=alpha)
-                elif algorithm == "MOON" and global_model_ref is not None:
-                    with torch.no_grad():
-                        z_glob = global_model_ref(images)
-                        z_prev = self.prev_model(images) if self.prev_model is not None else None
-                    z_loc = outputs
-                    loss = loss + compute_moon_contrastive_loss(z_loc, z_glob, z_prev, temperature=temperature, mu=mu)
+                # Prototype metric alignment loss
+                if global_prototypes is not None and proto_weight > 0:
+                    features = extract_features(self.model, images)
+                    p_loss = compute_prototype_distance_loss(features, labels, global_prototypes)
+                    r_loss = repel_criterion(features, labels, global_prototypes)
+                    loss = loss + proto_weight * (p_loss + 0.1 * r_loss)
+                
+                # FedProx proximal term
+                if prox_mu > 0 and initial_weights is not None:
+                    prox_term = 0.0
+                    for name, param in self.model.named_parameters():
+                        if name in initial_weights:
+                            prox_term += torch.sum((param - initial_weights[name]) ** 2)
+                    loss = loss + (prox_mu / 2.0) * prox_term
                 
                 if torch.isnan(loss) or torch.isinf(loss):
                     continue
                 
                 loss.backward()
-                
-                # SCAFFOLD Control Variate Gradient Correction
-                if algorithm == "SCAFFOLD" and server_control is not None and client_control is not None:
-                    for name, param in self.model.named_parameters():
-                        if param.grad is not None and name in server_control and name in client_control:
-                            c_s = server_control[name].to(self.device)
-                            c_i = client_control[name].to(self.device)
-                            param.grad.data.add_(c_s - c_i)
-                
                 torch.nn.utils.clip_grad_norm_(self.model.parameters(), max_norm=1.0)
                 optimizer.step()
-                step_count += 1
                 
                 total_loss += loss.item() * images.size(0)
                 _, predicted = outputs.max(1)
                 correct += predicted.eq(labels).sum().item()
                 total_samples += images.size(0)
-        
-        # Save model for next round in MOON
-        if algorithm == "MOON":
-            self.prev_model = create_model().to(self.device)
-            self.prev_model.load_state_dict(self.model.state_dict())
-            
-        # Compute SCAFFOLD Control Variate Delta: delta_c_k = c_k^+ - c_k
-        control_delta: Optional[Dict[str, torch.Tensor]] = None
-        if algorithm == "SCAFFOLD" and server_control is not None and client_control is not None:
-            control_delta = {}
-            steps = max(step_count, 1)
-            for name, param in self.model.named_parameters():
-                if name in global_weights and name in client_control and name in server_control:
-                    w_glob = global_weights[name].to(self.device)
-                    c_i = client_control[name].to(self.device)
-                    c_s = server_control[name].to(self.device)
-                    
-                    # c_i^+ = c_i - c + (w_glob - w_local) / (K * eta_l)
-                    c_i_plus = c_i - c_s + (w_glob - param.data) / (steps * self.learning_rate)
-                    control_delta[name] = (c_i_plus - c_i).cpu()
-                    client_control[name] = c_i_plus.cpu()
-
-        # Update FedDyn gradient history
-        if algorithm == "FedDyn":
-            for name, param in self.model.named_parameters():
-                if name in global_weights:
-                    w_glob = global_weights[name].to(self.device)
-                    if name not in self.prev_grads:
-                        self.prev_grads[name] = torch.zeros_like(param.data)
-                    self.prev_grads[name] -= alpha * (param.data - w_glob)
         
         avg_loss = total_loss / max(total_samples, 1)
         accuracy = correct / max(total_samples, 1)
@@ -223,4 +210,13 @@ class HospitalClient:
             is_malicious=self.malicious
         )
         
-        return updated_weights, metrics, control_delta
+        return updated_weights, metrics
+    
+    def compute_prototypes_and_dispersion(self) -> Tuple[Dict[int, torch.Tensor], Dict[int, float], Dict[int, int]]:
+        """Extract empirical class prototypes and covariance traces from local data."""
+        return compute_local_prototypes_and_dispersion(
+            model=self.model,
+            dataloader=self.dataloader,
+            device=self.device,
+            num_classes=3
+        )

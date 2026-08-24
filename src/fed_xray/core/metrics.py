@@ -3,7 +3,7 @@ Fed-XRay Core Metrics & Security Reporting Data Structures
 """
 
 import numpy as np
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Dict, List, Any, Optional
 
 
@@ -48,16 +48,29 @@ class SecurityReport:
     - Which were detected as malicious
     - Which were blocked from aggregation
     """
-    total_clients: int
-    malicious_detected: List[int]
-    clients_accepted: List[int]
-    clients_blocked: List[int]
-    validation_accuracies: Dict[int, float]
+    total_clients: int = 0
+    malicious_detected: List[int] = field(default_factory=list)
+    clients_accepted: List[int] = field(default_factory=list)
+    clients_blocked: List[int] = field(default_factory=list)
+    validation_accuracies: Dict[int, float] = field(default_factory=dict)
     defense_active: bool = False
+    threat_detected: bool = False
+    details: str = ""
+    clients_evaluated: List[int] = field(default_factory=list)
     
+    def __post_init__(self):
+        if not self.total_clients and self.clients_evaluated:
+            self.total_clients = len(self.clients_evaluated)
+        if not self.clients_evaluated and self.total_clients:
+            self.clients_evaluated = list(self.validation_accuracies.keys())
+        if not self.threat_detected:
+            self.threat_detected = len(self.clients_blocked) > 0
+        if not self.malicious_detected:
+            self.malicious_detected = list(self.clients_blocked)
+            
     def get_summary(self) -> str:
         if not self.defense_active:
             return "Defense Shield: OFF"
-        if self.clients_blocked:
-            return f"Blocked {len(self.clients_blocked)} malicious node(s): {self.clients_blocked}"
-        return "All nodes validated - no threats detected"
+        if not self.clients_blocked:
+            return f"Defense Shield: ACTIVE ({self.total_clients} clients verified)"
+        return f"ALERT: {len(self.clients_blocked)} malicious client(s) blocked: {self.clients_blocked}"
