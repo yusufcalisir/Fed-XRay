@@ -14,7 +14,8 @@ Fed-XRay is a production-grade Federated Learning (FL) and Clinical Decision Sup
   <img src="https://img.shields.io/badge/Python-3.9+-blue?logo=python" alt="Python">
   <img src="https://img.shields.io/badge/PyTorch-2.0+-red?logo=pytorch" alt="PyTorch">
   <img src="https://img.shields.io/badge/Streamlit-1.32+-green?logo=streamlit" alt="Streamlit">
-  <img src="https://img.shields.io/badge/Algorithms-FedAvg%20%7C%20FedProx%20%7C%20MOON%20%7C%20SCAFFOLD-purple" alt="Algorithms">
+  <img src="https://img.shields.io/badge/Localization-TR%20%7C%20EN-blue" alt="Localization">
+  <img src="https://img.shields.io/badge/Algorithms-FedAvg%20%7C%20FedProx%20%7C%20SCAFFOLD%20%7C%20FedDyn%20%7C%20MOON-purple" alt="Algorithms">
   <img src="https://img.shields.io/badge/License-MIT-yellow" alt="License">
 </p>
 
@@ -23,13 +24,19 @@ Fed-XRay is a production-grade Federated Learning (FL) and Clinical Decision Sup
 ## Core Capabilities
 
 ### 1. Clinical Decision Support System (CDSS)
-- **Explainable AI (Grad-CAM):** Gradient-weighted Class Activation Mapping highlighting anatomical decision regions.
-- **Evidence-Grounded Retrieval (Federated RAG):** Cosine embedding similarity matching against verified reference cases.
+- **Bilingual Localization (TR/EN):** Native support for Turkish and English language switching across all diagnostic findings, UI controls, and reports.
+- **Explainable AI (Grad-CAM):** Gradient-weighted Class Activation Mapping highlighting anatomical decision regions with interactive alpha-blend controls.
+- **Evidence-Grounded Retrieval (Federated RAG):** Cosine embedding similarity matching against verified historical digital twin cases.
 - **Single-Page Diagnostic Reports:** Automated, strictly bounded single-page A4 medical PDF reports with integrated heatmaps and clinical findings.
-- **Voice Intelligence:** Text-to-Speech audio synthesis for diagnostic summaries.
+- **Voice Intelligence:** Text-to-Speech audio synthesis for diagnostic summaries in Turkish and English.
 
 ### 2. Federated Learning Optimization & Drift Resilience
-- **Supported Paradigms:** FedAvg, FedProx (proximal regularization), MOON (model-contrastive representation alignment), and SCAFFOLD (control variates).
+- **Supported Paradigms:** 
+  - **FedAvg:** Baseline weighted consensus.
+  - **FedProx:** $\mu$-proximal regularization preventing client drift on non-IID data.
+  - **SCAFFOLD:** Client and server control variates ($c_k, c$) for institutional variance reduction.
+  - **FedDyn:** Dynamic gradient alignment ensuring global empirical risk consistency.
+  - **MOON:** Model-contrastive representation alignment ($\mu, \tau$).
 - **Adversarial Resilience:** Real-time Byzantine defense filtering malicious or poisoned gradient updates via trusted hold-out validation.
 - **Client Heterogeneity Handling:** Evaluated under severe non-IID Dirichlet distributions ($\alpha = 0.1$).
 
@@ -52,26 +59,31 @@ Fed-XRay/
 ├── src/
 │   └── fed_xray/                  # Modular Python Package
 │       ├── __init__.py
-│       ├── core/                  # Client, Server, Byzantine defense, Metrics
+│       ├── core/                  # Client, Server, Byzantine defense, Optimizers
 │       │   ├── __init__.py
-│       │   ├── client.py
-│       │   ├── server.py
-│       │   └── metrics.py
+│       │   ├── algorithms.py      # FedProx, SCAFFOLD, FedDyn, MOON losses
+│       │   ├── client.py          # Hospital client training node
+│       │   ├── server.py          # Central server & aggregation engine
+│       │   └── metrics.py         # Telemetry & security reports
 │       ├── models/                # Neural network architectures
 │       │   ├── __init__.py
-│       │   └── cnn.py
+│       │   └── cnn.py             # X-Ray classifier model
 │       ├── data/                  # Synthetic generation and dataset loaders
 │       │   ├── __init__.py
-│       │   └── generator.py
+│       │   └── generator.py       # Non-IID Dirichlet generator
 │       └── cdss/                  # Diagnostic engines (XAI, Similarity, Voice, Report)
 │           ├── __init__.py
-│           ├── xai.py
-│           ├── similarity.py
-│           ├── voice.py
-│           └── report.py
+│           ├── i18n.py            # Bilingual TR/EN localization engine
+│           ├── styles.py          # Design System 2.0 HSL tokens
+│           ├── xai.py             # Grad-CAM heatmap generator
+│           ├── similarity.py      # Case-based RAG embedding bank
+│           ├── voice.py           # Text-to-Speech audio assistant
+│           └── report.py          # Single-page A4 PDF generator
 ├── utils/                         # Backward-compatible proxy shims
-├── tests/                         # Automated unit and integration test suite
-│   └── test_all.py
+├── tests/                         # Automated unit test suite
+│   ├── test_all.py                # Core federated & CDSS tests
+│   ├── test_i18n.py               # Localization & Design System 2.0 tests
+│   └── test_algorithms.py        # FedProx, SCAFFOLD, FedDyn, MOON tests
 ├── app.py                         # Interactive Streamlit CDSS Web Application
 ├── requirements.txt               # Project dependencies
 ├── .gitignore                     # Git exclusion directives
@@ -99,41 +111,7 @@ pip install -r requirements.txt
 streamlit run app.py
 ```
 
-Access the dashboard at `http://localhost:8501`.
-
----
-
-## Scientific Benchmarks & Simulations
-
-### 1. Multi-Algorithm Federated Benchmark
-Compare FedAvg, FedProx, MOON, and SCAFFOLD under severe label skew ($\alpha=0.1$):
-
-```bash
-python benchmarks/fed_benchmark.py
-```
-Output saved to: `assets/figures/benchmark_results.png`
-
-### 2. Model-Contrastive Learning (MOON) Simulation
-Execute MOON representation alignment under non-IID Dirichlet distribution:
-
-```bash
-python benchmarks/moon_traffic.py
-```
-Output saved to: `assets/figures/moon_results.png`
-
-### 3. Proximal Regularization (FedProx) Simulation
-Evaluate FedProx drift resilience against local epochs and system heterogeneity:
-
-```bash
-python benchmarks/fedprox_traffic.py
-```
-Output saved to: `assets/figures/fedprox_traffic_results.png`
-
----
-
-## Automated Test Suite
-
-Execute the test suite verifying data generation, federated aggregation, Byzantine security shields, and explainability pipelines:
+### 3. Run Automated Unit Test Suite
 
 ```bash
 python -m unittest discover -s tests -v

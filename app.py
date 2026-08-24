@@ -2,7 +2,8 @@
 Fed-XRay: Federated Learning Medical Diagnosis & CDSS Platform
 ===============================================================
 A modern, privacy-preserving Clinical Decision Support System and
-Federated Learning dashboard for lung disease diagnosis from X-Ray images.
+Federated Learning dashboard with advanced distributed optimizers
+(FedAvg, FedProx, SCAFFOLD, FedDyn, MOON) for lung disease diagnosis.
 
 Run with: streamlit run app.py
 """
@@ -133,6 +134,50 @@ with st.sidebar:
         step=50,
         help=t("samples_per_hospital_help", lang)
     )
+    
+    st.markdown("---")
+    
+    # Optimization Algorithm Selection
+    st.markdown(f"<h4 style='font-size:0.95rem;'>{t('algorithm_selector_title', lang)}</h4>", unsafe_allow_html=True)
+    selected_algorithm = st.selectbox(
+        "Optimizer",
+        options=["FedAvg", "FedProx", "SCAFFOLD", "FedDyn", "MOON"],
+        index=1,
+        help=t("algorithm_selector_help", lang)
+    )
+    
+    # Dynamic Hyperparameters per Algorithm
+    algo_mu = 0.01
+    algo_alpha = 0.01
+    algo_temp = 0.5
+    
+    if selected_algorithm in ("FedProx", "MOON"):
+        algo_mu = st.slider(
+            t("param_mu", lang),
+            min_value=0.001,
+            max_value=0.1 if selected_algorithm == "FedProx" else 2.0,
+            value=0.01 if selected_algorithm == "FedProx" else 1.0,
+            step=0.005 if selected_algorithm == "FedProx" else 0.1,
+            help=t("param_mu_help", lang)
+        )
+    if selected_algorithm == "FedDyn":
+        algo_alpha = st.slider(
+            t("param_alpha", lang),
+            min_value=0.001,
+            max_value=0.05,
+            value=0.01,
+            step=0.005,
+            help=t("param_alpha_help", lang)
+        )
+    if selected_algorithm == "MOON":
+        algo_temp = st.slider(
+            t("param_temperature", lang),
+            min_value=0.1,
+            max_value=1.0,
+            value=0.5,
+            step=0.1,
+            help=t("param_temperature_help", lang)
+        )
     
     st.markdown("---")
     
@@ -392,13 +437,15 @@ with tabs[0]:
 # ============================================================================
 
 with tabs[1]:
+    math_key = f"algo_math_{selected_algorithm.lower()}"
+    math_formula = t(math_key, lang)
+    
     st.markdown(f"""
     <div class="fed-section-card">
         <div class="fed-section-title">🔄 {t("training_studio_title", lang)}</div>
         <div class="fed-section-desc">
-            Fed-XRay FedAvg & Byzantine Defense Shield: <strong>{n_hospitals} {t('metric_hospitals', lang).lower()}</strong>, 
-            <strong>{n_rounds} {t('metric_rounds', lang).lower()}</strong>, 
-            <strong>{samples_per_hospital} {t('samples_per_hospital', lang).lower()}</strong>.
+            {t("active_algorithm", lang)}: <strong>{selected_algorithm}</strong> &bull; 
+            <em>{math_formula}</em>
         </div>
     </div>
     """, unsafe_allow_html=True)
@@ -446,7 +493,7 @@ with tabs[1]:
         test_images, test_labels = st.session_state.global_test_set
         
         for round_idx in range(1, n_rounds + 1):
-            progress_box.info(f"⏳ {t('status_training', lang)}: {round_idx} / {n_rounds}")
+            progress_box.info(f"⏳ {t('status_training', lang)}: {round_idx} / {n_rounds} [{selected_algorithm}]")
             
             agg_m, cl_m, test_m, sec_rep = run_federated_round(
                 server=server,
@@ -454,7 +501,11 @@ with tabs[1]:
                 round_num=round_idx,
                 test_images=test_images,
                 test_labels=test_labels,
-                use_defense=activate_defense
+                use_defense=activate_defense,
+                algorithm=selected_algorithm,
+                mu=algo_mu,
+                alpha=algo_alpha,
+                temperature=algo_temp
             )
             
             # Record metrics
@@ -482,7 +533,7 @@ with tabs[1]:
                     x=st.session_state.training_history['round'],
                     y=st.session_state.training_history['test_accuracy'],
                     mode='lines+markers',
-                    name='Test Accuracy',
+                    name=f'{selected_algorithm} Accuracy',
                     line=dict(color='#10B981', width=3),
                     marker=dict(size=7, color='#047857')
                 ),
@@ -495,7 +546,7 @@ with tabs[1]:
                     x=st.session_state.training_history['round'],
                     y=st.session_state.training_history['loss'],
                     mode='lines+markers',
-                    name='Training Loss',
+                    name=f'{selected_algorithm} Loss',
                     line=dict(color='#06B6D4', width=3),
                     marker=dict(size=7, color='#0891B2')
                 ),
@@ -517,7 +568,7 @@ with tabs[1]:
             
         st.session_state.trained_weights = server.get_global_weights()
         st.session_state.model_trained = True
-        progress_box.success(f"✅ {t('training_complete_title', lang)} ({n_rounds} Rounds)")
+        progress_box.success(f"✅ {t('training_complete_title', lang)} ({n_rounds} Rounds - {selected_algorithm})")
         st.rerun()
 
 

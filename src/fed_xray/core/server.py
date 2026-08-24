@@ -1,7 +1,8 @@
 """
 Fed-XRay Central Server & Federated Aggregation
 ================================================
-Implements FedAvg, trusted validation Byzantine defense, and round orchestration.
+Implements FedAvg, trusted validation Byzantine defense, SCAFFOLD control variate aggregation,
+FedDyn dynamic state alignment, and multi-algorithm round orchestration.
 """
 
 import copy
@@ -21,16 +22,12 @@ from sklearn.metrics import (
 from ..models.cnn import XRayClassifier, create_model
 from .client import HospitalClient
 from .metrics import TrainingMetrics, EvaluationMetrics, SecurityReport
+from .algorithms import ScaffoldController
 
 
 class CentralServer:
     """
-    Central coordinator server with Byzantine-robust aggregation.
-    
-    Defense Mechanism: Trusted Validation
-    - Evaluates client updates on a trusted hold-out validation set.
-    - Excludes updates below malicious threshold.
-    - Aggregates remaining updates using sample-weighted FedAvg.
+    Central coordinator server with multi-algorithm aggregation and Byzantine defense.
     """
     
     MALICIOUS_THRESHOLD = 0.30
@@ -48,6 +45,13 @@ class CentralServer:
         
         self.blocked_count = 0
         self.last_security_report: Optional[SecurityReport] = None
+        
+        # Algorithm State Trackers
+        self.scaffold_controller = ScaffoldController(self.global_model)
+        self.feddyn_h: Dict[str, torch.Tensor] = {
+            name: torch.zeros_like(param.data)
+            for name, param in self.global_model.named_parameters()
+        }
         
     def get_global_weights(self) -> Dict[str, torch.Tensor]:
         """Get current global model weights."""
@@ -94,9 +98,11 @@ class CentralServer:
         sample_counts: List[int],
         client_ids: List[int],
         test_images: torch.Tensor,
-        test_labels: torch.Tensor
+        test_labels: torch.Tensor,
+        algorithm: str = "FedAvg",
+        alpha: float = 0.01
     ) -> Tuple[Dict[str, torch.Tensor], SecurityReport]:
-        """Validate clients and aggregate only trusted updates."""
+        """Validate clients and aggregate only trusted updates with chosen algorithm."""
         validation_accuracies: Dict[int, float] = {}
         malicious_detected: List[int] = []
         clients_accepted: List[int] = []
@@ -124,7 +130,7 @@ class CentralServer:
             client_weights = filtered_weights
             sample_counts = filtered_counts
         
-        aggregated = self._fedavg_aggregate(client_weights, sample_counts)
+        aggregated = self._fedavg_aggregate(client_weights, sample_counts, algorithm=algorithm, alpha=alpha)
         
         report = SecurityReport(
             total_clients=len(client_ids),
@@ -141,9 +147,11 @@ class CentralServer:
     def _fedavg_aggregate(
         self,
         client_weights: List[Dict[str, torch.Tensor]],
-        sample_counts: List[int]
+        sample_counts: List[int],
+        algorithm: str = "FedAvg",
+        alpha: float = 0.01
     ) -> Dict[str, torch.Tensor]:
-        """Standard FedAvg aggregation: w = Σ (n_k / n) * w_k."""
+        """Weighted aggregation with optional FedDyn correction and DP noise."""
         if not client_weights:
             return self.get_global_weights()
         
@@ -164,6 +172,17 @@ class CentralServer:
                     continue
                 aggregated[key] += coeff * weight_tensor
             
+            # FedDyn Server State Update: h^{t+1} = h^t - alpha * (1/K) sum(theta_k - theta_glob)
+            if algorithm == "FedDyn" and key in self.feddyn_h and alpha > 0:
+                current_glob = self.global_model.state_dict()[key].float().cpu()
+                diff_sum = torch.zeros_like(current_glob)
+                for client_weight in client_weights:
+                    diff_sum += (client_weight[key].float() - current_glob)
+                
+                delta_h = (alpha / max(len(client_weights), 1)) * diff_sum
+                self.feddyn_h[key] -= delta_h
+                aggregated[key] = aggregated[key] - (1.0 / alpha) * self.feddyn_h[key]
+
             if param_dtype in (torch.int64, torch.int32, torch.long):
                 aggregated[key] = aggregated[key].to(param_dtype)
         
@@ -179,10 +198,12 @@ class CentralServer:
     def aggregate(
         self,
         client_weights: List[Dict[str, torch.Tensor]],
-        sample_counts: List[int]
+        sample_counts: List[int],
+        algorithm: str = "FedAvg",
+        alpha: float = 0.01
     ) -> Dict[str, torch.Tensor]:
         """Standard aggregation without active defense."""
-        return self._fedavg_aggregate(client_weights, sample_counts)
+        return self._fedavg_aggregate(client_weights, sample_counts, algorithm=algorithm, alpha=alpha)
     
     def evaluate_on_test_set(
         self,
@@ -250,36 +271,65 @@ def run_federated_round(
     round_num: int,
     test_images: Optional[torch.Tensor] = None,
     test_labels: Optional[torch.Tensor] = None,
-    use_defense: bool = False
+    use_defense: bool = False,
+    algorithm: str = "FedAvg",
+    mu: float = 0.01,
+    alpha: float = 0.01,
+    temperature: float = 0.5
 ) -> Tuple[Dict[str, Any], List[TrainingMetrics], Optional[EvaluationMetrics], Optional[SecurityReport]]:
-    """Execute one federated learning round with optional security defense."""
+    """Execute one federated learning round with chosen optimization algorithm and security defense."""
     global_weights = server.get_global_weights()
     
     client_updates: List[Dict[str, torch.Tensor]] = []
     client_metrics: List[TrainingMetrics] = []
     sample_counts: List[int] = []
     client_ids: List[int] = []
+    scaffold_deltas: List[Dict[str, torch.Tensor]] = []
+    
+    server_ctrl = server.scaffold_controller.server_controls if algorithm == "SCAFFOLD" else None
     
     for client in clients:
-        updated_weights, metrics = client.train(global_weights)
+        client_ctrl = server.scaffold_controller.get_client_controls(client.client_id, client.model) if algorithm == "SCAFFOLD" else None
+        
+        updated_weights, metrics, ctrl_delta = client.train(
+            global_weights=global_weights,
+            algorithm=algorithm,
+            mu=mu,
+            alpha=alpha,
+            temperature=temperature,
+            server_control=server_ctrl,
+            client_control=client_ctrl
+        )
+        
         client_updates.append(updated_weights)
         client_metrics.append(metrics)
         sample_counts.append(client.get_num_samples())
         client_ids.append(client.client_id)
+        if ctrl_delta is not None:
+            scaffold_deltas.append(ctrl_delta)
+    
+    # Update SCAFFOLD server control variates
+    if algorithm == "SCAFFOLD" and scaffold_deltas:
+        server.scaffold_controller.update_server_controls(scaffold_deltas, len(clients))
     
     security_report: Optional[SecurityReport] = None
     
     if use_defense and test_images is not None and test_labels is not None:
         _, security_report = server.validate_and_aggregate(
-            client_updates, sample_counts, client_ids,
-            test_images, test_labels
+            client_weights=client_updates,
+            sample_counts=sample_counts,
+            client_ids=client_ids,
+            test_images=test_images,
+            test_labels=test_labels,
+            algorithm=algorithm,
+            alpha=alpha
         )
         if security_report:
             for metrics in client_metrics:
                 if metrics.client_id in security_report.clients_blocked:
                     metrics.was_blocked = True
     else:
-        server.aggregate(client_updates, sample_counts)
+        server.aggregate(client_updates, sample_counts, algorithm=algorithm, alpha=alpha)
     
     total_samples = sum(sample_counts)
     
@@ -299,7 +349,8 @@ def run_federated_round(
         'loss': avg_loss,
         'accuracy': avg_accuracy,
         'total_samples': total_samples,
-        'round': round_num
+        'round': round_num,
+        'algorithm': algorithm
     }
     
     test_metrics: Optional[EvaluationMetrics] = None

@@ -71,6 +71,38 @@ TRANSLATIONS: Dict[str, Dict[str, str]] = {
         "tr": "Öğrenme Oranı (Learning Rate)",
         "en": "Learning Rate"
     },
+    "algorithm_selector_title": {
+        "tr": "⚙️ Optimizasyon Algoritması",
+        "en": "⚙️ Optimization Algorithm"
+    },
+    "algorithm_selector_help": {
+        "tr": "Heterojen hastane verilerinde istemci kaymasını önleyen dağıtık optimizasyon algoritması",
+        "en": "Distributed optimization algorithm to mitigate client drift under heterogeneous data"
+    },
+    "param_mu": {
+        "tr": "Proksimal/Kontrastif Katsayısı (μ)",
+        "en": "Proximal/Contrastive Weight (μ)"
+    },
+    "param_mu_help": {
+        "tr": "FedProx veya MOON için yerel modelin global modelden sapmasını cezalandıran katsayı",
+        "en": "Penalty weighting preventing local models from drifting away from global reference"
+    },
+    "param_alpha": {
+        "tr": "Dinamik Hizalama Katsayısı (α)",
+        "en": "Dynamic Alignment Factor (α)"
+    },
+    "param_alpha_help": {
+        "tr": "FedDyn için dinamik gradyan hizalama parametresi",
+        "en": "FedDyn dynamic regularizer parameter aligning local objectives to global empirical risk"
+    },
+    "param_temperature": {
+        "tr": "Kontrastif Sıcaklık (τ)",
+        "en": "Contrastive Temperature (τ)"
+    },
+    "param_temperature_help": {
+        "tr": "MOON temsil benzerliği softmax ölçekleme sıcaklığı",
+        "en": "Softmax temperature for MOON cosine similarity representations"
+    },
     "privacy_security_title": {
         "tr": "🛡️ Gizlilik ve Güvenlik Kalkanı",
         "en": "🛡️ Privacy & Security Shield"
@@ -224,6 +256,30 @@ TRANSLATIONS: Dict[str, Dict[str, str]] = {
     "security_shield_inactive": {
         "tr": "Güvenlik Kalkanı: Kapalı",
         "en": "Security Shield: Inactive"
+    },
+    "active_algorithm": {
+        "tr": "Aktif Optimizasyon Algoritması",
+        "en": "Active Optimization Algorithm"
+    },
+    "algo_math_fedavg": {
+        "tr": "Klasik Ağırlıklı Konsensüs: w(t+1) = Σ p_k w_k(t)",
+        "en": "Standard Weighted Consensus: w(t+1) = Σ p_k w_k(t)"
+    },
+    "algo_math_fedprox": {
+        "tr": "Proksimal Regülarizasyon: L_k = F_k(w) + (μ/2) ||w - w_glob||²",
+        "en": "Proximal Regularization: L_k = F_k(w) + (μ/2) ||w - w_glob||²"
+    },
+    "algo_math_scaffold": {
+        "tr": "Kontrol Değişkenleri ile Varyans Azaltımı: g_k = ∇F_k(w) - c_k + c",
+        "en": "Control Variates Variance Reduction: g_k = ∇F_k(w) - c_k + c"
+    },
+    "algo_math_feddyn": {
+        "tr": "Dinamik Risk Hizalaması: L_k = F_k(w) - <∇F_k, w> + (α/2) ||w - w_glob||²",
+        "en": "Dynamic Risk Alignment: L_k = F_k(w) - <∇F_k, w> + (α/2) ||w - w_glob||²"
+    },
+    "algo_math_moon": {
+        "tr": "Model-Kontrastif Hizalama: L_con = -μ log(exp(sim(z, z_glob)/τ) / Σ exp)",
+        "en": "Model-Contrastive Alignment: L_con = -μ log(exp(sim(z, z_glob)/τ) / Σ exp)"
     },
 
     # ===== Clinical Diagnosis Tab =====
