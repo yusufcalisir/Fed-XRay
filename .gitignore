@@ -25,6 +25,12 @@ out/
 *.tsbuildinfo
 next-env.d.ts
 
+# Whitelist frontend/src and lib
+!frontend/src/
+!frontend/src/**
+!frontend/src/lib/
+!frontend/src/lib/**
+
 # ===== Environment Variables =====
 .env
 .env.local
@@ -61,8 +67,8 @@ dist/
 downloads/
 eggs/
 .eggs/
-lib/
-lib64/
+/lib/
+/lib64/
 parts/
 sdist/
 var/
@@ -113,7 +119,7 @@ data/
 datasets/
 *.csv
 
-# Unignore necessary JSON config files
+# Unignore necessary JSON and config files
 !package.json
 !frontend/package.json
 !tsconfig.json
