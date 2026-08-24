@@ -22,27 +22,27 @@ export default function Hero({ numHospitals, totalRounds, totalSamples, isTraine
   ];
 
   return (
-    <div className="mb-6">
+    <div className="mb-5 sm:mb-6">
       {/* Title Row */}
-      <div className="mb-5 text-center">
-        <h1 className="font-display text-2xl sm:text-3xl font-black text-[var(--text-heading)] tracking-tight mb-1.5">
+      <div className="mb-4 sm:mb-5 text-center px-2">
+        <h1 className="font-display text-xl sm:text-2xl lg:text-3xl font-black text-[var(--text-heading)] tracking-tight mb-1 sm:mb-1.5 leading-tight">
           {t("hero_title")}
         </h1>
-        <p className="text-sm text-[var(--text-muted)] max-w-xl mx-auto leading-relaxed">
+        <p className="text-xs sm:text-sm text-[var(--text-muted)] max-w-xl mx-auto leading-relaxed">
           {t("hero_subtitle")}
         </p>
       </div>
 
       {/* KPI Strip */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-3">
         {metrics.map((m, i) => (
-          <div key={i} className="card p-4 flex items-center gap-3">
-            <div className="w-9 h-9 rounded-xl bg-[var(--bg-card-inner)] border border-[var(--border-subtle)] flex items-center justify-center shrink-0">
-              <m.icon className={`w-4 h-4 ${m.color}`} />
+          <div key={i} className="card p-3 sm:p-4 flex items-center gap-2.5 sm:gap-3">
+            <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-[var(--bg-card-inner)] border border-[var(--border-subtle)] flex items-center justify-center shrink-0">
+              <m.icon className={`w-3.5 h-3.5 sm:w-4 sm:h-4 ${m.color}`} />
             </div>
             <div className="min-w-0">
-              <div className="metric-label truncate">{m.label}</div>
-              <div className="metric-value text-lg truncate">{m.value}</div>
+              <div className="metric-label truncate text-[10px] sm:text-[11px]">{m.label}</div>
+              <div className="metric-value text-base sm:text-lg truncate">{m.value}</div>
             </div>
           </div>
         ))}

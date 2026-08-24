@@ -96,25 +96,25 @@ export default function DashboardPage() {
   const diagConf = diagnosis ? diagnosis.confidence : 95.0;
 
   return (
-    <div className="min-h-screen flex flex-col">
+    <div className="min-h-screen flex flex-col overflow-x-hidden">
       <Navbar />
 
-      <main className="flex-1 max-w-[1360px] w-full mx-auto px-5 py-6">
+      <main className="flex-1 max-w-[1360px] w-full mx-auto px-3 sm:px-5 py-4 sm:py-6">
 
         {/* Offline Banner */}
         {!isConnected && !isChecking && (
-          <div className="card-inner flex items-start gap-3 p-4 mb-5 border-l-4 border-l-amber-500">
+          <div className="card-inner flex items-start gap-2.5 sm:gap-3 p-3.5 sm:p-4 mb-4 sm:mb-5 border-l-4 border-l-amber-500">
             <AlertCircle className="w-4 h-4 text-amber-500 shrink-0 mt-0.5" />
-            <div className="text-xs text-[var(--text-main)]">
-              <span className="text-amber-600 dark:text-amber-400 font-semibold">Backend Offline</span> - <code className="text-[var(--text-muted)] font-bold">{apiUrl}</code> adresine ulaşılamadı. Sağ üstteki API butonundan adresinizi kontrol edin.
+            <div className="text-[11px] sm:text-xs text-[var(--text-main)] leading-relaxed">
+              <span className="text-amber-600 dark:text-amber-400 font-semibold">Backend Offline</span> - <code className="text-[var(--text-muted)] font-bold">{apiUrl}</code> adresine ulaşılamadı. Sağ üstteki API butonundan adresi doğrulayabilirsiniz.
             </div>
           </div>
         )}
 
         {/* Error Toast */}
         {errorMessage && (
-          <div className="card-inner flex items-center justify-between p-3 mb-5 border-l-4 border-l-red-500 text-xs text-red-500">
-            <span>{errorMessage}</span>
+          <div className="card-inner flex items-center justify-between p-3 mb-4 sm:mb-5 border-l-4 border-l-red-500 text-xs text-red-500">
+            <span className="truncate">{errorMessage}</span>
             <button onClick={() => setErrorMessage(null)} className="text-[var(--text-muted)] hover:text-[var(--text-heading)] ml-3 font-bold">x</button>
           </div>
         )}
@@ -127,14 +127,14 @@ export default function DashboardPage() {
 
         {diagnosis && <RagDigitalTwins twins={ragTwins} />}
         {diagnosis && (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5 sm:gap-4 mb-5 sm:mb-6">
             <VoiceAssistant diagnosisName={diagName} confidence={diagConf} />
             <ReportDownload diagnosisName={diagName} confidence={diagConf} />
           </div>
         )}
       </main>
 
-      <footer className="border-t border-[var(--navbar-border)] py-5 text-center text-[11px] text-[var(--text-muted)]">
+      <footer className="border-t border-[var(--navbar-border)] py-4 sm:py-5 text-center text-[10px] sm:text-[11px] text-[var(--text-muted)] px-3">
         {t("footer_text")}
       </footer>
     </div>
