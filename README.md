@@ -36,18 +36,8 @@ $$
 
 - **FFA-LoRA (Federated Freeze-A LoRA):** Globally freezes projection matrix $A$ across all institutions ($\nabla_A \mathcal{L} = 0$), strictly preserving aggregation linearity ($\bar{B}A \equiv \sum p_k B_k A$) and enabling multiplication-free Homomorphic Encryption ($\text{Multiplication Depth} = 0$).
 - **FedSA-LoRA & Fed-ALAS:** Aggregates matrix $\bar{A} = \sum p_k A_k$ centrally to capture the global visual input subspace while retaining matrix $B_k$ privately on client nodes for site-specific staining/scanner personalization.
-- **FedAS-LoRA (Adaptive Subspace Routing):** Measures Rank-Aware Shared-Subspace Sufficiency ($\text{RSS}_{\text{input}}$ and $\text{RSS}_{\text{output}}$) to dynamically select between Share-A / Local-B (under covariate domain shift) and Share-B / Local-A (under label distribution skew):
-
-$$
-\text{RSS}_{\text{input}} = \frac{1}{K \cdot r} \sum_{k=1}^K \|V_k V_{\text{global}}^\top\|_F^2
-$$
-
-$$
-\text{Policy}(\text{RSS}_{\text{input}}) = \begin{cases} 
-\text{Share-}A \;/\; \text{Local-}B_k, & \text{if } \text{RSS}_{\text{input}} \ge \tau_{\text{covariate}} \quad (\text{Domain / Scanner Heterogeneity}) \\ 
-\text{Share-}B \;/\; \text{Local-}A_k, & \text{if } \text{RSS}_{\text{input}} < \tau_{\text{covariate}} \quad (\text{Label Distribution Skew}) 
-\end{cases}
-$$
+- **FedAS-LoRA (Adaptive Subspace Routing):** Measures Rank-Aware Shared-Subspace Sufficiency ($\text{RSS}_{\text{input}}$ and $\text{RSS}_{\text{output}}$) to dynamically select between Share-A / Local-B (under covariate domain shift) and Share-B / Local-A (under label distribution skew).
+- **FlexLoRA SVD Aggregator:** Reconstructs full weight updates and computes Truncated Singular Value Decomposition (SVD):
 
 $$
 \bar{\Delta W} = \sum_{k=1}^K p_k B_k A_k = U_r \Sigma_r V_r^\top
@@ -119,23 +109,7 @@ $$
 p_c = \lambda \left(\sum_{k \in \mathcal{K}_c} \alpha_{k,c} \, p_{c,k}^{\text{img}}\right) + (1-\lambda) p_c^{\text{txt}}
 $$
 
-- **Dynamic Imbalance Loss Suite:** Dynamic Adaptive Focal Loss ($\mathcal{L}_{\text{DAFL}}$), Bayesian Balanced Softmax ($\mathcal{L}_{\text{BSM}}$), Class-Balanced Loss ($\mathcal{L}_{\text{CB}}$), Label-Distribution-Aware Margin ($\mathcal{L}_{\text{LDAM}}$), and Missing-Class Repel Loss ($\mathcal{L}_{\text{repel}}$):
-
-$$
-\mathcal{L}_{\text{DAFL}}(p_t, c, t) = -\alpha_c(t) \, (1 - p_t)^{\gamma_c(t)} \log(p_t)
-$$
-
-$$
-\mathcal{L}_{\text{BSM}}(\mathbf{z}, y) = -\log \frac{\exp\left(z_y + \log \pi_y\right)}{\sum_{j=1}^C \exp\left(z_j + \log \pi_j\right)}
-$$
-
-$$
-\mathcal{L}_{\text{LDAM}}(\mathbf{z}, y) = -\log \frac{\exp\left(z_y - \frac{C_{\text{margin}}}{n_y^{1/4}}\right)}{\exp\left(z_y - \frac{C_{\text{margin}}}{n_y^{1/4}}\right) + \sum_{j \neq y} \exp(z_j)}
-$$
-
-$$
-\mathcal{L}_{\text{repel}}(x_i, y_i; \bar{\mathcal{P}}) = \sum_{c \neq y_i} \max\left(0, m - \|f(x_i) - \bar{p}_c\|_2\right)
-$$
+- **Dynamic Imbalance Loss Suite:** Dynamic Adaptive Focal Loss (DAFL), Bayesian Balanced Softmax (BSM), Class-Balanced Loss ($\mathcal{L}_{\text{CB}}$), Label-Distribution-Aware Margin (LDAM), and Missing-Class Repel Loss ($\mathcal{L}_{\text{repel}}$).
 
 ---
 
