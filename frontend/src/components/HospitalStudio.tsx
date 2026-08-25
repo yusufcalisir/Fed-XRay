@@ -3,7 +3,8 @@
 import React, { useState } from "react";
 import { useLanguage } from "@/context/LanguageContext";
 import { HospitalCohort } from "@/types";
-import { Database, RefreshCw, Eye, CheckCircle2, ShieldCheck, Sparkles } from "lucide-react";
+import { Database, RefreshCw, Eye, CheckCircle2, ShieldCheck, Sparkles, PieChart as PieIcon } from "lucide-react";
+import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip as RechartsTooltip } from "recharts";
 
 interface HospitalStudioProps {
   hospitals: HospitalCohort[];
@@ -11,13 +12,21 @@ interface HospitalStudioProps {
   isLoading: boolean;
 }
 
-const CLASS_COLORS = ["bg-accent-500", "bg-amber-500", "bg-red-500"];
-const CLASS_DOT_COLORS = ["bg-accent-500", "bg-amber-500", "bg-red-500"];
+const PIE_COLORS = ["#10b981", "#f59e0b", "#ef4444"];
+const CLASS_DOT_COLORS = ["bg-emerald-500", "bg-amber-500", "bg-red-500"];
 
 export default function HospitalStudio({ hospitals, onGenerate, isLoading }: HospitalStudioProps) {
   const { t } = useLanguage();
   const [activeTab, setActiveTab] = useState(0);
   const active = hospitals[activeTab];
+
+  const pieData = active
+    ? [
+        { name: t("sec1_normal"), value: active.counts.normal, percentage: Math.round(active.distribution[0] * 100), color: PIE_COLORS[0] },
+        { name: t("sec1_pneumonia"), value: active.counts.pneumonia, percentage: Math.round(active.distribution[1] * 100), color: PIE_COLORS[1] },
+        { name: t("sec1_covid"), value: active.counts.covid, percentage: Math.round(active.distribution[2] * 100), color: PIE_COLORS[2] },
+      ]
+    : [];
 
   return (
     <section id="section-ingestion" className="mb-5 sm:mb-6 scroll-mt-20">
@@ -83,84 +92,134 @@ export default function HospitalStudio({ hospitals, onGenerate, isLoading }: Hos
             </div>
 
             {/* Equal 2-Column Layout */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-5 items-start">
-              {/* Left: Stats & Demographics */}
-              <div className="space-y-4">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-5 items-stretch">
+              {/* Left Column: Demographics List & Modern Donut Chart */}
+              <div className="flex flex-col justify-between h-full bg-[var(--bg-card-inner)]/40 p-3.5 sm:p-4 rounded-xl border border-[var(--border-subtle)]">
                 <div>
-                  <div className="text-sm font-bold text-[var(--text-heading)] mb-0.5 truncate">{active.name}</div>
-                  <div className="text-[11px] text-[var(--text-muted)]">
-                    Node <code className="text-accent-600 dark:text-accent-400 font-bold">client_{active.hospital_id}</code> | {active.num_samples} Scans
+                  <div className="flex items-center justify-between mb-1">
+                    <div className="text-sm font-bold text-[var(--text-heading)] truncate">{active.name}</div>
+                    <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded bg-accent-500/10 text-accent-600 dark:text-accent-400 border border-accent-500/20 shrink-0">
+                      client_{active.hospital_id}
+                    </span>
                   </div>
-                </div>
+                  <div className="text-[11px] text-[var(--text-muted)] mb-3">
+                    Total Ingested: <span className="font-bold text-[var(--text-heading)]">{active.num_samples} Scans</span>
+                  </div>
 
-                <div className="pt-3 border-t border-[var(--border-subtle)]">
-                  <div className="metric-label mb-3">{t("sec1_stats_title")}</div>
-                  <div className="space-y-2.5">
-                    {[
-                      { key: "normal", label: t("sec1_normal"), count: active.counts.normal, dist: active.distribution[0], idx: 0 },
-                      { key: "pneumonia", label: t("sec1_pneumonia"), count: active.counts.pneumonia, dist: active.distribution[1], idx: 1 },
-                      { key: "covid", label: t("sec1_covid"), count: active.counts.covid, dist: active.distribution[2], idx: 2 },
-                    ].map((item) => (
-                      <div key={item.key} className="flex items-center justify-between py-1.5 border-b border-[var(--border-subtle)] last:border-0 gap-2">
-                        <div className="flex items-center gap-2 text-[11px] sm:text-xs text-[var(--text-main)] min-w-0">
-                          <span className={`w-2 h-2 rounded-full shrink-0 ${CLASS_DOT_COLORS[item.idx]}`} />
-                          <span className="truncate">{item.label}</span>
+                  {/* Demographics Row Items */}
+                  <div className="pt-2 border-t border-[var(--border-subtle)] space-y-2">
+                    {pieData.map((item, idx) => (
+                      <div key={idx} className="flex items-center justify-between text-[11px] sm:text-xs py-1 border-b border-[var(--border-subtle)]/60 last:border-0">
+                        <div className="flex items-center gap-2 min-w-0">
+                          <span className={`w-2 h-2 rounded-full shrink-0 ${CLASS_DOT_COLORS[idx]}`} />
+                          <span className="truncate text-[var(--text-main)] font-medium">{item.name}</span>
                         </div>
-                        <div className="flex items-center gap-2.5 sm:gap-3 shrink-0">
-                          <div className="w-16 sm:w-24 h-1.5 rounded-full bg-slate-200 dark:bg-navy-800 overflow-hidden">
-                            <div
-                              className={`h-full rounded-full ${CLASS_COLORS[item.idx]}`}
-                              style={{ width: `${Math.round(item.dist * 100)}%` }}
-                            />
-                          </div>
-                          <span className="text-[11px] sm:text-xs font-mono font-bold text-[var(--text-heading)] w-10 sm:w-12 text-right">
-                            {item.count}
-                          </span>
-                          <span className="text-[9px] sm:text-[10px] text-[var(--text-muted)] w-7 sm:w-8 text-right">
-                            {Math.round(item.dist * 100)}%
+                        <div className="flex items-center gap-2 shrink-0">
+                          <span className="font-mono font-bold text-[var(--text-heading)]">{item.value}</span>
+                          <span className="text-[10px] text-[var(--text-muted)] w-8 text-right font-mono">
+                            {item.percentage}%
                           </span>
                         </div>
                       </div>
                     ))}
                   </div>
                 </div>
-              </div>
 
-              {/* Right: 3x3 Scan Gallery */}
-              <div>
-                <div className="flex items-center justify-between mb-2.5 sm:mb-3">
-                  <div className="flex items-center gap-1.5 metric-label">
-                    <Eye className="w-3.5 h-3.5 text-accent-500" />
-                    <span>{t("sec1_sample_gallery")}</span>
+                {/* Modern Donut Chart - Fills the space nicely below on desktop and compact on mobile */}
+                <div className="mt-3 pt-3 border-t border-[var(--border-subtle)] flex items-center justify-center gap-4">
+                  <div className="w-28 h-28 sm:w-32 sm:h-32 relative shrink-0">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <PieChart>
+                        <RechartsTooltip
+                          contentStyle={{
+                            background: "var(--bg-card)",
+                            border: "1px solid var(--border-card)",
+                            borderRadius: "10px",
+                            fontSize: "11px",
+                            color: "var(--text-main)",
+                            boxShadow: "0 4px 12px rgba(0,0,0,0.15)",
+                          }}
+                          formatter={(value: any, name: any) => [`${value} Scans`, name]}
+                        />
+                        <Pie
+                          data={pieData}
+                          dataKey="value"
+                          nameKey="name"
+                          cx="50%"
+                          cy="50%"
+                          innerRadius={32}
+                          outerRadius={50}
+                          paddingAngle={3}
+                          strokeWidth={0}
+                        >
+                          {pieData.map((entry, index) => (
+                            <Cell key={`cell-${index}`} fill={entry.color} />
+                          ))}
+                        </Pie>
+                      </PieChart>
+                    </ResponsiveContainer>
+                    <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+                      <span className="text-[9px] uppercase tracking-wider text-[var(--text-muted)] font-bold">Total</span>
+                      <span className="text-xs font-black font-mono text-[var(--text-heading)]">{active.num_samples}</span>
+                    </div>
+                  </div>
+
+                  <div className="flex flex-col gap-1.5 text-[10px] sm:text-[11px]">
+                    <div className="metric-label text-[9px] uppercase mb-0.5">Prevalence Ratio</div>
+                    {pieData.map((d, i) => (
+                      <div key={i} className="flex items-center gap-1.5">
+                        <span className="w-2 h-2 rounded-sm shrink-0" style={{ backgroundColor: d.color }} />
+                        <span className="text-[var(--text-muted)] truncate max-w-[90px] sm:max-w-[120px]">{d.name.split(" ")[0]}</span>
+                        <span className="font-bold text-[var(--text-heading)] font-mono">{d.percentage}%</span>
+                      </div>
+                    ))}
                   </div>
                 </div>
-                <div className="grid grid-cols-3 gap-2">
-                  {active.sample_images.map((imgData, i) => (
-                    <div key={i} className="xray-frame group hover:ring-2 hover:ring-accent-500/40 transition-all aspect-square">
-                      <canvas
-                        ref={(canvas) => {
-                          if (!canvas) return;
-                          const ctx = canvas.getContext("2d");
-                          if (!ctx) return;
-                          const size = imgData.length;
-                          canvas.width = size;
-                          canvas.height = size;
-                          const img = ctx.createImageData(size, size);
-                          for (let r = 0; r < size; r++) {
-                            for (let c = 0; c < size; c++) {
-                              const val = Math.floor(imgData[r][c] * 255);
-                              const idx = (r * size + c) * 4;
-                              img.data[idx] = val;
-                              img.data[idx + 1] = val;
-                              img.data[idx + 2] = val;
-                              img.data[idx + 3] = 255;
-                            }
-                          }
-                          ctx.putImageData(img, 0, 0);
-                        }}
-                      />
+              </div>
+
+              {/* Right Column: 3x3 Scan Gallery */}
+              <div className="flex flex-col justify-between h-full bg-[var(--bg-card-inner)]/40 p-3.5 sm:p-4 rounded-xl border border-[var(--border-subtle)]">
+                <div>
+                  <div className="flex items-center justify-between mb-2.5">
+                    <div className="flex items-center gap-1.5 metric-label">
+                      <Eye className="w-3.5 h-3.5 text-accent-500" />
+                      <span>{t("sec1_sample_gallery")}</span>
                     </div>
-                  ))}
+                    <span className="text-[10px] text-[var(--text-muted)] font-mono">9 Multi-Class Crops</span>
+                  </div>
+
+                  <div className="grid grid-cols-3 gap-2">
+                    {active.sample_images.map((imgData, i) => (
+                      <div key={i} className="xray-frame group hover:ring-2 hover:ring-accent-500/40 transition-all aspect-square">
+                        <canvas
+                          ref={(canvas) => {
+                            if (!canvas) return;
+                            const ctx = canvas.getContext("2d");
+                            if (!ctx) return;
+                            const size = imgData.length;
+                            canvas.width = size;
+                            canvas.height = size;
+                            const img = ctx.createImageData(size, size);
+                            for (let r = 0; r < size; r++) {
+                              for (let c = 0; c < size; c++) {
+                                const val = Math.floor(imgData[r][c] * 255);
+                                const idx = (r * size + c) * 4;
+                                img.data[idx] = val;
+                                img.data[idx + 1] = val;
+                                img.data[idx + 2] = val;
+                                img.data[idx + 3] = 255;
+                              }
+                            }
+                            ctx.putImageData(img, 0, 0);
+                          }}
+                        />
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="mt-2.5 pt-2 border-t border-[var(--border-subtle)] text-[10px] text-[var(--text-muted)] text-center">
+                  Isolated institutional patient partitions under zero-leakage protocol
                 </div>
               </div>
             </div>
