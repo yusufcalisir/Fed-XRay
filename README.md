@@ -35,6 +35,7 @@ $$
 $$
 
 - **FFA-LoRA (Federated Freeze-A LoRA):** Globally freezes projection matrix $A$ across all institutions ($\nabla_A \mathcal{L} = 0$), strictly preserving aggregation linearity ($\bar{B}A \equiv \sum p_k B_k A$) and enabling multiplication-free Homomorphic Encryption ($\text{Multiplication Depth} = 0$).
+- **FedSA-LoRA & Fed-ALAS:** Aggregates matrix $\bar{A} = \sum p_k A_k$ centrally to capture the global visual input subspace while retaining matrix $B_k$ privately on client nodes for site-specific staining/scanner personalization.
 - **FedAS-LoRA (Adaptive Subspace Routing):** Measures Rank-Aware Shared-Subspace Sufficiency ($\text{RSS}_{\text{input}}$ and $\text{RSS}_{\text{output}}$) to dynamically select between Share-A / Local-B (under covariate domain shift) and Share-B / Local-A (under label distribution skew):
 
 $$
@@ -42,7 +43,10 @@ $$
 $$
 
 $$
-\text{Policy}(\text{RSS}_{\text{input}}) = \begin{cases} \text{Share-}A \;/\; \text{Local-}B_k, & \text{if } \text{RSS}_{\text{input}} \ge \tau_{\text{covariate}} \quad (\text{Domain / Scanner Heterogeneity}) \\ \text{Share-}B \;/\; \text{Local-}A_k, & \text{if } \text{RSS}_{\text{input}} < \tau_{\text{covariate}} \quad (\text{Label Distribution Skew}) \end{cases}
+\text{Policy}(\text{RSS}_{\text{input}}) = \begin{cases} 
+\text{Share-}A \;/\; \text{Local-}B_k, & \text{if } \text{RSS}_{\text{input}} \ge \tau_{\text{covariate}} \quad (\text{Domain / Scanner Heterogeneity}) \\ 
+\text{Share-}B \;/\; \text{Local-}A_k, & \text{if } \text{RSS}_{\text{input}} < \tau_{\text{covariate}} \quad (\text{Label Distribution Skew}) 
+\end{cases}
 $$
 
 $$
