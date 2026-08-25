@@ -624,14 +624,20 @@ async def get_similar_rag_cases(query_class: int = Query(default=1)):
 
 
 @app.get("/api/cdss/voice")
-async def stream_voice_briefing(text: str = Query(...), lang: str = Query(default="en")):
+async def stream_voice_briefing(
+    text: str = Query(..., description="Text to synthesize"),
+    lang: str = Query(default="en"),
+):
     """Generate audio MP3 briefing using edge-tts / gTTS."""
-    audio_bytes = await get_or_create_audio(text, lang)
-    return Response(
-        content=audio_bytes,
-        media_type="audio/mpeg",
-        headers={"Content-Disposition": 'inline; filename="briefing.mp3"'},
-    )
+    try:
+        audio_bytes = await get_or_create_audio(text, lang)
+        return Response(
+            content=audio_bytes,
+            media_type="audio/mpeg",
+            headers={"Content-Disposition": 'inline; filename="briefing.mp3"'},
+        )
+    except Exception as exc:
+        raise HTTPException(status_code=503, detail=f"TTS unavailable: {exc}")
 
 
 @app.get("/api/cdss/report-pdf")
@@ -644,13 +650,24 @@ async def download_diagnostic_pdf(
 ):
     """Generate medical PDF report download."""
     p_name = LABEL_NAMES.get(predicted_class, "Normal")
-    pdf_bytes = generate_medical_report(
-        patient_id=patient_id,
-        diagnosis=p_name,
-        confidence=confidence,
-        explanation=findings,
-        original_image=state.last_scan,
-    )
+
+    # Generate a placeholder scan if no diagnosis has been run yet in this session
+    scan = state.last_scan
+    if scan is None:
+        generator = MedicalDataGenerator(seed=42)
+        scan = generator.generate_synthetic_xray(label=predicted_class, apply_augmentation=False)
+
+    try:
+        pdf_bytes = generate_medical_report(
+            patient_id=patient_id,
+            diagnosis=p_name,
+            confidence=confidence,
+            explanation=findings,
+            original_image=scan,
+        )
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"PDF generation failed: {exc}")
+
     return Response(
         content=pdf_bytes,
         media_type="application/pdf",

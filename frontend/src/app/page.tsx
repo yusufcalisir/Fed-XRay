@@ -49,43 +49,32 @@ export default function DashboardPage() {
       }
     } catch (err: any) {
       console.warn("Cohort generation error:", err.message);
-      // Fallback synthetic preview so UI remains responsive
+      // Minimal placeholder so UI stays responsive — real data loads once backend is up
+      const ph = Array(4).fill(0).map(() => Array(4).fill(0.5)); // 4x4 grey placeholder
       const fallbackHospitals: HospitalCohort[] = [
         {
-          hospital_id: 1,
-          name: "BCN-20000 Skin Cancer Hub (Barcelona)",
-          num_samples: 200,
-          distribution: [0.70, 0.20, 0.10],
+          hospital_id: 1, name: "BCN-20000 Skin Cancer Hub (Barcelona)",
+          num_samples: 200, distribution: [0.70, 0.20, 0.10],
           counts: { normal: 140, pneumonia: 40, covid: 20 },
-          sample_images: Array(9).fill(Array(28).fill(Array(28).fill(0.5))),
-          sample_labels: [0, 0, 1, 0, 1, 2, 0, 1, 0],
+          sample_images: Array(9).fill(ph), sample_labels: [0, 0, 1, 0, 1, 2, 0, 1, 0],
         },
         {
-          hospital_id: 2,
-          name: "ViDIR Dermatopathology Institute (Vienna)",
-          num_samples: 200,
-          distribution: [0.20, 0.65, 0.15],
+          hospital_id: 2, name: "ViDIR Dermatopathology Institute (Vienna)",
+          num_samples: 200, distribution: [0.20, 0.65, 0.15],
           counts: { normal: 40, pneumonia: 130, covid: 30 },
-          sample_images: Array(9).fill(Array(28).fill(Array(28).fill(0.4))),
-          sample_labels: [1, 1, 1, 0, 2, 1, 1, 0, 1],
+          sample_images: Array(9).fill(ph), sample_labels: [1, 1, 1, 0, 2, 1, 1, 0, 1],
         },
         {
-          hospital_id: 3,
-          name: "Queensland Oncology Screening Center",
-          num_samples: 200,
-          distribution: [0.15, 0.15, 0.70],
+          hospital_id: 3, name: "Queensland Oncology Screening Center",
+          num_samples: 200, distribution: [0.15, 0.15, 0.70],
           counts: { normal: 30, pneumonia: 30, covid: 140 },
-          sample_images: Array(9).fill(Array(28).fill(Array(28).fill(0.3))),
-          sample_labels: [2, 2, 2, 0, 1, 2, 2, 2, 0],
+          sample_images: Array(9).fill(ph), sample_labels: [2, 2, 2, 0, 1, 2, 2, 2, 0],
         },
         {
-          hospital_id: 4,
-          name: "Beth Israel Deaconess Medical Center",
-          num_samples: 200,
-          distribution: [0.34, 0.33, 0.33],
+          hospital_id: 4, name: "Beth Israel Deaconess Medical Center",
+          num_samples: 200, distribution: [0.34, 0.33, 0.33],
           counts: { normal: 68, pneumonia: 66, covid: 66 },
-          sample_images: Array(9).fill(Array(28).fill(Array(28).fill(0.6))),
-          sample_labels: [0, 1, 2, 0, 1, 2, 0, 1, 2],
+          sample_images: Array(9).fill(ph), sample_labels: [0, 1, 2, 0, 1, 2, 0, 1, 2],
         },
       ];
       setHospitals(fallbackHospitals);
@@ -146,22 +135,23 @@ export default function DashboardPage() {
       const result = await fetchClinicalDiagnosis(apiUrl, classIndex, opacity, colormap);
       setDiagnosis(result);
       try {
-        const twinRes = await fetchRagTwins(apiUrl);
+        const twinRes = await fetchRagTwins(apiUrl, result.predicted_class);
         if (twinRes?.matched_cases) setRagTwins(twinRes.matched_cases);
       } catch {}
     } catch (err: any) {
       console.warn("Diagnosis endpoint error, generating fallback result:", err.message);
-      // Fallback diagnosis so clinician can preview CDSS and Grad-CAM
+      // 16x16 fallback — small enough to be fast, large enough to render properly
+      const S = 16;
       const fallbackDiag: DiagnosisResult = {
-        predicted_class: 1,
-        predicted_name: "Pneumonia (Consolidation)",
-        true_class: 1,
-        true_name: "Pneumonia (Consolidation)",
+        predicted_class: 1, predicted_name: "Pneumonia (Consolidation)",
+        true_class: 1,       true_name: "Pneumonia (Consolidation)",
         confidence: 96.4,
         probabilities: [0.02, 0.964, 0.016],
-        findings: "Focal alveolar consolidation with prominent air bronchograms observed in the right lower pulmonary zone. Saliency map demonstrates high attention over inflammatory opacity consistent with infectious consolidation.",
-        raw_image: Array(28).fill(0).map(() => Array(28).fill(0.45)),
-        heatmap: Array(28).fill(0).map((_, r) => Array(28).fill(0).map((_, c) => Math.exp(-((r-18)**2 + (c-18)**2) / 32))),
+        findings: "Focal alveolar consolidation with prominent air bronchograms observed in the right lower pulmonary zone.",
+        raw_image: Array(S).fill(0).map(() => Array(S).fill(0.45)),
+        heatmap:   Array(S).fill(0).map((_, r) =>
+          Array(S).fill(0).map((_, c) => Math.exp(-((r - S*0.75)**2 + (c - S*0.75)**2) / (S*2)))
+        ),
       };
       setDiagnosis(fallbackDiag);
     } finally {
