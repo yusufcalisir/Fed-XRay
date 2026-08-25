@@ -36,7 +36,7 @@ $$
 
 - **FFA-LoRA (Federated Freeze-A LoRA):** Globally freezes projection matrix $A$ across all institutions ($\nabla_A \mathcal{L} = 0$), strictly preserving aggregation linearity ($\bar{B}A \equiv \sum p_k B_k A$) and enabling multiplication-free Homomorphic Encryption ($\text{Multiplication Depth} = 0$).
 - **FedSA-LoRA & Fed-ALAS:** Aggregates matrix $\bar{A} = \sum p_k A_k$ centrally to capture the global visual input subspace while retaining matrix $B_k$ privately on client nodes for site-specific staining/scanner personalization.
-- **FedAS-LoRA (Adaptive Subspace Routing):** Measures Rank-Aware Shared-Subspace Sufficiency ($\text{RSS}_{\text{input}}$ and $\text{RSS}_{\text{output}}$) to dynamically select between Share-A / Local-B (under covariate domain shift) and Share-B / Local-A (under label distribution skew).
+- **FedAS-LoRA (Adaptive Subspace Routing):** Measures Rank-Aware Shared-Subspace Sufficiency $(\text{RSS}_{\text{input}} \text{ and } \text{RSS}_{\text{output}})$ to dynamically select between Share-A / Local-B (under covariate domain shift) and Share-B / Local-A (under label distribution skew).
 - **FlexLoRA SVD Aggregator:** Reconstructs full weight updates and computes Truncated Singular Value Decomposition (SVD):
 
 $$
@@ -109,7 +109,7 @@ $$
 p_c = \lambda \left(\sum_{k \in \mathcal{K}_c} \alpha_{k,c} \, p_{c,k}^{\text{img}}\right) + (1-\lambda) p_c^{\text{txt}}
 $$
 
-- **Dynamic Imbalance Loss Suite:** Dynamic Adaptive Focal Loss (DAFL), Bayesian Balanced Softmax (BSM), Class-Balanced Loss ($\mathcal{L}_{\text{CB}}$), Label-Distribution-Aware Margin (LDAM), and Missing-Class Repel Loss ($\mathcal{L}_{\text{repel}}$).
+- **Dynamic Imbalance Loss Suite:** Implements Dynamic Adaptive Focal Loss (DAFL), Bayesian Balanced Softmax (BSM), Class-Balanced Loss $(\mathcal{L}_{\text{CB}})$, Label-Distribution-Aware Margin (LDAM), and Missing-Class Repel Loss $(\mathcal{L}_{\text{repel}})$.
 
 ---
 
@@ -135,7 +135,7 @@ $$
 ### 6. Strategy E Real-World Multi-Center Ingestion & Scenarios A-G
 
 - **Primary Benchmark Ecosystem:** ISIC 2019 (25,331 dermoscopy images across 3 natural hospital sites: BCN_20000 Barcelona, ViDIR Vienna, Univ. Queensland), NCT-CRC-HE-100K + CRC-VAL-7K (Colorectal histopathology hold-out), and MIMIC-CXR-JPG (v2.1.0).
-- **Strict Leak-Free Invariant:** Grouping strictly by `patient_id` ensuring $\mathcal{P}_{\text{train}} \cap \mathcal{P}_{\text{val}} = \emptyset$ and $\mathcal{P}_{\text{train}} \cap \mathcal{P}_{\text{test}} = \emptyset$.
+- **Strict Leak-Free Invariant:** Grouping strictly by `patient_id` ensuring $(\mathcal{P}_{\text{train}} \cap \mathcal{P}_{\text{val}} = \emptyset \quad \text{and} \quad \mathcal{P}_{\text{train}} \cap \mathcal{P}_{\text{test}} = \emptyset)$.
 - **Seven Controlled Federated Imbalance Scenarios (A to G):**
   - **Scenario A:** IID Baseline (Dirichlet $\alpha=100.0$)
   - **Scenario B:** Mild Label Skew (Dirichlet $\alpha=1.0$)
