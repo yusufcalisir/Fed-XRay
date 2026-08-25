@@ -36,7 +36,7 @@ $$
 
 - **FFA-LoRA (Federated Freeze-A LoRA):** Globally freezes projection matrix $A$ across all institutions ($\nabla_A \mathcal{L} = 0$), strictly preserving aggregation linearity ($\bar{B}A \equiv \sum p_k B_k A$) and enabling multiplication-free Homomorphic Encryption ($\text{Multiplication Depth} = 0$).
 - **FedSA-LoRA & Fed-ALAS:** Aggregates matrix $\bar{A} = \sum p_k A_k$ centrally to capture the global visual input subspace while retaining matrix $B_k$ privately on client nodes for site-specific staining/scanner personalization.
-- **FedAS-LoRA (Adaptive Subspace Routing):** Measures Rank-Aware Shared-Subspace Sufficiency $(\text{RSS}_{\text{input}} \text{ and } \text{RSS}_{\text{output}})$ to dynamically select between Share-A / Local-B (under covariate domain shift) and Share-B / Local-A (under label distribution skew).
+- **FedAS-LoRA (Adaptive Subspace Routing):** Measures Rank-Aware Shared-Subspace Sufficiency (RSS<sub>input</sub> and RSS<sub>output</sub>) to dynamically select between Share-A / Local-B (under covariate domain shift) and Share-B / Local-A (under label distribution skew).
 - **FlexLoRA SVD Aggregator:** Reconstructs full weight updates and computes Truncated Singular Value Decomposition (SVD):
 
 $$
@@ -47,7 +47,7 @@ $$
 \bar{B} = U_r \Sigma_r^{1/2}, \quad \bar{A} = \Sigma_r^{1/2} V_r^\top
 $$
 
-- **HetLoRA Dynamic Rank Slicing:** Dynamic zero-padding parameter alignment for heterogeneous edge clinics ($r_k \le r_{\text{max}}$).
+- **HetLoRA Dynamic Rank Slicing:** Dynamic zero-padding parameter alignment for heterogeneous edge clinics (r<sub>k</sub> &le; r<sub>max</sub>).
 - **FedPerfix Deep Attention Personalization:** Prioritizes adapting Multi-Head Self-Attention (MHSA $W_Q, W_V$) in deep layers ($L-3 \dots L$), reducing parameter communication volume by **>99.8%** ($<2.36\text{ MB/round}$).
 
 ---
@@ -109,14 +109,14 @@ $$
 p_c = \lambda \left(\sum_{k \in \mathcal{K}_c} \alpha_{k,c} \, p_{c,k}^{\text{img}}\right) + (1-\lambda) p_c^{\text{txt}}
 $$
 
-- **Dynamic Imbalance Loss Suite:** Dynamic Adaptive Focal Loss, Bayesian Balanced Softmax, Class-Balanced Loss, Label-Distribution-Aware Margin, and Missing-Class Repel Loss $(\mathcal{L}_{\text{DAFL}}, \; \mathcal{L}_{\text{BSM}}, \; \mathcal{L}_{\text{CB}}, \; \mathcal{L}_{\text{LDAM}}, \; \mathcal{L}_{\text{repel}})$.
+- **Dynamic Imbalance Loss Suite:** Dynamic Adaptive Focal Loss (DAFL), Bayesian Balanced Softmax (BSM), Class-Balanced Loss (L<sub>CB</sub>), Label-Distribution-Aware Margin (LDAM), and Missing-Class Repel Loss (L<sub>repel</sub>).
 
 ---
 
 ### 5. Option J Dual-Layer Cryptographic & Differential Privacy Architecture
 
 - **Layer 1 (In-Transit / Aggregation Privacy):** Leveled CKKS Threshold Homomorphic Encryption (RLWE 128-bit) on FFA-LoRA updates ($ct_{\text{global}} = \sum w_k \odot ct_k$) and SecAgg+ zero-sum masking ($\sum s_k = 0$), ensuring zero plaintext visibility at the central coordinator.
-- **Layer 2 (Output Model Privacy):** Strict Patient-Level Gaussian Differential Privacy with Rényi Differential Privacy (RDP) composition accounting, ensuring strict $(\epsilon \le 2.0, \delta \le 10^{-5})$-DP bounds:
+- **Layer 2 (Output Model Privacy):** Strict Patient-Level Gaussian Differential Privacy with Rényi Differential Privacy (RDP) composition accounting, ensuring strict (&epsilon; &le; 2.0, &delta; &le; 10<sup>-5</sup>)-DP bounds:
 
 $$
 g_i = \frac{1}{m_i} \sum_{j=1}^{m_i} g_{i,j}
