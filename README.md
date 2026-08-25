@@ -18,7 +18,7 @@ Fed-XRay is an enterprise-grade Federated Learning (FL) and Clinical Decision Su
   <img src="https://img.shields.io/badge/Privacy-Option_J_(CKKS_+_DP)-indigo" alt="Privacy">
   <img src="https://img.shields.io/badge/PEFT-FFA--LoRA_%7C_FedSA--LoRA_%7C_FedAS--LoRA-purple" alt="PEFT">
   <img src="https://img.shields.io/badge/Localization-EN%20%7C%20TR-blue" alt="Bilingual">
-  <img src="https://img.shields.io/badge/Automated_Tests-43_Passed_100%25-brightgreen" alt="Tests">
+  <img src="https://img.shields.io/badge/Automated_Tests-75_Passed_100%25-brightgreen" alt="Tests">
   <img src="https://img.shields.io/badge/License-MIT-yellow" alt="License">
 </p>
 
@@ -134,9 +134,13 @@ Fed-XRay/
 │   ├── fed_benchmark.py           # FedAvg, FedProx, MOON, SCAFFOLD Suite
 │   ├── fedprox_traffic.py         # FedProx Convergence Simulation
 │   └── moon_traffic.py            # MOON Model-Contrastive Simulation
-├── tests/                         # Comprehensive Automated Test Suites (43 Tests Passed)
+├── tests/                         # Comprehensive Automated Test Suites (75 Tests Passed)
 │   ├── test_all.py                # Baseline Model, Data, XAI & Security Tests
 │   ├── test_api_endpoints.py      # FastAPI REST & Streaming Integration Tests
+│   ├── test_api_deep_suite.py     # Exhaustive Deep API, SSE Streaming & Error Tests
+│   ├── test_robustness_and_adversarial.py # Byzantine Poisoning & NaN Guard Tests
+│   ├── test_numerical_stability_losses.py # Loss Boundaries & CKKS Scalability Tests
+│   ├── test_e2e_full_federated_pipeline.py # Full Lifecycle Ingestion->Training->RAG->PDF Test
 │   ├── test_asymmetric_foundation_peft.py # FedAS-LoRA, FlexLoRA SVD & Foundation Adapters
 │   ├── test_benchmarking_engine.py # Automated Foundation PEFT Benchmark Test
 │   ├── test_foundation_privacy.py # FedMedCLIP, CKKS HE & Rényi DP Accountant

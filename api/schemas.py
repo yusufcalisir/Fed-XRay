@@ -5,7 +5,7 @@ from typing import List, Dict, Optional, Any
 
 
 class CohortGenerateRequest(BaseModel):
-    num_hospitals: int = Field(default=4, ge=2, le=10)
+    num_hospitals: int = Field(default=4, ge=2, le=8)
     samples_per_hospital: int = Field(default=200, ge=50, le=500)
     scenario: str = Field(default="A", description="Imbalance Scenario: A (IID), B (Mild), C (Mod), D (Severe), E (Missing), F (Long-Tail), G (Combined)")
     dataset_name: str = Field(default="ISIC_2019", description="Medical Dataset: ISIC_2019, CRC_HISTO, MIMIC_CXR")
