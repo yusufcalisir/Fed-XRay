@@ -119,7 +119,23 @@ $$
 p_c = \lambda \left(\sum_{k \in \mathcal{K}_c} \alpha_{k,c} \, p_{c,k}^{\text{img}}\right) + (1-\lambda) p_c^{\text{txt}}
 $$
 
-- **Dynamic Imbalance Loss Suite:** Dynamic Adaptive Focal Loss (DAFL), Bayesian Balanced Softmax (BSM), Class-Balanced Loss ($\mathcal{L}_{\text{CB}}$), Label-Distribution-Aware Margin (LDAM), and Missing-Class Repel Loss ($\mathcal{L}_{\text{repel}}$).
+- **Dynamic Imbalance Loss Suite:** Dynamic Adaptive Focal Loss ($\mathcal{L}_{\text{DAFL}}$), Bayesian Balanced Softmax ($\mathcal{L}_{\text{BSM}}$), Class-Balanced Loss ($\mathcal{L}_{\text{CB}}$), Label-Distribution-Aware Margin ($\mathcal{L}_{\text{LDAM}}$), and Missing-Class Repel Loss ($\mathcal{L}_{\text{repel}}$):
+
+$$
+\mathcal{L}_{\text{DAFL}}(p_t, c, t) = -\alpha_c(t) \, (1 - p_t)^{\gamma_c(t)} \log(p_t)
+$$
+
+$$
+\mathcal{L}_{\text{BSM}}(\mathbf{z}, y) = -\log \frac{\exp\left(z_y + \log \pi_y\right)}{\sum_{j=1}^C \exp\left(z_j + \log \pi_j\right)}
+$$
+
+$$
+\mathcal{L}_{\text{LDAM}}(\mathbf{z}, y) = -\log \frac{\exp\left(z_y - \frac{C_{\text{margin}}}{n_y^{1/4}}\right)}{\exp\left(z_y - \frac{C_{\text{margin}}}{n_y^{1/4}}\right) + \sum_{j \neq y} \exp(z_j)}
+$$
+
+$$
+\mathcal{L}_{\text{repel}}(x_i, y_i; \bar{\mathcal{P}}) = \sum_{c \neq y_i} \max\left(0, m - \|f(x_i) - \bar{p}_c\|_2\right)
+$$
 
 ---
 
