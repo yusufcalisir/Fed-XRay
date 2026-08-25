@@ -135,7 +135,12 @@ $$
 ### 6. Strategy E Real-World Multi-Center Ingestion & Scenarios A-G
 
 - **Primary Benchmark Ecosystem:** ISIC 2019 (25,331 dermoscopy images across 3 natural hospital sites: BCN_20000 Barcelona, ViDIR Vienna, Univ. Queensland), NCT-CRC-HE-100K + CRC-VAL-7K (Colorectal histopathology hold-out), and MIMIC-CXR-JPG (v2.1.0).
-- **Strict Leak-Free Invariant:** Grouping strictly by `patient_id` ensuring $(\mathcal{P}_{\text{train}} \cap \mathcal{P}_{\text{val}} = \emptyset \quad \text{and} \quad \mathcal{P}_{\text{train}} \cap \mathcal{P}_{\text{test}} = \emptyset)$.
+- **Strict Leak-Free Invariant:** Enforces patient-level cohort isolation grouped strictly by `patient_id`:
+
+$$
+\mathcal{P}_{\text{train}} \cap \mathcal{P}_{\text{val}} = \emptyset, \quad \mathcal{P}_{\text{train}} \cap \mathcal{P}_{\text{test}} = \emptyset
+$$
+
 - **Seven Controlled Federated Imbalance Scenarios (A to G):**
   - **Scenario A:** IID Baseline (Dirichlet $\alpha=100.0$)
   - **Scenario B:** Mild Label Skew (Dirichlet $\alpha=1.0$)
