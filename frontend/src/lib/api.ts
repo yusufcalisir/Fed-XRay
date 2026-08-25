@@ -127,7 +127,7 @@ export async function streamFederatedTraining(
     let receivedAny  = false;
     const sseTimeout = new Promise<"timeout">((res) => setTimeout(() => res("timeout"), 4000));
 
-    async function consumeSSE(): Promise<"done" | "timeout"> {
+    const consumeSSE = async (): Promise<"done" | "timeout"> => {
       while (true) {
         const readPromise = reader.read();
         const result = await Promise.race([readPromise, sseTimeout]);
