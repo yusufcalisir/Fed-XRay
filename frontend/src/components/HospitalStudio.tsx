@@ -3,7 +3,7 @@
 import React, { useState } from "react";
 import { useLanguage } from "@/context/LanguageContext";
 import { HospitalCohort } from "@/types";
-import { Database, RefreshCw, Eye, CheckCircle2, ShieldCheck, Sparkles } from "lucide-react";
+import { Database, RefreshCw, Eye, CheckCircle2, ShieldCheck, Sparkles, Building2 } from "lucide-react";
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip as RechartsTooltip } from "recharts";
 
 interface HospitalStudioProps {
@@ -13,9 +13,9 @@ interface HospitalStudioProps {
 }
 
 const PIE_COLORS = ["#10b981", "#f59e0b", "#ef4444"];
-const PIE_BG_COLORS = ["bg-emerald-500/10", "bg-amber-500/10", "bg-red-500/10"];
-const PIE_BORDER_COLORS = ["border-emerald-500/30", "border-amber-500/30", "border-red-500/30"];
-const PIE_TEXT_COLORS = ["text-emerald-600 dark:text-emerald-400", "text-amber-600 dark:text-amber-400", "text-red-600 dark:text-red-400"];
+const CLASS_COLORS = ["bg-emerald-500", "bg-amber-500", "bg-red-500"];
+const CLASS_BG_LIGHT = ["bg-emerald-500/10", "bg-amber-500/10", "bg-red-500/10"];
+const CLASS_BORDER = ["border-emerald-500/20", "border-amber-500/20", "border-red-500/20"];
 
 export default function HospitalStudio({ hospitals, onGenerate, isLoading }: HospitalStudioProps) {
   const { t } = useLanguage();
@@ -30,9 +30,8 @@ export default function HospitalStudio({ hospitals, onGenerate, isLoading }: Hos
           value: active.counts.normal,
           percentage: Math.round(active.distribution[0] * 100),
           color: PIE_COLORS[0],
-          bg: PIE_BG_COLORS[0],
-          border: PIE_BORDER_COLORS[0],
-          text: PIE_TEXT_COLORS[0],
+          bg: CLASS_BG_LIGHT[0],
+          border: CLASS_BORDER[0],
         },
         {
           name: t("sec1_pneumonia"),
@@ -40,9 +39,8 @@ export default function HospitalStudio({ hospitals, onGenerate, isLoading }: Hos
           value: active.counts.pneumonia,
           percentage: Math.round(active.distribution[1] * 100),
           color: PIE_COLORS[1],
-          bg: PIE_BG_COLORS[1],
-          border: PIE_BORDER_COLORS[1],
-          text: PIE_TEXT_COLORS[1],
+          bg: CLASS_BG_LIGHT[1],
+          border: CLASS_BORDER[1],
         },
         {
           name: t("sec1_covid"),
@@ -50,9 +48,8 @@ export default function HospitalStudio({ hospitals, onGenerate, isLoading }: Hos
           value: active.counts.covid,
           percentage: Math.round(active.distribution[2] * 100),
           color: PIE_COLORS[2],
-          bg: PIE_BG_COLORS[2],
-          border: PIE_BORDER_COLORS[2],
-          text: PIE_TEXT_COLORS[2],
+          bg: CLASS_BG_LIGHT[2],
+          border: CLASS_BORDER[2],
         },
       ]
     : [];
@@ -92,7 +89,7 @@ export default function HospitalStudio({ hospitals, onGenerate, isLoading }: Hos
             <span className="font-semibold">{t("sec1_ingestion_complete")}</span>
           </div>
           <span className="text-[10px] font-mono text-[var(--text-muted)] hidden md:inline">
-            Non-IID Patient Skew Calibrated (Strategy E Standard)
+            Non-IID Patient Skew Calibrated (Strategy E Protocol)
           </span>
         </div>
       )}
@@ -101,45 +98,79 @@ export default function HospitalStudio({ hospitals, onGenerate, isLoading }: Hos
       <div className="card p-3.5 sm:p-5">
         {hospitals.length > 0 && active ? (
           <>
-            {/* Hospital Tabs - Equal 4-Column Row (No scroll, No line break) */}
-            <div className="grid grid-cols-4 gap-1 sm:gap-2 mb-4 sm:mb-5 w-full">
+            {/* Hospital Tabs - Equal 4-Column Grid */}
+            <div className="grid grid-cols-4 gap-1.5 sm:gap-2 mb-4 sm:mb-5 w-full">
               {hospitals.map((h, idx) => (
                 <button
                   key={h.hospital_id}
                   onClick={() => setActiveTab(idx)}
-                  className={`py-1.5 px-1 sm:px-3 rounded-lg text-center font-semibold transition-all truncate text-[10px] sm:text-xs ${
+                  className={`py-2 px-1 sm:px-3 rounded-xl text-center font-semibold transition-all truncate text-[11px] sm:text-xs flex items-center justify-center gap-1.5 ${
                     activeTab === idx
                       ? "bg-accent-500/15 text-accent-600 dark:text-accent-400 border border-accent-500/30 shadow-sm"
                       : "text-slate-500 hover:text-[var(--text-heading)] border border-transparent hover:bg-black/5 dark:hover:bg-white/5"
                   }`}
                 >
-                  <span className="hidden sm:inline">{t("sec1_hospital_prefix")} </span>
-                  <span className="inline sm:hidden">Hosp. </span>
-                  <span>{h.hospital_id}</span>
+                  <Building2 className="w-3.5 h-3.5 shrink-0 hidden sm:inline" />
+                  <span className="truncate">{h.name.split(" ")[0]}</span>
+                  <span className="font-mono text-[10px] opacity-70">({h.hospital_id})</span>
                 </button>
               ))}
             </div>
 
-            {/* Equal 2-Column Layout */}
+            {/* 2-Column Responsive Layout */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-5 items-stretch">
-              {/* Left Column: Modern Integrated Distribution Studio */}
+              {/* Left Column: Hospital Cohort Intelligence Studio */}
               <div className="flex flex-col justify-between bg-[var(--bg-card-inner)]/50 p-4 sm:p-5 rounded-2xl border border-[var(--border-subtle)]">
-                {/* Header info */}
-                <div className="flex items-center justify-between">
-                  <div className="min-w-0">
-                    <h3 className="text-sm sm:text-base font-bold text-[var(--text-heading)] truncate">{active.name}</h3>
-                    <div className="text-[11px] text-[var(--text-muted)] mt-0.5">
-                      Cohort Ingestion: <span className="font-semibold text-[var(--text-main)]">{active.num_samples} Scans</span>
+                {/* Hospital Header */}
+                <div>
+                  <div className="flex items-start justify-between gap-2 mb-2">
+                    <div>
+                      <h3 className="text-sm sm:text-base font-bold text-[var(--text-heading)] leading-snug">
+                        {active.name}
+                      </h3>
+                      <div className="text-[11px] text-[var(--text-muted)] mt-0.5">
+                        Institutional Node <code className="font-mono font-bold text-accent-600 dark:text-accent-400">client_{active.hospital_id}</code>
+                      </div>
                     </div>
+                    <span className="text-[11px] font-mono font-bold px-2.5 py-1 rounded-lg bg-accent-500/10 text-accent-600 dark:text-accent-400 border border-accent-500/20 shrink-0">
+                      {active.num_samples} Scans
+                    </span>
                   </div>
-                  <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded-md bg-accent-500/10 text-accent-600 dark:text-accent-400 border border-accent-500/20 shrink-0">
-                    client_{active.hospital_id}
-                  </span>
+
+                  {/* Horizontal Progress Bars with Slices */}
+                  <div className="mt-3.5 space-y-3 pt-3 border-t border-[var(--border-subtle)]">
+                    {pieData.map((item, idx) => (
+                      <div key={idx} className="space-y-1">
+                        <div className="flex items-center justify-between text-[11px] sm:text-xs">
+                          <div className="flex items-center gap-1.5 min-w-0">
+                            <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: item.color }} />
+                            <span className="font-medium text-[var(--text-main)] truncate">{item.name}</span>
+                          </div>
+                          <div className="flex items-center gap-2 shrink-0 font-mono">
+                            <span className="font-bold text-[var(--text-heading)]">{item.value}</span>
+                            <span className="text-[10px] text-[var(--text-muted)] w-8 text-right font-bold">
+                              {item.percentage}%
+                            </span>
+                          </div>
+                        </div>
+                        {/* Segmented Gradient Progress Bar */}
+                        <div className="w-full h-2 rounded-full bg-slate-200 dark:bg-navy-800 overflow-hidden">
+                          <div
+                            className="h-full rounded-full transition-all duration-500"
+                            style={{
+                              width: `${item.percentage}%`,
+                              backgroundColor: item.color,
+                            }}
+                          />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
                 </div>
 
-                {/* Prominent Donut Pie Chart */}
-                <div className="my-3 sm:my-4 flex items-center justify-center relative">
-                  <div className="w-40 h-40 sm:w-48 sm:h-48 relative">
+                {/* Bottom Visual Donut & Quick Breakdown */}
+                <div className="mt-4 pt-3.5 border-t border-[var(--border-subtle)] flex items-center justify-between gap-3 bg-[var(--bg-card)]/40 p-3 rounded-xl">
+                  <div className="w-24 h-24 sm:w-28 sm:h-28 relative shrink-0">
                     <ResponsiveContainer width="100%" height="100%">
                       <PieChart>
                         <RechartsTooltip
@@ -149,7 +180,6 @@ export default function HospitalStudio({ hospitals, onGenerate, isLoading }: Hos
                             borderRadius: "10px",
                             fontSize: "11px",
                             color: "var(--text-main)",
-                            boxShadow: "0 8px 24px rgba(0,0,0,0.2)",
                           }}
                           formatter={(value: any, name: any) => [`${value} Scans`, name]}
                         />
@@ -159,9 +189,9 @@ export default function HospitalStudio({ hospitals, onGenerate, isLoading }: Hos
                           nameKey="name"
                           cx="50%"
                           cy="50%"
-                          innerRadius={48}
-                          outerRadius={74}
-                          paddingAngle={4}
+                          innerRadius={28}
+                          outerRadius={44}
+                          paddingAngle={3}
                           strokeWidth={0}
                         >
                           {pieData.map((entry, index) => (
@@ -170,40 +200,22 @@ export default function HospitalStudio({ hospitals, onGenerate, isLoading }: Hos
                         </Pie>
                       </PieChart>
                     </ResponsiveContainer>
-                    {/* Centered Total Indicator */}
                     <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-                      <span className="text-[10px] uppercase tracking-wider text-[var(--text-muted)] font-bold">Total</span>
-                      <span className="text-base sm:text-lg font-black font-mono text-[var(--text-heading)] leading-none mt-0.5">
+                      <span className="text-[8px] uppercase tracking-wider text-[var(--text-muted)] font-bold">Total</span>
+                      <span className="text-xs font-black font-mono text-[var(--text-heading)] leading-none">
                         {active.num_samples}
                       </span>
-                      <span className="text-[9px] text-[var(--text-muted)] font-mono mt-0.5">scans</span>
                     </div>
                   </div>
-                </div>
 
-                {/* 3-Column Distribution Cards underneath the Donut Chart */}
-                <div className="grid grid-cols-3 gap-2 sm:gap-2.5">
-                  {pieData.map((d, i) => (
-                    <div
-                      key={i}
-                      className={`p-2 sm:p-2.5 rounded-xl border ${d.border} ${d.bg} flex flex-col justify-between text-center transition-all hover:scale-[1.02]`}
-                    >
-                      <div className="flex items-center justify-center gap-1.5 mb-1">
-                        <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: d.color }} />
-                        <span className="text-[10px] sm:text-[11px] font-semibold text-[var(--text-main)] truncate">
-                          {d.shortName}
-                        </span>
+                  <div className="flex-1 grid grid-cols-3 gap-1.5 text-center">
+                    {pieData.map((d, i) => (
+                      <div key={i} className={`p-1.5 rounded-lg border ${d.border} ${d.bg}`}>
+                        <div className="text-[9px] font-semibold text-[var(--text-muted)] truncate">{d.shortName}</div>
+                        <div className="text-xs font-black font-mono text-[var(--text-heading)]">{d.percentage}%</div>
                       </div>
-                      <div className="flex items-baseline justify-center gap-1">
-                        <span className="text-xs sm:text-sm font-black font-mono text-[var(--text-heading)]">
-                          {d.value}
-                        </span>
-                        <span className={`text-[10px] font-bold font-mono ${d.text}`}>
-                          ({d.percentage}%)
-                        </span>
-                      </div>
-                    </div>
-                  ))}
+                    ))}
+                  </div>
                 </div>
               </div>
 
@@ -220,7 +232,7 @@ export default function HospitalStudio({ hospitals, onGenerate, isLoading }: Hos
 
                   <div className="grid grid-cols-3 gap-2 sm:gap-2.5">
                     {active.sample_images.map((imgData, i) => (
-                      <div key={i} className="xray-frame group hover:ring-2 hover:ring-accent-500/40 transition-all aspect-square rounded-xl overflow-hidden">
+                      <div key={i} className="xray-frame group hover:ring-2 hover:ring-accent-500/40 transition-all aspect-square rounded-xl overflow-hidden shadow-sm">
                         <canvas
                           ref={(canvas) => {
                             if (!canvas) return;
