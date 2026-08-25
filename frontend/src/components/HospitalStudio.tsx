@@ -117,11 +117,11 @@ export default function HospitalStudio({ hospitals, onGenerate, isLoading }: Hos
             </div>
 
             {/* Symmetrical 2-Column Responsive Layout */}
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 items-start">
-              {/* Left Column: Integrated Visual Donut & Demographics */}
-              <div className="lg:col-span-6 flex flex-col justify-between bg-[var(--bg-card-inner)]/60 p-4 sm:p-4 rounded-2xl border border-[var(--border-subtle)] space-y-3.5">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-5 items-stretch">
+              {/* Left Column: Demographics on Top + Centered Prominent Pie Chart in the exact marked location */}
+              <div className="flex flex-col justify-between bg-[var(--bg-card-inner)]/60 p-4 sm:p-5 rounded-2xl border border-[var(--border-subtle)] space-y-4">
                 {/* Node Title & Ingestion Stats */}
-                <div className="flex items-start justify-between gap-2 pb-2.5 border-b border-[var(--border-subtle)]">
+                <div className="flex items-start justify-between gap-2 pb-2 border-b border-[var(--border-subtle)]">
                   <div className="min-w-0">
                     <h3 className="text-xs sm:text-sm font-bold text-[var(--text-heading)] truncate">{active.name}</h3>
                     <div className="text-[10px] sm:text-[11px] text-[var(--text-muted)] mt-0.5">
@@ -138,73 +138,72 @@ export default function HospitalStudio({ hospitals, onGenerate, isLoading }: Hos
                   </div>
                 </div>
 
-                {/* Donut Chart & Demographic Bars Side-by-Side on Tablet/Desktop, Stacked on Mobile */}
-                <div className="grid grid-cols-1 sm:grid-cols-12 gap-3 items-center">
-                  {/* Left: Donut Chart with Centered Total Badge */}
-                  <div className="sm:col-span-5 flex items-center justify-center">
-                    <div className="w-28 h-28 sm:w-32 sm:h-32 relative">
-                      <ResponsiveContainer width="100%" height="100%">
-                        <PieChart>
-                          <RechartsTooltip
-                            contentStyle={{
-                              background: "var(--bg-card)",
-                              border: "1px solid var(--border-card)",
-                              borderRadius: "8px",
-                              fontSize: "11px",
-                              color: "var(--text-main)",
-                              boxShadow: "0 6px 16px rgba(0,0,0,0.15)",
-                            }}
-                            formatter={(value: any, name: any) => [`${value} Scans`, name]}
-                          />
-                          <Pie
-                            data={pieData}
-                            dataKey="value"
-                            nameKey="name"
-                            cx="50%"
-                            cy="50%"
-                            innerRadius={34}
-                            outerRadius={52}
-                            paddingAngle={3}
-                            strokeWidth={0}
-                          >
-                            {pieData.map((entry, index) => (
-                              <Cell key={`cell-${index}`} fill={entry.color} />
-                            ))}
-                          </Pie>
-                        </PieChart>
-                      </ResponsiveContainer>
-                      <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-                        <span className="text-[8px] uppercase tracking-wider text-[var(--text-muted)] font-bold">Total</span>
-                        <span className="text-xs sm:text-sm font-black font-mono text-[var(--text-heading)] leading-none mt-0.5">
-                          {active.num_samples}
-                        </span>
+                {/* Top: 3 Full-Width Demographic Progress Bars */}
+                <div className="space-y-2">
+                  {pieData.map((item, idx) => (
+                    <div key={idx} className="p-2 sm:p-2.5 rounded-xl bg-black/5 dark:bg-white/5 border border-[var(--border-subtle)]/50">
+                      <div className="flex items-center justify-between text-[11px] sm:text-xs mb-1.5">
+                        <div className="flex items-center gap-2 min-w-0">
+                          <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: item.color }} />
+                          <span className="truncate font-semibold text-[var(--text-heading)]">{item.name}</span>
+                        </div>
+                        <div className="flex items-center gap-2 shrink-0 font-mono">
+                          <span className="font-black text-[var(--text-heading)]">{item.value}</span>
+                          <span className="text-[11px] text-[var(--text-muted)]">({item.percentage}%)</span>
+                        </div>
+                      </div>
+                      {/* Smooth Progress Bar */}
+                      <div className="w-full h-1.5 rounded-full bg-slate-200 dark:bg-navy-800 overflow-hidden">
+                        <div
+                          className={`h-full rounded-full bg-gradient-to-r ${item.gradient} transition-all duration-500`}
+                          style={{ width: `${item.percentage}%` }}
+                        />
                       </div>
                     </div>
-                  </div>
+                  ))}
+                </div>
 
-                  {/* Right: Detailed Demographic Breakdown Rows with Progress Bars */}
-                  <div className="sm:col-span-7 space-y-2">
-                    {pieData.map((item, idx) => (
-                      <div key={idx} className="p-2 rounded-xl bg-black/5 dark:bg-white/5 border border-[var(--border-subtle)]/50">
-                        <div className="flex items-center justify-between text-[11px] mb-1">
-                          <div className="flex items-center gap-1.5 min-w-0">
-                            <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: item.color }} />
-                            <span className="truncate font-semibold text-[var(--text-heading)]">{item.shortName}</span>
-                          </div>
-                          <div className="flex items-center gap-1.5 shrink-0 font-mono">
-                            <span className="font-bold text-[var(--text-heading)]">{item.value}</span>
-                            <span className="text-[10px] text-[var(--text-muted)]">({item.percentage}%)</span>
-                          </div>
-                        </div>
-                        {/* Smooth Progress Bar */}
-                        <div className="w-full h-1.5 rounded-full bg-slate-200 dark:bg-navy-800 overflow-hidden">
-                          <div
-                            className={`h-full rounded-full bg-gradient-to-r ${item.gradient} transition-all duration-500`}
-                            style={{ width: `${item.percentage}%` }}
-                          />
-                        </div>
-                      </div>
-                    ))}
+                {/* Bottom: Large, Prominent, Centered Donut Chart in the exact marked location */}
+                <div className="pt-2 flex flex-col items-center justify-center">
+                  <div className="w-48 h-48 sm:w-52 sm:h-52 relative">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <PieChart>
+                        <RechartsTooltip
+                          contentStyle={{
+                            background: "var(--bg-card)",
+                            border: "1px solid var(--border-card)",
+                            borderRadius: "10px",
+                            fontSize: "12px",
+                            color: "var(--text-main)",
+                            boxShadow: "0 8px 24px rgba(0,0,0,0.2)",
+                          }}
+                          formatter={(value: any, name: any) => [`${value} Scans`, name]}
+                        />
+                        <Pie
+                          data={pieData}
+                          dataKey="value"
+                          nameKey="name"
+                          cx="50%"
+                          cy="50%"
+                          innerRadius={52}
+                          outerRadius={80}
+                          paddingAngle={4}
+                          strokeWidth={0}
+                        >
+                          {pieData.map((entry, index) => (
+                            <Cell key={`cell-${index}`} fill={entry.color} />
+                          ))}
+                        </Pie>
+                      </PieChart>
+                    </ResponsiveContainer>
+                    {/* Centered Total Indicator */}
+                    <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+                      <span className="text-[9px] uppercase tracking-wider text-[var(--text-muted)] font-bold">Total</span>
+                      <span className="text-base sm:text-lg font-black font-mono text-[var(--text-heading)] leading-none mt-0.5">
+                        {active.num_samples}
+                      </span>
+                      <span className="text-[9px] text-[var(--text-muted)] font-mono mt-0.5">scans</span>
+                    </div>
                   </div>
                 </div>
 
@@ -219,8 +218,8 @@ export default function HospitalStudio({ hospitals, onGenerate, isLoading }: Hos
               </div>
 
               {/* Right Column: 3x3 Scan Gallery */}
-              <div className="lg:col-span-6 flex flex-col justify-between bg-[var(--bg-card-inner)]/60 p-4 sm:p-4 rounded-2xl border border-[var(--border-subtle)] space-y-3">
-                <div className="flex items-center justify-between pb-2.5 border-b border-[var(--border-subtle)]">
+              <div className="flex flex-col justify-between bg-[var(--bg-card-inner)]/60 p-4 sm:p-5 rounded-2xl border border-[var(--border-subtle)] space-y-3">
+                <div className="flex items-center justify-between pb-2 border-b border-[var(--border-subtle)]">
                   <div className="flex items-center gap-1.5 text-xs sm:text-sm font-bold text-[var(--text-heading)]">
                     <Eye className="w-3.5 h-3.5 text-accent-500" />
                     <span>{t("sec1_sample_gallery")}</span>
@@ -228,7 +227,7 @@ export default function HospitalStudio({ hospitals, onGenerate, isLoading }: Hos
                   <span className="text-[10px] text-[var(--text-muted)] font-mono">9 Local Client Crops</span>
                 </div>
 
-                <div className="grid grid-cols-3 gap-2">
+                <div className="grid grid-cols-3 gap-2 sm:gap-2.5">
                   {active.sample_images.map((imgData, i) => (
                     <div key={i} className="xray-frame group hover:ring-2 hover:ring-accent-500/40 transition-all aspect-square rounded-xl overflow-hidden shadow-sm">
                       <canvas
