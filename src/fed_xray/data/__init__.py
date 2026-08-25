@@ -1,11 +1,21 @@
-"""
-Fed-XRay Data Ingestion & Dataset Module
-"""
+"""Data package for Federated Medical Imaging."""
 
-from .generator import (
+from src.fed_xray.data.generator import (
     MedicalDataGenerator,
-    XRayDataset,
-    create_global_test_set,
+    get_distribution_info,
     create_hospital_dataloaders,
-    get_distribution_info
+    XRayDataset,
 )
+from src.fed_xray.data.real_world import (
+    RealWorldPatientRecord,
+    StrategyEDatasetEcosystem,
+)
+
+__all__ = [
+    "MedicalDataGenerator",
+    "get_distribution_info",
+    "create_hospital_dataloaders",
+    "XRayDataset",
+    "RealWorldPatientRecord",
+    "StrategyEDatasetEcosystem",
+]
