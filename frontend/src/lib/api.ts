@@ -43,6 +43,79 @@ export async function fetchRagTwins(baseUrl: string): Promise<{ query_class: num
   return await res.json();
 }
 
+/** Build query-string for training params (shared by SSE and polling endpoints). */
+function buildTrainQS(
+  numRounds: number,
+  localEpochs: number,
+  learningRate: number,
+  simulateAttack: boolean,
+  activateDefense: boolean,
+  algorithm: string,
+  lossFn: string,
+  modelType: string,
+  peftMode: string
+): string {
+  return (
+    `num_rounds=${numRounds}` +
+    `&local_epochs=${localEpochs}` +
+    `&learning_rate=${learningRate}` +
+    `&simulate_attack=${simulateAttack}` +
+    `&activate_defense=${activateDefense}` +
+    `&algorithm=${algorithm}` +
+    `&loss_fn=${lossFn}` +
+    `&model_type=${modelType}` +
+    `&peft_mode=${peftMode}`
+  );
+}
+
+/**
+ * Polling fallback: POST /api/fl/train-start, then poll /api/fl/train-status every 1.5 s.
+ * Used automatically when the environment (Render proxy etc.) buffers SSE.
+ */
+async function pollingFallback(
+  base: string,
+  qs: string,
+  numRounds: number,
+  onRound: (d: TelemetryRound) => void,
+  onComplete: () => void,
+  onError: (e: string) => void,
+  signal?: AbortSignal
+) {
+  // Start background training job
+  const startRes = await fetch(`${base}/api/fl/train-start?${qs}`, { method: "POST", signal });
+  if (!startRes.ok) {
+    onError(`Training start failed (HTTP ${startRes.status})`);
+    return;
+  }
+
+  let seen = 0; // rounds already processed
+  while (true) {
+    if (signal?.aborted) return;
+    await new Promise((r) => setTimeout(r, 1500));
+    if (signal?.aborted) return;
+
+    const statusRes = await fetch(`${base}/api/fl/train-status?from_round=${seen}`, { signal });
+    if (!statusRes.ok) continue;
+
+    const body = await statusRes.json();
+
+    for (const rd of body.new_rounds as TelemetryRound[]) {
+      onRound(rd);
+      seen++;
+    }
+
+    if (body.error) {
+      onError(body.error);
+      return;
+    }
+
+    if (body.is_complete) {
+      onComplete();
+      return;
+    }
+  }
+}
+
 export async function streamFederatedTraining(
   baseUrl: string,
   options: {
@@ -71,10 +144,12 @@ export async function streamFederatedTraining(
   const modelType = options.modelType ?? "vit_tiny";
   const peftMode = options.peftMode ?? "ffa_lora";
 
-  const url = `${baseUrl.replace(/\/$/, "")}/api/fl/train-stream?num_rounds=${numRounds}&local_epochs=${localEpochs}&learning_rate=${learningRate}&simulate_attack=${simulateAttack}&activate_defense=${activateDefense}&algorithm=${algorithm}&loss_fn=${lossFn}&model_type=${modelType}&peft_mode=${peftMode}`;
+  const base = baseUrl.replace(/\/$/, "");
+  const qs = buildTrainQS(numRounds, localEpochs, learningRate, simulateAttack, activateDefense, algorithm, lossFn, modelType, peftMode);
+  const sseUrl = `${base}/api/fl/train-stream?${qs}`;
 
   try {
-    const response = await fetch(url, {
+    const response = await fetch(sseUrl, {
       signal,
       headers: { Accept: "text/event-stream" },
     });
@@ -86,65 +161,67 @@ export async function streamFederatedTraining(
     const reader = response.body.getReader();
     const decoder = new TextDecoder("utf-8");
     let buffer = "";
+    let receivedAny = false;
 
-    while (true) {
-      const { done, value } = await reader.read();
-      if (done) break;
+    // 4-second timeout: if no SSE data arrives, fall through to polling
+    const sseTimeout = new Promise<"timeout">((res) => setTimeout(() => res("timeout"), 4000));
 
-      buffer += decoder.decode(value, { stream: true });
-      const lines = buffer.split("\n");
-      buffer = lines.pop() || "";
+    async function consumeSSE(): Promise<"done" | "timeout"> {
+      while (true) {
+        const readPromise = reader.read();
+        const result = await Promise.race([readPromise, sseTimeout]);
 
-      for (const line of lines) {
-        const trimmed = line.trim();
-        if (trimmed.startsWith("data:")) {
-          const jsonStr = trimmed.replace(/^data:\s*/, "");
-          try {
-            const data: TelemetryRound = JSON.parse(jsonStr);
-            onRound(data);
-            if (data.status === "complete" || data.round_num >= numRounds) {
-              onComplete();
-              return;
+        if (result === "timeout") {
+          if (!receivedAny) return "timeout"; // proxy buffering — switch to polling
+          // If we already got data, just continue waiting
+          const { done, value } = await readPromise;
+          if (done) return "done";
+          buffer += decoder.decode(value, { stream: true });
+        } else {
+          const { done, value } = result as ReadableStreamReadResult<Uint8Array>;
+          if (done) return "done";
+          buffer += decoder.decode(value, { stream: true });
+          receivedAny = true;
+        }
+
+        const lines = buffer.split("\n");
+        buffer = lines.pop() || "";
+
+        for (const line of lines) {
+          const trimmed = line.trim();
+          if (trimmed.startsWith("data:")) {
+            const jsonStr = trimmed.replace(/^data:\s*/, "");
+            try {
+              const data: TelemetryRound = JSON.parse(jsonStr);
+              onRound(data);
+              if (data.status === "complete" || data.round_num >= numRounds) {
+                onComplete();
+                return "done";
+              }
+            } catch (e) {
+              console.error("Failed to parse SSE line:", trimmed, e);
             }
-          } catch (e) {
-            console.error("Failed to parse SSE line:", trimmed, e);
           }
         }
       }
     }
 
+    const outcome = await consumeSSE();
+    if (outcome === "timeout") {
+      console.warn("SSE timeout — switching to polling fallback (Render proxy detected)");
+      await pollingFallback(base, qs, numRounds, onRound, onComplete, onError, signal);
+      return;
+    }
+
     onComplete();
   } catch (err: any) {
     if (signal?.aborted) return;
-    console.warn("Live SSE stream unavailable, using client-side fallback simulation:", err.message);
-    
-    // Client-side fallback simulation to ensure UI is 100% interactive even if network disconnects
-    let currentAcc = 45.0;
-    let currentLoss = 1.45;
-    for (let r = 1; r <= numRounds; r++) {
-      if (signal?.aborted) return;
-      await new Promise((res) => setTimeout(res, 600));
-      currentAcc += (88.5 - currentAcc) * 0.45 + (Math.random() * 2.0 - 1.0);
-      currentLoss *= 0.72;
-      const roundPayload: TelemetryRound = {
-        round_num: r,
-        total_rounds: numRounds,
-        train_loss: parseFloat(currentLoss.toFixed(4)),
-        train_accuracy: parseFloat(currentAcc.toFixed(2)),
-        test_loss: parseFloat((currentLoss * 1.05).toFixed(4)),
-        test_accuracy: parseFloat(currentAcc.toFixed(2)),
-        precision: parseFloat((currentAcc * 0.98).toFixed(2)),
-        recall: parseFloat((currentAcc * 0.97).toFixed(2)),
-        f1_score: parseFloat((currentAcc * 0.975).toFixed(2)),
-        threat_detected: false,
-        blocked_nodes: [],
-        status: r >= numRounds ? "complete" : "training",
-        model_type: modelType,
-        peft_mode: peftMode,
-      };
-      onRound(roundPayload);
+    console.warn("SSE unavailable, switching to polling fallback:", err.message);
+    try {
+      await pollingFallback(base, qs, numRounds, onRound, onComplete, onError, signal);
+    } catch (pollErr: any) {
+      if (!signal?.aborted) onError(pollErr.message ?? String(pollErr));
     }
-    onComplete();
   }
 }
 

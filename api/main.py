@@ -15,6 +15,7 @@ import copy
 import io
 import json
 import time
+import threading
 from typing import Any, Dict, List, Optional
 import numpy as np
 import torch
@@ -100,6 +101,13 @@ class AppState:
             "test_loss": [],
             "blocked_count": 0,
         }
+        # Background training task state (for Render/proxy SSE fallback)
+        self.task_running: bool = False
+        self.task_rounds: List[Dict] = []
+        self.task_total_rounds: int = 5
+        self.task_current_round: int = 0
+        self.task_complete: bool = False
+        self.task_error: Optional[str] = None
 
 
 state = AppState()
@@ -373,11 +381,158 @@ async def stream_federated_training(
         event_generator(),
         media_type="text/event-stream",
         headers={
-            "Cache-Control": "no-cache",
+            "Cache-Control": "no-cache, no-store, must-revalidate",
+            "Pragma": "no-cache",
             "Connection": "keep-alive",
             "X-Accel-Buffering": "no",
+            "Transfer-Encoding": "chunked",
         },
     )
+
+
+@app.post("/api/fl/train-start")
+async def start_training_background(
+    num_rounds: int = Query(default=5, ge=1, le=20),
+    local_epochs: int = Query(default=2, ge=1, le=5),
+    learning_rate: float = Query(default=0.0001),
+    simulate_attack: bool = Query(default=False),
+    activate_defense: bool = Query(default=True),
+    algorithm: str = Query(default="FedDyn"),
+    loss_fn: str = Query(default="DAFL"),
+    model_type: str = Query(default="vit_tiny"),
+    peft_mode: str = Query(default="ffa_lora"),
+):
+    """Launch federated training as a background thread (Render SSE proxy fallback)."""
+    if state.task_running:
+        return {"status": "already_running", "current_round": state.task_current_round}
+
+    # Reset task state
+    state.task_running = True
+    state.task_rounds = []
+    state.task_total_rounds = num_rounds
+    state.task_current_round = 0
+    state.task_complete = False
+    state.task_error = None
+
+    def run_training():
+        try:
+            if state.dataloaders is None or state.global_test_set is None:
+                ecosystem = StrategyEDatasetEcosystem(seed=42)
+                records = ecosystem.generate_synthetic_realworld_cohort(num_patients=100, samples_per_patient=3)
+                train_recs, _, test_recs = ecosystem.leak_free_patient_split(records)
+                partitions = ecosystem.partition_into_scenarios(train_recs, num_clients=4, scenario="A")
+                state.dataloaders = [ecosystem.records_to_dataloader(p, batch_size=32) for p in partitions]
+                state.global_test_set = (
+                    torch.stack([r.image_tensor for r in test_recs]),
+                    torch.tensor([r.label for r in test_recs], dtype=torch.long),
+                )
+
+            actual_peft = None if peft_mode.lower() in ("none", "false", "off") else peft_mode
+            state.model_type = model_type
+            state.peft_mode = peft_mode
+
+            srv = CentralServer(
+                device=state.device,
+                defense_mode=activate_defense,
+                model_type=model_type,
+                peft_mode=actual_peft,
+                lora_r=8,
+                lora_alpha=16.0,
+                deep_layers_only=True,
+            )
+            state.server = srv
+
+            clients = [
+                HospitalClient(
+                    client_id=i,
+                    dataloader=state.dataloaders[i],
+                    device=state.device,
+                    learning_rate=learning_rate,
+                    local_epochs=local_epochs,
+                    malicious=simulate_attack and i == 2,
+                    model_type=model_type,
+                    peft_mode=actual_peft,
+                    lora_r=8,
+                    lora_alpha=16.0,
+                    deep_layers_only=True,
+                )
+                for i in range(len(state.dataloaders))
+            ]
+
+            test_images, test_labels = state.global_test_set
+
+            for round_num in range(1, num_rounds + 1):
+                metrics, _, test_metrics, sec_report = run_federated_round(
+                    server=srv,
+                    clients=clients,
+                    round_num=round_num,
+                    total_rounds=num_rounds,
+                    test_images=test_images,
+                    test_labels=test_labels,
+                    use_defense=activate_defense,
+                    algorithm=algorithm,
+                    loss_fn_name=loss_fn,
+                    enable_prototypes=True,
+                    proto_weight=0.1,
+                    prox_mu=0.01 if algorithm.upper() in ("FEDPROX", "PROX") else 0.0,
+                    feddyn_alpha=0.01 if algorithm.upper() == "FEDDYN" else 0.0,
+                )
+
+                t_loss = float(metrics["loss"])
+                t_acc = float(metrics["accuracy"] * 100.0)
+                val_acc = float(test_metrics.accuracy * 100.0) if test_metrics else t_acc
+                val_loss = float(test_metrics.loss) if test_metrics else t_loss
+                prec = float(test_metrics.precision * 100.0) if test_metrics else 0.0
+                rec = float(test_metrics.recall * 100.0) if test_metrics else 0.0
+                f1 = float(test_metrics.f1_score * 100.0) if test_metrics else 0.0
+                blocked_nodes = sec_report.clients_blocked if sec_report else []
+
+                round_data = {
+                    "round_num": round_num,
+                    "total_rounds": num_rounds,
+                    "train_loss": round(t_loss, 4),
+                    "train_accuracy": round(t_acc, 2),
+                    "test_loss": round(val_loss, 4),
+                    "test_accuracy": round(val_acc, 2),
+                    "precision": round(prec, 2),
+                    "recall": round(rec, 2),
+                    "f1_score": round(f1, 2),
+                    "threat_detected": len(blocked_nodes) > 0,
+                    "blocked_nodes": [int(n + 1) for n in blocked_nodes],
+                    "status": "training" if round_num < num_rounds else "complete",
+                    "model_type": model_type,
+                    "peft_mode": peft_mode,
+                }
+                state.task_rounds.append(round_data)
+                state.task_current_round = round_num
+
+            state.model_trained = True
+            state.rag_matcher = FederatedRAGCaseMatcher(n_cases=100, embedding_dim=64)
+            state.task_complete = True
+
+        except Exception as e:
+            state.task_error = str(e)
+            state.task_complete = True
+        finally:
+            state.task_running = False
+
+    t = threading.Thread(target=run_training, daemon=True)
+    t.start()
+    return {"status": "started", "total_rounds": num_rounds}
+
+
+@app.get("/api/fl/train-status")
+async def get_training_status(from_round: int = Query(default=0)):
+    """Poll training progress - returns new rounds since from_round (Render proxy fallback)."""
+    new_rounds = state.task_rounds[from_round:]
+    return {
+        "is_running": state.task_running,
+        "is_complete": state.task_complete,
+        "current_round": state.task_current_round,
+        "total_rounds": state.task_total_rounds,
+        "error": state.task_error,
+        "new_rounds": new_rounds,
+    }
 
 
 @app.post("/api/cdss/diagnose", response_model=DiagnoseResponse)
