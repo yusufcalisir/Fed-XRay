@@ -3,7 +3,7 @@
 import React, { useState } from "react";
 import { useLanguage } from "@/context/LanguageContext";
 import { HospitalCohort } from "@/types";
-import { Database, RefreshCw, Eye } from "lucide-react";
+import { Database, RefreshCw, Eye, CheckCircle2, ShieldCheck, Sparkles } from "lucide-react";
 
 interface HospitalStudioProps {
   hospitals: HospitalCohort[];
@@ -20,7 +20,7 @@ export default function HospitalStudio({ hospitals, onGenerate, isLoading }: Hos
   const active = hospitals[activeTab];
 
   return (
-    <section className="mb-5 sm:mb-6">
+    <section id="section-ingestion" className="mb-5 sm:mb-6 scroll-mt-20">
       {/* Section Header */}
       <div className="section-bar mb-3.5 sm:mb-4 flex-col sm:flex-row items-stretch sm:items-center">
         <div className="flex items-center gap-2.5 sm:gap-3">
@@ -28,17 +28,38 @@ export default function HospitalStudio({ hospitals, onGenerate, isLoading }: Hos
             <Database className="w-4 h-4 sm:w-5 sm:h-5 text-accent-600 dark:text-accent-400" />
           </div>
           <div>
-            <h2 className="font-display text-base sm:text-lg font-bold text-[var(--text-heading)]">{t("sec1_title")}</h2>
+            <div className="flex items-center gap-2">
+              <h2 className="font-display text-base sm:text-lg font-bold text-[var(--text-heading)]">{t("sec1_title")}</h2>
+              {hospitals.length > 0 && (
+                <span className="hidden sm:inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
+                  <CheckCircle2 className="w-3 h-3" />
+                  Ready
+                </span>
+              )}
+            </div>
             <p className="text-[11px] sm:text-xs text-[var(--text-muted)]">{t("sec1_subtitle")}</p>
           </div>
         </div>
         <button onClick={onGenerate} disabled={isLoading} className="btn-primary w-full sm:w-auto mt-2.5 sm:mt-0">
           <RefreshCw className={`w-3.5 h-3.5 sm:w-4 sm:h-4 ${isLoading ? "animate-spin" : ""}`} />
-          <span>{t("sec1_btn_generate")}</span>
+          <span>{hospitals.length > 0 ? t("sec1_btn_generate") : "Ingest Multi-Hospital Cohorts"}</span>
         </button>
       </div>
 
-      {/* Content Card - Single Flat Clean Container */}
+      {/* Ingestion Success Banner */}
+      {hospitals.length > 0 && (
+        <div className="card-inner flex items-center justify-between p-3 mb-3.5 border-l-4 border-l-emerald-500 text-[11px] sm:text-xs text-emerald-600 dark:text-emerald-400">
+          <div className="flex items-center gap-2">
+            <ShieldCheck className="w-4 h-4 text-emerald-500 shrink-0" />
+            <span className="font-semibold">{t("sec1_ingestion_complete")}</span>
+          </div>
+          <span className="text-[10px] font-mono text-[var(--text-muted)] hidden md:inline">
+            Non-IID Patient Skew Calibrated
+          </span>
+        </div>
+      )}
+
+      {/* Content Card */}
       <div className="card p-3.5 sm:p-5">
         {hospitals.length > 0 && active ? (
           <>
@@ -63,8 +84,7 @@ export default function HospitalStudio({ hospitals, onGenerate, isLoading }: Hos
 
             {/* Equal 2-Column Layout */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-5 items-start">
-
-              {/* Left: Stats & Demographics - Direct Flat Clean Structure */}
+              {/* Left: Stats & Demographics */}
               <div className="space-y-4">
                 <div>
                   <div className="text-sm font-bold text-[var(--text-heading)] mb-0.5 truncate">{active.name}</div>
@@ -143,12 +163,27 @@ export default function HospitalStudio({ hospitals, onGenerate, isLoading }: Hos
                   ))}
                 </div>
               </div>
-
             </div>
           </>
         ) : (
-          <div className="text-center py-12 sm:py-16 text-xs sm:text-sm text-[var(--text-muted)]">
-            {t("sec1_subtitle")}
+          <div className="text-center py-10 sm:py-14 px-4">
+            <div className="w-12 h-12 rounded-2xl bg-accent-500/10 border border-accent-500/20 flex items-center justify-center mx-auto mb-3 text-accent-500">
+              <Sparkles className="w-6 h-6 animate-pulse" />
+            </div>
+            <h3 className="font-display text-sm sm:text-base font-bold text-[var(--text-heading)] mb-1">
+              {t("sec1_empty_state_title")}
+            </h3>
+            <p className="text-xs text-[var(--text-muted)] max-w-md mx-auto mb-4 leading-relaxed">
+              {t("sec1_empty_state_desc")}
+            </p>
+            <button
+              onClick={onGenerate}
+              disabled={isLoading}
+              className="btn-primary inline-flex items-center gap-2"
+            >
+              <RefreshCw className={`w-4 h-4 ${isLoading ? "animate-spin" : ""}`} />
+              <span>{t("sec1_btn_generate")}</span>
+            </button>
           </div>
         )}
       </div>

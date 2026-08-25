@@ -3,17 +3,25 @@
 import React, { useState, useEffect, useRef } from "react";
 import { useLanguage } from "@/context/LanguageContext";
 import { DiagnosisResult } from "@/types";
-import { Stethoscope, Search, Activity } from "lucide-react";
+import { Stethoscope, Search, Activity, Lock, ArrowUp } from "lucide-react";
 
 interface DiagnosticStudioProps {
   diagnosis: DiagnosisResult | null;
   onDiagnose: (classIndex?: number, opacity?: number, colormap?: string) => void;
   isLoading: boolean;
+  isLocked?: boolean;
+  onScrollToTraining?: () => void;
 }
 
 const CLASS_COLORS_BAR = ["bg-accent-500", "bg-amber-500", "bg-red-500"];
 
-export default function DiagnosticStudio({ diagnosis, onDiagnose, isLoading }: DiagnosticStudioProps) {
+export default function DiagnosticStudio({
+  diagnosis,
+  onDiagnose,
+  isLoading,
+  isLocked = false,
+  onScrollToTraining,
+}: DiagnosticStudioProps) {
   const { t } = useLanguage();
   const [opacity, setOpacity] = useState(0.55);
   const [colormap, setColormap] = useState("Hot");
@@ -75,27 +83,61 @@ export default function DiagnosticStudio({ diagnosis, onDiagnose, isLoading }: D
   const classLabels = [t("sec1_normal"), t("sec1_pneumonia"), t("sec1_covid")];
 
   return (
-    <section className="mb-5 sm:mb-6">
+    <section id="section-diagnosis" className="mb-5 sm:mb-6 scroll-mt-20">
       {/* Section Header */}
       <div className="section-bar mb-3.5 sm:mb-4 flex-col sm:flex-row items-stretch sm:items-center">
         <div className="flex items-center gap-2.5 sm:gap-3">
-          <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-purple-500/10 flex items-center justify-center shrink-0">
-            <Stethoscope className="w-4 h-4 sm:w-5 sm:h-5 text-purple-500 dark:text-purple-400" />
+          <div className={`w-9 h-9 sm:w-10 sm:h-10 rounded-xl flex items-center justify-center shrink-0 ${
+            isLocked ? "bg-slate-200/50 dark:bg-navy-800 text-[var(--text-muted)]" : "bg-purple-500/10 text-purple-500 dark:text-purple-400"
+          }`}>
+            <Stethoscope className="w-4 h-4 sm:w-5 sm:h-5" />
           </div>
           <div>
-            <h2 className="font-display text-base sm:text-lg font-bold text-[var(--text-heading)]">{t("sec3_title")}</h2>
+            <div className="flex items-center gap-2">
+              <h2 className="font-display text-base sm:text-lg font-bold text-[var(--text-heading)]">{t("sec3_title")}</h2>
+              {isLocked && (
+                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20">
+                  <Lock className="w-3 h-3" />
+                  {t("lock_diag_badge")}
+                </span>
+              )}
+            </div>
             <p className="text-[11px] sm:text-xs text-[var(--text-muted)]">{t("sec3_subtitle")}</p>
           </div>
         </div>
-        <button onClick={() => onDiagnose(undefined, opacity, colormap)} disabled={isLoading} className="btn-primary w-full sm:w-auto mt-2.5 sm:mt-0">
-          <Search className={`w-3.5 h-3.5 sm:w-4 sm:h-4 ${isLoading ? "animate-spin" : ""}`} />
-          <span>{t("sec3_btn_run_diag")}</span>
-        </button>
+
+        {!isLocked && (
+          <button onClick={() => onDiagnose(undefined, opacity, colormap)} disabled={isLoading} className="btn-primary w-full sm:w-auto mt-2.5 sm:mt-0">
+            <Search className={`w-3.5 h-3.5 sm:w-4 sm:h-4 ${isLoading ? "animate-spin" : ""}`} />
+            <span>{t("sec3_btn_run_diag")}</span>
+          </button>
+        )}
       </div>
 
-      {diagnosis ? (
+      {/* Locked State Container */}
+      {isLocked ? (
+        <div className="card p-8 sm:p-12 text-center relative overflow-hidden border-dashed border-2 border-[var(--border-card)]">
+          <div className="w-14 h-14 rounded-2xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center mx-auto mb-3.5 text-amber-500">
+            <Lock className="w-7 h-7" />
+          </div>
+          <h3 className="font-display text-base sm:text-lg font-bold text-[var(--text-heading)] mb-1.5">
+            {t("lock_diag_title")}
+          </h3>
+          <p className="text-xs text-[var(--text-muted)] max-w-lg mx-auto mb-5 leading-relaxed">
+            {t("lock_diag_desc")}
+          </p>
+          {onScrollToTraining && (
+            <button
+              onClick={onScrollToTraining}
+              className="btn-primary inline-flex items-center gap-2 mx-auto"
+            >
+              <ArrowUp className="w-4 h-4" />
+              <span>{t("lock_diag_btn")}</span>
+            </button>
+          )}
+        </div>
+      ) : diagnosis ? (
         <div className="space-y-3.5 sm:space-y-4">
-
           {/* Diagnosis Banner */}
           <div className={`card p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-l-4 ${
             diagnosis.predicted_class === 0 ? "border-l-accent-500" :
@@ -115,7 +157,6 @@ export default function DiagnosticStudio({ diagnosis, onDiagnose, isLoading }: D
 
           {/* Equal 3-Column Diagnostic Grid */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-3.5 sm:gap-4">
-
             {/* Original X-Ray */}
             <div className="card p-3.5 sm:p-4 flex flex-col">
               <div className="metric-label mb-2">{t("sec3_dual_pane_orig")}</div>
@@ -178,12 +219,24 @@ export default function DiagnosticStudio({ diagnosis, onDiagnose, isLoading }: D
                 {diagnosis.findings}
               </div>
             </div>
-
           </div>
         </div>
       ) : (
-        <div className="card text-center py-12 sm:py-16 text-xs sm:text-sm text-[var(--text-muted)]">
-          {t("sec3_subtitle")}
+        <div className="card text-center py-10 sm:py-14 px-4">
+          <h3 className="font-display text-sm sm:text-base font-bold text-[var(--text-heading)] mb-1">
+            Global Federated Model Ready
+          </h3>
+          <p className="text-xs text-[var(--text-muted)] max-w-md mx-auto mb-4 leading-relaxed">
+            {t("sec3_subtitle")}
+          </p>
+          <button
+            onClick={() => onDiagnose(undefined, opacity, colormap)}
+            disabled={isLoading}
+            className="btn-primary inline-flex items-center gap-2"
+          >
+            <Search className={`w-4 h-4 ${isLoading ? "animate-spin" : ""}`} />
+            <span>{t("sec3_btn_run_diag")}</span>
+          </button>
         </div>
       )}
     </section>

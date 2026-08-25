@@ -1,9 +1,10 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import Navbar from "@/components/Navbar";
 import Hero from "@/components/Hero";
 import LiveHud from "@/components/LiveHud";
+import WorkflowStepper from "@/components/WorkflowStepper";
 import HospitalStudio from "@/components/HospitalStudio";
 import TelemetryCockpit from "@/components/TelemetryCockpit";
 import DiagnosticStudio from "@/components/DiagnosticStudio";
@@ -41,7 +42,9 @@ export default function DashboardPage() {
     try {
       setIsCohortLoading(true);
       const res = await fetchHospitalCohorts(apiUrl, numHospitals, samplesPerHospital);
-      if (res.success && res.hospitals) setHospitals(res.hospitals);
+      if (res.success && res.hospitals) {
+        setHospitals(res.hospitals);
+      }
     } catch (err: any) {
       setErrorMessage(err.message || "Backend connection failed");
     } finally {
@@ -50,6 +53,10 @@ export default function DashboardPage() {
   };
 
   const handleStartTraining = () => {
+    if (hospitals.length === 0) {
+      setErrorMessage("Please ingest hospital cohorts in Step 1 first.");
+      return;
+    }
     setErrorMessage(null);
     setIsTraining(true);
     setHistory([]);
@@ -61,10 +68,16 @@ export default function DashboardPage() {
         setCurrentRound(data.round_num);
         setHistory((prev) => [...prev, data]);
         if (data.status === "complete" || data.round_num >= totalRounds) {
-          es.close(); setIsTraining(false); setIsTrained(true);
+          es.close();
+          setIsTraining(false);
+          setIsTrained(true);
         }
       };
-      es.onerror = () => { es.close(); setIsTraining(false); setErrorMessage("Training stream interrupted"); };
+      es.onerror = () => {
+        es.close();
+        setIsTraining(false);
+        setErrorMessage("Training stream interrupted");
+      };
     } catch (e: any) {
       setIsTraining(false);
       setErrorMessage(e.message);
@@ -72,6 +85,10 @@ export default function DashboardPage() {
   };
 
   const handleRunDiagnosis = async (classIndex?: number, opacity?: number, colormap?: string) => {
+    if (!isTrained) {
+      setErrorMessage("Please complete federated training in Step 2 before running clinical diagnosis.");
+      return;
+    }
     setErrorMessage(null);
     try {
       setIsDiagLoading(true);
@@ -88,9 +105,12 @@ export default function DashboardPage() {
     }
   };
 
-  useEffect(() => {
-    if (isConnected) handleGenerateCohorts();
-  }, [isConnected, apiUrl]);
+  const scrollToSection = (id: string) => {
+    const el = document.getElementById(id);
+    if (el) {
+      el.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+  };
 
   const diagName = diagnosis ? diagnosis.predicted_name.split(" ")[0] : "Normal";
   const diagConf = diagnosis ? diagnosis.confidence : 95.0;
@@ -100,7 +120,6 @@ export default function DashboardPage() {
       <Navbar />
 
       <main className="flex-1 max-w-[1360px] w-full mx-auto px-3 sm:px-5 py-4 sm:py-6">
-
         {/* Offline Banner */}
         {!isConnected && !isChecking && (
           <div className="card-inner flex items-start gap-2.5 sm:gap-3 p-3.5 sm:p-4 mb-4 sm:mb-5 border-l-4 border-l-amber-500">
@@ -119,17 +138,66 @@ export default function DashboardPage() {
           </div>
         )}
 
-        <Hero numHospitals={numHospitals} totalRounds={totalRounds} totalSamples={numHospitals * samplesPerHospital} isTrained={isTrained} />
-        <LiveHud numHospitals={numHospitals} isDefenseActive={true} isTrained={isTrained} />
-        <HospitalStudio hospitals={hospitals} onGenerate={handleGenerateCohorts} isLoading={isCohortLoading} />
-        <TelemetryCockpit history={history} onStartTraining={handleStartTraining} isTraining={isTraining} currentRound={currentRound} totalRounds={totalRounds} />
-        <DiagnosticStudio diagnosis={diagnosis} onDiagnose={handleRunDiagnosis} isLoading={isDiagLoading} />
+        <Hero
+          numHospitals={numHospitals}
+          totalRounds={totalRounds}
+          totalSamples={numHospitals * samplesPerHospital}
+          isTrained={isTrained}
+        />
 
-        {diagnosis && <RagDigitalTwins twins={ragTwins} />}
+        <LiveHud
+          numHospitals={numHospitals}
+          isDefenseActive={true}
+          isTrained={isTrained}
+        />
+
+        {/* 4-Step Clinical Workflow Stepper */}
+        <WorkflowStepper
+          hasIngested={hospitals.length > 0}
+          isTraining={isTraining}
+          isTrained={isTrained}
+          hasDiagnosis={diagnosis !== null}
+          onScrollToStep={scrollToSection}
+        />
+
+        {/* Step 1: Ingestion */}
+        <HospitalStudio
+          hospitals={hospitals}
+          onGenerate={handleGenerateCohorts}
+          isLoading={isCohortLoading}
+        />
+
+        {/* Step 2: Training (Locked if Step 1 not complete) */}
+        <TelemetryCockpit
+          history={history}
+          onStartTraining={handleStartTraining}
+          isTraining={isTraining}
+          currentRound={currentRound}
+          totalRounds={totalRounds}
+          isLocked={hospitals.length === 0}
+          onUnlock={() => {
+            scrollToSection("section-ingestion");
+            handleGenerateCohorts();
+          }}
+        />
+
+        {/* Step 3: Diagnostic Inference & Grad-CAM (Locked if Step 2 not complete) */}
+        <DiagnosticStudio
+          diagnosis={diagnosis}
+          onDiagnose={handleRunDiagnosis}
+          isLoading={isDiagLoading}
+          isLocked={!isTrained}
+          onScrollToTraining={() => scrollToSection("section-training")}
+        />
+
+        {/* Step 4: Digital Twins & Reports (Revealed once diagnosis is generated) */}
         {diagnosis && (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5 sm:gap-4 mb-5 sm:mb-6">
-            <VoiceAssistant diagnosisName={diagName} confidence={diagConf} />
-            <ReportDownload diagnosisName={diagName} confidence={diagConf} />
+          <div id="section-cdss" className="scroll-mt-20">
+            <RagDigitalTwins twins={ragTwins} />
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5 sm:gap-4 mb-5 sm:mb-6">
+              <VoiceAssistant diagnosisName={diagName} confidence={diagConf} />
+              <ReportDownload diagnosisName={diagName} confidence={diagConf} />
+            </div>
           </div>
         )}
       </main>

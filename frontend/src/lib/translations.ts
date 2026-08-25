@@ -73,6 +73,31 @@ export const TRANSLATIONS: Record<Language, Record<string, string>> = {
     sec3_report_desc: "Strictly bounded single-page A4 medical documentation with embedded Grad-CAM evidence",
     sec3_btn_download_pdf: "Download Official Diagnostic Report (PDF)",
     
+    // Workflow Stepper & Gating
+    workflow_pipeline_title: "Clinical Workflow Pipeline",
+    workflow_step_1: "1. Data Ingestion",
+    workflow_step_2: "2. Federated Training",
+    workflow_step_3: "3. Diagnostic Inference",
+    workflow_step_4: "4. CDSS & Reports",
+    workflow_status_completed: "Completed",
+    workflow_status_active: "Active Stage",
+    workflow_status_locked: "Locked",
+    
+    // Lock States
+    lock_training_badge: "Step 2 Locked",
+    lock_training_title: "Federated Training Cockpit Locked",
+    lock_training_desc: "Please complete Hospital Network Data Ingestion in Step 1 to distribute patient cohorts across decentralized clinical nodes before initiating federated training.",
+    lock_training_btn: "Ingest Hospital Cohorts (Step 1)",
+    
+    lock_diag_badge: "Step 3 Locked",
+    lock_diag_title: "Diagnostic Studio & Grad-CAM Locked",
+    lock_diag_desc: "Execute and complete federated training in Step 2 to train and deploy global consensus weights before running radiological AI diagnosis and Grad-CAM attention mapping.",
+    lock_diag_btn: "Go to Federated Training (Step 2)",
+    
+    sec1_ingestion_complete: "Hospital Data Ingestion Complete — 4 Nodes Online & Isolated",
+    sec1_empty_state_title: "Multi-Hospital Data Ingestion Required",
+    sec1_empty_state_desc: "Click the button below to ingest, partition, and isolate Non-IID patient cohorts across 4 clinical hospital nodes.",
+
     footer_text: "Fed-XRay | Privacy-Preserving Federated Oncology & Medical Imaging Consortium | Powered by PyTorch & Next.js 14"
   },
   TR: {
@@ -147,6 +172,31 @@ export const TRANSLATIONS: Record<Language, Record<string, string>> = {
     sec3_report_desc: "Grad-CAM görsel kanıtları içeren, A4 boyutuna tam sığdırılmış resmi medikal doküman",
     sec3_btn_download_pdf: "Resmi Teşhis Raporunu İndir (PDF)",
     
+    // Workflow Stepper & Gating
+    workflow_pipeline_title: "Klinik İş Akışı Aşamaları",
+    workflow_step_1: "1. Veri İçe Aktarımı",
+    workflow_step_2: "2. Federe Eğitim",
+    workflow_step_3: "3. Klinik Tanı & XAI",
+    workflow_step_4: "4. Karar Destek & Rapor",
+    workflow_status_completed: "Tamamlandı",
+    workflow_status_active: "Aktif Aşama",
+    workflow_status_locked: "Kilitli",
+    
+    // Lock States
+    lock_training_badge: "Aşama 2 Kilitli",
+    lock_training_title: "Federe Eğitim Kokpiti Kilitli",
+    lock_training_desc: "Federe eğitimi başlatabilmek için lütfen Aşama 1'deki hastane ağı veri içe aktarımını tamamlayarak hasta kohortlarını dağıtık düğümlere yükleyin.",
+    lock_training_btn: "Hastane Verilerini İçe Aktar (Aşama 1)",
+    
+    lock_diag_badge: "Aşama 3 Kilitli",
+    lock_diag_title: "Teşhis Stüdyosu ve Grad-CAM Kilitli",
+    lock_diag_desc: "Klinik yapay zeka çıkarımı ve Grad-CAM dikkat haritalarını çalıştırabilmek için lütfen Aşama 2'deki federe eğitimi tamamlayarak küresel model ağırlıklarını dağıtın.",
+    lock_diag_btn: "Federe Eğitime Git (Aşama 2)",
+    
+    sec1_ingestion_complete: "Hastane Veri İçe Aktarımı Tamamlandı — 4 Düğüm Çevrimiçi & İzole Edildi",
+    sec1_empty_state_title: "Çok Merkezli Veri İçe Aktarımı Gerekli",
+    sec1_empty_state_desc: "4 hastane düğümüne bağımsız Non-IID hasta kohortlarını yüklemek ve izole etmek için aşağıdaki butona tıklayın.",
+
     footer_text: "Fed-XRay | Gizlilik Korumalı Federe Onkoloji ve Tıbbi Görüntüleme Konsorsiyumu | PyTorch ve Next.js 14 ile Geliştirilmiştir"
   }
 };
