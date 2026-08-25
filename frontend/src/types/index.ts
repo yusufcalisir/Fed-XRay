@@ -25,6 +25,8 @@ export interface TelemetryRound {
   threat_detected: boolean;
   blocked_nodes: number[];
   status: string;
+  model_type?: string;
+  peft_mode?: string;
 }
 
 export interface DiagnosisResult {
