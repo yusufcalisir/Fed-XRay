@@ -3,7 +3,7 @@
 import React, { useState } from "react";
 import { useLanguage } from "@/context/LanguageContext";
 import { HospitalCohort } from "@/types";
-import { Database, RefreshCw, Eye, CheckCircle2, ShieldCheck, Sparkles, PieChart as PieIcon } from "lucide-react";
+import { Database, RefreshCw, Eye, CheckCircle2, ShieldCheck, Sparkles } from "lucide-react";
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip as RechartsTooltip } from "recharts";
 
 interface HospitalStudioProps {
@@ -13,7 +13,9 @@ interface HospitalStudioProps {
 }
 
 const PIE_COLORS = ["#10b981", "#f59e0b", "#ef4444"];
-const CLASS_DOT_COLORS = ["bg-emerald-500", "bg-amber-500", "bg-red-500"];
+const PIE_BG_COLORS = ["bg-emerald-500/10", "bg-amber-500/10", "bg-red-500/10"];
+const PIE_BORDER_COLORS = ["border-emerald-500/30", "border-amber-500/30", "border-red-500/30"];
+const PIE_TEXT_COLORS = ["text-emerald-600 dark:text-emerald-400", "text-amber-600 dark:text-amber-400", "text-red-600 dark:text-red-400"];
 
 export default function HospitalStudio({ hospitals, onGenerate, isLoading }: HospitalStudioProps) {
   const { t } = useLanguage();
@@ -22,9 +24,36 @@ export default function HospitalStudio({ hospitals, onGenerate, isLoading }: Hos
 
   const pieData = active
     ? [
-        { name: t("sec1_normal"), value: active.counts.normal, percentage: Math.round(active.distribution[0] * 100), color: PIE_COLORS[0] },
-        { name: t("sec1_pneumonia"), value: active.counts.pneumonia, percentage: Math.round(active.distribution[1] * 100), color: PIE_COLORS[1] },
-        { name: t("sec1_covid"), value: active.counts.covid, percentage: Math.round(active.distribution[2] * 100), color: PIE_COLORS[2] },
+        {
+          name: t("sec1_normal"),
+          shortName: "Normal",
+          value: active.counts.normal,
+          percentage: Math.round(active.distribution[0] * 100),
+          color: PIE_COLORS[0],
+          bg: PIE_BG_COLORS[0],
+          border: PIE_BORDER_COLORS[0],
+          text: PIE_TEXT_COLORS[0],
+        },
+        {
+          name: t("sec1_pneumonia"),
+          shortName: "Pneumonia",
+          value: active.counts.pneumonia,
+          percentage: Math.round(active.distribution[1] * 100),
+          color: PIE_COLORS[1],
+          bg: PIE_BG_COLORS[1],
+          border: PIE_BORDER_COLORS[1],
+          text: PIE_TEXT_COLORS[1],
+        },
+        {
+          name: t("sec1_covid"),
+          shortName: "COVID-19",
+          value: active.counts.covid,
+          percentage: Math.round(active.distribution[2] * 100),
+          color: PIE_COLORS[2],
+          bg: PIE_BG_COLORS[2],
+          border: PIE_BORDER_COLORS[2],
+          text: PIE_TEXT_COLORS[2],
+        },
       ]
     : [];
 
@@ -63,7 +92,7 @@ export default function HospitalStudio({ hospitals, onGenerate, isLoading }: Hos
             <span className="font-semibold">{t("sec1_ingestion_complete")}</span>
           </div>
           <span className="text-[10px] font-mono text-[var(--text-muted)] hidden md:inline">
-            Non-IID Patient Skew Calibrated
+            Non-IID Patient Skew Calibrated (Strategy E Standard)
           </span>
         </div>
       )}
@@ -92,42 +121,25 @@ export default function HospitalStudio({ hospitals, onGenerate, isLoading }: Hos
             </div>
 
             {/* Equal 2-Column Layout */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-5 items-stretch">
-              {/* Left Column: Demographics List & Modern Donut Chart */}
-              <div className="flex flex-col justify-between h-full bg-[var(--bg-card-inner)]/40 p-3.5 sm:p-4 rounded-xl border border-[var(--border-subtle)]">
-                <div>
-                  <div className="flex items-center justify-between mb-1">
-                    <div className="text-sm font-bold text-[var(--text-heading)] truncate">{active.name}</div>
-                    <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded bg-accent-500/10 text-accent-600 dark:text-accent-400 border border-accent-500/20 shrink-0">
-                      client_{active.hospital_id}
-                    </span>
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-5 items-stretch">
+              {/* Left Column: Modern Integrated Distribution Studio */}
+              <div className="flex flex-col justify-between bg-[var(--bg-card-inner)]/50 p-4 sm:p-5 rounded-2xl border border-[var(--border-subtle)]">
+                {/* Header info */}
+                <div className="flex items-center justify-between">
+                  <div className="min-w-0">
+                    <h3 className="text-sm sm:text-base font-bold text-[var(--text-heading)] truncate">{active.name}</h3>
+                    <div className="text-[11px] text-[var(--text-muted)] mt-0.5">
+                      Cohort Ingestion: <span className="font-semibold text-[var(--text-main)]">{active.num_samples} Scans</span>
+                    </div>
                   </div>
-                  <div className="text-[11px] text-[var(--text-muted)] mb-3">
-                    Total Ingested: <span className="font-bold text-[var(--text-heading)]">{active.num_samples} Scans</span>
-                  </div>
-
-                  {/* Demographics Row Items */}
-                  <div className="pt-2 border-t border-[var(--border-subtle)] space-y-2">
-                    {pieData.map((item, idx) => (
-                      <div key={idx} className="flex items-center justify-between text-[11px] sm:text-xs py-1 border-b border-[var(--border-subtle)]/60 last:border-0">
-                        <div className="flex items-center gap-2 min-w-0">
-                          <span className={`w-2 h-2 rounded-full shrink-0 ${CLASS_DOT_COLORS[idx]}`} />
-                          <span className="truncate text-[var(--text-main)] font-medium">{item.name}</span>
-                        </div>
-                        <div className="flex items-center gap-2 shrink-0">
-                          <span className="font-mono font-bold text-[var(--text-heading)]">{item.value}</span>
-                          <span className="text-[10px] text-[var(--text-muted)] w-8 text-right font-mono">
-                            {item.percentage}%
-                          </span>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
+                  <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded-md bg-accent-500/10 text-accent-600 dark:text-accent-400 border border-accent-500/20 shrink-0">
+                    client_{active.hospital_id}
+                  </span>
                 </div>
 
-                {/* Modern Donut Chart - Fills the space nicely below on desktop and compact on mobile */}
-                <div className="mt-3 pt-3 border-t border-[var(--border-subtle)] flex items-center justify-center gap-4">
-                  <div className="w-28 h-28 sm:w-32 sm:h-32 relative shrink-0">
+                {/* Prominent Donut Pie Chart */}
+                <div className="my-3 sm:my-4 flex items-center justify-center relative">
+                  <div className="w-40 h-40 sm:w-48 sm:h-48 relative">
                     <ResponsiveContainer width="100%" height="100%">
                       <PieChart>
                         <RechartsTooltip
@@ -137,7 +149,7 @@ export default function HospitalStudio({ hospitals, onGenerate, isLoading }: Hos
                             borderRadius: "10px",
                             fontSize: "11px",
                             color: "var(--text-main)",
-                            boxShadow: "0 4px 12px rgba(0,0,0,0.15)",
+                            boxShadow: "0 8px 24px rgba(0,0,0,0.2)",
                           }}
                           formatter={(value: any, name: any) => [`${value} Scans`, name]}
                         />
@@ -147,9 +159,9 @@ export default function HospitalStudio({ hospitals, onGenerate, isLoading }: Hos
                           nameKey="name"
                           cx="50%"
                           cy="50%"
-                          innerRadius={32}
-                          outerRadius={50}
-                          paddingAngle={3}
+                          innerRadius={48}
+                          outerRadius={74}
+                          paddingAngle={4}
                           strokeWidth={0}
                         >
                           {pieData.map((entry, index) => (
@@ -158,29 +170,47 @@ export default function HospitalStudio({ hospitals, onGenerate, isLoading }: Hos
                         </Pie>
                       </PieChart>
                     </ResponsiveContainer>
+                    {/* Centered Total Indicator */}
                     <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-                      <span className="text-[9px] uppercase tracking-wider text-[var(--text-muted)] font-bold">Total</span>
-                      <span className="text-xs font-black font-mono text-[var(--text-heading)]">{active.num_samples}</span>
+                      <span className="text-[10px] uppercase tracking-wider text-[var(--text-muted)] font-bold">Total</span>
+                      <span className="text-base sm:text-lg font-black font-mono text-[var(--text-heading)] leading-none mt-0.5">
+                        {active.num_samples}
+                      </span>
+                      <span className="text-[9px] text-[var(--text-muted)] font-mono mt-0.5">scans</span>
                     </div>
                   </div>
+                </div>
 
-                  <div className="flex flex-col gap-1.5 text-[10px] sm:text-[11px]">
-                    <div className="metric-label text-[9px] uppercase mb-0.5">Prevalence Ratio</div>
-                    {pieData.map((d, i) => (
-                      <div key={i} className="flex items-center gap-1.5">
-                        <span className="w-2 h-2 rounded-sm shrink-0" style={{ backgroundColor: d.color }} />
-                        <span className="text-[var(--text-muted)] truncate max-w-[90px] sm:max-w-[120px]">{d.name.split(" ")[0]}</span>
-                        <span className="font-bold text-[var(--text-heading)] font-mono">{d.percentage}%</span>
+                {/* 3-Column Distribution Cards underneath the Donut Chart */}
+                <div className="grid grid-cols-3 gap-2 sm:gap-2.5">
+                  {pieData.map((d, i) => (
+                    <div
+                      key={i}
+                      className={`p-2 sm:p-2.5 rounded-xl border ${d.border} ${d.bg} flex flex-col justify-between text-center transition-all hover:scale-[1.02]`}
+                    >
+                      <div className="flex items-center justify-center gap-1.5 mb-1">
+                        <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: d.color }} />
+                        <span className="text-[10px] sm:text-[11px] font-semibold text-[var(--text-main)] truncate">
+                          {d.shortName}
+                        </span>
                       </div>
-                    ))}
-                  </div>
+                      <div className="flex items-baseline justify-center gap-1">
+                        <span className="text-xs sm:text-sm font-black font-mono text-[var(--text-heading)]">
+                          {d.value}
+                        </span>
+                        <span className={`text-[10px] font-bold font-mono ${d.text}`}>
+                          ({d.percentage}%)
+                        </span>
+                      </div>
+                    </div>
+                  ))}
                 </div>
               </div>
 
               {/* Right Column: 3x3 Scan Gallery */}
-              <div className="flex flex-col justify-between h-full bg-[var(--bg-card-inner)]/40 p-3.5 sm:p-4 rounded-xl border border-[var(--border-subtle)]">
+              <div className="flex flex-col justify-between bg-[var(--bg-card-inner)]/50 p-4 sm:p-5 rounded-2xl border border-[var(--border-subtle)]">
                 <div>
-                  <div className="flex items-center justify-between mb-2.5">
+                  <div className="flex items-center justify-between mb-3">
                     <div className="flex items-center gap-1.5 metric-label">
                       <Eye className="w-3.5 h-3.5 text-accent-500" />
                       <span>{t("sec1_sample_gallery")}</span>
@@ -188,9 +218,9 @@ export default function HospitalStudio({ hospitals, onGenerate, isLoading }: Hos
                     <span className="text-[10px] text-[var(--text-muted)] font-mono">9 Multi-Class Crops</span>
                   </div>
 
-                  <div className="grid grid-cols-3 gap-2">
+                  <div className="grid grid-cols-3 gap-2 sm:gap-2.5">
                     {active.sample_images.map((imgData, i) => (
-                      <div key={i} className="xray-frame group hover:ring-2 hover:ring-accent-500/40 transition-all aspect-square">
+                      <div key={i} className="xray-frame group hover:ring-2 hover:ring-accent-500/40 transition-all aspect-square rounded-xl overflow-hidden">
                         <canvas
                           ref={(canvas) => {
                             if (!canvas) return;
@@ -218,8 +248,8 @@ export default function HospitalStudio({ hospitals, onGenerate, isLoading }: Hos
                   </div>
                 </div>
 
-                <div className="mt-2.5 pt-2 border-t border-[var(--border-subtle)] text-[10px] text-[var(--text-muted)] text-center">
-                  Isolated institutional patient partitions under zero-leakage protocol
+                <div className="mt-3 pt-2.5 border-t border-[var(--border-subtle)] text-[10px] text-[var(--text-muted)] text-center font-mono">
+                  Zero Patient Leakage Enforced (Strategy E Protocol)
                 </div>
               </div>
             </div>
