@@ -109,7 +109,7 @@ $$
 p_c = \lambda \left(\sum_{k \in \mathcal{K}_c} \alpha_{k,c} \, p_{c,k}^{\text{img}}\right) + (1-\lambda) p_c^{\text{txt}}
 $$
 
-- **Dynamic Imbalance Loss Suite:** Implements Dynamic Adaptive Focal Loss (DAFL), Bayesian Balanced Softmax (BSM), Class-Balanced Loss $(\mathcal{L}_{\text{CB}})$, Label-Distribution-Aware Margin (LDAM), and Missing-Class Repel Loss $(\mathcal{L}_{\text{repel}})$.
+- **Dynamic Imbalance Loss Suite:** Dynamic Adaptive Focal Loss, Bayesian Balanced Softmax, Class-Balanced Loss, Label-Distribution-Aware Margin, and Missing-Class Repel Loss $(\mathcal{L}_{\text{DAFL}}, \; \mathcal{L}_{\text{BSM}}, \; \mathcal{L}_{\text{CB}}, \; \mathcal{L}_{\text{LDAM}}, \; \mathcal{L}_{\text{repel}})$.
 
 ---
 
