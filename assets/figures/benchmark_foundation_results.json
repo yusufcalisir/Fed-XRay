@@ -1,0 +1,72 @@
+[
+  {
+    "algorithm": "FedAvg",
+    "loss_fn": "CE",
+    "model_type": "cnn",
+    "peft_mode": "full_model",
+    "scenario": "A",
+    "rounds": 2,
+    "accuracy": 46.67,
+    "f1_score": 21.21,
+    "loss": 2.1839,
+    "payload_mb_per_round": 1.605,
+    "dp_epsilon": 0.94,
+    "elapsed_seconds": 3.34
+  },
+  {
+    "algorithm": "FedDyn",
+    "loss_fn": "DAFL",
+    "model_type": "vit_tiny",
+    "peft_mode": "ffa_lora",
+    "scenario": "A",
+    "rounds": 2,
+    "accuracy": 46.67,
+    "f1_score": 21.21,
+    "loss": 1.4606,
+    "payload_mb_per_round": 0.0015,
+    "dp_epsilon": 0.94,
+    "elapsed_seconds": 1.74
+  },
+  {
+    "algorithm": "FedDyn",
+    "loss_fn": "DAFL",
+    "model_type": "vit_tiny",
+    "peft_mode": "ffa_lora",
+    "scenario": "D",
+    "rounds": 2,
+    "accuracy": 33.33,
+    "f1_score": 16.67,
+    "loss": 0.0642,
+    "payload_mb_per_round": 0.0015,
+    "dp_epsilon": 0.94,
+    "elapsed_seconds": 1.76
+  },
+  {
+    "algorithm": "FedAvg",
+    "loss_fn": "BSM",
+    "model_type": "vit_tiny",
+    "peft_mode": "fedsa_lora",
+    "scenario": "E",
+    "rounds": 2,
+    "accuracy": 33.33,
+    "f1_score": 16.67,
+    "loss": 0.0958,
+    "payload_mb_per_round": 0.0015,
+    "dp_epsilon": 0.94,
+    "elapsed_seconds": 1.01
+  },
+  {
+    "algorithm": "FedOpt",
+    "loss_fn": "LDAM",
+    "model_type": "vit_tiny",
+    "peft_mode": "ffa_lora",
+    "scenario": "F",
+    "rounds": 2,
+    "accuracy": 46.67,
+    "f1_score": 21.21,
+    "loss": 32.1961,
+    "payload_mb_per_round": 0.0015,
+    "dp_epsilon": 0.94,
+    "elapsed_seconds": 0.48
+  }
+]
