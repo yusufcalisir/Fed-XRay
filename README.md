@@ -18,7 +18,7 @@ Fed-XRay is an enterprise-grade Federated Learning (FL) and Clinical Decision Su
   <img src="https://img.shields.io/badge/Privacy-Option_J_(CKKS_+_DP)-indigo" alt="Privacy">
   <img src="https://img.shields.io/badge/PEFT-FFA--LoRA_%7C_FedSA--LoRA_%7C_FedAS--LoRA-purple" alt="PEFT">
   <img src="https://img.shields.io/badge/Localization-EN%20%7C%20TR-blue" alt="Bilingual">
-  <img src="https://img.shields.io/badge/Automated_Tests-86_Passed_100%25-brightgreen" alt="Tests">
+  <img src="https://img.shields.io/badge/Automated_Tests-107_Passed_100%25-brightgreen" alt="Tests">
   <img src="https://img.shields.io/badge/License-MIT-yellow" alt="License">
 </p>
 
@@ -202,7 +202,7 @@ Fed-XRay/
 │           └── i18n.py            # Academic Bilingual Localization (EN / TR)
 ├── benchmarks/                    # Multi-Algorithm Simulation & Empirical Benchmarks
 │   └── benchmark_foundation_peft.py # Master Foundation PEFT & Comparative Benchmark Suite
-├── tests/                         # Comprehensive Automated Test Suites (86 Tests Passed)
+├── tests/                         # Comprehensive Automated Test Suites (107 Tests Passed)
 │   ├── test_all.py                # Baseline Model, Data, XAI & Security Tests
 │   ├── test_api_endpoints.py      # FastAPI REST & Streaming Integration Tests
 │   ├── test_api_deep_suite.py     # Exhaustive Deep API, SSE Streaming & Polling Tests
@@ -214,7 +214,11 @@ Fed-XRay/
 │   ├── test_foundation_privacy.py # FedMedCLIP, CKKS HE, SecAgg+ & Rényi DP Accountant
 │   ├── test_prototypes.py         # FedProto & Imbalance Losses
 │   ├── test_real_world_data_scenarios.py # DiskMedicalDataset, Scenarios A-G & Federated RAG
-│   └── test_vit_peft_optimizers.py # ViT, FFA-LoRA Zero Error & SOTA Optimizers
+│   ├── test_vit_peft_optimizers.py # ViT, FFA-LoRA Zero Error & SOTA Optimizers
+│   ├── test_strategy_e_real_ingestion.py # Strategy E 224x224 Ingestion & Patient Isolation Tests
+│   ├── test_vit_tiny_ffa_lora.py  # ViT-Tiny FFA-LoRA Deep Attention Tests
+│   ├── test_crypto_privacy_optimizers.py # TenSEAL CKKS RLWE 128-bit & SecAgg+ Tests
+│   └── test_evidence_grounded_cdss.py # 224x224 Grad-CAM & Federated RAG Tests
 ├── research/                      # Canonical Scientific Research Anchors
 │   ├── federated_vision_transformers_for_oncology.md
 │   ├── federated_foundation_models_for_cancer.md
@@ -242,10 +246,10 @@ cd Fed-XRay
 pip install -r requirements.txt
 ```
 
-### 2. Run Automated Test Suite (86 Tests Passed)
+### 2. Run Automated Test Suite (107 Tests Passed)
 
 ```bash
-# Execute all 86 unit, integration, and E2E lifecycle tests
+# Execute all 107 unit, integration, and E2E lifecycle tests
 python -m pytest tests/
 ```
 
