@@ -8,7 +8,7 @@ Implements:
 
 from __future__ import annotations
 import math
-from typing import Optional, Tuple
+from typing import Any, List, Optional, Tuple
 import numpy as np
 from scipy.ndimage import zoom
 import torch
@@ -26,13 +26,13 @@ class GradCAM:
         self.model = model
         self.gradients: Optional[torch.Tensor] = None
         self.activations: Optional[torch.Tensor] = None
-        self.hook_handles = []
+        self.hook_handles: List[Any] = []
         self.target_layer_name = ""
         self._register_hooks()
 
     def _register_hooks(self) -> None:
         """Register forward and backward hooks on the last feature extraction layer."""
-        target_layer = None
+        target_layer: Optional[nn.Module] = None
         # Look for last Conv2d layer
         for name, module in self.model.named_modules():
             if isinstance(module, nn.Conv2d):
@@ -50,10 +50,10 @@ class GradCAM:
             # Fallback to model root
             target_layer = self.model
 
-        def forward_hook(module, input, output):
+        def forward_hook(module: nn.Module, input: Any, output: Any) -> None:
             self.activations = output.detach() if isinstance(output, torch.Tensor) else output[0].detach()
 
-        def backward_hook(module, grad_input, grad_output):
+        def backward_hook(module: nn.Module, grad_input: Any, grad_output: Any) -> None:
             self.gradients = grad_output[0].detach()
 
         handle_fwd = target_layer.register_forward_hook(forward_hook)
@@ -82,20 +82,21 @@ class GradCAM:
                 output = output[0]
 
             if torch.isnan(output).any() or torch.isinf(output).any():
-                return np.ones((input_h, input_w)) * 0.5, 0, 0.33
+                return np.ones((input_h, input_w), dtype=np.float32) * 0.5, 0, 0.33
 
             probs = F.softmax(output, dim=1)
             confidence, predicted = probs.max(dim=1)
 
-            if target_class is None:
-                target_class = predicted.item()
+            pred_class = int(predicted.item())
+            conf_score = float(confidence.item())
+            chosen_class = pred_class if target_class is None else int(target_class)
 
             self.model.zero_grad()
             if input_tensor.grad is not None:
                 input_tensor.grad.zero_()
 
             one_hot = torch.zeros_like(output)
-            one_hot[0, target_class] = 1.0
+            one_hot[0, chosen_class] = 1.0
             output.backward(gradient=one_hot, retain_graph=True)
 
             gradients = self.gradients
@@ -106,46 +107,47 @@ class GradCAM:
                 if input_tensor.grad is not None:
                     grad_input = input_tensor.grad.abs().mean(dim=1).squeeze().cpu().numpy()
                     grad_input = (grad_input - grad_input.min()) / (grad_input.max() - grad_input.min() + 1e-8)
-                    return grad_input, predicted.item(), confidence.item()
-                return np.ones((input_h, input_w)) * 0.5, predicted.item(), confidence.item()
+                    return grad_input.astype(np.float32), pred_class, conf_score
+                return np.ones((input_h, input_w), dtype=np.float32) * 0.5, pred_class, conf_score
 
+            cam_arr: np.ndarray
             if gradients.dim() == 4 and activations.dim() == 4:
                 # CNN / Conv2d patch embedding formulation
                 weights = gradients.mean(dim=(2, 3), keepdim=True)
-                cam = (weights * activations).sum(dim=1, keepdim=True)
-                cam = F.relu(cam)
-                cam = cam.squeeze().cpu().detach().numpy()
+                cam_t = (weights * activations).sum(dim=1, keepdim=True)
+                cam_t = F.relu(cam_t)
+                cam_arr = cam_t.squeeze().cpu().detach().numpy()
             elif gradients.dim() == 3 and activations.dim() == 3:
                 # Token sequence formulation [B, N, D]
                 weights = gradients.mean(dim=1, keepdim=True)
-                cam = (weights * activations).sum(dim=-1).squeeze().cpu().detach().numpy()
+                cam_seq = (weights * activations).sum(dim=-1).squeeze().cpu().detach().numpy()
                 # Exclude CLS token if present
-                if len(cam) > 1:
-                    cam = cam[1:]
-                grid_side = int(math.isqrt(len(cam)))
-                if grid_side * grid_side == len(cam):
-                    cam = cam.reshape(grid_side, grid_side)
+                if len(cam_seq) > 1:
+                    cam_seq = cam_seq[1:]
+                grid_side = int(math.isqrt(len(cam_seq)))
+                if grid_side * grid_side == len(cam_seq):
+                    cam_arr = cam_seq.reshape(grid_side, grid_side)
                 else:
-                    cam = np.ones((input_h, input_w)) * 0.5
+                    cam_arr = np.ones((input_h, input_w), dtype=np.float32) * 0.5
             else:
-                cam = np.ones((input_h, input_w)) * 0.5
+                cam_arr = np.ones((input_h, input_w), dtype=np.float32) * 0.5
 
-            if cam.max() == 0 or np.isnan(cam).any():
-                return np.ones((input_h, input_w)) * 0.5, predicted.item(), confidence.item()
+            if cam_arr.max() == 0 or np.isnan(cam_arr).any():
+                return np.ones((input_h, input_w), dtype=np.float32) * 0.5, pred_class, conf_score
 
-            cam = (cam - cam.min()) / (cam.max() - cam.min() + 1e-8)
+            cam_arr = (cam_arr - cam_arr.min()) / (cam_arr.max() - cam_arr.min() + 1e-8)
 
-            if cam.shape[0] != input_h or cam.shape[1] != input_w:
-                zoom_h = input_h / cam.shape[0]
-                zoom_w = input_w / cam.shape[1]
-                cam = zoom(cam, (zoom_h, zoom_w), order=1)
+            if cam_arr.shape[0] != input_h or cam_arr.shape[1] != input_w:
+                zoom_h = input_h / cam_arr.shape[0]
+                zoom_w = input_w / cam_arr.shape[1]
+                cam_arr = zoom(cam_arr, (zoom_h, zoom_w), order=1)
 
-            cam = np.clip(cam, 0.0, 1.0)
-            return cam, predicted.item(), confidence.item()
+            cam_final = np.clip(cam_arr, 0.0, 1.0).astype(np.float32)
+            return cam_final, pred_class, conf_score
 
         except Exception as e:
             print(f"[Grad-CAM Saliency Exception] {e}")
-            return np.ones((input_h, input_w)) * 0.5, 0, 0.33
+            return np.ones((input_h, input_w), dtype=np.float32) * 0.5, 0, 0.33
 
 
 def create_overlay(

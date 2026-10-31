@@ -12,13 +12,26 @@ from __future__ import annotations
 import json
 import os
 import time
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, TypedDict
 import torch
 
 from src.fed_xray.data.real_world import StrategyEDatasetEcosystem
 from src.fed_xray.core.client import HospitalClient
 from src.fed_xray.core.server import CentralServer, run_federated_round
 from src.fed_xray.core.privacy import PatientLevelDPAccountant
+
+
+class BenchmarkExperiment(TypedDict):
+    algorithm: str
+    loss_fn: str
+    model_type: str
+    peft_mode: Optional[str]
+    scenario: str
+    num_rounds: int
+    q_subsample: float
+    sigma_dp: float
+    secure_aggregation: bool
+    use_ckks: bool
 
 
 def run_single_foundation_benchmark(
@@ -156,7 +169,7 @@ def run_full_comparative_benchmark(
     os.makedirs(output_dir, exist_ok=True)
     results = []
 
-    experiments = [
+    experiments: List[BenchmarkExperiment] = [
         # 1. Classical CNN FedAvg Baseline (Full Model, Scenario A, 3 rounds, sigma=2.0)
         {
             "algorithm": "FedAvg",

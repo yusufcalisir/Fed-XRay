@@ -262,7 +262,12 @@ class StrategyEDatasetEcosystem:
         """Generates multi-center patient cohort with distinct patient IDs and multiple lesion crops."""
         records: List[RealWorldPatientRecord] = []
         meta = self.SITE_METADATA.get(dataset_name, {})
-        sites: List[str] = list(meta.get("sites", ["Hospital_A", "Hospital_B", "Hospital_C"]))
+        raw_sites = meta.get("sites")
+        sites: List[str] = (
+            [str(s) for s in raw_sites]
+            if isinstance(raw_sites, list)
+            else ["Hospital_A", "Hospital_B", "Hospital_C"]
+        )
         num_sites = len(sites)
 
         seen_hashes: Set[str] = set()
@@ -324,8 +329,18 @@ class StrategyEDatasetEcosystem:
         meta = StrategyEDatasetEcosystem.SITE_METADATA.get(
             dataset_name, StrategyEDatasetEcosystem.SITE_METADATA["ISIC_2019"]
         )
-        sites = meta["sites"]
-        classes = meta["classes"]
+        raw_sites = meta.get("sites")
+        sites: List[str] = (
+            [str(s) for s in raw_sites]
+            if isinstance(raw_sites, list)
+            else ["Hospital_A", "Hospital_B", "Hospital_C"]
+        )
+        raw_classes = meta.get("classes")
+        classes: List[str] = (
+            [str(c) for c in raw_classes]
+            if isinstance(raw_classes, list)
+            else ["Class_0", "Class_1", "Class_2"]
+        )
 
         rows = []
         for i in range(num_samples):

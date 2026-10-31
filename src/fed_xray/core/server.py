@@ -109,6 +109,7 @@ class CentralServer:
 
     def _create_model(self) -> nn.Module:
         """Create global model with appropriate architecture and PEFT hooks."""
+        model: nn.Module
         if self.model_type.startswith("vit"):
             model = create_medical_vit(model_type=self.model_type, num_classes=3)
             if self.peft_mode:
@@ -222,8 +223,10 @@ class CentralServer:
             else:
                 trusted_weights.append(weights)
                 trusted_counts.append(count)
-                if delta_cs and delta_cs[idx] is not None:
-                    trusted_delta_cs.append(delta_cs[idx])
+                if delta_cs is not None and idx < len(delta_cs):
+                    d_c = delta_cs[idx]
+                    if d_c is not None:
+                        trusted_delta_cs.append(d_c)
 
         if not trusted_weights:
             print("[WARNING] All client updates failed validation. Preserving global state.")
@@ -373,14 +376,14 @@ class CentralServer:
                 all_preds.extend(predicted.cpu().numpy().tolist())
                 all_labels.extend(batch_labels.cpu().numpy().tolist())
 
-        all_preds = np.array(all_preds)
-        all_labels = np.array(all_labels)
+        all_preds_arr = np.array(all_preds)
+        all_labels_arr = np.array(all_labels)
 
-        accuracy = accuracy_score(all_labels, all_preds)
-        precision = precision_score(all_labels, all_preds, average="macro", zero_division=0)
-        recall = recall_score(all_labels, all_preds, average="macro", zero_division=0)
-        f1 = f1_score(all_labels, all_preds, average="macro", zero_division=0)
-        conf_matrix = confusion_matrix(all_labels, all_preds)
+        accuracy = accuracy_score(all_labels_arr, all_preds_arr)
+        precision = precision_score(all_labels_arr, all_preds_arr, average="macro", zero_division=0)
+        recall = recall_score(all_labels_arr, all_preds_arr, average="macro", zero_division=0)
+        f1 = f1_score(all_labels_arr, all_preds_arr, average="macro", zero_division=0)
+        conf_matrix = confusion_matrix(all_labels_arr, all_preds_arr)
         avg_loss = total_loss / max(n_samples, 1)
 
         return EvaluationMetrics(
@@ -503,11 +506,15 @@ def run_federated_round(
                 threat_detected=False,
                 details="SecAgg+ pairwise zero-sum masking active (cryptographic privacy preserves node confidentiality)",
             )
+        delta_cs_clean: Optional[List[Dict[str, torch.Tensor]]] = None
+        if algorithm.upper() == "SCAFFOLD" and delta_cs:
+            delta_cs_clean = [d for d in delta_cs if d is not None]
+
         server.aggregate(
             client_updates,
             sample_counts,
             algorithm=algorithm,
-            delta_cs=delta_cs if algorithm.upper() == "SCAFFOLD" else None,
+            delta_cs=delta_cs_clean,
             use_ckks=active_ckks,
         )
 

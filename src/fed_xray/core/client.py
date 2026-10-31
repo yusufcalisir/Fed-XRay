@@ -80,15 +80,13 @@ class HospitalClient:
         # MOON previous local model state
         self.prev_local_model: Optional[nn.Module] = None
 
-        self.n_samples = (
-            len(dataloader.dataset)
-            if dataloader and hasattr(dataloader, "dataset") and dataloader.dataset is not None
-            else 0
-        )
+        ds = getattr(dataloader, "dataset", None) if dataloader else None
+        self.n_samples = len(ds) if ds is not None and hasattr(ds, "__len__") else 0
         self.class_counts = self._compute_class_counts()
 
     def _create_local_model(self) -> nn.Module:
         """Instantiate backbone and inject PEFT adapters if requested."""
+        model: nn.Module
         if self.model_type.startswith("vit"):
             model = create_medical_vit(model_type=self.model_type, num_classes=3)
             if self.peft_mode:
@@ -252,7 +250,7 @@ class HospitalClient:
 
                 # 2. FedProx Proximal Penalty
                 if (algorithm.upper() == "FEDPROX" or prox_mu > 0) and prox_mu > 0:
-                    prox_penalty = 0.0
+                    prox_penalty: torch.Tensor = torch.tensor(0.0, device=self.device)
                     for name, param in self.model.named_parameters():
                         if name in initial_params:
                             prox_penalty = prox_penalty + torch.sum((param - initial_params[name]) ** 2)
@@ -260,8 +258,8 @@ class HospitalClient:
 
                 # 3. FedDyn Dynamic Linear & Quadratic Regularization
                 if algorithm.upper() == "FEDDYN" and feddyn_alpha > 0:
-                    dyn_linear = 0.0
-                    dyn_quad = 0.0
+                    dyn_linear: torch.Tensor = torch.tensor(0.0, device=self.device)
+                    dyn_quad: torch.Tensor = torch.tensor(0.0, device=self.device)
                     for name, param in self.model.named_parameters():
                         if name in initial_params:
                             diff = param - initial_params[name]
