@@ -94,7 +94,7 @@ export const TRANSLATIONS: Record<Language, Record<string, string>> = {
     lock_diag_desc: "Execute and complete federated training in Step 2 to train and deploy global consensus weights before running radiological AI diagnosis and Grad-CAM attention mapping.",
     lock_diag_btn: "Go to Federated Training (Step 2)",
     
-    sec1_ingestion_complete: "Hospital Data Ingestion Complete — 4 Nodes Online & Isolated",
+    sec1_ingestion_complete: "Hospital Data Ingestion Complete: 4 Nodes Online & Isolated",
     sec1_empty_state_title: "Multi-Hospital Data Ingestion Required",
     sec1_empty_state_desc: "Click the button below to ingest, partition, and isolate Non-IID patient cohorts across 4 clinical hospital nodes.",
 
@@ -193,7 +193,7 @@ export const TRANSLATIONS: Record<Language, Record<string, string>> = {
     lock_diag_desc: "Klinik yapay zeka çıkarımı ve Grad-CAM dikkat haritalarını çalıştırabilmek için lütfen Aşama 2'deki federe eğitimi tamamlayarak küresel model ağırlıklarını dağıtın.",
     lock_diag_btn: "Federe Eğitime Git (Aşama 2)",
     
-    sec1_ingestion_complete: "Hastane Veri İçe Aktarımı Tamamlandı — 4 Düğüm Çevrimiçi & İzole Edildi",
+    sec1_ingestion_complete: "Hastane Veri İçe Aktarımı Tamamlandı: 4 Düğüm Çevrimiçi & İzole Edildi",
     sec1_empty_state_title: "Çok Merkezli Veri İçe Aktarımı Gerekli",
     sec1_empty_state_desc: "4 hastane düğümüne bağımsız Non-IID hasta kohortlarını yüklemek ve izole etmek için aşağıdaki butona tıklayın.",
 

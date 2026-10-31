@@ -46,47 +46,24 @@ export default function DashboardPage() {
       const res = await fetchHospitalCohorts(apiUrl, numHospitals, samplesPerHospital);
       if (res.success && res.hospitals) {
         setHospitals(res.hospitals);
+      } else {
+        throw new Error(res.error || "Cohort generation failed on backend");
       }
     } catch (err: any) {
       console.warn("Cohort generation error:", err.message);
-      // Minimal placeholder so UI stays responsive — real data loads once backend is up
-      const ph = Array(4).fill(0).map(() => Array(4).fill(0.5)); // 4x4 grey placeholder
-      const fallbackHospitals: HospitalCohort[] = [
-        {
-          hospital_id: 1, name: "BCN-20000 Skin Cancer Hub (Barcelona)",
-          num_samples: 200, distribution: [0.70, 0.20, 0.10],
-          counts: { normal: 140, pneumonia: 40, covid: 20 },
-          sample_images: Array(9).fill(ph), sample_labels: [0, 0, 1, 0, 1, 2, 0, 1, 0],
-        },
-        {
-          hospital_id: 2, name: "ViDIR Dermatopathology Institute (Vienna)",
-          num_samples: 200, distribution: [0.20, 0.65, 0.15],
-          counts: { normal: 40, pneumonia: 130, covid: 30 },
-          sample_images: Array(9).fill(ph), sample_labels: [1, 1, 1, 0, 2, 1, 1, 0, 1],
-        },
-        {
-          hospital_id: 3, name: "Queensland Oncology Screening Center",
-          num_samples: 200, distribution: [0.15, 0.15, 0.70],
-          counts: { normal: 30, pneumonia: 30, covid: 140 },
-          sample_images: Array(9).fill(ph), sample_labels: [2, 2, 2, 0, 1, 2, 2, 2, 0],
-        },
-        {
-          hospital_id: 4, name: "Beth Israel Deaconess Medical Center",
-          num_samples: 200, distribution: [0.34, 0.33, 0.33],
-          counts: { normal: 68, pneumonia: 66, covid: 66 },
-          sample_images: Array(9).fill(ph), sample_labels: [0, 1, 2, 0, 1, 2, 0, 1, 2],
-        },
-      ];
-      setHospitals(fallbackHospitals);
+      setHospitals([]);
+      setErrorMessage(`Cohort generation failed: ${err.message}. Ensure backend service is reachable.`);
     } finally {
       setIsCohortLoading(false);
     }
   };
 
-  // Pre-load cohorts on mount so data ingestion is ready
+  // Pre-load cohorts when backend connection is verified
   useEffect(() => {
-    handleGenerateCohorts();
-  }, [apiUrl]);
+    if (isConnected) {
+      handleGenerateCohorts();
+    }
+  }, [apiUrl, isConnected]);
 
   const handleStartTraining = async () => {
     setErrorMessage(null);
@@ -193,14 +170,14 @@ export default function DashboardPage() {
         )}
 
         <Hero
-          numHospitals={numHospitals}
+          numHospitals={hospitals.length}
           totalRounds={totalRounds}
-          totalSamples={numHospitals * samplesPerHospital}
+          totalSamples={hospitals.reduce((acc, h) => acc + h.num_samples, 0)}
           isTrained={isTrained}
         />
 
         <LiveHud
-          numHospitals={numHospitals}
+          numHospitals={hospitals.length}
           isDefenseActive={true}
           isTrained={isTrained}
         />
