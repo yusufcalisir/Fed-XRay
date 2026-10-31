@@ -13,6 +13,7 @@ from typing import Any, Dict, List, Optional, Tuple
 import numpy as np
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
 from sklearn.metrics import (  # pyrefly: ignore[missing-source-for-stubs]
     accuracy_score,
     confusion_matrix,
@@ -198,6 +199,15 @@ class CentralServer:
             for i in range(0, n_samples, batch_size):
                 batch_images = test_images[i : i + batch_size].to(self.device)
                 batch_labels = test_labels[i : i + batch_size].to(self.device)
+
+                # Ensure spatial resolution matches expected architecture grid
+                if batch_images.shape[-1] != self.img_size or batch_images.shape[-2] != self.img_size:
+                    batch_images = F.interpolate(
+                        batch_images,
+                        size=(self.img_size, self.img_size),
+                        mode="bilinear",
+                        align_corners=False,
+                    )
 
                 outputs = temp_model(batch_images)
                 if torch.isnan(outputs).any():
@@ -418,6 +428,15 @@ class CentralServer:
             for i in range(0, n_samples, batch_size):
                 batch_images = test_images[i : i + batch_size].to(self.device)
                 batch_labels = test_labels[i : i + batch_size].to(self.device)
+
+                # Ensure spatial resolution matches expected architecture grid
+                if batch_images.shape[-1] != self.img_size or batch_images.shape[-2] != self.img_size:
+                    batch_images = F.interpolate(
+                        batch_images,
+                        size=(self.img_size, self.img_size),
+                        mode="bilinear",
+                        align_corners=False,
+                    )
 
                 outputs = self.global_model(batch_images)
                 loss = criterion(outputs, batch_labels)

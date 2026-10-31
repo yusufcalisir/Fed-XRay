@@ -114,3 +114,4 @@ def test_api_cohort_generation_returns_strategy_e():
         crop = h["sample_images"][0]
         assert len(crop) == 56
         assert len(crop[0]) == 56
+

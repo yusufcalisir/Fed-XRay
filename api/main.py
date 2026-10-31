@@ -546,6 +546,7 @@ async def start_training_background(
                 deep_layers_only=True,
                 secure_aggregation=secure_aggregation,
                 use_ckks=use_ckks,
+                img_size=state.image_size,
             )
             state.server = srv
 
@@ -562,6 +563,7 @@ async def start_training_background(
                     lora_r=8,
                     lora_alpha=16.0,
                     deep_layers_only=True,
+                    img_size=state.image_size,
                 )
                 for i in range(len(dataloaders))
             ]

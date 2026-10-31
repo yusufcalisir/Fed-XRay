@@ -100,3 +100,4 @@ def test_federated_rag_case_retrieval_over_real_cohort():
         assert case["label"] in (0, 1, 2)
         assert 0.0 <= case["similarity"] <= 1.0
         assert len(case["clinical_notes"]) > 10, "Case must have genuine clinical notes"
+
