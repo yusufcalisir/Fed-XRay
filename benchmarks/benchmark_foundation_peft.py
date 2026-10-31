@@ -13,13 +13,9 @@ import json
 import os
 import time
 from typing import Any, Dict, List, Optional
-import numpy as np
 import torch
 
-from src.fed_xray.data.real_world import (
-    RealWorldPatientRecord,
-    StrategyEDatasetEcosystem,
-)
+from src.fed_xray.data.real_world import StrategyEDatasetEcosystem
 from src.fed_xray.core.client import HospitalClient
 from src.fed_xray.core.server import CentralServer, run_federated_round
 from src.fed_xray.core.privacy import PatientLevelDPAccountant
@@ -35,6 +31,11 @@ def run_single_foundation_benchmark(
     num_clients: int = 4,
     samples_per_client: int = 50,
     seed: int = 42,
+    privacy_noise: float = 0.01,
+    secure_aggregation: bool = False,
+    use_ckks: bool = False,
+    q_subsample: float = 0.2,
+    sigma_dp: float = 1.5,
 ) -> Dict[str, Any]:
     """Execute a controlled federated benchmark run."""
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -68,6 +69,9 @@ def run_single_foundation_benchmark(
         lora_r=8,
         lora_alpha=16.0,
         deep_layers_only=True,
+        privacy_noise=privacy_noise,
+        secure_aggregation=secure_aggregation,
+        use_ckks=use_ckks,
     )
 
     # Instantiate Clients
@@ -111,8 +115,10 @@ def run_single_foundation_benchmark(
             proto_weight=0.1,
             feddyn_alpha=0.01 if algorithm == "FedDyn" else 0.0,
             prox_mu=0.01 if algorithm == "FedProx" else 0.0,
+            secure_aggregation=secure_aggregation,
+            use_ckks=use_ckks,
         )
-        dp_accountant.step(q=0.2, sigma=1.5)
+        dp_accountant.step(q=q_subsample, sigma=sigma_dp)
         history_loss.append(float(agg_metrics["loss"]))
         history_acc.append(float(agg_metrics["accuracy"] * 100.0))
         final_test_metrics = test_metrics
@@ -151,16 +157,71 @@ def run_full_comparative_benchmark(
     results = []
 
     experiments = [
-        # 1. Classical CNN FedAvg Baseline
-        {"algorithm": "FedAvg", "loss_fn": "CE", "model_type": "cnn", "peft_mode": None, "scenario": "A"},
-        # 2. Vision Transformer + FedDyn + FFA-LoRA + DAFL (IID)
-        {"algorithm": "FedDyn", "loss_fn": "DAFL", "model_type": "vit_tiny", "peft_mode": "ffa_lora", "scenario": "A"},
-        # 3. Vision Transformer + FedDyn + FFA-LoRA + DAFL (Severe Skew Scenario D)
-        {"algorithm": "FedDyn", "loss_fn": "DAFL", "model_type": "vit_tiny", "peft_mode": "ffa_lora", "scenario": "D"},
-        # 4. Vision Transformer + FedSA-LoRA (Personalized Share-A, Scenario E Missing Classes)
-        {"algorithm": "FedAvg", "loss_fn": "BSM", "model_type": "vit_tiny", "peft_mode": "fedsa_lora", "scenario": "E"},
-        # 5. Vision Transformer + FedOpt/FedAdam + FFA-LoRA (Long-Tail Scenario F)
-        {"algorithm": "FedOpt", "loss_fn": "LDAM", "model_type": "vit_tiny", "peft_mode": "ffa_lora", "scenario": "F"},
+        # 1. Classical CNN FedAvg Baseline (Full Model, Scenario A, 3 rounds, sigma=2.0)
+        {
+            "algorithm": "FedAvg",
+            "loss_fn": "CE",
+            "model_type": "cnn",
+            "peft_mode": None,
+            "scenario": "A",
+            "num_rounds": 3,
+            "q_subsample": 0.2,
+            "sigma_dp": 2.0,
+            "secure_aggregation": False,
+            "use_ckks": False,
+        },
+        # 2. Medical ViT + FedDyn + FFA-LoRA + DAFL (Scenario A IID, 4 rounds, sigma=1.5)
+        {
+            "algorithm": "FedDyn",
+            "loss_fn": "DAFL",
+            "model_type": "vit_tiny",
+            "peft_mode": "ffa_lora",
+            "scenario": "A",
+            "num_rounds": 4,
+            "q_subsample": 0.2,
+            "sigma_dp": 1.5,
+            "secure_aggregation": False,
+            "use_ckks": False,
+        },
+        # 3. Medical ViT + FedDyn + FFA-LoRA + DAFL + SecAgg+ (Scenario D Severe Skew, 3 rounds, sigma=1.2)
+        {
+            "algorithm": "FedDyn",
+            "loss_fn": "DAFL",
+            "model_type": "vit_tiny",
+            "peft_mode": "ffa_lora",
+            "scenario": "D",
+            "num_rounds": 3,
+            "q_subsample": 0.2,
+            "sigma_dp": 1.2,
+            "secure_aggregation": True,
+            "use_ckks": False,
+        },
+        # 4. UNI Foundation Backbone + FedSA-LoRA + BSM + CKKS (Scenario E Missing Classes, 3 rounds, sigma=1.8)
+        {
+            "algorithm": "FedAvg",
+            "loss_fn": "BSM",
+            "model_type": "uni",
+            "peft_mode": "fedsa_lora",
+            "scenario": "E",
+            "num_rounds": 3,
+            "q_subsample": 0.2,
+            "sigma_dp": 1.8,
+            "secure_aggregation": False,
+            "use_ckks": True,
+        },
+        # 5. Swin UNETR Radiology Backbone + FedOpt + FFA-LoRA + LDAM (Scenario F Long-Tail, 3 rounds, sigma=1.4)
+        {
+            "algorithm": "FedOpt",
+            "loss_fn": "LDAM",
+            "model_type": "swin_unetr",
+            "peft_mode": "ffa_lora",
+            "scenario": "F",
+            "num_rounds": 3,
+            "q_subsample": 0.2,
+            "sigma_dp": 1.4,
+            "secure_aggregation": False,
+            "use_ckks": False,
+        },
     ]
 
     print("=========================================================================")
@@ -175,8 +236,12 @@ def run_full_comparative_benchmark(
             model_type=exp["model_type"],
             peft_mode=exp["peft_mode"],
             scenario=exp["scenario"],
-            num_rounds=2,
+            num_rounds=exp["num_rounds"],
             num_clients=4,
+            q_subsample=exp["q_subsample"],
+            sigma_dp=exp["sigma_dp"],
+            secure_aggregation=exp["secure_aggregation"],
+            use_ckks=exp["use_ckks"],
         )
         results.append(res)
         print(f"       -> Accuracy: {res['accuracy']}% | F1: {res['f1_score']}% | Payload: {res['payload_mb_per_round']} MB/round | DP eps: {res['dp_epsilon']}")
