@@ -237,7 +237,7 @@ class CentralServer:
                 delta_sum = torch.zeros_like(avg_weights[key])
                 for client_w in client_weights:
                     delta_sum += (client_w[key].float() - current_weights[key].float())
-                
+
                 h_k = self.h_server.get(key, torch.zeros_like(avg_weights[key]))
                 h_k = h_k - (self.feddyn_alpha / K) * delta_sum
                 self.h_server[key] = h_k
@@ -250,7 +250,7 @@ class CentralServer:
             for key in avg_weights.keys():
                 # Pseudo-gradient: Delta^t = avg_weights - current_weights
                 delta = avg_weights[key] - current_weights[key].float()
-                
+
                 m = self.m_server.get(key, torch.zeros_like(delta))
                 v = self.v_server.get(key, torch.zeros_like(delta))
 

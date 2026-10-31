@@ -19,7 +19,7 @@ import torch.nn as nn
 
 class LoRALinear(nn.Module):
     """Low-Rank Adaptation (LoRA) layer wrapping a frozen base linear layer.
-    
+
     Forward pass:
         y = x W_0^T + (alpha / r) * x A^T B^T
     """
@@ -214,9 +214,9 @@ class FedPerfixPlugin(nn.Module):
 def compute_rank_aware_subspace_sufficiency(
     client_features_list: List[torch.Tensor],
     rank: int = 16,
-) -> Dict[str, float]:
+) -> Dict[str, Any]:
     """Computes Rank-Aware Shared-Subspace Sufficiency (RSS) metrics across institutions:
-    
+
     RSS_input = (1/K) * sum_k Tr(U_A^(k)^T \bar{U}_A)
     """
     K = len(client_features_list)
@@ -260,7 +260,7 @@ def reconstruct_and_svd_aggregate_lora(
     scaling: float = 1.0,
 ) -> Tuple[torch.Tensor, torch.Tensor]:
     r"""FlexLoRA Server-Side SVD Aggregator:
-    
+
     1. Reconstruct full weight delta: \bar{\Delta W} = sum p_k (B_k @ A_k)
     2. Compute Truncated SVD: \bar{\Delta W} = U_r \Sigma_r V_r^T
     3. Synthesize balanced factor matrices: \bar{B} = U_r \Sigma_r^{1/2}, \bar{A} = \Sigma_r^{1/2} V_r^T
@@ -308,7 +308,7 @@ def inject_lora_to_model(
     if target_modules is None:
         target_modules = ["q_proj", "v_proj", "query", "value", "to_q", "to_v"]
 
-    adapter_cls = LoRALinear
+    adapter_cls: Any = LoRALinear
     if mode == "ffa_lora":
         adapter_cls = FFALoRALinear
     elif mode == "fedsa_lora":

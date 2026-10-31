@@ -43,7 +43,6 @@ class UNIFoundationBackbone(nn.Module):
         self.transformer_blocks.requires_grad_(False)
 
     def extract_features(self, x: torch.Tensor) -> torch.Tensor:
-        B = x.shape[0]
         p = self.patch_proj(x).flatten(2).transpose(1, 2)  # [B, N, 256]
         feats = self.transformer_blocks(p.mean(dim=1))  # [B, embed_dim]
         return feats
@@ -77,7 +76,6 @@ class SwinUNETRRadiologyBackbone(nn.Module):
         self.hierarchical_encoder.requires_grad_(False)
 
     def extract_features(self, x: torch.Tensor) -> torch.Tensor:
-        B = x.shape[0]
         stem = self.conv_stem(x).flatten(2).transpose(1, 2)
         return self.hierarchical_encoder(stem.mean(dim=1))
 
@@ -91,6 +89,8 @@ class SwinUNETRRadiologyBackbone(nn.Module):
 
 class TextSemanticAnchor(nn.Module):
     """Frozen text encoder creating universal semantic coordinate anchors across clinical nodes."""
+
+    semantic_codebook: torch.Tensor
 
     def __init__(self, embed_dim: int = 512) -> None:
         super().__init__()

@@ -18,7 +18,7 @@ class TrainingMetrics:
     was_blocked: bool = False
 
 
-@dataclass 
+@dataclass
 class EvaluationMetrics:
     """Comprehensive evaluation metrics for medical AI."""
     accuracy: float
@@ -27,7 +27,7 @@ class EvaluationMetrics:
     f1_score: float
     confusion_matrix: np.ndarray
     loss: float = 0.0
-    
+
     def to_dict(self) -> Dict[str, Any]:
         return {
             'accuracy': self.accuracy,
@@ -42,7 +42,7 @@ class EvaluationMetrics:
 class SecurityReport:
     """
     Security report from Byzantine defense mechanism.
-    
+
     Tracks:
     - Which clients were evaluated
     - Which were detected as malicious
@@ -57,7 +57,7 @@ class SecurityReport:
     threat_detected: bool = False
     details: str = ""
     clients_evaluated: List[int] = field(default_factory=list)
-    
+
     def __post_init__(self):
         if not self.total_clients and self.clients_evaluated:
             self.total_clients = len(self.clients_evaluated)
@@ -67,7 +67,7 @@ class SecurityReport:
             self.threat_detected = len(self.clients_blocked) > 0
         if not self.malicious_detected:
             self.malicious_detected = list(self.clients_blocked)
-            
+
     def get_summary(self) -> str:
         if not self.defense_active:
             return "Defense Shield: OFF"

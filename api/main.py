@@ -16,7 +16,7 @@ import io
 import json
 import time
 import threading
-from typing import Dict, List, Optional
+from typing import Any, Dict, List, Optional, Tuple
 import numpy as np
 from PIL import Image
 import torch
@@ -71,16 +71,16 @@ app.add_middleware(
 class AppState:
     def __init__(self) -> None:
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-        self.dataloaders = None
-        self.global_test_set = None
-        self.hospital_samples = {}
+        self.dataloaders: Optional[List[Any]] = None
+        self.global_test_set: Optional[Tuple[torch.Tensor, torch.Tensor]] = None
+        self.hospital_samples: Dict[int, Any] = {}
         self.server: Optional[CentralServer] = None
-        self.model_trained = False
-        self.model_type = "vit_tiny"
-        self.peft_mode = "ffa_lora"
+        self.model_trained: bool = False
+        self.model_type: str = "vit_tiny"
+        self.peft_mode: Optional[str] = "ffa_lora"
         self.rag_matcher: Optional[FederatedRAGCaseMatcher] = None
-        self.last_scan = None
-        self.training_history = {
+        self.last_scan: Optional[np.ndarray] = None
+        self.training_history: Dict[str, Any] = {
             "loss": [],
             "accuracy": [],
             "round": [],
@@ -178,12 +178,12 @@ async def generate_cohorts(req: CohortGenerateRequest):
 
     state.hospital_samples = {}
     hospitals_info: List[HospitalCohortInfo] = []
-    state.dataloaders = []
+    dataloaders_list: List[Any] = []
 
     for h in range(req.num_hospitals):
         part = client_partitions[h]
         loader = ecosystem.records_to_dataloader(part, batch_size=32, shuffle=True)
-        state.dataloaders.append(loader)
+        dataloaders_list.append(loader)
 
         images = np.stack([r.image_tensor.numpy()[0] for r in part])
         labels = np.array([r.label for r in part])
@@ -217,6 +217,8 @@ async def generate_cohorts(req: CohortGenerateRequest):
             "labels": labels,
             "distribution": dist,
         }
+
+    state.dataloaders = dataloaders_list
 
     # Global hold-out test set from leak-free split
     test_images = torch.stack([r.image_tensor for r in test_recs])

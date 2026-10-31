@@ -106,7 +106,7 @@ class FederatedRAGCaseMatcher:
         num_classes: int = 3,
     ) -> np.ndarray:
         """Calculates evidence-grounded outcome probability distribution:
-        
+
         y_RAG = sum_k softmax(z_query^T z_k / tau) y_k
         """
         if query_embedding.ndim == 1:
@@ -129,7 +129,7 @@ class FederatedRAGCaseMatcher:
         return prob_dist
 
 
-def extract_embedding(model: nn.Module, image_tensor: torch.Tensor) -> np.ndarray:
+def extract_embedding(model: Any, image_tensor: torch.Tensor) -> np.ndarray:
     """Extract 64-dimensional feature representation from CNN or ViT."""
     model.eval()
 

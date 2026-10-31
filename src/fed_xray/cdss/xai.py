@@ -7,6 +7,7 @@ Implements:
 """
 
 from __future__ import annotations
+import math
 from typing import Optional, Tuple
 import numpy as np
 from scipy.ndimage import zoom
@@ -17,7 +18,7 @@ import torch.nn.functional as F
 
 class GradCAM:
     """Gradient-weighted Class Activation Mapping for CNNs and Vision Transformers:
-    
+
     L^c = ReLU(sum_k alpha_k^c * A^k)
     """
 

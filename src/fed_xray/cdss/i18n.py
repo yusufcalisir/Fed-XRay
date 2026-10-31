@@ -18,7 +18,7 @@ TRANSLATIONS: Dict[str, Dict[str, str]] = {
         "live_hud_nodes": "4 / 4 Hospital Nodes Online",
         "live_hud_model": "XRay-CNN (3,136 FL-Features)",
         "live_hud_shield": "Byzantine Defense Shield Active",
-        
+
         # Sidebar Controls
         "sidebar_title": "Consortium Control Panel",
         "sidebar_tagline": "Decentralized Clinical AI",
@@ -39,7 +39,7 @@ TRANSLATIONS: Dict[str, Dict[str, str]] = {
         "sidebar_attack_sim_help": "Simulates label-flipping poisoning attack on Hospital 3",
         "sidebar_defense_mode": "Active Validation Defense Shield",
         "sidebar_defense_mode_help": "Filters outlier and poisoned updates using trusted reference validation",
-        
+
         # Metrics KPI Grid
         "kpi_hospitals": "Hospitals",
         "kpi_rounds": "FL Rounds",
@@ -48,7 +48,7 @@ TRANSLATIONS: Dict[str, Dict[str, str]] = {
         "kpi_status_ready": "Ready to Train",
         "kpi_status_trained": "Consensus Reached",
         "kpi_status_training": "Training Active",
-        
+
         # Section 1: Ingestion
         "sec1_title": "Hospital Network Data Ingestion",
         "sec1_subtitle": "Non-IID patient cohorts with institutional prevalence skew",
@@ -61,7 +61,7 @@ TRANSLATIONS: Dict[str, Dict[str, str]] = {
         "sec1_covid": "COVID-19",
         "sec1_sample_gallery": "Representative Chest Radiographs",
         "sec1_hospital_prefix": "Hospital",
-        
+
         # Section 2: Live Orchestration
         "sec2_title": "Federated Learning Orchestration Cockpit",
         "sec2_subtitle": "Real-time model synchronization across decentralized hospital nodes",
@@ -82,7 +82,7 @@ TRANSLATIONS: Dict[str, Dict[str, str]] = {
         "sec2_economics_full": "Standard ViT Update: ~2.43 GB / Round",
         "sec2_economics_peft": "Fed-XRay Module: ~1.60 MB / Round",
         "sec2_economics_savings": "99.6% Bandwidth Reduction Achieved",
-        
+
         # Section 3: Diagnostic CDSS
         "sec3_title": "AI Radiologist Diagnostic Workspace (CDSS)",
         "sec3_subtitle": "Explainable saliency analysis, evidence retrieval & official medical reporting",
@@ -99,28 +99,28 @@ TRANSLATIONS: Dict[str, Dict[str, str]] = {
         "sec3_xai_controls": "Grad-CAM Heatmap Configuration",
         "sec3_xai_opacity": "Heatmap Blend Opacity",
         "sec3_xai_colormap": "Colormap Spectrum",
-        
+
         # Section 3: RAG Digital Twin
         "sec3_rag_title": "Case-Based Reasoning: Digital Twin Matcher (Federated RAG)",
         "sec3_rag_desc": "Retrieval-Augmented Case Matching against verified reference oncology & pulmonary records",
         "sec3_rag_twin": "Matched Historical Case",
         "sec3_rag_sim": "Cosine Embedding Similarity",
         "sec3_rag_outcome": "Historical Biopsy & Therapeutic Outcome",
-        
+
         # Section 3: Voice Assistant
         "sec3_voice_title": "Hands-Free Voice Diagnostic Assistant",
         "sec3_voice_desc": "Automated audio synthesis for clinical dictation and surgical hands-free review",
         "sec3_voice_listen": "Play Audio Diagnostic Briefing",
-        
+
         # Section 3: PDF Report
         "sec3_report_title": "Official Single-Page Medical Intelligence Report",
         "sec3_report_desc": "Strictly bounded single-page A4 medical documentation with embedded Grad-CAM evidence",
         "sec3_btn_download_pdf": "Download Official Diagnostic Report (PDF)",
-        
+
         # Footer
         "footer_text": "Fed-XRay | Privacy-Preserving Federated Oncology & Medical Imaging Consortium | Built with PyTorch"
     },
-    
+
     "TR": {
         # App Header & Hero
         "app_title": "Fed-XRay",
@@ -131,7 +131,7 @@ TRANSLATIONS: Dict[str, Dict[str, str]] = {
         "live_hud_nodes": "4 / 4 Hastane Düğümü Çevrimiçi",
         "live_hud_model": "XRay-CNN (3.136 Federe Öznitelik)",
         "live_hud_shield": "Bizans Savunma Kalkanı Aktif",
-        
+
         # Sidebar Controls
         "sidebar_title": "Konsorsiyum Kontrol Paneli",
         "sidebar_tagline": "Dağıtık Klinik Yapay Zeka",
@@ -152,7 +152,7 @@ TRANSLATIONS: Dict[str, Dict[str, str]] = {
         "sidebar_attack_sim_help": "3. Hastanede etiket değiştirme (label flipping) veri zehirleme saldırısını simüle eder",
         "sidebar_defense_mode": "Aktif Doğrulama Güvenlik Kalkanı",
         "sidebar_defense_mode_help": "Zehirlenmiş ve sapan model güncellemelerini güvenilir doğrulama setiyle izole eder",
-        
+
         # Metrics KPI Grid
         "kpi_hospitals": "Hastaneler",
         "kpi_rounds": "FL Turları",
@@ -161,7 +161,7 @@ TRANSLATIONS: Dict[str, Dict[str, str]] = {
         "kpi_status_ready": "Eğitime Hazır",
         "kpi_status_trained": "Konsensüs Sağlandı",
         "kpi_status_training": "Eğitim Devam Ediyor",
-        
+
         # Section 1: Ingestion
         "sec1_title": "Hastane Ağı Veri Alma ve Dağılım Stüdyosu",
         "sec1_subtitle": "Kurumsal prevalans sapmasına sahip bağımsız Non-IID hasta kohortları",
@@ -174,7 +174,7 @@ TRANSLATIONS: Dict[str, Dict[str, str]] = {
         "sec1_covid": "COVID-19 (Buzlu Cam)",
         "sec1_sample_gallery": "Temsili Toraks Radyografileri",
         "sec1_hospital_prefix": "Hastane",
-        
+
         # Section 2: Live Orchestration
         "sec2_title": "Federe Öğrenme Orkestrasyon Kokpiti",
         "sec2_subtitle": "Dağıtık hastane düğümleri arasında gerçek zamanlı ağırlık senkronizasyonu",
@@ -195,7 +195,7 @@ TRANSLATIONS: Dict[str, Dict[str, str]] = {
         "sec2_economics_full": "Standart ViT Güncellemesi: ~2.43 GB / Tur",
         "sec2_economics_peft": "Fed-XRay Modülü: ~1.60 MB / Tur",
         "sec2_economics_savings": "%99.6 Bant Genişliği Tasarrufu Sağlandı",
-        
+
         # Section 3: Diagnostic CDSS
         "sec3_title": "Yapay Zeka Radyolog Teşhis Çalışma Alanı (CDSS)",
         "sec3_subtitle": "Açıklanabilir dikkat haritaları, vaka tabanlı çıkarım ve resmi medikal raporlama",
@@ -212,24 +212,24 @@ TRANSLATIONS: Dict[str, Dict[str, str]] = {
         "sec3_xai_controls": "Grad-CAM Isı Haritası Yapılandırması",
         "sec3_xai_opacity": "Isı Haritası Saydamlık Oranı",
         "sec3_xai_colormap": "Renk Spektrumu (Palet)",
-        
+
         # Section 3: RAG Digital Twin
         "sec3_rag_title": "Vaka Tabanlı Çıkarım: Dijital İkiz Eşleştirici (Federe RAG)",
         "sec3_rag_desc": "Doğrulanmış onkolojik ve pulmoner referans arşivinden çıkarımla zenginleştirilmiş vaka eşleştirmesi",
         "sec3_rag_twin": "Eşleşen Tarihsel Referans Vaka",
         "sec3_rag_sim": "Kosinüs Vektör Benzerliği",
         "sec3_rag_outcome": "Tarihsel Biyopsi ve Tedavi Yanıtı",
-        
+
         # Section 3: Voice Assistant
         "sec3_voice_title": "Eller-Serbest Sesli Teşhis Asistanı",
         "sec3_voice_desc": "Klinik dikte ve cerrahi steril ortamlarda kullanım için otomatik ses sentezi",
         "sec3_voice_listen": "Sesli Tanı Özetini Dinle",
-        
+
         # Section 3: PDF Report
         "sec3_report_title": "Resmi Tek Sayfa Medikal İstihbarat Raporu",
         "sec3_report_desc": "Grad-CAM görsel kanıtları içeren, A4 boyutuna tam sığdırılmış resmi medikal doküman",
         "sec3_btn_download_pdf": "Resmi Teşhis Raporunu İndir (PDF)",
-        
+
         # Footer
         "footer_text": "Fed-XRay | Gizlilik Korumalı Federe Onkoloji ve Tıbbi Görüntüleme Konsorsiyumu | PyTorch ile Geliştirilmiştir"
     }

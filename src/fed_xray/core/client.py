@@ -164,7 +164,7 @@ class HospitalClient:
         moon_temp: float = 0.5,
     ) -> Tuple[Dict[str, torch.Tensor], TrainingMetrics, Optional[Dict[str, torch.Tensor]]]:
         """Perform local optimization on private client dataset.
-        
+
         Returns:
             updated_weights: Transmitted model / adapter state dict.
             metrics: Training telemetry metrics.

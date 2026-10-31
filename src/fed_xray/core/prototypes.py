@@ -11,14 +11,14 @@ Implements:
 """
 
 from __future__ import annotations
-from typing import Dict, List, Tuple
+from typing import Any, Dict, List, Tuple
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from torch.utils.data import DataLoader
 
 
-def extract_features(model: nn.Module, x: torch.Tensor) -> torch.Tensor:
+def extract_features(model: Any, x: torch.Tensor) -> torch.Tensor:
     """Extract penultimate feature embeddings across CNN, ViT, and Foundation backbones."""
     if hasattr(model, "extract_features"):
         return model.extract_features(x)
@@ -49,7 +49,7 @@ def compute_local_prototypes_and_dispersion(
     num_classes: int = 3,
 ) -> Tuple[Dict[int, torch.Tensor], Dict[int, float], Dict[int, int]]:
     """Compute local empirical class prototypes and intra-class covariance traces:
-    
+
     p_{k,c} = (1 / n_{k,c}) * sum_{i: y_i = c} f(x_i)
     Sigma_{k,c} = (1 / n_{k,c}) * sum (f(x_i) - p_{k,c})(f(x_i) - p_{k,c})^T
     Trace = Tr(Sigma_{k,c})
@@ -107,7 +107,7 @@ def aggregate_prototypes_dispersion_weighted(
     epsilon: float = 1e-5,
 ) -> Dict[int, torch.Tensor]:
     """Synthesize global prototypes using confidence & dispersion trace weighting:
-    
+
     alpha_{k,c} ~ n_{k,c} / (Tr(Sigma_{k,c}) + eps)
     p_c = sum_k alpha_{k,c} * p_{k,c}
     """
@@ -151,7 +151,7 @@ def synthesize_multimodal_prototypes(
     lambda_weight: float = 0.7,
 ) -> Dict[int, torch.Tensor]:
     """Combines aggregated visual prototypes with frozen semantic text anchors:
-    
+
     p_c = lambda * p_{c}^{img} + (1 - lambda) * p_{c}^{txt}
     """
     fused_prototypes: Dict[int, torch.Tensor] = {}
@@ -179,7 +179,7 @@ def compute_prototype_distance_loss(
     count = 0
 
     for i in range(features.size(0)):
-        y_i = targets[i].item()
+        y_i = int(targets[i].item())
         if y_i in global_prototypes:
             proto = global_prototypes[y_i].to(features.device)
             loss += F.mse_loss(features[i], proto)

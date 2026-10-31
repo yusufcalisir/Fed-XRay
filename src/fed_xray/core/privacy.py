@@ -17,7 +17,7 @@ import torch
 
 class CKKSEncryptionEngine:
     """Leveled CKKS Homomorphic Encryption simulation for parameter updates.
-    
+
     Supports:
     - Modulus scaling and fixed-point polynomial ring encoding (R_q = Z_q[X]/(X^N + 1)).
     - Additive homomorphism without multiplication depth requirement on FFA-LoRA updates:
@@ -102,7 +102,7 @@ class SecAggPlusProtocol:
 
 class PatientLevelDPAccountant:
     """Rényi Differential Privacy (RDP) Composition Accountant for Patient-Level DP.
-    
+
     Prevents patient group privacy collapse on multi-patch (WSI) or multi-slice (3D MRI/CT) data.
     """
 
@@ -134,7 +134,7 @@ class PatientLevelDPAccountant:
 
     def get_epsilon(self, delta: Optional[float] = None) -> float:
         """Converts total composed RDP guarantees to canonical (epsilon, delta)-DP bound:
-        
+
         epsilon(delta) = min_{alpha > 1} { sum RDP(alpha) + ln(1/delta) / (alpha - 1) }
         """
         if not self.rdp_history:
@@ -160,7 +160,7 @@ def apply_patient_level_dp_clipping(
     noise_multiplier_sigma: float = 1.0,
 ) -> torch.Tensor:
     """Applies strict Patient-Level Gaussian Differential Privacy:
-    
+
     1. Average slices/patches per patient: g_i = (1/m_i) * sum g_{i,j}
     2. Clip patient gradient: \bar{g}_i = g_i * min(1, C / ||g_i||_2)
     3. Perturb with Gaussian noise: \tilde{g} = (1/|B_P|) * (sum \bar{g}_i + N(0, sigma^2 * C^2 * I))

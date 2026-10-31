@@ -20,7 +20,7 @@ Implements:
 
 from __future__ import annotations
 import hashlib
-from typing import Dict, List, Optional, Set, Tuple
+from typing import Any, Dict, List, Optional, Set, Tuple
 import numpy as np
 import torch
 from torch.utils.data import DataLoader, TensorDataset
@@ -88,7 +88,8 @@ class StrategyEDatasetEcosystem:
     ) -> List[RealWorldPatientRecord]:
         """Generates multi-center patient cohort with distinct patient IDs and multiple lesion crops."""
         records: List[RealWorldPatientRecord] = []
-        sites = self.SITE_METADATA.get(dataset_name, {}).get("sites", ["Hospital_A", "Hospital_B", "Hospital_C"])
+        meta = self.SITE_METADATA.get(dataset_name, {})
+        sites: List[str] = list(meta.get("sites", ["Hospital_A", "Hospital_B", "Hospital_C"]))
         num_sites = len(sites)
 
         seen_hashes: Set[str] = set()
@@ -130,7 +131,7 @@ class StrategyEDatasetEcosystem:
         seed: int = 42,
     ) -> Tuple[List[RealWorldPatientRecord], List[RealWorldPatientRecord], List[RealWorldPatientRecord]]:
         """Partitions records strictly by unique patient_id.
-        
+
         Ensures P_train intersect P_val = empty and P_train intersect P_test = empty.
         """
         rng = np.random.RandomState(seed)
@@ -173,40 +174,44 @@ class StrategyEDatasetEcosystem:
             proportions = self.rng.dirichlet(alpha=[100.0] * num_clients, size=num_classes)
             for c in range(num_classes):
                 c_records = records_by_class[c]
-                self.rng.shuffle(c_records)
-                splits = np.split(c_records, (np.cumsum(proportions[c])[:-1] * len(c_records)).astype(int))
+                c_records_arr = np.array(c_records, dtype=object)
+                self.rng.shuffle(c_records_arr)
+                splits: Any = np.split(c_records_arr, (np.cumsum(proportions[c])[:-1] * len(c_records)).astype(int))
                 for k in range(num_clients):
-                    client_partitions[k].extend(splits[k])
+                    client_partitions[k].extend(list(splits[k]))
 
         # Scenario B: Mild Label Skew (Dirichlet alpha=1.0)
         elif scenario == "B":
             proportions = self.rng.dirichlet(alpha=[1.0] * num_clients, size=num_classes)
             for c in range(num_classes):
                 c_records = records_by_class[c]
-                self.rng.shuffle(c_records)
-                splits = np.split(c_records, (np.cumsum(proportions[c])[:-1] * len(c_records)).astype(int))
+                c_records_arr = np.array(c_records, dtype=object)
+                self.rng.shuffle(c_records_arr)
+                splits = np.split(c_records_arr, (np.cumsum(proportions[c])[:-1] * len(c_records)).astype(int))
                 for k in range(num_clients):
-                    client_partitions[k].extend(splits[k])
+                    client_partitions[k].extend(list(splits[k]))
 
         # Scenario C: Moderate Label Skew (Dirichlet alpha=0.3)
         elif scenario == "C":
             proportions = self.rng.dirichlet(alpha=[0.3] * num_clients, size=num_classes)
             for c in range(num_classes):
                 c_records = records_by_class[c]
-                self.rng.shuffle(c_records)
-                splits = np.split(c_records, (np.cumsum(proportions[c])[:-1] * len(c_records)).astype(int))
+                c_records_arr = np.array(c_records, dtype=object)
+                self.rng.shuffle(c_records_arr)
+                splits = np.split(c_records_arr, (np.cumsum(proportions[c])[:-1] * len(c_records)).astype(int))
                 for k in range(num_clients):
-                    client_partitions[k].extend(splits[k])
+                    client_partitions[k].extend(list(splits[k]))
 
         # Scenario D: Severe Label Skew (Dirichlet alpha=0.05, ~90% local dominance)
         elif scenario == "D":
             proportions = self.rng.dirichlet(alpha=[0.05] * num_clients, size=num_classes)
             for c in range(num_classes):
                 c_records = records_by_class[c]
-                self.rng.shuffle(c_records)
-                splits = np.split(c_records, (np.cumsum(proportions[c])[:-1] * len(c_records)).astype(int))
+                c_records_arr = np.array(c_records, dtype=object)
+                self.rng.shuffle(c_records_arr)
+                splits = np.split(c_records_arr, (np.cumsum(proportions[c])[:-1] * len(c_records)).astype(int))
                 for k in range(num_clients):
-                    client_partitions[k].extend(splits[k])
+                    client_partitions[k].extend(list(splits[k]))
 
         # Scenario E: Missing Classes (Disjoint pathological subsets per client)
         elif scenario == "E":
@@ -218,9 +223,9 @@ class StrategyEDatasetEcosystem:
         # Scenario F: Global Long-Tailed Skew (Pareto 100:1 distribution)
         elif scenario == "F":
             pareto_weights = [1.0 / (1.0 + (c * 2.0)) for c in range(num_classes)]
-            pareto_weights = np.array(pareto_weights) / sum(pareto_weights)
+            pareto_norm = np.array(pareto_weights) / sum(pareto_weights)
             for c in range(num_classes):
-                c_records = records_by_class[c][: int(len(records_by_class[c]) * pareto_weights[c])]
+                c_records = records_by_class[c][: int(len(records_by_class[c]) * pareto_norm[c])]
                 for k, rec in enumerate(c_records):
                     client_partitions[k % num_clients].append(rec)
 
@@ -232,9 +237,10 @@ class StrategyEDatasetEcosystem:
             proportions = self.rng.dirichlet(alpha=[0.1] * num_clients, size=num_classes)
             for c in range(num_classes):
                 c_records = records_by_class[c]
-                splits = np.split(c_records, (np.cumsum(proportions[c])[:-1] * len(c_records)).astype(int))
+                c_records_arr = np.array(c_records, dtype=object)
+                splits = np.split(c_records_arr, (np.cumsum(proportions[c])[:-1] * len(c_records)).astype(int))
                 for k in range(num_clients):
-                    client_partitions[k].extend(splits[k])
+                    client_partitions[k].extend(list(splits[k]))
 
         # Fallback if any partition is empty
         for k in range(num_clients):
