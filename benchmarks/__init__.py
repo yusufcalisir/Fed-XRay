@@ -1,8 +1,5 @@
-"""
-Fed-XRay Benchmarks & Scientific Simulation Suite
-==================================================
+"""Fed-XRay Benchmarks and Scientific Simulation Suite.
+
 Contains standalone federated learning benchmark experiments:
-- fed_benchmark.py: Comprehensive comparison of FedAvg, FedProx, MOON, SCAFFOLD
-- fedprox_traffic.py: Proximal regularization simulation under Dirichlet skew
-- moon_traffic.py: Model-contrastive federated learning simulation
+- benchmark_foundation_peft.py: Empirical evaluation of PEFT adapters on medical foundation models.
 """
