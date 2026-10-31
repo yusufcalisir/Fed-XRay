@@ -247,6 +247,8 @@ async def stream_federated_training(
     loss_fn: str = Query(default="DAFL"),
     model_type: str = Query(default="vit_tiny"),
     peft_mode: str = Query(default="ffa_lora"),
+    secure_aggregation: bool = Query(default=False),
+    use_ckks: bool = Query(default=False),
 ):
     """Server-Sent Events (SSE) streaming federated ViT training in real time."""
     if state.dataloaders is None or state.global_test_set is None:
@@ -275,6 +277,8 @@ async def stream_federated_training(
             lora_r=8,
             lora_alpha=16.0,
             deep_layers_only=True,
+            secure_aggregation=secure_aggregation,
+            use_ckks=use_ckks,
         )
 
         clients = []
@@ -325,6 +329,8 @@ async def stream_federated_training(
                 proto_weight=0.1,
                 prox_mu=0.01 if algorithm.upper() in ("FEDPROX", "PROX") else 0.0,
                 feddyn_alpha=0.01 if algorithm.upper() == "FEDDYN" else 0.0,
+                secure_aggregation=secure_aggregation,
+                use_ckks=use_ckks,
             )
 
             t_loss = float(metrics["loss"])
@@ -361,6 +367,7 @@ async def stream_federated_training(
                 "status": "training" if round_num < num_rounds else "complete",
                 "model_type": model_type,
                 "peft_mode": peft_mode,
+                "privacy_epsilon": round(state.server.get_privacy_spent(), 4) if state.server else 0.0,
             }
 
             yield f"data: {json.dumps(data_payload)}\n\n"
@@ -397,6 +404,8 @@ async def start_training_background(
     loss_fn: str = Query(default="DAFL"),
     model_type: str = Query(default="vit_tiny"),
     peft_mode: str = Query(default="ffa_lora"),
+    secure_aggregation: bool = Query(default=False),
+    use_ckks: bool = Query(default=False),
 ):
     """Launch federated training as a background thread (Render SSE proxy fallback)."""
     if state.task_running:
@@ -435,6 +444,8 @@ async def start_training_background(
                 lora_r=8,
                 lora_alpha=16.0,
                 deep_layers_only=True,
+                secure_aggregation=secure_aggregation,
+                use_ckks=use_ckks,
             )
             state.server = srv
 
@@ -472,6 +483,8 @@ async def start_training_background(
                     proto_weight=0.1,
                     prox_mu=0.01 if algorithm.upper() in ("FEDPROX", "PROX") else 0.0,
                     feddyn_alpha=0.01 if algorithm.upper() == "FEDDYN" else 0.0,
+                    secure_aggregation=secure_aggregation,
+                    use_ckks=use_ckks,
                 )
 
                 t_loss = float(metrics["loss"])
@@ -498,6 +511,7 @@ async def start_training_background(
                     "status": "training" if round_num < num_rounds else "complete",
                     "model_type": model_type,
                     "peft_mode": peft_mode,
+                    "privacy_epsilon": round(srv.get_privacy_spent(), 4),
                 }
                 state.task_rounds.append(round_data)
                 state.task_current_round = round_num

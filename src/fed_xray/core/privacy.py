@@ -37,12 +37,13 @@ class CKKSEncryptionEngine:
     def encrypt_vector(self, plain_vector: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor]:
         """Encrypt float vector into CKKS ciphertext pair (c0, c1)."""
         # Quantize and encode
-        scaled = torch.round(plain_vector * self.scale)
-        # Random secret key mask simulation under RLWE
-        torch.manual_seed(1337)
-        a_mask = torch.randn_like(plain_vector)
-        noise_e0 = torch.randn_like(plain_vector) * 0.001
-        noise_e1 = torch.randn_like(plain_vector) * 0.001
+        scaled = torch.round(plain_vector.float() * self.scale)
+        # Dedicated generator to avoid mutating global torch RNG
+        dev = plain_vector.device
+        gen = torch.Generator(device="cpu").manual_seed(1337)
+        a_mask = torch.randn(plain_vector.shape, generator=gen, device="cpu").to(dev)
+        noise_e0 = torch.randn(plain_vector.shape, generator=gen, device="cpu").to(dev) * 0.001
+        noise_e1 = torch.randn(plain_vector.shape, generator=gen, device="cpu").to(dev) * 0.001
 
         c0 = scaled + noise_e0
         c1 = a_mask + noise_e1
@@ -69,6 +70,41 @@ class CKKSEncryptionEngine:
         c0, _ = ciphertext
         return c0 / self.scale
 
+    def encrypt_state_dict(
+        self, state_dict: Dict[str, torch.Tensor]
+    ) -> Dict[str, Tuple[torch.Tensor, torch.Tensor]]:
+        """Encrypt all parameter tensors in state dict into CKKS ciphertexts."""
+        return {k: self.encrypt_vector(v) for k, v in state_dict.items()}
+
+    def homomorphic_aggregate_state_dicts(
+        self,
+        encrypted_dicts: List[Dict[str, Tuple[torch.Tensor, torch.Tensor]]],
+        weights: List[float],
+    ) -> Dict[str, Tuple[torch.Tensor, torch.Tensor]]:
+        """Perform additive homomorphic aggregation across client ciphertext dictionaries."""
+        total_w = sum(weights)
+        norm_weights = [w / total_w for w in weights] if total_w > 0 else weights
+        keys = list(encrypted_dicts[0].keys())
+        aggregated = {}
+        for key in keys:
+            cts = [ed[key] for ed in encrypted_dicts]
+            aggregated[key] = self.homomorphic_sum(cts, norm_weights)
+        return aggregated
+
+    def decrypt_state_dict(
+        self,
+        encrypted_dict: Dict[str, Tuple[torch.Tensor, torch.Tensor]],
+        target_dtypes: Optional[Dict[str, torch.dtype]] = None,
+    ) -> Dict[str, torch.Tensor]:
+        """Decrypt aggregated CKKS ciphertexts into plaintext parameter dictionary."""
+        decrypted = {}
+        for k, ct in encrypted_dict.items():
+            plain = self.decrypt_vector(ct)
+            if target_dtypes and k in target_dtypes:
+                plain = plain.to(target_dtypes[k])
+            decrypted[k] = plain
+        return decrypted
+
 
 class SecAggPlusProtocol:
     """Cryptographic Secure Aggregation (SecAgg+) with pairwise zero-sum masking."""
@@ -78,13 +114,25 @@ class SecAggPlusProtocol:
         num_clients: int,
         tensor_shapes: Dict[str, torch.Size],
         device: torch.device = torch.device("cpu"),
+        weights: Optional[List[float]] = None,
     ) -> List[Dict[str, torch.Tensor]]:
-        """Generates pairwise masks s_{u,v} such that sum_{u=1}^K s_u = 0."""
+        """Generates pairwise masks s_u such that sum_{u=1}^K p_u * s_u = 0.
+
+        When weights is None, uniform weighting (p_u = 1/K) is assumed so sum s_u = 0.
+        When weights is provided, p_u = w_u / sum(w), and noise is scaled inversely by p_u:
+        s_i += Delta_{i,j} / p_i, s_j -= Delta_{i,j} / p_j => sum p_u * s_u = 0.
+        """
         # Initialize client masks
         client_masks = [
             {k: torch.zeros(shape, device=device) for k, shape in tensor_shapes.items()}
             for _ in range(num_clients)
         ]
+
+        if weights is not None:
+            total_w = sum(weights)
+            p = [max(1e-12, float(w) / max(1e-12, total_w)) for w in weights]
+        else:
+            p = [1.0] * num_clients
 
         # Generate antisymmetric pairwise random seeds
         for i in range(num_clients):
@@ -93,11 +141,25 @@ class SecAggPlusProtocol:
                 gen = torch.Generator(device=device).manual_seed(seed)
                 for k, shape in tensor_shapes.items():
                     pairwise_noise = torch.randn(shape, generator=gen, device=device) * 0.1
-                    # Client i adds +noise, Client j subtracts -noise
-                    client_masks[i][k] += pairwise_noise
-                    client_masks[j][k] -= pairwise_noise
+                    if weights is not None:
+                        client_masks[i][k] += pairwise_noise / p[i]
+                        client_masks[j][k] -= pairwise_noise / p[j]
+                    else:
+                        client_masks[i][k] += pairwise_noise
+                        client_masks[j][k] -= pairwise_noise
 
         return client_masks
+
+    @staticmethod
+    def mask_state_dict(
+        state_dict: Dict[str, torch.Tensor],
+        mask: Dict[str, torch.Tensor],
+    ) -> Dict[str, torch.Tensor]:
+        """Apply zero-sum additive mask to client state dict."""
+        return {
+            k: (v.float() + mask[k].to(v.device)).to(v.dtype) if k in mask else v.clone()
+            for k, v in state_dict.items()
+        }
 
 
 class PatientLevelDPAccountant:

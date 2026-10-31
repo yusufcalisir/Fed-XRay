@@ -27,6 +27,7 @@ export interface TelemetryRound {
   status: string;
   model_type?: string;
   peft_mode?: string;
+  privacy_epsilon?: number;
 }
 
 export interface DiagnosisResult {

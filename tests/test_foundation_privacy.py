@@ -21,6 +21,8 @@ from src.fed_xray.core.prototypes import (
     synthesize_multimodal_prototypes,
     aggregate_prototypes_dispersion_weighted,
 )
+from src.fed_xray.core.server import CentralServer, run_federated_round
+from src.fed_xray.core.client import HospitalClient
 
 
 def test_text_semantic_anchor():
@@ -127,3 +129,100 @@ def test_multimodal_prototype_fusion():
         # Check normalized
         norm = torch.norm(fused[c]).item()
         assert abs(norm - 1.0) < 1e-4
+
+
+def test_secagg_weighted_pairwise_zero_sum():
+    """Verify SecAgg+ weighted pairwise masking cancels to exact zero under non-uniform weights."""
+    num_clients = 4
+    weights = [120.0, 250.0, 480.0, 150.0]
+    total_w = sum(weights)
+    norm_w = [w / total_w for w in weights]
+    shapes = {"w1": torch.Size([32, 16]), "b1": torch.Size([32])}
+
+    masks = SecAggPlusProtocol.generate_pairwise_masks(
+        num_clients=num_clients,
+        tensor_shapes=shapes,
+        weights=norm_w,
+    )
+
+    assert len(masks) == num_clients
+
+    # Weighted sum of masks must be identically zero
+    sum_w1 = torch.zeros(shapes["w1"])
+    sum_b1 = torch.zeros(shapes["b1"])
+    for m, p_k in zip(masks, norm_w):
+        sum_w1 += p_k * m["w1"]
+        sum_b1 += p_k * m["b1"]
+
+    assert torch.allclose(sum_w1, torch.zeros_like(sum_w1), atol=1e-6)
+    assert torch.allclose(sum_b1, torch.zeros_like(sum_b1), atol=1e-6)
+
+
+def test_ckks_state_dict_encryption_and_aggregation():
+    """Verify CKKS encryption, homomorphic dictionary aggregation, and decryption."""
+    engine = CKKSEncryptionEngine(scale_bits=40)
+    d1 = {"w": torch.tensor([0.2, -0.4, 1.5]), "b": torch.tensor([0.1])}
+    d2 = {"w": torch.tensor([0.6, 0.8, -0.5]), "b": torch.tensor([-0.3])}
+    weights = [0.3, 0.7]
+
+    ed1 = engine.encrypt_state_dict(d1)
+    ed2 = engine.encrypt_state_dict(d2)
+
+    agg_ed = engine.homomorphic_aggregate_state_dicts([ed1, ed2], weights=weights)
+    decrypted = engine.decrypt_state_dict(agg_ed)
+
+    expected_w = 0.3 * d1["w"] + 0.7 * d2["w"]
+    expected_b = 0.3 * d1["b"] + 0.7 * d2["b"]
+
+    assert torch.allclose(decrypted["w"], expected_w, atol=1e-2)
+    assert torch.allclose(decrypted["b"], expected_b, atol=1e-2)
+
+
+def test_federated_round_with_secagg_and_ckks():
+    """Verify full federated training round with SecAgg+ masking, CKKS aggregation, and DP tracking."""
+    torch.manual_seed(42)
+    server = CentralServer(
+        model_type="cnn",
+        peft_mode=None,
+        privacy_noise=0.01,
+        secure_aggregation=True,
+        use_ckks=True,
+    )
+
+    # Create dummy clients with synthetic data
+    clients = []
+    for cid in range(3):
+        x = torch.randn(20, 1, 28, 28)
+        y = torch.randint(0, 3, (20,))
+        dataset = TensorDataset(x, y)
+        loader = DataLoader(dataset, batch_size=10)
+        client = HospitalClient(
+            client_id=cid,
+            dataloader=loader,
+            model_type="cnn",
+            peft_mode=None,
+            local_epochs=1,
+        )
+        clients.append(client)
+
+    test_x = torch.randn(15, 1, 28, 28)
+    test_y = torch.randint(0, 3, (15,))
+
+    agg_metrics, client_metrics, test_metrics, sec_report = run_federated_round(
+        server=server,
+        clients=clients,
+        round_num=1,
+        total_rounds=1,
+        test_images=test_x,
+        test_labels=test_y,
+        use_defense=True,
+        secure_aggregation=True,
+        use_ckks=True,
+    )
+
+    assert agg_metrics["secure_aggregation"] is True
+    assert agg_metrics["use_ckks"] is True
+    assert agg_metrics["privacy_epsilon"] > 0.0
+    assert len(client_metrics) == 3
+    assert test_metrics is not None
+    assert 0.0 <= test_metrics.accuracy <= 1.0

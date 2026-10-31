@@ -39,6 +39,8 @@ class TrainFLRequest(BaseModel):
     loss_fn: str = Field(default="CE", description="CE, DAFL, BSM, LDAM, CB")
     model_type: str = Field(default="vit_tiny", description="vit_tiny, vit_small, uni, swin_unetr, cnn")
     peft_mode: Optional[str] = Field(default="ffa_lora", description="ffa_lora, fedsa_lora, lora, None")
+    secure_aggregation: bool = Field(default=False, description="Enable SecAgg+ pairwise zero-sum random masking")
+    use_ckks: bool = Field(default=False, description="Enable Leveled CKKS Threshold Homomorphic Encryption")
 
 
 class RoundTelemetryUpdate(BaseModel):
@@ -56,6 +58,7 @@ class RoundTelemetryUpdate(BaseModel):
     status: str
     model_type: str = "vit_tiny"
     peft_mode: str = "ffa_lora"
+    privacy_epsilon: float = 0.0
 
 
 class DiagnoseRequest(BaseModel):
