@@ -7,6 +7,7 @@ from src.fed_xray.data.generator import (
     XRayDataset,
 )
 from src.fed_xray.data.real_world import (
+    DiskMedicalDataset,
     RealWorldPatientRecord,
     StrategyEDatasetEcosystem,
 )
@@ -16,6 +17,7 @@ __all__ = [
     "get_distribution_info",
     "create_hospital_dataloaders",
     "XRayDataset",
+    "DiskMedicalDataset",
     "RealWorldPatientRecord",
     "StrategyEDatasetEcosystem",
 ]

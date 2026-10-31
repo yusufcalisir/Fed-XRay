@@ -19,11 +19,16 @@ Implements:
 """
 
 from __future__ import annotations
+import csv
 import hashlib
+import os
+from pathlib import Path
 from typing import Any, Dict, List, Optional, Set, Tuple
 import numpy as np
+from PIL import Image
 import torch
-from torch.utils.data import DataLoader, TensorDataset
+from torch.utils.data import DataLoader, Dataset, TensorDataset
+import torchvision.transforms as T
 
 from .generator import MedicalDataGenerator
 
@@ -51,6 +56,173 @@ class RealWorldPatientRecord:
     def _compute_sha256(self) -> str:
         data_bytes = self.image_tensor.numpy().tobytes()
         return hashlib.sha256(data_bytes).hexdigest()
+
+
+class DiskMedicalDataset(Dataset):
+    """PyTorch Dataset for real-world radiological and pathological images from disk.
+
+    Supports:
+    - Direct CSV/TSV clinical manifests (image_path, patient_id, site_id, lesion_id, label)
+    - Structured directory layouts
+    - Medical standard preprocessing (resizing to target_size, ImageNet normalization, center crops)
+    - SHA-256 deduplication and conversion to RealWorldPatientRecord list for Strategy E isolation.
+    """
+
+    def __init__(
+        self,
+        manifest_csv: Optional[str] = None,
+        images_dir: Optional[str] = None,
+        records: Optional[List[Dict[str, Any]]] = None,
+        target_size: Tuple[int, int] = (224, 224),
+        in_channels: int = 1,
+        is_training: bool = False,
+        normalize: bool = True,
+    ) -> None:
+        self.images_dir = Path(images_dir) if images_dir else None
+        self.target_size = target_size
+        self.in_channels = in_channels
+        self.is_training = is_training
+        self.normalize = normalize
+
+        self.samples: List[Dict[str, Any]] = []
+
+        if records is not None:
+            self.samples = list(records)
+        elif manifest_csv is not None:
+            self.samples = self._load_manifest(manifest_csv)
+        elif self.images_dir and self.images_dir.exists():
+            self.samples = self._scan_directory(self.images_dir)
+
+        # Build transform pipeline
+        transforms_list: List[Any] = [
+            T.Resize(target_size),
+        ]
+        if is_training:
+            transforms_list.extend([
+                T.RandomHorizontalFlip(p=0.5),
+                T.RandomRotation(degrees=10),
+            ])
+        transforms_list.append(T.ToTensor())
+        if normalize:
+            if in_channels == 3:
+                transforms_list.append(
+                    T.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
+                )
+            else:
+                transforms_list.append(
+                    T.Normalize(mean=[0.5], std=[0.5])
+                )
+        self.transform = T.Compose(transforms_list)
+
+    def _load_manifest(self, manifest_csv: str) -> List[Dict[str, Any]]:
+        samples = []
+        path = Path(manifest_csv)
+        if not path.exists():
+            raise FileNotFoundError(f"Clinical manifest not found at: {manifest_csv}")
+
+        delimiter = "\t" if path.suffix.lower() == ".tsv" else ","
+        with open(path, mode="r", encoding="utf-8") as f:
+            reader = csv.DictReader(f, delimiter=delimiter)
+            for idx, row in enumerate(reader):
+                img_path_str = row.get("image_path") or row.get("image_id") or row.get("path")
+                if not img_path_str:
+                    continue
+                full_path = Path(img_path_str)
+                if not full_path.is_absolute() and self.images_dir:
+                    full_path = self.images_dir / full_path
+
+                patient_id = row.get("patient_id") or f"PAT_{idx:05d}"
+                site_id = row.get("site_id") or row.get("site") or "Institutional_Site_1"
+                lesion_id = row.get("lesion_id") or row.get("lesion") or patient_id
+                label_val = row.get("label") or row.get("class") or 0
+                clinical_notes = row.get("clinical_notes") or row.get("diagnosis") or ""
+
+                samples.append({
+                    "image_path": str(full_path),
+                    "patient_id": patient_id,
+                    "site_id": site_id,
+                    "lesion_id": lesion_id,
+                    "label": int(label_val),
+                    "clinical_notes": clinical_notes,
+                })
+        return samples
+
+    def _scan_directory(self, images_dir: Path) -> List[Dict[str, Any]]:
+        samples = []
+        valid_extensions = {".png", ".jpg", ".jpeg", ".bmp", ".tiff", ".tif", ".npy"}
+        for root, _, files in os.walk(images_dir):
+            for file in sorted(files):
+                ext = Path(file).suffix.lower()
+                if ext in valid_extensions:
+                    p = Path(root) / file
+                    parent_name = p.parent.name
+                    label = 0
+                    if parent_name.isdigit():
+                        label = int(parent_name)
+                    patient_id = f"PAT_{p.stem}"
+                    samples.append({
+                        "image_path": str(p),
+                        "patient_id": patient_id,
+                        "site_id": "Institutional_Site_1",
+                        "lesion_id": patient_id,
+                        "label": label,
+                        "clinical_notes": f"Scanned from {p.name}",
+                    })
+        return samples
+
+    def __len__(self) -> int:
+        return len(self.samples)
+
+    def __getitem__(self, idx: int) -> Tuple[torch.Tensor, int]:
+        sample = self.samples[idx]
+        img_path = sample["image_path"]
+        label = sample["label"]
+
+        if img_path.endswith(".npy"):
+            arr = np.load(img_path)
+            if arr.ndim == 2:
+                tensor = torch.from_numpy(arr).float().unsqueeze(0)
+            elif arr.ndim == 3 and arr.shape[0] in (1, 3):
+                tensor = torch.from_numpy(arr).float()
+            elif arr.ndim == 3 and arr.shape[2] in (1, 3):
+                tensor = torch.from_numpy(arr).permute(2, 0, 1).float()
+            else:
+                tensor = torch.from_numpy(arr).float().unsqueeze(0)
+            if self.normalize:
+                tensor = (tensor - 0.5) / 0.5
+            return tensor, label
+
+        if not os.path.exists(img_path):
+            raise FileNotFoundError(f"Image file does not exist: {img_path}")
+
+        mode = "RGB" if self.in_channels == 3 else "L"
+        with Image.open(img_path) as pil_img:
+            img_conv = pil_img.convert(mode)
+            tensor = self.transform(img_conv)
+
+        return tensor, label
+
+    def to_patient_records(self) -> List[RealWorldPatientRecord]:
+        """Convert all samples to RealWorldPatientRecord list with SHA-256 deduplication."""
+        records: List[RealWorldPatientRecord] = []
+        seen_hashes: Set[str] = set()
+
+        for idx in range(len(self)):
+            sample = self.samples[idx]
+            tensor, label = self[idx]
+            record = RealWorldPatientRecord(
+                patient_id=sample["patient_id"],
+                site_id=sample["site_id"],
+                image_tensor=tensor,
+                label=label,
+                lesion_id=sample["lesion_id"],
+                clinical_notes=sample["clinical_notes"],
+            )
+            if record.sha256 not in seen_hashes:
+                seen_hashes.add(record.sha256)
+                records.append(record)
+
+        return records
 
 
 class StrategyEDatasetEcosystem:
@@ -85,6 +257,7 @@ class StrategyEDatasetEcosystem:
         num_patients: int = 120,
         samples_per_patient: int = 3,
         num_classes: int = 3,
+        image_size: int = 28,
     ) -> List[RealWorldPatientRecord]:
         """Generates multi-center patient cohort with distinct patient IDs and multiple lesion crops."""
         records: List[RealWorldPatientRecord] = []
@@ -93,6 +266,7 @@ class StrategyEDatasetEcosystem:
         num_sites = len(sites)
 
         seen_hashes: Set[str] = set()
+        gen = self.generator if image_size == self.generator.image_size else MedicalDataGenerator(image_size=image_size, seed=self.seed)
 
         for p_idx in range(num_patients):
             patient_id = f"PAT_{dataset_name}_{p_idx:05d}"
@@ -101,7 +275,7 @@ class StrategyEDatasetEcosystem:
             lesion_id = f"LES_{dataset_name}_{p_idx:05d}"
 
             for s_idx in range(samples_per_patient):
-                img = self.generator.generate_synthetic_xray(
+                img = gen.generate_synthetic_xray(
                     label=patient_class,
                     apply_augmentation=(s_idx > 0),
                 )
@@ -121,6 +295,63 @@ class StrategyEDatasetEcosystem:
                     records.append(record)
 
         return records
+
+    def load_from_disk_manifest(
+        self,
+        manifest_path: str,
+        images_dir: Optional[str] = None,
+        target_size: Tuple[int, int] = (224, 224),
+        in_channels: int = 1,
+    ) -> List[RealWorldPatientRecord]:
+        """Load genuine patient cohort from disk manifest adhering to Strategy E patient isolation."""
+        dataset = DiskMedicalDataset(
+            manifest_csv=manifest_path,
+            images_dir=images_dir,
+            target_size=target_size,
+            in_channels=in_channels,
+            is_training=False,
+            normalize=True,
+        )
+        return dataset.to_patient_records()
+
+    @staticmethod
+    def create_manifest_template(
+        output_csv_path: str,
+        dataset_name: str = "ISIC_2019",
+        num_samples: int = 5,
+    ) -> str:
+        """Generate an official Strategy E clinical manifest CSV template."""
+        meta = StrategyEDatasetEcosystem.SITE_METADATA.get(
+            dataset_name, StrategyEDatasetEcosystem.SITE_METADATA["ISIC_2019"]
+        )
+        sites = meta["sites"]
+        classes = meta["classes"]
+
+        rows = []
+        for i in range(num_samples):
+            site = sites[i % len(sites)]
+            cls_name = classes[i % len(classes)]
+            rows.append({
+                "image_path": f"images/{dataset_name.lower()}_{i:05d}.jpg",
+                "patient_id": f"PAT_{dataset_name}_{i:04d}",
+                "site_id": site,
+                "lesion_id": f"LES_{dataset_name}_{i:04d}",
+                "label": i % min(3, len(classes)),
+                "diagnosis": cls_name,
+                "clinical_notes": f"Biopsy-confirmed {cls_name} from {site}.",
+            })
+
+        out_path = Path(output_csv_path)
+        out_path.parent.mkdir(parents=True, exist_ok=True)
+        with open(out_path, mode="w", newline="", encoding="utf-8") as f:
+            writer = csv.DictWriter(
+                f,
+                fieldnames=["image_path", "patient_id", "site_id", "lesion_id", "label", "diagnosis", "clinical_notes"],
+            )
+            writer.writeheader()
+            writer.writerows(rows)
+
+        return str(out_path)
 
     @staticmethod
     def leak_free_patient_split(
