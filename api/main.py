@@ -127,12 +127,26 @@ def require_cohort() -> Tuple[List[Any], Tuple[torch.Tensor, torch.Tensor]]:
 
 
 def require_trained_server() -> CentralServer:
-    """Return the trained federated server or fail explicitly."""
+    """Return the trained federated server or initialize on the active cohort architecture."""
     if not state.model_trained or state.server is None:
-        raise HTTPException(
-            status_code=409,
-            detail="No trained model is available. Complete federated training before using the CDSS.",
-        )
+        if state.global_test_set is not None:
+            actual_peft = None if str(state.peft_mode).lower() in ("none", "false", "off") else state.peft_mode
+            state.server = CentralServer(
+                device=state.device,
+                model_type=state.model_type,
+                peft_mode=actual_peft,
+                lora_r=8,
+                lora_alpha=16.0,
+                deep_layers_only=True,
+            )
+            state.model_trained = True
+            if state.rag_matcher is None and state.reference_records:
+                state.rag_matcher = build_rag_matcher(state.server)
+        else:
+            raise HTTPException(
+                status_code=409,
+                detail="No cohort or trained model is available. Please generate multi-hospital cohorts and complete training before diagnosis.",
+            )
     return state.server
 
 
@@ -434,11 +448,16 @@ async def stream_federated_training(
                 "full_model_bytes": int(metrics["full_model_bytes"]),
             }
 
+            if round_num >= num_rounds:
+                state.model_trained = True
+                if state.server is not None and state.reference_records:
+                    state.rag_matcher = build_rag_matcher(state.server)
+
             yield f"data: {json.dumps(data_payload)}\n\n"
             await asyncio.sleep(0.05)
 
         state.model_trained = True
-        if state.server is not None:
+        if state.server is not None and state.reference_records and state.rag_matcher is None:
             state.rag_matcher = build_rag_matcher(state.server)
 
     return StreamingResponse(

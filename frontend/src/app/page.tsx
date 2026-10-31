@@ -62,6 +62,14 @@ export default function DashboardPage() {
   useEffect(() => {
     if (isConnected) {
       handleGenerateCohorts();
+      fetch(`${apiUrl.replace(/\/$/, "")}/api/state`)
+        .then((res) => (res.ok ? res.json() : null))
+        .then((data) => {
+          if (data && data.model_trained) {
+            setIsTrained(true);
+          }
+        })
+        .catch(() => {});
     }
   }, [apiUrl, isConnected]);
 

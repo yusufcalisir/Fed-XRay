@@ -11,7 +11,10 @@ export async function fetchHospitalCohorts(baseUrl: string, numHospitals: number
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ num_hospitals: numHospitals, samples_per_hospital: samplesPerHospital }),
   });
-  if (!res.ok) throw new Error(`Failed to generate cohorts from backend (HTTP ${res.status})`);
+  if (!res.ok) {
+    const body = await res.json().catch(() => null);
+    throw new Error(body?.detail || body?.error || `Failed to generate cohorts from backend (HTTP ${res.status})`);
+  }
   return await res.json();
 }
 
@@ -33,7 +36,10 @@ export async function fetchClinicalDiagnosis(
       colormap,
     }),
   });
-  if (!res.ok) throw new Error(`Diagnosis failed (HTTP ${res.status})`);
+  if (!res.ok) {
+    const body = await res.json().catch(() => null);
+    throw new Error(body?.detail || body?.error || `Diagnosis failed (HTTP ${res.status})`);
+  }
   return await res.json();
 }
 
@@ -43,7 +49,10 @@ export async function fetchRagTwins(
 ): Promise<{ query_class: number; matched_cases: RagCase[] }> {
   const url = `${baseUrl.replace(/\/$/, "")}/api/cdss/rag-similar?top_k=${topK}`;
   const res = await fetch(url, { method: "GET" });
-  if (!res.ok) throw new Error(`RAG retrieval failed (HTTP ${res.status})`);
+  if (!res.ok) {
+    const body = await res.json().catch(() => null);
+    throw new Error(body?.detail || body?.error || `RAG retrieval failed (HTTP ${res.status})`);
+  }
   return await res.json();
 }
 
