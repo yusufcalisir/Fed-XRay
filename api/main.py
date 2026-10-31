@@ -32,6 +32,7 @@ from src.fed_xray.core.server import CentralServer, run_federated_round
 from src.fed_xray.cdss.xai import GradCAM, get_explanation_text
 from src.fed_xray.cdss.similarity import (
     FederatedRAGCaseMatcher,
+    extract_embedding,
     LABEL_NAMES,
 )
 from src.fed_xray.cdss.voice import get_or_create_audio
@@ -360,7 +361,11 @@ async def stream_federated_training(
             await asyncio.sleep(0.05)
 
         state.model_trained = True
-        state.rag_matcher = FederatedRAGCaseMatcher(n_cases=100, embedding_dim=64)
+        state.rag_matcher = FederatedRAGCaseMatcher(
+            n_cases=100,
+            embedding_dim=64,
+            model=state.server.get_model() if state.server else None,
+        )
 
     return StreamingResponse(
         event_generator(),
@@ -492,7 +497,11 @@ async def start_training_background(
                 state.task_current_round = round_num
 
             state.model_trained = True
-            state.rag_matcher = FederatedRAGCaseMatcher(n_cases=100, embedding_dim=64)
+            state.rag_matcher = FederatedRAGCaseMatcher(
+                n_cases=100,
+                embedding_dim=64,
+                model=state.server.get_model() if state.server else None,
+            )
             state.task_complete = True
 
         except Exception as e:
@@ -575,23 +584,39 @@ async def perform_diagnosis(req: DiagnoseRequest):
 @app.get("/api/cdss/rag-similar", response_model=RagSimilarResponse)
 async def get_similar_rag_cases(query_class: int = Query(default=1)):
     """Retrieve top-K verified biopsy-confirmed digital twin cases."""
+    if state.server is None:
+        state.server = CentralServer(
+            model_type=state.model_type,
+            peft_mode=state.peft_mode,
+        )
+
+    model = state.server.get_model()
+    model.eval()
+
     if state.rag_matcher is None:
-        state.rag_matcher = FederatedRAGCaseMatcher(n_cases=100, embedding_dim=64)
+        state.rag_matcher = FederatedRAGCaseMatcher(
+            n_cases=100,
+            embedding_dim=64,
+            model=model,
+        )
 
     target_c = query_class if query_class in (0, 1, 2) else 1
 
-    sample_query = np.zeros(64, dtype=np.float32)
-    if target_c == 0:
-        sample_query[:20] = 1.0
-    elif target_c == 1:
-        sample_query[20:40] = 1.0
+    if state.last_scan is not None:
+        scan_to_embed = state.last_scan
     else:
-        sample_query[40:] = 1.0
+        generator = MedicalDataGenerator(seed=int(time.time() * 1000) % 100000)
+        scan_to_embed = generator.generate_synthetic_xray(label=target_c, apply_augmentation=False)
 
-    sample_query += np.random.randn(64).astype(np.float32) * 0.1
-    sample_query = sample_query / np.linalg.norm(sample_query)
+    image_tensor = (
+        torch.tensor(scan_to_embed, dtype=torch.float32)
+        .unsqueeze(0)
+        .unsqueeze(0)
+        .to(state.device)
+    )
 
-    similar = state.rag_matcher.find_similar(sample_query, top_k=2)
+    query_embedding = extract_embedding(model, image_tensor)
+    similar = state.rag_matcher.find_similar(query_embedding, top_k=2)
 
     cases = []
     for s in similar:

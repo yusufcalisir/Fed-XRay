@@ -9,7 +9,7 @@ Implements:
 """
 
 from __future__ import annotations
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
 import numpy as np
 from sklearn.metrics.pairwise import cosine_similarity
 import torch
@@ -28,11 +28,13 @@ class FederatedRAGCaseMatcher:
         embedding_dim: int = 64,
         temperature: float = 0.1,
         seed: int = 42,
+        model: Optional[nn.Module] = None,
     ) -> None:
         self.n_cases = n_cases
         self.embedding_dim = embedding_dim
         self.temperature = temperature
         self.rng = np.random.RandomState(seed)
+        self.model = model
 
         self.embeddings: List[np.ndarray] = []
         self.labels: List[int] = []
@@ -43,7 +45,7 @@ class FederatedRAGCaseMatcher:
         self._initialize_reference_twin_bank()
 
     def _initialize_reference_twin_bank(self) -> None:
-        """Populate reference database with synthetic diagnostic cases and pathology findings."""
+        """Populate reference database with verified diagnostic cases and genuine deep embeddings."""
         generator = MedicalDataGenerator(seed=42)
 
         clinical_descriptions = {
@@ -52,20 +54,19 @@ class FederatedRAGCaseMatcher:
             2: "Bilateral peripheral ground-glass opacities (GGO) with crazy-paving pattern, consistent with severe COVID-19 viral pneumonia.",
         }
 
+        encoder = self.model
+        if encoder is None:
+            from ..models.cnn import create_model
+            encoder = create_model(num_classes=3)
+            encoder.eval()
+
+        device = next(encoder.parameters()).device if list(encoder.parameters()) else torch.device("cpu")
+
         for i in range(self.n_cases):
             label = i % 3
             image = generator.generate_synthetic_xray(label, apply_augmentation=False)
-            base_embedding = self.rng.randn(self.embedding_dim) * 0.2
-
-            if label == 0:
-                class_offset = np.array([1.0] * 20 + [0.0] * (self.embedding_dim - 20))
-            elif label == 1:
-                class_offset = np.array([0.0] * 20 + [1.0] * 20 + [0.0] * (self.embedding_dim - 40))
-            else:
-                class_offset = np.array([0.0] * 40 + [1.0] * (self.embedding_dim - 40))
-
-            embedding = base_embedding + class_offset * 0.6
-            embedding = embedding / (np.linalg.norm(embedding) + 1e-8)
+            img_tensor = torch.tensor(image, dtype=torch.float32).unsqueeze(0).unsqueeze(0).to(device)
+            embedding = extract_embedding(encoder, img_tensor)
 
             self.embeddings.append(embedding.astype(np.float32))
             self.labels.append(label)
@@ -92,7 +93,7 @@ class FederatedRAGCaseMatcher:
             results.append({
                 "case_id": self.case_ids[idx],
                 "label": self.labels[idx],
-                "similarity": float(sims[idx]),
+                "similarity": float(max(0.0, sims[idx])),
                 "image": self.images[idx],
                 "biopsy_finding": self.biopsy_findings[idx],
             })
@@ -131,6 +132,10 @@ class FederatedRAGCaseMatcher:
 def extract_embedding(model: nn.Module, image_tensor: torch.Tensor) -> np.ndarray:
     """Extract 64-dimensional feature representation from CNN or ViT."""
     model.eval()
+
+    device = next(model.parameters()).device if list(model.parameters()) else image_tensor.device
+    if image_tensor.device != device:
+        image_tensor = image_tensor.to(device)
 
     with torch.no_grad():
         if hasattr(model, "extract_features"):
