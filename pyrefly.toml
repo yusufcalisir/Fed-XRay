@@ -1,0 +1,5 @@
+# Pyrefly Configuration for Fed-XRay
+search-path = ["src", "."]
+
+[errors]
+missing-source-for-stubs = false

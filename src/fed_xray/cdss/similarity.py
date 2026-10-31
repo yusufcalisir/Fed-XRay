@@ -11,7 +11,7 @@ Implements:
 from __future__ import annotations
 from typing import Any, Dict, List, Optional
 import numpy as np
-from sklearn.metrics.pairwise import cosine_similarity
+from sklearn.metrics.pairwise import cosine_similarity  # pyrefly: ignore[missing-source-for-stubs]
 import torch
 import torch.nn as nn
 import torch.nn.functional as F

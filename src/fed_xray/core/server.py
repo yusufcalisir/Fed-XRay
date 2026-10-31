@@ -13,7 +13,7 @@ from typing import Any, Dict, List, Optional, Tuple
 import numpy as np
 import torch
 import torch.nn as nn
-from sklearn.metrics import (
+from sklearn.metrics import (  # pyrefly: ignore[missing-source-for-stubs]
     accuracy_score,
     confusion_matrix,
     f1_score,

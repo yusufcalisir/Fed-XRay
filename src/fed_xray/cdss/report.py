@@ -22,7 +22,7 @@ def generate_medical_report(
     similar_cases: Optional[List[Dict]] = None
 ) -> bytes:
     """Generate a single-page medical PDF report."""
-    from fpdf import FPDF
+    from fpdf import FPDF  # pyrefly: ignore[missing-source-for-stubs]
     import matplotlib.pyplot as plt
 
     pdf = FPDF(unit='mm', format='A4')
