@@ -89,7 +89,7 @@ class GradCAM:
 
             pred_class = int(predicted.item())
             conf_score = float(confidence.item())
-            chosen_class = pred_class if target_class is None else int(target_class)
+            chosen_class = pred_class if target_class is None else target_class
 
             self.model.zero_grad()
             if input_tensor.grad is not None:
@@ -124,7 +124,7 @@ class GradCAM:
                 # Exclude CLS token if present
                 if len(cam_seq) > 1:
                     cam_seq = cam_seq[1:]
-                grid_side = int(math.isqrt(len(cam_seq)))
+                grid_side = math.isqrt(len(cam_seq))
                 if grid_side * grid_side == len(cam_seq):
                     cam_arr = cam_seq.reshape(grid_side, grid_side)
                 else:

@@ -264,7 +264,7 @@ class StrategyEDatasetEcosystem:
         meta = self.SITE_METADATA.get(dataset_name, {})
         raw_sites = meta.get("sites")
         sites: List[str] = (
-            [str(s) for s in raw_sites]
+            list(raw_sites)
             if isinstance(raw_sites, list)
             else ["Hospital_A", "Hospital_B", "Hospital_C"]
         )
@@ -331,13 +331,13 @@ class StrategyEDatasetEcosystem:
         )
         raw_sites = meta.get("sites")
         sites: List[str] = (
-            [str(s) for s in raw_sites]
+            list(raw_sites)
             if isinstance(raw_sites, list)
             else ["Hospital_A", "Hospital_B", "Hospital_C"]
         )
         raw_classes = meta.get("classes")
         classes: List[str] = (
-            [str(c) for c in raw_classes]
+            list(raw_classes)
             if isinstance(raw_classes, list)
             else ["Class_0", "Class_1", "Class_2"]
         )

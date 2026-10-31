@@ -1,12 +1,10 @@
 """Unit and integration tests for Strategy E Real-World Data Migration, Scenarios A-G, and Federated RAG."""
 
-import pytest
 import numpy as np
 import torch
 
 from src.fed_xray.data.real_world import (
     DiskMedicalDataset,
-    RealWorldPatientRecord,
     StrategyEDatasetEcosystem,
 )
 from src.fed_xray.cdss.similarity import (
@@ -220,7 +218,7 @@ def test_load_from_disk_manifest_e2e(tmp_path):
         for s_idx in range(3):
             file_name = f"{pat_id}_sample_{s_idx}.png"
             file_path = img_dir / file_name
-            color_val = int(50 + p_idx * 40 + s_idx * 5)
+            color_val = 50 + p_idx * 40 + s_idx * 5
             Image.new("L", (64, 64), color=color_val).save(file_path)
             rows.append({
                 "image_path": str(file_path),

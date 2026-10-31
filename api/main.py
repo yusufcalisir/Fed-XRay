@@ -197,7 +197,7 @@ async def generate_cohorts(req: CohortGenerateRequest):
         counts = {"normal": c0, "pneumonia": c1, "covid": c2}
 
         sample_imgs = [r.image_tensor.numpy()[0].tolist() for r in part[:9]]
-        sample_lbls = [int(r.label) for r in part[:9]]
+        sample_lbls = [r.label for r in part[:9]]
 
         inst_name = INSTITUTION_NAMES[h % len(INSTITUTION_NAMES)]
 
@@ -262,12 +262,17 @@ async def stream_federated_training(
             torch.tensor([r.label for r in test_recs], dtype=torch.long),
         )
 
+    assert state.dataloaders is not None
+    assert state.global_test_set is not None
+    active_dataloaders = state.dataloaders
+    active_global_test_set = state.global_test_set
+
     actual_peft = None if peft_mode.lower() in ("none", "false", "off") else peft_mode
     state.model_type = model_type
     state.peft_mode = peft_mode
 
     async def event_generator():
-        n_hospitals = len(state.dataloaders)
+        n_hospitals = len(active_dataloaders)
         state.server = CentralServer(
             device=state.device,
             privacy_noise=privacy_noise,
@@ -287,7 +292,7 @@ async def stream_federated_training(
             clients.append(
                 HospitalClient(
                     client_id=i,
-                    dataloader=state.dataloaders[i],
+                    dataloader=active_dataloaders[i],
                     device=state.device,
                     learning_rate=learning_rate,
                     local_epochs=local_epochs,
@@ -300,7 +305,7 @@ async def stream_federated_training(
                 )
             )
 
-        test_images, test_labels = state.global_test_set
+        test_images, test_labels = active_global_test_set
 
         state.training_history = {
             "loss": [],
@@ -363,7 +368,7 @@ async def stream_federated_training(
                 "recall": round(rec, 2),
                 "f1_score": round(f1, 2),
                 "threat_detected": threat_detected,
-                "blocked_nodes": [int(n + 1) for n in blocked_nodes],
+                "blocked_nodes": [n + 1 for n in blocked_nodes],
                 "status": "training" if round_num < num_rounds else "complete",
                 "model_type": model_type,
                 "peft_mode": peft_mode,
@@ -507,7 +512,7 @@ async def start_training_background(
                     "recall": round(rec, 2),
                     "f1_score": round(f1, 2),
                     "threat_detected": len(blocked_nodes) > 0,
-                    "blocked_nodes": [int(n + 1) for n in blocked_nodes],
+                    "blocked_nodes": [n + 1 for n in blocked_nodes],
                     "status": "training" if round_num < num_rounds else "complete",
                     "model_type": model_type,
                     "peft_mode": peft_mode,
