@@ -225,7 +225,6 @@ Fed-XRay/
 │   ├── personalized_prototype_federated_learning_for_imbalanced_medical_ai.md
 │   ├── federated_medical_vision_language_models_and_retrieval_augmented_oncology_ai.md
 │   └── real_world_medical_dataset_migration_for_federated_cancer_ai.md
-├── AGENTS.md                      # Canonical System Guidelines & Operational Rules
 ├── render.yaml                    # Cloud Deployment Blueprint (RAM & Timeout Optimized)
 ├── Dockerfile                     # Container Deployment Configuration
 └── requirements.txt               # Production Python Dependencies

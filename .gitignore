@@ -5,6 +5,8 @@ AGENTS.md
 research/
 .agents/
 .gemini/
+skills/
+.skills/
 
 # ===== Credentials & Sensitive Files =====
 cookies.txt
