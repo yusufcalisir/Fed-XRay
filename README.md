@@ -18,7 +18,7 @@ Fed-XRay is an enterprise-grade Federated Learning (FL) and Clinical Decision Su
   <img src="https://img.shields.io/badge/Privacy-Option_J_(CKKS_+_DP)-indigo" alt="Privacy">
   <img src="https://img.shields.io/badge/PEFT-FFA--LoRA_%7C_FedSA--LoRA_%7C_FedAS--LoRA-purple" alt="PEFT">
   <img src="https://img.shields.io/badge/Localization-EN%20%7C%20TR-blue" alt="Bilingual">
-  <img src="https://img.shields.io/badge/Automated_Tests-75_Passed_100%25-brightgreen" alt="Tests">
+  <img src="https://img.shields.io/badge/Automated_Tests-86_Passed_100%25-brightgreen" alt="Tests">
   <img src="https://img.shields.io/badge/License-MIT-yellow" alt="License">
 </p>
 
@@ -192,7 +192,7 @@ Fed-XRay/
 │       │   ├── foundation.py      # UNI, Swin UNETR, FedMedCLIP, FedCola, FedDAT
 │       │   └── cnn.py             # XRayClassifier Baseline
 │       ├── data/                  # Strategy E Ingestion & Scenarios
-│       │   ├── real_world.py      # Scenarios A-G, SHA-256 Deduplication, Leak-Free Split
+│       │   ├── real_world.py      # DiskMedicalDataset, Scenarios A-G, SHA-256 Deduplication, Leak-Free Split
 │       │   └── generator.py       # Multi-Hospital Simulation Generator
 │       └── cdss/                  # Clinical Decision Support Systems
 │           ├── xai.py             # Grad-CAM Heatmaps & Overlays
@@ -201,11 +201,8 @@ Fed-XRay/
 │           ├── voice.py           # Speech Dictation Engine (Async gTTS + Disk Cache)
 │           └── i18n.py            # Academic Bilingual Localization (EN / TR)
 ├── benchmarks/                    # Multi-Algorithm Simulation & Empirical Benchmarks
-│   ├── benchmark_foundation_peft.py # Master Foundation PEFT Benchmark
-│   ├── fed_benchmark.py           # FedAvg, FedProx, MOON, SCAFFOLD Suite
-│   ├── fedprox_traffic.py         # FedProx Convergence Simulation
-│   └── moon_traffic.py            # MOON Model-Contrastive Simulation
-├── tests/                         # Comprehensive Automated Test Suites (75 Tests Passed)
+│   └── benchmark_foundation_peft.py # Master Foundation PEFT & Comparative Benchmark Suite
+├── tests/                         # Comprehensive Automated Test Suites (86 Tests Passed)
 │   ├── test_all.py                # Baseline Model, Data, XAI & Security Tests
 │   ├── test_api_endpoints.py      # FastAPI REST & Streaming Integration Tests
 │   ├── test_api_deep_suite.py     # Exhaustive Deep API, SSE Streaming & Polling Tests
@@ -214,9 +211,9 @@ Fed-XRay/
 │   ├── test_e2e_full_federated_pipeline.py # Full Lifecycle Ingestion->Training->RAG->PDF Test
 │   ├── test_asymmetric_foundation_peft.py # FedAS-LoRA, FlexLoRA SVD & Foundation Adapters
 │   ├── test_benchmarking_engine.py # Automated Foundation PEFT Benchmark Test
-│   ├── test_foundation_privacy.py # FedMedCLIP, CKKS HE & Rényi DP Accountant
+│   ├── test_foundation_privacy.py # FedMedCLIP, CKKS HE, SecAgg+ & Rényi DP Accountant
 │   ├── test_prototypes.py         # FedProto & Imbalance Losses
-│   ├── test_real_world_data_scenarios.py # Scenarios A-G, SHA-256 & Federated RAG
+│   ├── test_real_world_data_scenarios.py # DiskMedicalDataset, Scenarios A-G & Federated RAG
 │   └── test_vit_peft_optimizers.py # ViT, FFA-LoRA Zero Error & SOTA Optimizers
 ├── research/                      # Canonical Scientific Research Anchors
 │   ├── federated_vision_transformers_for_oncology.md
@@ -245,10 +242,10 @@ cd Fed-XRay
 pip install -r requirements.txt
 ```
 
-### 2. Run Automated Test Suite (75 Tests Passed)
+### 2. Run Automated Test Suite (86 Tests Passed)
 
 ```bash
-# Execute all 75 unit, integration, and E2E lifecycle tests
+# Execute all 86 unit, integration, and E2E lifecycle tests
 python -m pytest tests/
 ```
 
@@ -295,14 +292,14 @@ npm run dev
 
 ## Scientific Anchors & Citations
 
-1. **Hu et al.** (ICLR 2022) — *LoRA: Low-Rank Adaptation of Large Language Models*.
-2. **Sun et al.** (ICLR 2024) — *FFA-LoRA: Freezing Factor A in Federated Low-Rank Adaptation*.
-3. **Guo et al.** (ICLR 2025) — *FedSA-LoRA: Factor-Wise Asymmetric Federated Fine-Tuning*.
-4. **Sun et al.** (ICCV 2023) — *FedPerfix: Towards Partial Model Personalization for Vision Transformers*.
-5. **Chen et al.** (Nature Medicine 2024) — *UNI: General-purpose Self-Supervised Vision Transformer for Pathology*.
-6. **Vorontsov et al.** (Nature Medicine 2024) — *Virchow: A Pan-Cancer Pathology Foundation Model*.
-7. **Lu et al.** (Nature Medicine 2024) — *CONCH: Visual Language Foundation Model for Histopathology*.
-8. **Tan et al.** (AAAI 2022) — *FedProto: Federated Prototype Learning across Heterogeneous Clients*.
-9. **Acar et al.** (ICLR 2021) — *Federated Learning Based on Dynamic Regularization (FedDyn)*.
-10. **Li et al.** (CVPR 2021) — *Model-Contrastive Federated Learning (MOON)*.
-11. **Mironov** (CSF 2017) — *Rényi Differential Privacy*.
+1. **Hu et al.** (ICLR 2022) - *LoRA: Low-Rank Adaptation of Large Language Models*.
+2. **Sun et al.** (ICLR 2024) - *FFA-LoRA: Freezing Factor A in Federated Low-Rank Adaptation*.
+3. **Guo et al.** (ICLR 2025) - *FedSA-LoRA: Factor-Wise Asymmetric Federated Fine-Tuning*.
+4. **Sun et al.** (ICCV 2023) - *FedPerfix: Towards Partial Model Personalization for Vision Transformers*.
+5. **Chen et al.** (Nature Medicine 2024) - *UNI: General-purpose Self-Supervised Vision Transformer for Pathology*.
+6. **Vorontsov et al.** (Nature Medicine 2024) - *Virchow: A Pan-Cancer Pathology Foundation Model*.
+7. **Lu et al.** (Nature Medicine 2024) - *CONCH: Visual Language Foundation Model for Histopathology*.
+8. **Tan et al.** (AAAI 2022) - *FedProto: Federated Prototype Learning across Heterogeneous Clients*.
+9. **Acar et al.** (ICLR 2021) - *Federated Learning Based on Dynamic Regularization (FedDyn)*.
+10. **Li et al.** (CVPR 2021) - *Model-Contrastive Federated Learning (MOON)*.
+11. **Mironov** (CSF 2017) - *Rényi Differential Privacy*.

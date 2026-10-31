@@ -14,7 +14,7 @@ from typing import Optional
 
 
 def _generate_audio_sync(text: str, lang: str = "en") -> Optional[bytes]:
-    """Synchronous gTTS call — must run in a thread, not on the event loop."""
+    """Synchronous gTTS call: must run in a thread, not on the event loop."""
     try:
         from gtts import gTTS
         tts = gTTS(text=text, lang=lang, slow=False)
@@ -47,14 +47,14 @@ async def get_or_create_audio(text: str, lang: str = "en") -> bytes:
             with open(cache, "rb") as f:
                 return f.read()
         except OSError:
-            pass  # Cache read failed — regenerate
+            pass  # Cache read failed: regenerate
 
     # Run blocking I/O in a thread pool
     loop = asyncio.get_event_loop()
     audio = await loop.run_in_executor(None, _generate_audio_sync, text, lang)
 
     if audio is None:
-        raise RuntimeError("gTTS synthesis failed — check network connectivity")
+        raise RuntimeError("gTTS synthesis failed: check network connectivity")
 
     # Write cache (best-effort)
     try:
@@ -67,7 +67,7 @@ async def get_or_create_audio(text: str, lang: str = "en") -> bytes:
 
 
 # ---------------------------------------------------------------------------
-# Legacy compatibility shim — kept so old callers (diagnosis=, confidence=)
+# Legacy compatibility shim: kept so old callers (diagnosis=, confidence=)
 # still work without breaking changes.
 # ---------------------------------------------------------------------------
 def generate_diagnosis_audio(
