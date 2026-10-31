@@ -318,7 +318,10 @@ def inject_lora_to_model(
     elif mode == "het_lora":
         adapter_cls = HetLoRALinear
 
-    min_layer_idx = (total_layers - num_deep_layers) if deep_layers_only else 0
+    blocks = getattr(model, "blocks", None) or getattr(model, "layers", None)
+    actual_total_layers = len(blocks) if blocks is not None and hasattr(blocks, "__len__") else total_layers
+    effective_num_deep = min(num_deep_layers, max(1, actual_total_layers // 2))
+    min_layer_idx = (actual_total_layers - effective_num_deep) if deep_layers_only else 0
 
     # Freeze entire backbone first
     for param in model.parameters():
