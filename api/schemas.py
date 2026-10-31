@@ -16,6 +16,9 @@ class CohortGenerateRequest(BaseModel):
     images_dir_name: Optional[str] = Field(
         default=None, description="Image directory relative to FED_XRAY_DATA_DIR (defaults to the manifest directory)."
     )
+    image_size: Optional[int] = Field(
+        default=None, ge=28, le=512, description="Target image dimension (defaults to 224 for Strategy E disk manifests)."
+    )
 
 
 class HospitalCohortInfo(BaseModel):

@@ -61,6 +61,8 @@ class CentralServer:
         server_epsilon: float = 1e-8,
         secure_aggregation: bool = False,
         use_ckks: bool = False,
+        img_size: Optional[int] = None,
+        patch_size: Optional[int] = None,
     ) -> None:
         self.device = device or torch.device("cpu")
         self.privacy_noise = privacy_noise
@@ -72,6 +74,9 @@ class CentralServer:
         self.deep_layers_only = deep_layers_only
         self.secure_aggregation = secure_aggregation
         self.use_ckks = use_ckks
+
+        self.img_size = img_size or 28
+        self.patch_size = patch_size or (16 if self.img_size == 224 else 4)
 
         # Cryptographic and DP engines
         self.ckks_engine: Optional[CKKSEncryptionEngine] = (
@@ -115,7 +120,12 @@ class CentralServer:
         """Create global model with appropriate architecture and PEFT hooks."""
         model: nn.Module
         if self.model_type.startswith("vit"):
-            model = create_medical_vit(model_type=self.model_type, num_classes=3)
+            model = create_medical_vit(
+                model_type=self.model_type,
+                img_size=self.img_size,
+                patch_size=self.patch_size,
+                num_classes=3,
+            )
             if self.peft_mode:
                 inject_lora_to_model(
                     model=model,

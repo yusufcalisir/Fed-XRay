@@ -57,6 +57,8 @@ class HospitalClient:
         lora_r: int = 16,
         lora_alpha: float = 16.0,
         deep_layers_only: bool = False,
+        img_size: Optional[int] = None,
+        patch_size: Optional[int] = None,
     ) -> None:
         self.client_id = client_id
         self.dataloader = dataloader
@@ -69,6 +71,16 @@ class HospitalClient:
         self.lora_r = lora_r
         self.lora_alpha = lora_alpha
         self.deep_layers_only = deep_layers_only
+
+        if img_size is not None:
+            self.img_size = img_size
+        else:
+            try:
+                first_batch = next(iter(dataloader))[0]
+                self.img_size = int(first_batch.shape[-1])
+            except Exception:
+                self.img_size = 28
+        self.patch_size = patch_size or (16 if self.img_size == 224 else 4)
 
         # Initialize local architecture
         self.model = self._create_local_model().to(self.device)
@@ -88,7 +100,12 @@ class HospitalClient:
         """Instantiate backbone and inject PEFT adapters if requested."""
         model: nn.Module
         if self.model_type.startswith("vit"):
-            model = create_medical_vit(model_type=self.model_type, num_classes=3)
+            model = create_medical_vit(
+                model_type=self.model_type,
+                img_size=self.img_size,
+                patch_size=self.patch_size,
+                num_classes=3,
+            )
             if self.peft_mode:
                 inject_lora_to_model(
                     model=model,

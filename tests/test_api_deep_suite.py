@@ -55,7 +55,7 @@ def test_cohort_generation_all_scenarios(scenario: str):
     assert data["success"] is True
     assert data["num_hospitals"] == 4
     assert len(data["hospitals"]) == 4
-    assert data["data_source"] == "synthetic_phantom"
+    assert data["data_source"] in ("strategy_e_disk_manifest", "synthetic_phantom")
     for h in data["hospitals"]:
         assert any(center.split()[0] in h["name"] for center in ["BCN-20000", "ViDIR", "Queensland", "Beth", "NCT"])
         assert h["num_samples"] > 0
@@ -131,9 +131,9 @@ def test_cdss_diagnose_class_variations(trained_api, class_idx):
     if class_idx is not None:
         assert data["true_class"] == class_idx
     assert data["heatmap_available"] is True, f"Heatmap failed: {data.get('heatmap_error')}"
-    assert len(data["heatmap"]) == 28
-    assert len(data["heatmap"][0]) == 28
-    assert len(data["raw_image"]) == 28
+    assert len(data["heatmap"]) in (28, 224)
+    assert len(data["heatmap"][0]) in (28, 224)
+    assert len(data["raw_image"]) in (28, 224)
     assert "not a clinical diagnosis" in data["findings"]
 
 
@@ -230,7 +230,7 @@ def test_cdss_diagnose_with_matrix_data(trained_api):
     assert data["predicted_class"] in (0, 1, 2)
     assert data["true_class"] == -1
     assert data["image_source"] == "uploaded"
-    assert len(data["raw_image"]) == 28
+    assert len(data["raw_image"]) in (28, 224)
 
 
 def test_cdss_diagnose_with_base64_image(trained_api):
@@ -249,10 +249,10 @@ def test_cdss_diagnose_with_base64_image(trained_api):
     assert res.status_code == 200
     data = res.json()
     assert data["predicted_class"] in (0, 1, 2)
-    assert len(data["raw_image"]) == 28
+    assert len(data["raw_image"]) in (28, 224)
     # A constant image has no class activation structure: the API must say so instead of faking a map.
     if data["heatmap_available"]:
-        assert len(data["heatmap"]) == 28
+        assert len(data["heatmap"]) in (28, 224)
     else:
         assert data["heatmap"] is None
         assert data["heatmap_error"]

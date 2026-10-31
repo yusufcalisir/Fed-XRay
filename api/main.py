@@ -32,6 +32,7 @@ from src.fed_xray.data.real_world import (
     RealWorldPatientRecord,
     StrategyEDatasetEcosystem,
 )
+from src.fed_xray.data.ingest_real_world import ensure_strategy_e_dataset
 from src.fed_xray.core.client import HospitalClient
 from src.fed_xray.core.server import CentralServer, run_federated_round
 from src.fed_xray.cdss.xai import GradCAM, GradCAMUnavailableError, get_explanation_text
@@ -79,6 +80,7 @@ class AppState:
         self.model_trained: bool = False
         self.model_type: str = "vit_tiny"
         self.peft_mode: Optional[str] = "ffa_lora"
+        self.image_size: int = 224
         self.rag_matcher: Optional[FederatedRAGCaseMatcher] = None
         self.last_scan: Optional[np.ndarray] = None
         self.reference_records: List[RealWorldPatientRecord] = []
@@ -198,14 +200,21 @@ async def get_state():
 async def generate_cohorts(req: CohortGenerateRequest):
     """Generate multi-center real-world cohort partitions adhering to Strategy E scenarios."""
     ecosystem = StrategyEDatasetEcosystem(seed=42)
+    default_manifest = Path("data/manifests/strategy_e_manifest.csv")
+    if not default_manifest.exists():
+        ensure_strategy_e_dataset(base_data_dir="data", patients_per_hospital=40)
+
+    target_dim = req.image_size if req.image_size is not None else 224
+    state.image_size = target_dim
+
     if req.manifest_name:
         manifest_path = resolve_data_path(req.manifest_name)
-        images_dir = resolve_data_path(req.images_dir_name) if req.images_dir_name else None
+        images_dir = resolve_data_path(req.images_dir_name) if req.images_dir_name else resolve_data_path("images")
         try:
             records = ecosystem.load_from_disk_manifest(
                 manifest_path=str(manifest_path),
                 images_dir=str(images_dir) if images_dir else None,
-                target_size=(28, 28),
+                target_size=(target_dim, target_dim),
                 in_channels=1,
             )
         except Exception as exc:
@@ -215,12 +224,21 @@ async def generate_cohorts(req: CohortGenerateRequest):
         if any(r.label not in (0, 1, 2) for r in records):
             raise HTTPException(status_code=422, detail="Manifest labels must be integers 0, 1 or 2.")
         data_source = "disk_manifest"
+    elif default_manifest.exists():
+        records = ecosystem.load_from_disk_manifest(
+            manifest_path=str(default_manifest),
+            images_dir=str(Path("data")),
+            target_size=(target_dim, target_dim),
+            in_channels=1,
+        )
+        data_source = "strategy_e_disk_manifest"
     else:
         records = ecosystem.generate_synthetic_realworld_cohort(
             dataset_name=req.dataset_name,
             num_patients=max(60, req.num_hospitals * 25),
             samples_per_patient=max(1, req.samples_per_hospital // 25),
             num_classes=3,
+            image_size=target_dim,
         )
         data_source = "synthetic_phantom"
 
@@ -232,12 +250,24 @@ async def generate_cohorts(req: CohortGenerateRequest):
         test_ratio=0.15,
     )
 
-    client_partitions = ecosystem.partition_into_scenarios(
-        records=train_recs,
-        num_clients=req.num_hospitals,
-        scenario=req.scenario,
-        num_classes=3,
-    )
+    if data_source == "strategy_e_disk_manifest":
+        client_partitions: List[List[RealWorldPatientRecord]] = [[] for _ in range(req.num_hospitals)]
+        for r in train_recs:
+            matched = False
+            for idx in range(min(req.num_hospitals, len(STRATEGY_E_CENTERS))):
+                if r.site_id == STRATEGY_E_CENTERS[idx]:
+                    client_partitions[idx].append(r)
+                    matched = True
+                    break
+            if not matched:
+                client_partitions[0].append(r)
+    else:
+        client_partitions = ecosystem.partition_into_scenarios(
+            records=train_recs,
+            num_clients=req.num_hospitals,
+            scenario=req.scenario,
+            num_classes=3,
+        )
 
     state.hospital_samples = {}
     hospitals_info: List[HospitalCohortInfo] = []
@@ -259,10 +289,20 @@ async def generate_cohorts(req: CohortGenerateRequest):
         dist = [c0 / total_p, c1 / total_p, c2 / total_p]
         counts = {"normal": c0, "pneumonia": c1, "covid": c2}
 
-        sample_imgs = [r.image_tensor.numpy()[0].tolist() for r in part[:9]]
+        # Generate 56x56 normalized preview thumbnails for UI canvas display
+        sample_imgs = []
+        for r in part[:9]:
+            t_down = F.interpolate(
+                r.image_tensor.unsqueeze(0),
+                size=(56, 56),
+                mode="bilinear",
+                align_corners=False,
+            )
+            t_norm = (t_down.squeeze() * 0.5 + 0.5).clamp(0.0, 1.0)
+            sample_imgs.append(t_norm.numpy().round(3).tolist())
         sample_lbls = [r.label for r in part[:9]]
 
-        if data_source == "disk_manifest" and part and any(r.site_id for r in part):
+        if data_source in ("disk_manifest", "strategy_e_disk_manifest") and part and any(r.site_id for r in part):
             inst_name = Counter(r.site_id for r in part).most_common(1)[0][0]
         else:
             inst_name = STRATEGY_E_CENTERS[h % len(STRATEGY_E_CENTERS)]
@@ -341,6 +381,7 @@ async def stream_federated_training(
             deep_layers_only=True,
             secure_aggregation=secure_aggregation,
             use_ckks=use_ckks,
+            img_size=state.image_size,
         )
 
         clients = []
@@ -359,6 +400,7 @@ async def stream_federated_training(
                     lora_r=8,
                     lora_alpha=16.0,
                     deep_layers_only=True,
+                    img_size=state.image_size,
                 )
             )
 
@@ -611,13 +653,14 @@ async def perform_diagnosis(req: DiagnoseRequest):
     model.eval()
 
     true_class = -1
+    target_dim = state.image_size
     if req.image_base64:
         try:
             header, _, encoded = req.image_base64.partition(",")
             raw_b64 = encoded if encoded else header
             img_bytes = base64.b64decode(raw_b64)
             pil_img = Image.open(io.BytesIO(img_bytes)).convert("L")
-            pil_img = pil_img.resize((28, 28), Image.Resampling.BILINEAR)
+            pil_img = pil_img.resize((target_dim, target_dim), Image.Resampling.BILINEAR)
             image_np = (np.array(pil_img, dtype=np.float32) / 255.0).clip(0.0, 1.0)
         except Exception as exc:
             raise HTTPException(status_code=400, detail=f"Invalid base64 image data: {exc}")
@@ -628,8 +671,8 @@ async def perform_diagnosis(req: DiagnoseRequest):
             if raw_arr.ndim != 2:
                 raise ValueError("image_data must be a 2D matrix")
             t_img = torch.tensor(raw_arr).unsqueeze(0).unsqueeze(0)
-            if t_img.shape[-2:] != (28, 28):
-                t_img = F.interpolate(t_img, size=(28, 28), mode="bilinear", align_corners=False)
+            if t_img.shape[-2:] != (target_dim, target_dim):
+                t_img = F.interpolate(t_img, size=(target_dim, target_dim), mode="bilinear", align_corners=False)
             image_np = t_img.squeeze().cpu().numpy().clip(0.0, 1.0)
         except Exception as exc:
             raise HTTPException(status_code=400, detail=f"Invalid image_data matrix: {exc}")
