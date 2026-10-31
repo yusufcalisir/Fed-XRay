@@ -46,6 +46,11 @@ export default function DashboardPage() {
       const res = await fetchHospitalCohorts(apiUrl, numHospitals, samplesPerHospital);
       if (res.success && res.hospitals) {
         setHospitals(res.hospitals);
+        setIsTrained(false);
+        setDiagnosis(null);
+        setRagTwins([]);
+        setHistory([]);
+        setCurrentRound(0);
       } else {
         throw new Error(res.error || "Cohort generation failed on backend");
       }
@@ -61,15 +66,21 @@ export default function DashboardPage() {
   // Pre-load cohorts when backend connection is verified
   useEffect(() => {
     if (isConnected) {
-      handleGenerateCohorts();
       fetch(`${apiUrl.replace(/\/$/, "")}/api/state`)
         .then((res) => (res.ok ? res.json() : null))
         .then((data) => {
-          if (data && data.model_trained) {
-            setIsTrained(true);
+          if (data) {
+            setIsTrained(Boolean(data.model_trained));
+            if (!data.has_test_set || data.hospitals_loaded === 0) {
+              handleGenerateCohorts();
+            }
+          } else {
+            handleGenerateCohorts();
           }
         })
-        .catch(() => {});
+        .catch(() => {
+          handleGenerateCohorts();
+        });
     }
   }, [apiUrl, isConnected]);
 
@@ -114,6 +125,10 @@ export default function DashboardPage() {
   };
 
   const handleRunDiagnosis = async (classIndex?: number, opacity?: number, colormap?: string) => {
+    if (!isTrained) {
+      setErrorMessage("Federated model is not trained yet. Complete Step 2 before initiating diagnosis.");
+      return;
+    }
     setErrorMessage(null);
     try {
       setIsDiagLoading(true);
