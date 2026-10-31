@@ -16,7 +16,8 @@ interface ApiContextType {
 const ApiContext = createContext<ApiContextType | undefined>(undefined);
 
 export function ApiProvider({ children }: { children: React.ReactNode }) {
-  const [apiUrl, setApiUrlState] = useState<string>("http://127.0.0.1:8000");
+  const defaultUrl = process.env.NEXT_PUBLIC_API_URL?.trim().replace(/\/$/, "") || "http://127.0.0.1:8000";
+  const [apiUrl, setApiUrlState] = useState<string>(defaultUrl);
   const [isConnected, setIsConnected] = useState<boolean>(false);
   const [isChecking, setIsChecking] = useState<boolean>(true);
   const [lastError, setLastError] = useState<string | null>(null);
