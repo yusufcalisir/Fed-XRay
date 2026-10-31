@@ -99,6 +99,23 @@ export const TRANSLATIONS: Record<Language, Record<string, string>> = {
     sec1_empty_state_title: "Multi-Hospital Data Ingestion Required",
     sec1_empty_state_desc: "Click the button below to ingest, partition, and isolate Non-IID patient cohorts across 4 clinical hospital nodes.",
 
+    // Connection & Engine Status
+    offline_banner_title: "Backend Offline",
+    offline_banner_reconnecting: "Automatically reconnecting to",
+    offline_banner_hint: "Ensure the FastAPI backend service (uvicorn api.main:app) is running.",
+    engine_connected: "Engine Connected",
+    engine_connecting: "Connecting...",
+    engine_reconnecting: "Reconnecting...",
+    engine_offline: "Engine Offline",
+    engine_mobile_live: "Live",
+    engine_mobile_probing: "Probing",
+    engine_mobile_offline: "Offline",
+    engine_fastapi_gateway: "FastAPI Gateway",
+    engine_autoreconnect_active: "Auto-reconnection: Active",
+    engine_autodetect: "Auto-Detect",
+    engine_cancel: "Cancel",
+    engine_apply_url: "Apply URL",
+
     footer_text: "Fed-XRay | Privacy-Preserving Federated Oncology & Medical Imaging Consortium | Powered by PyTorch & Next.js 14"
   },
   TR: {
@@ -198,6 +215,23 @@ export const TRANSLATIONS: Record<Language, Record<string, string>> = {
     sec1_ingestion_complete: "Hastane Veri İçe Aktarımı Tamamlandı: 4 Düğüm Çevrimiçi & İzole Edildi",
     sec1_empty_state_title: "Çok Merkezli Veri İçe Aktarımı Gerekli",
     sec1_empty_state_desc: "4 hastane düğümüne bağımsız Non-IID hasta kohortlarını yüklemek ve izole etmek için aşağıdaki butona tıklayın.",
+
+    // Bağlantı ve Motor Durumu
+    offline_banner_title: "Backend Çevrimdışı",
+    offline_banner_reconnecting: "Otomatik olarak bağlanılıyor:",
+    offline_banner_hint: "FastAPI servisinin (uvicorn api.main:app) çalıştığından emin olunuz.",
+    engine_connected: "Motor Bağlandı",
+    engine_connecting: "Bağlanılıyor...",
+    engine_reconnecting: "Yeniden Bağlanılıyor...",
+    engine_offline: "Motor Çevrimdışı",
+    engine_mobile_live: "Canlı",
+    engine_mobile_probing: "Aranıyor",
+    engine_mobile_offline: "Çevrimdışı",
+    engine_fastapi_gateway: "FastAPI Ağ Geçidi",
+    engine_autoreconnect_active: "Otomatik Yeniden Bağlanma: Aktif",
+    engine_autodetect: "Otomatik Tespit",
+    engine_cancel: "İptal",
+    engine_apply_url: "URL Uygula",
 
     footer_text: "Fed-XRay | Gizlilik Korumalı Federe Onkoloji ve Tıbbi Görüntüleme Konsorsiyumu | PyTorch ve Next.js 14 ile Geliştirilmiştir"
   }

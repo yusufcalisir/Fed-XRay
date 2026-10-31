@@ -6,7 +6,7 @@ import { useApi } from "@/context/ApiContext";
 import { Server, Sun, Moon, Activity, RefreshCw } from "lucide-react";
 
 export default function Navbar() {
-  const { language, setLanguage } = useLanguage();
+  const { language, setLanguage, t } = useLanguage();
   const { apiUrl, setApiUrl, isConnected, isChecking, autoDiscoverApi, reconnectAttempts } = useApi();
   const [isDark, setIsDark] = useState(true);
   const [showConfig, setShowConfig] = useState(false);
@@ -57,14 +57,18 @@ export default function Navbar() {
   };
 
   const connectionLabel = isConnected
-    ? "Engine Connected"
+    ? t("engine_connected")
     : isChecking
-    ? "Connecting..."
+    ? t("engine_connecting")
     : reconnectAttempts > 0
-    ? "Reconnecting..."
-    : "Engine Offline";
+    ? t("engine_reconnecting")
+    : t("engine_offline");
 
-  const mobileLabel = isConnected ? "Live" : isChecking ? "Probing" : "Offline";
+  const mobileLabel = isConnected
+    ? t("engine_mobile_live")
+    : isChecking
+    ? t("engine_mobile_probing")
+    : t("engine_mobile_offline");
 
   return (
     <header className="sticky top-0 z-50 w-full h-14 bg-[var(--navbar-bg)] backdrop-blur-xl border-b border-[var(--navbar-border)] transition-colors">
@@ -117,7 +121,7 @@ export default function Navbar() {
             {showConfig && (
               <div className="absolute right-0 mt-2 w-[calc(100vw-24px)] max-w-xs sm:w-84 p-4 card z-50 shadow-2xl animate-fade-in">
                 <div className="flex items-center justify-between mb-2">
-                  <span className="text-xs font-bold text-[var(--text-heading)]">FastAPI Gateway</span>
+                  <span className="text-xs font-bold text-[var(--text-heading)]">{t("engine_fastapi_gateway")}</span>
                   <span
                     className={`text-[10px] font-mono font-bold px-1.5 py-0.5 rounded ${
                       isConnected
@@ -139,7 +143,7 @@ export default function Navbar() {
                     className="w-full px-3 py-2 rounded-lg bg-[var(--bg-card-inner)] border border-[var(--border-card)] text-xs text-[var(--text-heading)] focus:outline-none focus:border-emerald-500/50"
                   />
                   <div className="text-[10px] text-[var(--text-muted)] flex items-center justify-between">
-                    <span>Auto-reconnection: Active</span>
+                    <span>{t("engine_autoreconnect_active")}</span>
                     <button
                       type="button"
                       onClick={handleAutoDetect}
@@ -147,7 +151,7 @@ export default function Navbar() {
                       className="text-emerald-500 hover:text-emerald-400 flex items-center gap-1 font-semibold disabled:opacity-50"
                     >
                       <RefreshCw className={`w-3 h-3 ${isDiscovering ? "animate-spin" : ""}`} />
-                      Auto-Detect
+                      {t("engine_autodetect")}
                     </button>
                   </div>
                   <div className="flex items-center justify-end gap-2 pt-1">
@@ -156,13 +160,13 @@ export default function Navbar() {
                       onClick={() => setShowConfig(false)}
                       className="px-3 py-1 rounded-md text-[11px] text-slate-500 hover:text-[var(--text-heading)]"
                     >
-                      Cancel
+                      {t("engine_cancel")}
                     </button>
                     <button
                       type="submit"
                       className="px-3.5 py-1.5 rounded-md bg-slate-900 dark:bg-white text-white dark:text-slate-900 text-[11px] font-bold shadow-sm"
                     >
-                      Apply URL
+                      {t("engine_apply_url")}
                     </button>
                   </div>
                 </form>

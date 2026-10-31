@@ -156,7 +156,7 @@ export default function DashboardPage() {
           <div className="card-inner flex items-start gap-2.5 sm:gap-3 p-3.5 sm:p-4 mb-4 sm:mb-5 border-l-4 border-l-amber-500">
             <AlertCircle className="w-4 h-4 text-amber-500 shrink-0 mt-0.5 animate-pulse" />
             <div className="text-[11px] sm:text-xs text-[var(--text-main)] leading-relaxed">
-              <span className="text-amber-600 dark:text-amber-400 font-semibold">Backend Offline</span>: <code className="text-[var(--text-muted)] font-bold">{apiUrl}</code> hedefine otomatik yeniden bağlanılıyor. FastAPI servisinin (<code>uvicorn api.main:app</code>) çalıştığından emin olunuz.
+              <span className="text-amber-600 dark:text-amber-400 font-semibold">{t("offline_banner_title")}</span>: {t("offline_banner_reconnecting")} <code className="text-[var(--text-muted)] font-bold">{apiUrl}</code>. {t("offline_banner_hint")}
             </div>
           </div>
         )}
