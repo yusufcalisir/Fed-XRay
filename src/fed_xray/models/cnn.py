@@ -119,6 +119,9 @@ def create_model(num_classes: int = 3, dropout_rate: float = 0.3) -> XRayClassif
     return XRayClassifier(num_classes=num_classes, dropout_rate=dropout_rate)
 
 
+create_cnn_model = create_model
+
+
 def count_parameters(model: nn.Module) -> int:
     """Count the total number of trainable parameters."""
     return sum(p.numel() for p in model.parameters() if p.requires_grad)

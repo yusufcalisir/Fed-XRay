@@ -1072,12 +1072,14 @@ if hasattr(st.session_state, 'scan_image') and st.session_state.model_trained:
         st.markdown(f"### 🧬 {get_text('sec3_rag_title', lang)}")
         st.caption(get_text('sec3_rag_desc', lang))
 
-        if st.session_state.case_bank is None:
-            st.session_state.case_bank = HistoricalCaseBank(n_cases=100)
-
         model_emb = create_model()
         if st.session_state.trained_weights is not None:
             model_emb.load_state_dict(st.session_state.trained_weights)
+        model_emb.cpu().eval()
+
+        if st.session_state.case_bank is None:
+            ref_records = getattr(st.session_state, "reference_records", None)
+            st.session_state.case_bank = HistoricalCaseBank(reference_records=ref_records, model=model_emb)
 
         img_t = torch.FloatTensor(st.session_state.scan_image).unsqueeze(0).unsqueeze(0)
         emb = extract_embedding(model_emb, img_t)

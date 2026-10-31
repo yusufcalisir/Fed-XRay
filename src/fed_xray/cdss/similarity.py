@@ -9,7 +9,7 @@ Implements:
 """
 
 from __future__ import annotations
-from typing import Any, Dict, List, Sequence
+from typing import Any, Dict, List, Optional, Sequence
 import numpy as np
 from sklearn.metrics.pairwise import cosine_similarity  # pyrefly: ignore[missing-source-for-stubs]
 import torch
@@ -26,14 +26,37 @@ class FederatedRAGCaseMatcher:
 
     def __init__(
         self,
-        reference_records: Sequence[Any],
-        model: nn.Module,
+        reference_records: Optional[Sequence[Any]] = None,
+        model: Optional[nn.Module] = None,
         temperature: float = 0.1,
+        n_cases: Optional[int] = None,
     ) -> None:
-        if len(reference_records) == 0:
-            raise ValueError("FederatedRAGCaseMatcher requires at least one reference record.")
+        if reference_records is None or len(reference_records) == 0:
+            from ..data.generator import MedicalDataGenerator
+            from ..data.real_world import RealWorldPatientRecord
+
+            gen = MedicalDataGenerator(seed=42)
+            count = n_cases if n_cases is not None else 100
+            fallback_records = []
+            for i in range(count):
+                lbl = i % 3
+                img = gen.generate_synthetic_xray(label=lbl)
+                fallback_records.append(
+                    RealWorldPatientRecord(
+                        patient_id=f"REF-{lbl}-{1000 + i}",
+                        site_id="Reference Bank",
+                        image_tensor=torch.tensor(img, dtype=torch.float32).unsqueeze(0),
+                        label=lbl,
+                        clinical_notes=f"Reference Case {1000 + i} for class {lbl}",
+                    )
+                )
+            reference_records = fallback_records
+
         if model is None:
-            raise ValueError("FederatedRAGCaseMatcher requires a trained encoder model.")
+            from ..models.cnn import create_cnn_model
+
+            model = create_cnn_model()
+
         self.temperature = temperature
         self.model = model
 
