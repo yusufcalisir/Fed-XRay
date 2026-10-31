@@ -18,33 +18,39 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
+from .vit import TransformerEncoderBlock
 
 
 class UNIFoundationBackbone(nn.Module):
     """UNI Pathology Foundation Model (ViT-L/16, 1024-dim representation space)."""
 
-    def __init__(self, embed_dim: int = 1024, num_classes: int = 3) -> None:
+    def __init__(self, embed_dim: int = 1024, num_classes: int = 3, num_layers: int = 4) -> None:
         super().__init__()
         self.embed_dim = embed_dim
         self.num_classes = num_classes
 
-        # Simulated frozen ViT-L/16 feature projection
-        self.patch_proj = nn.Conv2d(1, 256, kernel_size=4, stride=4)
-        self.transformer_blocks = nn.Sequential(
-            nn.Linear(256, 512),
-            nn.GELU(),
-            nn.Linear(512, embed_dim),
-            nn.LayerNorm(embed_dim),
-        )
+        # Patch projection layer (4x4 patch downsampling for medical scans)
+        self.patch_proj = nn.Conv2d(1, embed_dim, kernel_size=4, stride=4)
+        num_heads = 8 if embed_dim % 8 == 0 else 4
+        self.blocks = nn.ModuleList([
+            TransformerEncoderBlock(embed_dim=embed_dim, num_heads=num_heads)
+            for _ in range(num_layers)
+        ])
+        self.norm = nn.LayerNorm(embed_dim, eps=1e-6)
         self.head = nn.Linear(embed_dim, num_classes)
 
-        # Freeze backbone
+        # Freeze backbone by default (PEFT protocol)
         self.patch_proj.requires_grad_(False)
-        self.transformer_blocks.requires_grad_(False)
+        for blk in self.blocks:
+            blk.requires_grad_(False)
+        self.norm.requires_grad_(False)
 
     def extract_features(self, x: torch.Tensor) -> torch.Tensor:
-        p = self.patch_proj(x).flatten(2).transpose(1, 2)  # [B, N, 256]
-        feats = self.transformer_blocks(p.mean(dim=1))  # [B, embed_dim]
+        p = self.patch_proj(x).flatten(2).transpose(1, 2)  # [B, N, embed_dim]
+        for blk in self.blocks:
+            p = blk(p)
+        p = self.norm(p)
+        feats = p.mean(dim=1)  # Global average pooled token: [B, embed_dim]
         return feats
 
     def forward(self, x: torch.Tensor, return_features: bool = False) -> torch.Tensor | Tuple[torch.Tensor, torch.Tensor]:
@@ -63,21 +69,30 @@ class SwinUNETRRadiologyBackbone(nn.Module):
         self.embed_dim = embed_dim
         self.num_classes = num_classes
 
-        self.conv_stem = nn.Conv2d(1, 128, kernel_size=3, padding=1)
-        self.hierarchical_encoder = nn.Sequential(
-            nn.Linear(128, 384),
-            nn.GELU(),
-            nn.Linear(384, embed_dim),
-            nn.LayerNorm(embed_dim),
-        )
+        self.conv_stem = nn.Conv2d(1, 64, kernel_size=3, padding=1)
+        self.pool = nn.MaxPool2d(2, 2)
+        self.stage1_block = TransformerEncoderBlock(embed_dim=64, num_heads=4)
+        self.proj_to_embed = nn.Linear(64, embed_dim)
+        num_heads = 8 if embed_dim % 8 == 0 else 4
+        self.stage2_block = TransformerEncoderBlock(embed_dim=embed_dim, num_heads=num_heads)
+        self.norm = nn.LayerNorm(embed_dim, eps=1e-6)
         self.head = nn.Linear(embed_dim, num_classes)
 
+        # Freeze backbone
         self.conv_stem.requires_grad_(False)
-        self.hierarchical_encoder.requires_grad_(False)
+        self.stage1_block.requires_grad_(False)
+        self.proj_to_embed.requires_grad_(False)
+        self.stage2_block.requires_grad_(False)
+        self.norm.requires_grad_(False)
 
     def extract_features(self, x: torch.Tensor) -> torch.Tensor:
-        stem = self.conv_stem(x).flatten(2).transpose(1, 2)
-        return self.hierarchical_encoder(stem.mean(dim=1))
+        stem = self.pool(self.conv_stem(x))  # [B, 64, H/2, W/2]
+        tokens = stem.flatten(2).transpose(1, 2)  # [B, N, 64]
+        tokens = self.stage1_block(tokens)
+        tokens = self.proj_to_embed(tokens)  # [B, N, embed_dim]
+        tokens = self.stage2_block(tokens)
+        tokens = self.norm(tokens)
+        return tokens.mean(dim=1)  # [B, embed_dim]
 
     def forward(self, x: torch.Tensor, return_features: bool = False) -> torch.Tensor | Tuple[torch.Tensor, torch.Tensor]:
         feats = self.extract_features(x)

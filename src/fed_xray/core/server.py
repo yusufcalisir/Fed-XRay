@@ -23,6 +23,7 @@ from sklearn.metrics import (
 
 from ..models.cnn import create_model as create_cnn_model
 from ..models.vit import create_medical_vit
+from ..models.foundation import UNIFoundationBackbone, SwinUNETRRadiologyBackbone
 from ..models.peft import (
     inject_lora_to_model,
     extract_peft_state_dict,
@@ -89,6 +90,28 @@ class CentralServer:
         """Create global model with appropriate architecture and PEFT hooks."""
         if self.model_type.startswith("vit"):
             model = create_medical_vit(model_type=self.model_type, num_classes=3)
+            if self.peft_mode:
+                inject_lora_to_model(
+                    model=model,
+                    r=self.lora_r,
+                    lora_alpha=self.lora_alpha,
+                    mode=self.peft_mode,
+                    deep_layers_only=self.deep_layers_only,
+                )
+            return model
+        elif self.model_type == "uni":
+            model = UNIFoundationBackbone(embed_dim=512, num_classes=3)
+            if self.peft_mode:
+                inject_lora_to_model(
+                    model=model,
+                    r=self.lora_r,
+                    lora_alpha=self.lora_alpha,
+                    mode=self.peft_mode,
+                    deep_layers_only=self.deep_layers_only,
+                )
+            return model
+        elif self.model_type in ("swin_unetr", "swin"):
+            model = SwinUNETRRadiologyBackbone(embed_dim=384, num_classes=3)
             if self.peft_mode:
                 inject_lora_to_model(
                     model=model,

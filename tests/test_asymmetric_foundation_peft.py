@@ -113,3 +113,54 @@ def test_fedcola_and_feddat_multimodal_modules():
     v_out, l_out = feddat(v_tokens, l_tokens)
     assert v_out.shape == (4, 8, 128)
     assert l_out.shape == (4, 6, 128)
+
+
+def test_foundation_models_server_client_integration():
+    """Verify CentralServer and HospitalClient instantiate foundation backbones with PEFT."""
+    from src.fed_xray.core.server import CentralServer
+    from src.fed_xray.core.client import HospitalClient
+    from torch.utils.data import TensorDataset, DataLoader
+
+    server_uni = CentralServer(model_type="uni", peft_mode="ffa_lora")
+    assert isinstance(server_uni.global_model, UNIFoundationBackbone)
+
+    server_swin = CentralServer(model_type="swin_unetr", peft_mode="fedsa_lora")
+    assert isinstance(server_swin.global_model, SwinUNETRRadiologyBackbone)
+
+    dummy_ds = TensorDataset(torch.randn(10, 1, 28, 28), torch.randint(0, 3, (10,)))
+    loader = DataLoader(dummy_ds, batch_size=2)
+    client_uni = HospitalClient(client_id=1, dataloader=loader, model_type="uni", peft_mode="ffa_lora")
+    assert isinstance(client_uni.model, UNIFoundationBackbone)
+
+    client_swin = HospitalClient(client_id=2, dataloader=loader, model_type="swin_unetr", peft_mode="fedsa_lora")
+    assert isinstance(client_swin.model, SwinUNETRRadiologyBackbone)
+
+
+def test_foundation_models_federated_round_execution():
+    """Verify a complete federated training round with UNI foundation model and FFA-LoRA."""
+    from src.fed_xray.core.server import CentralServer, run_federated_round
+    from src.fed_xray.core.client import HospitalClient
+    from torch.utils.data import TensorDataset, DataLoader
+
+    server = CentralServer(model_type="uni", peft_mode="ffa_lora")
+    ds1 = TensorDataset(torch.randn(8, 1, 28, 28), torch.randint(0, 3, (8,)))
+    ds2 = TensorDataset(torch.randn(8, 1, 28, 28), torch.randint(0, 3, (8,)))
+    client1 = HospitalClient(client_id=1, dataloader=DataLoader(ds1, batch_size=4), model_type="uni", peft_mode="ffa_lora")
+    client2 = HospitalClient(client_id=2, dataloader=DataLoader(ds2, batch_size=4), model_type="uni", peft_mode="ffa_lora")
+
+    test_imgs = torch.randn(4, 1, 28, 28)
+    test_lbls = torch.tensor([0, 1, 2, 0])
+
+    agg_m, cl_m, test_m, sec_r = run_federated_round(
+        server=server,
+        clients=[client1, client2],
+        round_num=1,
+        total_rounds=1,
+        test_images=test_imgs,
+        test_labels=test_lbls,
+        algorithm="FedDyn",
+        loss_fn_name="DAFL",
+    )
+    assert "loss" in agg_m
+    assert "accuracy" in agg_m
+    assert test_m is not None

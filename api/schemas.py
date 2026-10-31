@@ -37,7 +37,7 @@ class TrainFLRequest(BaseModel):
     activate_defense: bool = Field(default=True)
     algorithm: str = Field(default="FedAvg", description="FedAvg, FedProx, FedDyn, FedOpt, SCAFFOLD, MOON")
     loss_fn: str = Field(default="CE", description="CE, DAFL, BSM, LDAM, CB")
-    model_type: str = Field(default="vit_tiny", description="vit_tiny, vit_small, cnn")
+    model_type: str = Field(default="vit_tiny", description="vit_tiny, vit_small, uni, swin_unetr, cnn")
     peft_mode: Optional[str] = Field(default="ffa_lora", description="ffa_lora, fedsa_lora, lora, None")
 
 
