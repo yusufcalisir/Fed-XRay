@@ -99,6 +99,7 @@ saved_models/
 # ===== Jupyter Notebooks =====
 .ipynb_checkpoints/
 *.ipynb
+!notebooks/*.ipynb
 
 # ===== IDEs & Editors =====
 .idea/
