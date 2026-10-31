@@ -25,6 +25,8 @@ import numpy as np
 import torch
 from torch.utils.data import DataLoader, TensorDataset
 
+from .generator import MedicalDataGenerator
+
 
 class RealWorldPatientRecord:
     """Metadata container for individual patient cases."""
@@ -75,6 +77,7 @@ class StrategyEDatasetEcosystem:
     def __init__(self, seed: int = 42) -> None:
         self.seed = seed
         self.rng = np.random.RandomState(seed)
+        self.generator = MedicalDataGenerator(seed=seed)
 
     def generate_synthetic_realworld_cohort(
         self,
@@ -97,17 +100,11 @@ class StrategyEDatasetEcosystem:
             lesion_id = f"LES_{dataset_name}_{p_idx:05d}"
 
             for s_idx in range(samples_per_patient):
-                # Simulate realistic medical image tensor [1, 28, 28] with class-specific structural features
-                img = self.rng.normal(loc=0.5, scale=0.15, size=(1, 28, 28)).astype(np.float32)
-                # Class 1: central lung infiltrate / lesion
-                if patient_class == 1:
-                    img[:, 10:18, 10:18] += 0.3
-                # Class 2: bilateral peripheral opacities
-                elif patient_class == 2:
-                    img[:, 4:10, 4:10] += 0.35
-                    img[:, 18:24, 18:24] += 0.35
-
-                img_tensor = torch.from_numpy(np.clip(img, 0.0, 1.0))
+                img = self.generator.generate_synthetic_xray(
+                    label=patient_class,
+                    apply_augmentation=(s_idx > 0),
+                )
+                img_tensor = torch.from_numpy(img).unsqueeze(0).float()
                 record = RealWorldPatientRecord(
                     patient_id=patient_id,
                     site_id=site_id,
