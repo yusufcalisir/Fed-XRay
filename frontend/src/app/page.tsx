@@ -114,23 +114,15 @@ export default function DashboardPage() {
       try {
         const twinRes = await fetchRagTwins(apiUrl, result.predicted_class);
         if (twinRes?.matched_cases) setRagTwins(twinRes.matched_cases);
-      } catch {}
+      } catch (ragErr: any) {
+        console.warn("RAG retrieval warning:", ragErr.message);
+        setRagTwins([]);
+      }
     } catch (err: any) {
-      console.warn("Diagnosis endpoint error, generating fallback result:", err.message);
-      // 16x16 fallback — small enough to be fast, large enough to render properly
-      const S = 16;
-      const fallbackDiag: DiagnosisResult = {
-        predicted_class: 1, predicted_name: "Pneumonia (Consolidation)",
-        true_class: 1,       true_name: "Pneumonia (Consolidation)",
-        confidence: 96.4,
-        probabilities: [0.02, 0.964, 0.016],
-        findings: "Focal alveolar consolidation with prominent air bronchograms observed in the right lower pulmonary zone.",
-        raw_image: Array(S).fill(0).map(() => Array(S).fill(0.45)),
-        heatmap:   Array(S).fill(0).map((_, r) =>
-          Array(S).fill(0).map((_, c) => Math.exp(-((r - S*0.75)**2 + (c - S*0.75)**2) / (S*2)))
-        ),
-      };
-      setDiagnosis(fallbackDiag);
+      console.error("Clinical diagnosis execution error:", err.message);
+      setDiagnosis(null);
+      setRagTwins([]);
+      setErrorMessage(`Clinical diagnosis failed: ${err.message}. Ensure backend service is running and model is loaded.`);
     } finally {
       setIsDiagLoading(false);
     }
@@ -143,8 +135,8 @@ export default function DashboardPage() {
     }
   };
 
-  const diagName = diagnosis ? diagnosis.predicted_name.split(" ")[0] : "Normal";
-  const diagConf = diagnosis ? diagnosis.confidence : 95.0;
+  const diagName = diagnosis ? diagnosis.predicted_name.split(" ")[0] : "";
+  const diagConf = diagnosis ? diagnosis.confidence : 0;
 
   return (
     <div className="min-h-screen flex flex-col overflow-x-hidden">

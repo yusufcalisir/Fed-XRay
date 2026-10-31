@@ -151,7 +151,9 @@ export default function DiagnosticStudio({
             </div>
             <div className="text-left sm:text-right">
               <div className="metric-label mb-0.5 sm:mb-1">{t("sec3_confidence")}</div>
-              <div className="font-display text-lg sm:text-xl font-black text-accent-600 dark:text-accent-400">{diagnosis.confidence}%</div>
+              <div className="font-display text-lg sm:text-xl font-black text-accent-600 dark:text-accent-400">
+                {diagnosis.confidence > 1.0 ? diagnosis.confidence : Math.round(diagnosis.confidence * 1000) / 10}%
+              </div>
             </div>
           </div>
 
@@ -199,7 +201,8 @@ export default function DiagnosticStudio({
                 </div>
                 <div className="space-y-2.5">
                   {classLabels.map((lbl, idx) => {
-                    const pct = Math.round((diagnosis.probabilities[idx] || 0) * 100);
+                    const rawVal = diagnosis.probabilities[idx] ?? 0;
+                    const pct = Math.min(100, Math.max(0, Math.round(rawVal > 1.0 ? rawVal : rawVal * 100)));
                     return (
                       <div key={idx}>
                         <div className="flex justify-between text-[11px] sm:text-xs mb-1">
