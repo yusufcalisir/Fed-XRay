@@ -15,13 +15,32 @@ from typing import Dict, List, Optional, Tuple
 import torch
 
 
-class CKKSEncryptionEngine:
-    """Leveled CKKS Homomorphic Encryption simulation for parameter updates.
+class EncryptedTensor:
+    """Serialized CKKS ciphertext chunks for one parameter tensor (wire format)."""
 
-    Supports:
-    - Modulus scaling and fixed-point polynomial ring encoding (R_q = Z_q[X]/(X^N + 1)).
-    - Additive homomorphism without multiplication depth requirement on FFA-LoRA updates:
-      ct_global = sum w_k * ct_k = (sum w_k c_{0,k}, sum w_k c_{1,k}) mod q.
+    __slots__ = ("shape", "payload")
+
+    def __init__(self, shape: Tuple[int, ...], payload: List[bytes]) -> None:
+        self.shape = shape
+        self.payload = payload
+
+    @property
+    def nbytes(self) -> int:
+        """Total ciphertext size in bytes as transmitted over the network."""
+        return sum(len(b) for b in self.payload)
+
+
+class CKKSEncryptionEngine:
+    """Leveled CKKS homomorphic encryption (RLWE) backed by Microsoft SEAL via TenSEAL.
+
+    Key separation:
+    - The secret context (holds the secret key) belongs to the key holder (clients or a
+      threshold committee) and is used only by ``encrypt_*`` and ``decrypt_*``.
+    - The public context (secret key removed) is the only context used by the
+      aggregation server in ``homomorphic_sum``; the server never observes plaintext.
+
+    Additive homomorphism with one plaintext-scalar multiplication level:
+    ct_global = sum_k w_k * ct_k.
     """
 
     def __init__(
@@ -30,73 +49,94 @@ class CKKSEncryptionEngine:
         scale_bits: int = 40,
         security_level: int = 128,
     ) -> None:
+        try:
+            import tenseal as ts
+        except ImportError as exc:
+            raise RuntimeError(
+                "CKKS requires the 'tenseal' package (pip install tenseal). "
+                "Homomorphic aggregation is unavailable without it."
+            ) from exc
+
+        self._ts = ts
         self.poly_modulus_degree = poly_modulus_degree
+        self.scale_bits = scale_bits
         self.scale = 2.0 ** scale_bits
         self.security_level = security_level
+        self.slots = poly_modulus_degree // 2
 
-    def encrypt_vector(self, plain_vector: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor]:
-        """Encrypt float vector into CKKS ciphertext pair (c0, c1)."""
-        # Quantize and encode
-        scaled = torch.round(plain_vector.float() * self.scale)
-        # Dedicated generator to avoid mutating global torch RNG
-        dev = plain_vector.device
-        gen = torch.Generator(device="cpu").manual_seed(1337)
-        a_mask = torch.randn(plain_vector.shape, generator=gen, device="cpu").to(dev)
-        noise_e0 = torch.randn(plain_vector.shape, generator=gen, device="cpu").to(dev) * 0.001
-        noise_e1 = torch.randn(plain_vector.shape, generator=gen, device="cpu").to(dev) * 0.001
+        self._secret_ctx = ts.context(
+            ts.SCHEME_TYPE.CKKS,
+            poly_modulus_degree=poly_modulus_degree,
+            coeff_mod_bit_sizes=[60, scale_bits, scale_bits, 60],
+        )
+        self._secret_ctx.global_scale = self.scale
+        self._public_ctx = self._secret_ctx.copy()
+        self._public_ctx.make_context_public()
 
-        c0 = scaled + noise_e0
-        c1 = a_mask + noise_e1
-        return c0, c1
+    def encrypt_vector(self, plain_vector: torch.Tensor) -> EncryptedTensor:
+        """Encrypt a float tensor into serialized CKKS ciphertext chunks."""
+        flat = plain_vector.detach().cpu().float().flatten().tolist()
+        payload: List[bytes] = []
+        for i in range(0, max(len(flat), 1), self.slots):
+            chunk = flat[i : i + self.slots] or [0.0]
+            payload.append(self._ts.ckks_vector(self._secret_ctx, chunk).serialize())
+        return EncryptedTensor(tuple(plain_vector.shape), payload)
 
     def homomorphic_sum(
         self,
-        ciphertexts: List[Tuple[torch.Tensor, torch.Tensor]],
+        ciphertexts: List[EncryptedTensor],
         weights: List[float],
-    ) -> Tuple[torch.Tensor, torch.Tensor]:
-        """Perform additive homomorphic sum across encrypted client updates."""
-        first_c0, first_c1 = ciphertexts[0]
-        agg_c0 = torch.zeros_like(first_c0)
-        agg_c1 = torch.zeros_like(first_c1)
+    ) -> EncryptedTensor:
+        """Weighted sum of ciphertexts computed with the public context only."""
+        if not ciphertexts:
+            raise ValueError("homomorphic_sum requires at least one ciphertext")
+        n_chunks = len(ciphertexts[0].payload)
+        out: List[bytes] = []
+        for c in range(n_chunks):
+            acc = None
+            for ct, w in zip(ciphertexts, weights):
+                vec = self._ts.ckks_vector_from(self._public_ctx, ct.payload[c]) * float(w)
+                acc = vec if acc is None else acc + vec
+            assert acc is not None
+            out.append(acc.serialize())
+        return EncryptedTensor(ciphertexts[0].shape, out)
 
-        for (c0, c1), w in zip(ciphertexts, weights):
-            agg_c0 += w * c0
-            agg_c1 += w * c1
-
-        return agg_c0, agg_c1
-
-    def decrypt_vector(self, ciphertext: Tuple[torch.Tensor, torch.Tensor]) -> torch.Tensor:
-        """Decrypt CKKS ciphertext back to plaintext float tensor."""
-        c0, _ = ciphertext
-        return c0 / self.scale
+    def decrypt_vector(self, ciphertext: EncryptedTensor) -> torch.Tensor:
+        """Decrypt with the secret key and restore the original tensor shape."""
+        values: List[float] = []
+        for blob in ciphertext.payload:
+            values.extend(self._ts.ckks_vector_from(self._secret_ctx, blob).decrypt())
+        numel = 1
+        for d in ciphertext.shape:
+            numel *= d
+        return torch.tensor(values[:numel], dtype=torch.float32).reshape(ciphertext.shape)
 
     def encrypt_state_dict(
         self, state_dict: Dict[str, torch.Tensor]
-    ) -> Dict[str, Tuple[torch.Tensor, torch.Tensor]]:
-        """Encrypt all parameter tensors in state dict into CKKS ciphertexts."""
+    ) -> Dict[str, EncryptedTensor]:
+        """Encrypt all parameter tensors in a state dict into CKKS ciphertexts."""
         return {k: self.encrypt_vector(v) for k, v in state_dict.items()}
 
     def homomorphic_aggregate_state_dicts(
         self,
-        encrypted_dicts: List[Dict[str, Tuple[torch.Tensor, torch.Tensor]]],
+        encrypted_dicts: List[Dict[str, EncryptedTensor]],
         weights: List[float],
-    ) -> Dict[str, Tuple[torch.Tensor, torch.Tensor]]:
-        """Perform additive homomorphic aggregation across client ciphertext dictionaries."""
+    ) -> Dict[str, EncryptedTensor]:
+        """Perform weighted homomorphic aggregation across client ciphertext dictionaries."""
         total_w = sum(weights)
         norm_weights = [w / total_w for w in weights] if total_w > 0 else weights
         keys = list(encrypted_dicts[0].keys())
-        aggregated = {}
-        for key in keys:
-            cts = [ed[key] for ed in encrypted_dicts]
-            aggregated[key] = self.homomorphic_sum(cts, norm_weights)
-        return aggregated
+        return {
+            key: self.homomorphic_sum([ed[key] for ed in encrypted_dicts], norm_weights)
+            for key in keys
+        }
 
     def decrypt_state_dict(
         self,
-        encrypted_dict: Dict[str, Tuple[torch.Tensor, torch.Tensor]],
+        encrypted_dict: Dict[str, EncryptedTensor],
         target_dtypes: Optional[Dict[str, torch.dtype]] = None,
     ) -> Dict[str, torch.Tensor]:
-        """Decrypt aggregated CKKS ciphertexts into plaintext parameter dictionary."""
+        """Decrypt aggregated ciphertexts into a plaintext parameter dictionary."""
         decrypted = {}
         for k, ct in encrypted_dict.items():
             plain = self.decrypt_vector(ct)

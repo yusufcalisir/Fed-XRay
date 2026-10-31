@@ -73,6 +73,28 @@ def test_ckks_additive_homomorphism():
     assert torch.allclose(decrypted, expected, atol=1e-2)
 
 
+def test_ckks_server_public_context_cannot_decrypt():
+    """The aggregation server holds only the public context and must not be able to decrypt."""
+    import pytest
+    import tenseal as ts
+
+    engine = CKKSEncryptionEngine(scale_bits=40)
+    ct = engine.encrypt_vector(torch.tensor([0.5, -1.25, 2.0]))
+    assert ct.nbytes > 0
+    assert ct.payload[0] != b""
+
+    server_view = ts.ckks_vector_from(engine._public_ctx, ct.payload[0])
+    with pytest.raises(Exception):
+        server_view.decrypt()
+
+
+def test_ckks_ciphertexts_are_probabilistic():
+    """Encrypting the same plaintext twice must yield different ciphertexts."""
+    engine = CKKSEncryptionEngine(scale_bits=40)
+    v = torch.tensor([0.1, 0.2, 0.3])
+    assert engine.encrypt_vector(v).payload[0] != engine.encrypt_vector(v).payload[0]
+
+
 def test_secagg_plus_zero_sum_cancellation():
     """Verify SecAgg+ pairwise masking cancels to exact zero: sum s_k = 0."""
     num_clients = 4
