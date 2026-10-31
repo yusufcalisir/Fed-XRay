@@ -14,14 +14,11 @@ from src.fed_xray.core.imbalance_losses import (
     DynamicAdaptiveFocalLoss,
     BalancedSoftmaxLoss,
     ClassBalancedLoss,
-    LDAMLoss,
-    PrototypeRepelLoss
+    LDAMLoss
 )
 from src.fed_xray.core.prototypes import (
-    extract_features,
     compute_local_prototypes_and_dispersion,
-    aggregate_prototypes_dispersion_weighted,
-    compute_prototype_distance_loss
+    aggregate_prototypes_dispersion_weighted
 )
 from src.fed_xray.core.client import HospitalClient
 from src.fed_xray.core.server import CentralServer, run_federated_round
@@ -34,7 +31,7 @@ class TestPrototypeAndImbalanceLosses(unittest.TestCase):
         self.device = torch.device('cpu')
         self.model = create_model().to(self.device)
         self.class_counts = [100, 30, 10] # Imbalanced: 10:3:1
-        
+
         # Synthetic mock dataset
         x = torch.randn(30, 1, 28, 28)
         y = torch.tensor([0]*20 + [1]*7 + [2]*3)
@@ -45,12 +42,12 @@ class TestPrototypeAndImbalanceLosses(unittest.TestCase):
         """Test Dynamic Adaptive Focal Loss computation across rounds."""
         logits = torch.randn(6, 3)
         targets = torch.tensor([0, 1, 2, 0, 1, 2])
-        
+
         dafl_r1 = DynamicAdaptiveFocalLoss(self.class_counts, current_round=1, total_rounds=10)
         loss1 = dafl_r1(logits, targets)
         self.assertIsInstance(loss1, torch.Tensor)
         self.assertGreater(loss1.item(), 0.0)
-        
+
         dafl_r10 = DynamicAdaptiveFocalLoss(self.class_counts, current_round=10, total_rounds=10)
         loss10 = dafl_r10(logits, targets)
         self.assertIsInstance(loss10, torch.Tensor)
@@ -106,7 +103,7 @@ class TestPrototypeAndImbalanceLosses(unittest.TestCase):
         ]
         client_traces = [{0: 0.1, 1: 0.5, 2: 1.0}, {0: 0.2, 1: 0.1, 2: 0.8}]
         client_counts = [{0: 50, 1: 10, 2: 5}, {0: 40, 1: 30, 2: 10}]
-        
+
         global_protos = aggregate_prototypes_dispersion_weighted(
             client_prototypes=client_protos,
             client_traces=client_traces,
@@ -120,10 +117,10 @@ class TestPrototypeAndImbalanceLosses(unittest.TestCase):
         """Test end-to-end round with DAFL and prototype learning."""
         server = CentralServer(device=self.device, privacy_noise=0.0, defense_mode=False)
         client = HospitalClient(client_id=0, dataloader=self.loader, device=self.device, local_epochs=1)
-        
+
         test_x = torch.randn(10, 1, 28, 28)
         test_y = torch.randint(0, 3, (10,))
-        
+
         agg_m, cl_m, test_m, sec_rep = run_federated_round(
             server=server,
             clients=[client],
@@ -136,7 +133,7 @@ class TestPrototypeAndImbalanceLosses(unittest.TestCase):
             enable_prototypes=True,
             proto_weight=0.1
         )
-        
+
         self.assertTrue(agg_m['prototypes_enabled'])
         self.assertEqual(agg_m['loss_fn'], "DAFL")
         self.assertIsNotNone(server.get_global_prototypes())

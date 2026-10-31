@@ -9,70 +9,60 @@ Implements:
 """
 
 from __future__ import annotations
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Sequence
 import numpy as np
 from sklearn.metrics.pairwise import cosine_similarity  # pyrefly: ignore[missing-source-for-stubs]
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-from ..data.generator import MedicalDataGenerator
-
 
 class FederatedRAGCaseMatcher:
-    """Evidence-grounded case retrieval over biopsy-confirmed reference digital twins."""
+    """Case retrieval over a caller-supplied reference cohort using genuine encoder embeddings.
+
+    The case bank is built only from real records passed by the caller (for example a
+    disk manifest cohort). No cases, labels or clinical histories are fabricated here.
+    """
 
     def __init__(
         self,
-        n_cases: int = 100,
-        embedding_dim: int = 64,
+        reference_records: Sequence[Any],
+        model: nn.Module,
         temperature: float = 0.1,
-        seed: int = 42,
-        model: Optional[nn.Module] = None,
     ) -> None:
-        self.n_cases = n_cases
-        self.embedding_dim = embedding_dim
+        if len(reference_records) == 0:
+            raise ValueError("FederatedRAGCaseMatcher requires at least one reference record.")
+        if model is None:
+            raise ValueError("FederatedRAGCaseMatcher requires a trained encoder model.")
         self.temperature = temperature
-        self.rng = np.random.RandomState(seed)
         self.model = model
 
         self.embeddings: List[np.ndarray] = []
         self.labels: List[int] = []
         self.case_ids: List[str] = []
         self.images: List[np.ndarray] = []
-        self.biopsy_findings: List[str] = []
+        self.clinical_notes: List[str] = []
 
-        self._initialize_reference_twin_bank()
+        self._build_case_bank(reference_records)
 
-    def _initialize_reference_twin_bank(self) -> None:
-        """Populate reference database with verified diagnostic cases and genuine deep embeddings."""
-        generator = MedicalDataGenerator(seed=42)
-
-        clinical_descriptions = {
-            0: "Clear bilateral lung fields, normal cardiothoracic ratio (<0.50), no pleural effusion or parenchymal lesions.",
-            1: "Right lower lobe focal alveolar consolidation with air bronchograms, consistent with acute bacterial lobar pneumonia.",
-            2: "Bilateral peripheral ground-glass opacities (GGO) with crazy-paving pattern, consistent with severe COVID-19 viral pneumonia.",
-        }
-
+    def _build_case_bank(self, reference_records: Sequence[Any]) -> None:
+        """Embed every reference record with the encoder and index it."""
         encoder = self.model
-        if encoder is None:
-            from ..models.cnn import create_model
-            encoder = create_model(num_classes=3)
-            encoder.eval()
+        encoder.eval()
+        params = list(encoder.parameters())
+        device = params[0].device if params else torch.device("cpu")
 
-        device = next(encoder.parameters()).device if list(encoder.parameters()) else torch.device("cpu")
-
-        for i in range(self.n_cases):
-            label = i % 3
-            image = generator.generate_synthetic_xray(label, apply_augmentation=False)
+        for idx, rec in enumerate(reference_records):
+            image = rec.image_tensor.detach().cpu().numpy()[0]
             img_tensor = torch.tensor(image, dtype=torch.float32).unsqueeze(0).unsqueeze(0).to(device)
             embedding = extract_embedding(encoder, img_tensor)
 
             self.embeddings.append(embedding.astype(np.float32))
-            self.labels.append(label)
-            self.case_ids.append(f"CASE-{1000 + i}")
+            self.labels.append(int(rec.label))
+            self.case_ids.append(f"{rec.patient_id}#{idx}")
             self.images.append(image)
-            self.biopsy_findings.append(clinical_descriptions[label])
+            note = (getattr(rec, "clinical_notes", "") or "").strip()
+            self.clinical_notes.append(note if note else "No clinical notes recorded for this case.")
 
         self.embeddings_matrix = np.array(self.embeddings)
 
@@ -81,7 +71,7 @@ class FederatedRAGCaseMatcher:
         query_embedding: np.ndarray,
         top_k: int = 2,
     ) -> List[Dict[str, Any]]:
-        """Find top-k most similar verified digital twin cases."""
+        """Find the top-k most similar reference cases by cosine similarity."""
         if query_embedding.ndim == 1:
             query_embedding = query_embedding.reshape(1, -1)
 
@@ -93,9 +83,9 @@ class FederatedRAGCaseMatcher:
             results.append({
                 "case_id": self.case_ids[idx],
                 "label": self.labels[idx],
-                "similarity": float(max(0.0, sims[idx])),
+                "similarity": float(np.clip(sims[idx], 0.0, 1.0)),
                 "image": self.images[idx],
-                "biopsy_finding": self.biopsy_findings[idx],
+                "clinical_notes": self.clinical_notes[idx],
             })
         return results
 

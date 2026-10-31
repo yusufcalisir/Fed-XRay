@@ -98,7 +98,9 @@ class CentralServer:
         self.c_global: Dict[str, torch.Tensor] = {}
 
         self.blocked_count = 0
-        self.last_full_model_bytes = 0
+        self.last_full_model_bytes = sum(
+            t.numel() * t.element_size() for t in self.global_model.state_dict().values()
+        )
         self.last_uplink_bytes_per_client = 0
         self.last_security_report: Optional[SecurityReport] = None
         self.global_prototypes: Optional[Dict[int, torch.Tensor]] = None
@@ -213,6 +215,14 @@ class CentralServer:
         trusted_counts: List[int] = []
         trusted_delta_cs: List[Dict[str, torch.Tensor]] = []
         clients_blocked: List[int] = []
+
+        self.last_full_model_bytes = sum(
+            t.numel() * t.element_size() for t in self.global_model.state_dict().values()
+        )
+        if client_weights:
+            self.last_uplink_bytes_per_client = sum(
+                t.numel() * t.element_size() for t in client_weights[0].values()
+            )
 
         for idx, (weights, count, cid) in enumerate(zip(client_weights, sample_counts, client_ids)):
             val_acc = self._validate_client_model(weights, test_images, test_labels)

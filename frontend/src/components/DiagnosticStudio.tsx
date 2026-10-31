@@ -48,7 +48,7 @@ export default function DiagnosticStudio({
 
   // Render Grad-CAM overlay
   useEffect(() => {
-    if (!diagnosis || !xaiRef.current) return;
+    if (!diagnosis || !diagnosis.heatmap || !xaiRef.current) return;
     const canvas = xaiRef.current;
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
@@ -173,23 +173,34 @@ export default function DiagnosticStudio({
             {/* Grad-CAM Overlay */}
             <div className="card p-3.5 sm:p-4 flex flex-col">
               <div className="metric-label mb-2">{t("sec3_dual_pane_xai")}</div>
-              <div className="xray-frame flex-1 flex items-center justify-center max-w-[280px] mx-auto w-full">
-                <canvas ref={xaiRef} />
-              </div>
-              <div className="mt-2.5 space-y-2">
-                <div className="flex items-center justify-between text-[10px] sm:text-[11px]">
-                  <span className="text-[var(--text-muted)]">{t("sec3_xai_opacity")}</span>
-                  <span className="font-mono text-[var(--text-heading)] font-bold">{Math.round(opacity * 100)}%</span>
+              {diagnosis.heatmap_available === false || !diagnosis.heatmap ? (
+                <div className="xray-frame flex-1 flex flex-col items-center justify-center p-4 text-center max-w-[280px] mx-auto w-full bg-slate-900/40 rounded-lg border border-dashed border-slate-700">
+                  <div className="text-amber-400 text-xs font-semibold mb-1">Grad-CAM Unavailable</div>
+                  <div className="text-[10px] text-[var(--text-muted)]">
+                    {diagnosis.heatmap_error || "Saliency calculation is unavailable for this sample/architecture."}
+                  </div>
                 </div>
-                <input type="range" min="0.1" max="1.0" step="0.05" value={opacity} onChange={(e) => setOpacity(parseFloat(e.target.value))} className="w-full accent-accent-500 h-1.5" />
-                <div className="flex items-center justify-between text-[10px] sm:text-[11px]">
-                  <span className="text-[var(--text-muted)]">{t("sec3_xai_colormap")}</span>
-                  <select value={colormap} onChange={(e) => setColormap(e.target.value)} className="bg-[var(--bg-app)] text-[var(--text-heading)] text-[10px] sm:text-[11px] font-semibold rounded-md px-2 py-1 border border-[var(--border-card)]">
-                    <option value="Hot">Hot</option>
-                    <option value="Jet">Jet</option>
-                  </select>
-                </div>
-              </div>
+              ) : (
+                <>
+                  <div className="xray-frame flex-1 flex items-center justify-center max-w-[280px] mx-auto w-full">
+                    <canvas ref={xaiRef} />
+                  </div>
+                  <div className="mt-2.5 space-y-2">
+                    <div className="flex items-center justify-between text-[10px] sm:text-[11px]">
+                      <span className="text-[var(--text-muted)]">{t("sec3_xai_opacity")}</span>
+                      <span className="font-mono text-[var(--text-heading)] font-bold">{Math.round(opacity * 100)}%</span>
+                    </div>
+                    <input type="range" min="0.1" max="1.0" step="0.05" value={opacity} onChange={(e) => setOpacity(parseFloat(e.target.value))} className="w-full accent-accent-500 h-1.5" />
+                    <div className="flex items-center justify-between text-[10px] sm:text-[11px]">
+                      <span className="text-[var(--text-muted)]">{t("sec3_xai_colormap")}</span>
+                      <select value={colormap} onChange={(e) => setColormap(e.target.value)} className="bg-[var(--bg-app)] text-[var(--text-heading)] text-[10px] sm:text-[11px] font-semibold rounded-md px-2 py-1 border border-[var(--border-card)]">
+                        <option value="Hot">Hot</option>
+                        <option value="Jet">Jet</option>
+                      </select>
+                    </div>
+                  </div>
+                </>
+              )}
             </div>
 
             {/* Probabilities & Clinical Findings */}

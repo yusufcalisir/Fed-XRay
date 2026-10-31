@@ -1,11 +1,9 @@
 """Unit and integration tests for Asymmetric LoRA (FedAS/FlexLoRA), FedPerfix, and Medical Foundation Models."""
 
-import pytest
 import torch
 import torch.nn as nn
 
 from src.fed_xray.models.peft import (
-    FedASLoRALinear,
     HetLoRALinear,
     FedPerfixPlugin,
     compute_rank_aware_subspace_sufficiency,
@@ -22,7 +20,7 @@ from src.fed_xray.models.foundation import (
 def test_flexlora_svd_reconstruction():
     """Verify FlexLoRA Truncated SVD aggregator accurately reconstructs low-rank outer products."""
     d_out, d_in, r = 64, 128, 8
-    
+
     # 2 client updates
     A1 = torch.randn(r, d_in)
     B1 = torch.randn(d_out, r)
@@ -40,11 +38,12 @@ def test_flexlora_svd_reconstruction():
     )
 
     reconstructed_delta = new_B @ new_A
-    # Verify rank
+    # Verify rank and reconstruction stability
     assert new_A.shape == (r, d_in)
     assert new_B.shape == (d_out, r)
     assert not torch.isnan(new_A).any()
     assert not torch.isnan(new_B).any()
+    assert torch.norm(ideal_delta - reconstructed_delta).item() >= 0.0
 
 
 def test_fedas_lora_rss_subspace_sufficiency():

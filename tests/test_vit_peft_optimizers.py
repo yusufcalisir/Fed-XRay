@@ -1,21 +1,16 @@
 """Unit and integration tests for Vision Transformer PEFT and modern FL optimizers."""
 
-import pytest
 import torch
 import torch.nn as nn
 from torch.utils.data import DataLoader, TensorDataset
 
 from src.fed_xray.models.vit import (
-    VisionTransformer,
     create_medical_vit,
 )
 from src.fed_xray.models.peft import (
-    LoRALinear,
     FFALoRALinear,
-    FedSALoRALinear,
     inject_lora_to_model,
     extract_peft_state_dict,
-    load_peft_state_dict,
 )
 from src.fed_xray.core.client import HospitalClient
 from src.fed_xray.core.server import CentralServer, run_federated_round
@@ -40,11 +35,11 @@ def test_ffa_lora_zero_bilinear_aggregation_discrepancy():
     alpha = 16.0
 
     base_layer = nn.Linear(in_feat, out_feat, bias=False)
-    
+
     # Initialize FFA-LoRA with frozen A
     adapter1 = FFALoRALinear(base_layer, r=r, lora_alpha=alpha)
     adapter2 = FFALoRALinear(base_layer, r=r, lora_alpha=alpha)
-    
+
     # Ensure Matrix A is globally identical & frozen
     adapter2.lora_A.data.copy_(adapter1.lora_A.data)
     assert not adapter1.lora_A.requires_grad
@@ -84,7 +79,7 @@ def test_vit_peft_injection_and_compression():
 
     assert stats["trainable_parameters"] < stats["total_parameters"]
     assert stats["compression_percentage"] > 70.0
-    
+
     # Test state dict extraction
     peft_state = extract_peft_state_dict(vit, mode="ffa_lora")
     assert len(peft_state) > 0

@@ -1,6 +1,5 @@
 """End-to-End Full Lifecycle Federated Medical AI Pipeline Test."""
 
-import pytest
 import torch
 
 from src.fed_xray.data.real_world import StrategyEDatasetEcosystem
@@ -8,7 +7,7 @@ from src.fed_xray.core.client import HospitalClient
 from src.fed_xray.core.server import CentralServer, run_federated_round
 from src.fed_xray.core.privacy import PatientLevelDPAccountant
 from src.fed_xray.cdss.xai import GradCAM
-from src.fed_xray.cdss.similarity import FederatedRAGCaseMatcher
+from src.fed_xray.cdss.similarity import FederatedRAGCaseMatcher, extract_embedding
 from src.fed_xray.cdss.report import generate_medical_report
 
 
@@ -94,12 +93,12 @@ def test_full_federated_lifecycle_pipeline():
     assert 0.0 <= heatmap.min() <= heatmap.max() <= 1.0
 
     # 5. Federated RAG Digital Twin Retrieval
-    rag = FederatedRAGCaseMatcher(n_cases=50, embedding_dim=64)
-    query_vec = test_images[0].flatten()[:64].numpy()
-    query_vec = query_vec / (query_vec.max() + 1e-8)
+    rag = FederatedRAGCaseMatcher(reference_records=train_recs, model=global_model)
+    query_vec = extract_embedding(global_model, sample_scan)
     twins = rag.find_similar(query_vec, top_k=2)
     assert len(twins) == 2
     assert "similarity" in twins[0]
+    assert twins[0]["case_id"].startswith("PAT_")
 
     # 6. Medical Report PDF Generation
     pdf_bytes = generate_medical_report(

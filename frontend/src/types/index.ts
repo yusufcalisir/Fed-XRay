@@ -41,7 +41,10 @@ export interface DiagnosisResult {
   probabilities: number[];
   findings: string;
   raw_image: number[][];
-  heatmap: number[][];
+  heatmap: number[][] | null;
+  heatmap_available?: boolean;
+  heatmap_error?: string | null;
+  image_source?: string;
 }
 
 export interface RagCase {

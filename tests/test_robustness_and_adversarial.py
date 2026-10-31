@@ -1,13 +1,10 @@
 """Adversarial Robustness, Byzantine Defense, and Numerical Edge-Case Test Suite."""
 
-import pytest
 import torch
-import torch.nn as nn
 from torch.utils.data import DataLoader, TensorDataset
 
 from src.fed_xray.core.client import HospitalClient
 from src.fed_xray.core.server import CentralServer, run_federated_round
-from src.fed_xray.data.generator import MedicalDataGenerator
 
 
 def create_dummy_dataloader(n_samples: int = 40, label: int = 0) -> DataLoader:
@@ -84,7 +81,7 @@ def test_free_rider_and_empty_batch_handling():
     """Verify handling when client data is minimal or identical."""
     device = torch.device("cpu")
     server = CentralServer(device=device, model_type="vit_tiny", peft_mode="ffa_lora")
-    
+
     # 2 clients with single-sample batches
     c0 = HospitalClient(0, create_dummy_dataloader(1, 0), device=device, model_type="vit_tiny", peft_mode="ffa_lora")
     c1 = HospitalClient(1, create_dummy_dataloader(1, 1), device=device, model_type="vit_tiny", peft_mode="ffa_lora")

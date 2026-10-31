@@ -6,12 +6,24 @@ import { useApi } from "@/context/ApiContext";
 import { FileText, Download } from "lucide-react";
 import { getPdfReportUrl } from "@/lib/api";
 
-interface ReportDownloadProps { diagnosisName: string; confidence: number; }
+interface ReportDownloadProps {
+  diagnosisName: string;
+  confidence: number;
+  patientId?: string;
+  findings?: string;
+  predictedClass?: number;
+}
 
-export default function ReportDownload({ diagnosisName, confidence }: ReportDownloadProps) {
+export default function ReportDownload({
+  diagnosisName,
+  confidence,
+  patientId = "PT-EHR-7721",
+  findings,
+  predictedClass,
+}: ReportDownloadProps) {
   const { t } = useLanguage();
   const { apiUrl } = useApi();
-  const pdfUrl = getPdfReportUrl(apiUrl, diagnosisName, confidence);
+  const pdfUrl = getPdfReportUrl(apiUrl, diagnosisName, confidence, patientId, findings, predictedClass);
 
   return (
     <div className="card p-3.5 sm:p-5 flex flex-col justify-between">

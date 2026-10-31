@@ -14,8 +14,11 @@ import asyncio
 import base64
 import io
 import json
+import os
 import time
 import threading
+from collections import Counter
+from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 import numpy as np
 from PIL import Image
@@ -25,15 +28,13 @@ from fastapi import FastAPI, HTTPException, Query, Response
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
 
-from src.fed_xray.data.generator import (
-    MedicalDataGenerator,
-)
 from src.fed_xray.data.real_world import (
+    RealWorldPatientRecord,
     StrategyEDatasetEcosystem,
 )
 from src.fed_xray.core.client import HospitalClient
 from src.fed_xray.core.server import CentralServer, run_federated_round
-from src.fed_xray.cdss.xai import GradCAM, get_explanation_text
+from src.fed_xray.cdss.xai import GradCAM, GradCAMUnavailableError, get_explanation_text
 from src.fed_xray.cdss.similarity import (
     FederatedRAGCaseMatcher,
     extract_embedding,
@@ -80,6 +81,8 @@ class AppState:
         self.peft_mode: Optional[str] = "ffa_lora"
         self.rag_matcher: Optional[FederatedRAGCaseMatcher] = None
         self.last_scan: Optional[np.ndarray] = None
+        self.reference_records: List[RealWorldPatientRecord] = []
+        self.data_source: str = "none"
         self.training_history: Dict[str, Any] = {
             "loss": [],
             "accuracy": [],
@@ -102,16 +105,46 @@ class AppState:
 
 state = AppState()
 
-INSTITUTION_NAMES = [
-    "BCN-20000 Skin Cancer Hub (Barcelona)",
-    "ViDIR Dermatopathology Institute (Vienna)",
-    "Queensland Oncology Screening Center",
-    "Beth Israel Deaconess Medical Center",
-    "NCT National Center for Tumor Diseases",
-    "St. Jude Pulmonary & Infection Center",
-    "Metropolitan Thoracic Diagnostic Lab",
-    "Mount Sinai Radiological Oncology Unit",
-]
+def require_cohort() -> Tuple[List[Any], Tuple[torch.Tensor, torch.Tensor]]:
+    """Return the loaded cohort or fail explicitly; no cohort is ever fabricated implicitly."""
+    if state.dataloaders is None or state.global_test_set is None:
+        raise HTTPException(
+            status_code=409,
+            detail="No cohort is loaded. Generate or load a cohort (POST /api/cohorts/generate) before training.",
+        )
+    return state.dataloaders, state.global_test_set
+
+
+def require_trained_server() -> CentralServer:
+    """Return the trained federated server or fail explicitly."""
+    if not state.model_trained or state.server is None:
+        raise HTTPException(
+            status_code=409,
+            detail="No trained model is available. Complete federated training before using the CDSS.",
+        )
+    return state.server
+
+
+def resolve_data_path(name: str) -> Path:
+    """Resolve a client-supplied relative path inside the configured data directory."""
+    base = os.environ.get("FED_XRAY_DATA_DIR")
+    if not base:
+        raise HTTPException(status_code=400, detail="FED_XRAY_DATA_DIR is not configured on the server.")
+    base_path = Path(base).resolve()
+    target = (base_path / name).resolve()
+    if base_path != target and base_path not in target.parents:
+        raise HTTPException(status_code=400, detail="Path escapes the configured data directory.")
+    if not target.exists():
+        raise HTTPException(status_code=404, detail=f"Not found in data directory: {name}")
+    return target
+
+
+def build_rag_matcher(server: CentralServer) -> FederatedRAGCaseMatcher:
+    """Build the case bank from the loaded training cohort and the trained encoder."""
+    if not state.reference_records:
+        raise HTTPException(status_code=409, detail="No reference cohort is loaded for case retrieval.")
+    return FederatedRAGCaseMatcher(reference_records=state.reference_records, model=server.get_model())
+
 
 
 @app.get("/")
@@ -154,12 +187,31 @@ async def get_state():
 async def generate_cohorts(req: CohortGenerateRequest):
     """Generate multi-center real-world cohort partitions adhering to Strategy E scenarios."""
     ecosystem = StrategyEDatasetEcosystem(seed=42)
-    records = ecosystem.generate_synthetic_realworld_cohort(
-        dataset_name=req.dataset_name,
-        num_patients=max(60, req.num_hospitals * 25),
-        samples_per_patient=max(1, req.samples_per_hospital // 25),
-        num_classes=3,
-    )
+    if req.manifest_name:
+        manifest_path = resolve_data_path(req.manifest_name)
+        images_dir = resolve_data_path(req.images_dir_name) if req.images_dir_name else None
+        try:
+            records = ecosystem.load_from_disk_manifest(
+                manifest_path=str(manifest_path),
+                images_dir=str(images_dir) if images_dir else None,
+                target_size=(28, 28),
+                in_channels=1,
+            )
+        except Exception as exc:
+            raise HTTPException(status_code=422, detail=f"Manifest could not be loaded: {exc}")
+        if not records:
+            raise HTTPException(status_code=422, detail="Manifest contains no readable records.")
+        if any(r.label not in (0, 1, 2) for r in records):
+            raise HTTPException(status_code=422, detail="Manifest labels must be integers 0, 1 or 2.")
+        data_source = "disk_manifest"
+    else:
+        records = ecosystem.generate_synthetic_realworld_cohort(
+            dataset_name=req.dataset_name,
+            num_patients=max(60, req.num_hospitals * 25),
+            samples_per_patient=max(1, req.samples_per_hospital // 25),
+            num_classes=3,
+        )
+        data_source = "synthetic_phantom"
 
     # Leak-free partitioning
     train_recs, val_recs, test_recs = ecosystem.leak_free_patient_split(
@@ -199,7 +251,10 @@ async def generate_cohorts(req: CohortGenerateRequest):
         sample_imgs = [r.image_tensor.numpy()[0].tolist() for r in part[:9]]
         sample_lbls = [r.label for r in part[:9]]
 
-        inst_name = INSTITUTION_NAMES[h % len(INSTITUTION_NAMES)]
+        if data_source == "disk_manifest" and part:
+            inst_name = Counter(r.site_id for r in part).most_common(1)[0][0]
+        else:
+            inst_name = f"Synthetic Node {h + 1}"
 
         info = HospitalCohortInfo(
             hospital_id=h + 1,
@@ -219,6 +274,10 @@ async def generate_cohorts(req: CohortGenerateRequest):
         }
 
     state.dataloaders = dataloaders_list
+    state.reference_records = list(train_recs)
+    state.data_source = data_source
+    state.rag_matcher = None
+    state.model_trained = False
 
     # Global hold-out test set from leak-free split
     test_images = torch.stack([r.image_tensor for r in test_recs])
@@ -231,6 +290,7 @@ async def generate_cohorts(req: CohortGenerateRequest):
         success=True,
         num_hospitals=req.num_hospitals,
         total_samples=total_samples,
+        data_source=data_source,
         hospitals=hospitals_info,
     )
 
@@ -251,21 +311,7 @@ async def stream_federated_training(
     use_ckks: bool = Query(default=False),
 ):
     """Server-Sent Events (SSE) streaming federated ViT training in real time."""
-    if state.dataloaders is None or state.global_test_set is None:
-        ecosystem = StrategyEDatasetEcosystem(seed=42)
-        records = ecosystem.generate_synthetic_realworld_cohort(num_patients=100, samples_per_patient=3)
-        train_recs, _, test_recs = ecosystem.leak_free_patient_split(records)
-        partitions = ecosystem.partition_into_scenarios(train_recs, num_clients=4, scenario="A")
-        state.dataloaders = [ecosystem.records_to_dataloader(p, batch_size=32) for p in partitions]
-        state.global_test_set = (
-            torch.stack([r.image_tensor for r in test_recs]),
-            torch.tensor([r.label for r in test_recs], dtype=torch.long),
-        )
-
-    assert state.dataloaders is not None
-    assert state.global_test_set is not None
-    active_dataloaders = state.dataloaders
-    active_global_test_set = state.global_test_set
+    active_dataloaders, active_global_test_set = require_cohort()
 
     actual_peft = None if peft_mode.lower() in ("none", "false", "off") else peft_mode
     state.model_type = model_type
@@ -381,11 +427,8 @@ async def stream_federated_training(
             await asyncio.sleep(0.05)
 
         state.model_trained = True
-        state.rag_matcher = FederatedRAGCaseMatcher(
-            n_cases=100,
-            embedding_dim=64,
-            model=state.server.get_model() if state.server else None,
-        )
+        if state.server is not None:
+            state.rag_matcher = build_rag_matcher(state.server)
 
     return StreamingResponse(
         event_generator(),
@@ -415,6 +458,7 @@ async def start_training_background(
     use_ckks: bool = Query(default=False),
 ):
     """Launch federated training as a background thread (Render SSE proxy fallback)."""
+    require_cohort()
     if state.task_running:
         return {"status": "already_running", "current_round": state.task_current_round}
 
@@ -428,16 +472,7 @@ async def start_training_background(
 
     def run_training():
         try:
-            if state.dataloaders is None or state.global_test_set is None:
-                ecosystem = StrategyEDatasetEcosystem(seed=42)
-                records = ecosystem.generate_synthetic_realworld_cohort(num_patients=100, samples_per_patient=3)
-                train_recs, _, test_recs = ecosystem.leak_free_patient_split(records)
-                partitions = ecosystem.partition_into_scenarios(train_recs, num_clients=4, scenario="A")
-                state.dataloaders = [ecosystem.records_to_dataloader(p, batch_size=32) for p in partitions]
-                state.global_test_set = (
-                    torch.stack([r.image_tensor for r in test_recs]),
-                    torch.tensor([r.label for r in test_recs], dtype=torch.long),
-                )
+            dataloaders, (test_images, test_labels) = require_cohort()
 
             actual_peft = None if peft_mode.lower() in ("none", "false", "off") else peft_mode
             state.model_type = model_type
@@ -459,7 +494,7 @@ async def start_training_background(
             clients = [
                 HospitalClient(
                     client_id=i,
-                    dataloader=state.dataloaders[i],
+                    dataloader=dataloaders[i],
                     device=state.device,
                     learning_rate=learning_rate,
                     local_epochs=local_epochs,
@@ -470,10 +505,8 @@ async def start_training_background(
                     lora_alpha=16.0,
                     deep_layers_only=True,
                 )
-                for i in range(len(state.dataloaders))
+                for i in range(len(dataloaders))
             ]
-
-            test_images, test_labels = state.global_test_set
 
             for round_num in range(1, num_rounds + 1):
                 metrics, _, test_metrics, sec_report = run_federated_round(
@@ -526,11 +559,7 @@ async def start_training_background(
                 state.task_current_round = round_num
 
             state.model_trained = True
-            state.rag_matcher = FederatedRAGCaseMatcher(
-                n_cases=100,
-                embedding_dim=64,
-                model=state.server.get_model() if state.server else None,
-            )
+            state.rag_matcher = build_rag_matcher(srv)
             state.task_complete = True
 
         except Exception as e:
@@ -560,17 +589,12 @@ async def get_training_status(from_round: int = Query(default=0)):
 
 @app.post("/api/cdss/diagnose", response_model=DiagnoseResponse)
 async def perform_diagnosis(req: DiagnoseRequest):
-    """Diagnose patient scan and generate Grad-CAM visual explanation."""
-    if state.server is None:
-        state.server = CentralServer(
-            device=state.device,
-            model_type=state.model_type,
-            peft_mode=state.peft_mode,
-        )
-
-    model = state.server.get_model()
+    """Diagnose a scan with the trained federated model and compute a Grad-CAM explanation."""
+    server = require_trained_server()
+    model = server.get_model()
     model.eval()
 
+    true_class = -1
     if req.image_base64:
         try:
             header, _, encoded = req.image_base64.partition(",")
@@ -579,9 +603,9 @@ async def perform_diagnosis(req: DiagnoseRequest):
             pil_img = Image.open(io.BytesIO(img_bytes)).convert("L")
             pil_img = pil_img.resize((28, 28), Image.Resampling.BILINEAR)
             image_np = (np.array(pil_img, dtype=np.float32) / 255.0).clip(0.0, 1.0)
-            true_class = req.class_index if (req.class_index is not None and req.class_index in (0, 1, 2)) else -1
         except Exception as exc:
             raise HTTPException(status_code=400, detail=f"Invalid base64 image data: {exc}")
+        image_source = "uploaded"
     elif req.image_data:
         try:
             raw_arr = np.array(req.image_data, dtype=np.float32)
@@ -591,17 +615,29 @@ async def perform_diagnosis(req: DiagnoseRequest):
             if t_img.shape[-2:] != (28, 28):
                 t_img = F.interpolate(t_img, size=(28, 28), mode="bilinear", align_corners=False)
             image_np = t_img.squeeze().cpu().numpy().clip(0.0, 1.0)
-            true_class = req.class_index if (req.class_index is not None and req.class_index in (0, 1, 2)) else -1
         except Exception as exc:
             raise HTTPException(status_code=400, detail=f"Invalid image_data matrix: {exc}")
+        image_source = "uploaded"
     else:
-        generator = MedicalDataGenerator(seed=int(time.time() * 1000) % 100000)
-        true_class = (
-            req.class_index
-            if req.class_index is not None and req.class_index in (0, 1, 2)
-            else int(np.random.choice([0, 1, 2], p=[0.35, 0.45, 0.20]))
-        )
-        image_np = generator.generate_synthetic_xray(label=true_class, apply_augmentation=True)
+        if state.global_test_set is None:
+            raise HTTPException(status_code=409, detail="No held-out test set is loaded and no image was supplied.")
+        test_images, test_labels = state.global_test_set
+        if req.class_index is not None and req.class_index in (0, 1, 2):
+            candidates = torch.nonzero(test_labels == req.class_index).flatten()
+            if candidates.numel() == 0:
+                raise HTTPException(
+                    status_code=404,
+                    detail=f"The held-out test set contains no sample of class {req.class_index}.",
+                )
+        else:
+            candidates = torch.arange(test_labels.numel())
+        pick = int(candidates[int(np.random.randint(0, candidates.numel()))])
+        image_np = test_images[pick, 0].cpu().numpy()
+        true_class = int(test_labels[pick])
+        image_source = f"holdout_test_set:{state.data_source}"
+
+    if req.class_index is not None and req.class_index in (0, 1, 2) and true_class == -1:
+        true_class = req.class_index
 
     state.last_scan = image_np
 
@@ -615,13 +651,19 @@ async def perform_diagnosis(req: DiagnoseRequest):
         predicted_class = int(np.argmax(probs))
         confidence = float(probs[predicted_class])
 
+    heatmap: Optional[np.ndarray] = None
+    heatmap_error: Optional[str] = None
     gradcam = GradCAM(model)
-    heatmap, _, _ = gradcam.generate_heatmap(image_tensor, target_class=predicted_class)
-    gradcam.remove_hooks()
+    try:
+        heatmap, _, _ = gradcam.generate_heatmap(image_tensor, target_class=predicted_class)
+    except GradCAMUnavailableError as exc:
+        heatmap_error = str(exc)
+    finally:
+        gradcam.remove_hooks()
 
-    findings = get_explanation_text(predicted_class, confidence)
+    findings = get_explanation_text(predicted_class, confidence, probabilities=probs.tolist(), heatmap=heatmap)
 
-    true_name = LABEL_NAMES.get(true_class, "Clinical Scan" if true_class == -1 else "Unknown")
+    true_name = LABEL_NAMES.get(true_class, "Uploaded scan (no reference label)" if true_class == -1 else "Unknown")
 
     return DiagnoseResponse(
         predicted_class=predicted_class,
@@ -632,60 +674,54 @@ async def perform_diagnosis(req: DiagnoseRequest):
         probabilities=[round(float(p) * 100.0, 2) for p in probs],
         findings=findings,
         raw_image=image_np.tolist(),
-        heatmap=heatmap.tolist(),
+        heatmap=heatmap.tolist() if heatmap is not None else None,
+        heatmap_available=heatmap is not None,
+        heatmap_error=heatmap_error,
+        image_source=image_source,
     )
 
 
 @app.get("/api/cdss/rag-similar", response_model=RagSimilarResponse)
-async def get_similar_rag_cases(query_class: int = Query(default=1)):
-    """Retrieve top-K verified biopsy-confirmed digital twin cases."""
-    if state.server is None:
-        state.server = CentralServer(
-            model_type=state.model_type,
-            peft_mode=state.peft_mode,
-        )
+async def get_similar_rag_cases(top_k: int = Query(default=2, ge=1, le=10)):
+    """Retrieve the most similar cases from the loaded reference cohort for the last diagnosed scan."""
+    server = require_trained_server()
+    if state.last_scan is None:
+        raise HTTPException(status_code=409, detail="Run a diagnosis first; case retrieval embeds the last diagnosed scan.")
 
-    model = state.server.get_model()
+    model = server.get_model()
     model.eval()
 
     if state.rag_matcher is None:
-        state.rag_matcher = FederatedRAGCaseMatcher(
-            n_cases=100,
-            embedding_dim=64,
-            model=model,
-        )
-
-    target_c = query_class if query_class in (0, 1, 2) else 1
-
-    if state.last_scan is not None:
-        scan_to_embed = state.last_scan
-    else:
-        generator = MedicalDataGenerator(seed=int(time.time() * 1000) % 100000)
-        scan_to_embed = generator.generate_synthetic_xray(label=target_c, apply_augmentation=False)
+        state.rag_matcher = build_rag_matcher(server)
 
     image_tensor = (
-        torch.tensor(scan_to_embed, dtype=torch.float32)
+        torch.tensor(state.last_scan, dtype=torch.float32)
         .unsqueeze(0)
         .unsqueeze(0)
         .to(state.device)
     )
 
+    with torch.no_grad():
+        logits = model(image_tensor)
+        if isinstance(logits, tuple):
+            logits = logits[0]
+        query_class = int(torch.argmax(logits, dim=1).item())
+
     query_embedding = extract_embedding(model, image_tensor)
-    similar = state.rag_matcher.find_similar(query_embedding, top_k=2)
+    similar = state.rag_matcher.find_similar(query_embedding, top_k=top_k)
 
-    cases = []
-    for s in similar:
-        cases.append(
-            RagTwinCase(
-                case_id=s["case_id"],
-                label_id=s["label"],
-                label_name=LABEL_NAMES.get(s["label"], "Unknown"),
-                similarity=round(s["similarity"] * 100.0, 1),
-                history=s["biopsy_finding"],
-            )
+    cases = [
+        RagTwinCase(
+            case_id=s["case_id"],
+            label_id=s["label"],
+            label_name=LABEL_NAMES.get(s["label"], "Unknown"),
+            similarity=round(s["similarity"] * 100.0, 1),
+            history=s["clinical_notes"],
         )
+        for s in similar
+    ]
 
-    return RagSimilarResponse(query_class=target_c, matched_cases=cases)
+    return RagSimilarResponse(query_class=query_class, matched_cases=cases)
 
 
 @app.get("/api/cdss/voice")
@@ -716,20 +752,17 @@ async def stream_voice_briefing(
 
 @app.get("/api/cdss/report-pdf")
 async def download_diagnostic_pdf(
-    patient_id: str = Query(default="PX-9042"),
-    predicted_class: int = Query(default=1),
-    confidence: float = Query(default=92.4),
-    findings: str = Query(default="Consolidation in right lower lobe."),
+    patient_id: str = Query(..., min_length=1),
+    predicted_class: int = Query(..., ge=0, le=2),
+    confidence: float = Query(..., ge=0.0, le=100.0),
+    findings: str = Query(..., min_length=1),
     lang: str = Query(default="en"),
 ):
-    """Generate medical PDF report download."""
-    p_name = LABEL_NAMES.get(predicted_class, "Normal")
+    """Generate the medical PDF report for the last diagnosed scan."""
+    if state.last_scan is None:
+        raise HTTPException(status_code=409, detail="No diagnosed scan is available. Run a diagnosis before exporting a report.")
 
-    # Generate a placeholder scan if no diagnosis has been run yet in this session
-    scan = state.last_scan
-    if scan is None:
-        generator = MedicalDataGenerator(seed=42)
-        scan = generator.generate_synthetic_xray(label=predicted_class, apply_augmentation=False)
+    p_name = LABEL_NAMES.get(predicted_class, "Unknown")
 
     try:
         pdf_bytes = generate_medical_report(
@@ -737,7 +770,7 @@ async def download_diagnostic_pdf(
             diagnosis=p_name,
             confidence=confidence,
             explanation=findings,
-            original_image=scan,
+            original_image=state.last_scan,
         )
     except Exception as exc:
         raise HTTPException(status_code=500, detail=f"PDF generation failed: {exc}")

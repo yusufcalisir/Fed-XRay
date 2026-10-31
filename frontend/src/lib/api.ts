@@ -37,12 +37,11 @@ export async function fetchClinicalDiagnosis(
   return await res.json();
 }
 
-// FIX: backend expects GET, not POST
 export async function fetchRagTwins(
   baseUrl: string,
-  queryClass: number = 1
+  topK: number = 2
 ): Promise<{ query_class: number; matched_cases: RagCase[] }> {
-  const url = `${baseUrl.replace(/\/$/, "")}/api/cdss/rag-similar?query_class=${queryClass}`;
+  const url = `${baseUrl.replace(/\/$/, "")}/api/cdss/rag-similar?top_k=${topK}`;
   const res = await fetch(url, { method: "GET" });
   if (!res.ok) throw new Error(`RAG retrieval failed (HTTP ${res.status})`);
   return await res.json();
@@ -168,7 +167,7 @@ export async function streamFederatedTraining(
 
     const outcome = await consumeSSE();
     if (outcome === "timeout") {
-      console.warn("SSE timeout — switching to polling fallback (Render proxy detected)");
+      console.warn("SSE timeout: switching to polling fallback (Render proxy detected)");
       await pollingFallback(base, qs, numRounds, onRound, onComplete, onError, signal);
       return;
     }
@@ -195,18 +194,23 @@ export function getVoiceBriefingUrl(
   return `${baseUrl.replace(/\/$/, "")}/api/cdss/voice?text=${encodeURIComponent(text)}&lang=${lang}`;
 }
 
-// FIX: backend expects `predicted_class=` and `confidence=` not `diagnosis=`
 export function getPdfReportUrl(
   baseUrl: string,
   diagnosis: string = "Normal",
-  confidence: number = 95
+  confidence: number = 95,
+  patientId: string = "PT-EHR-7721",
+  findings?: string,
+  predictedClass?: number
 ): string {
-  const predicted_class = DIAG_TO_CLASS[diagnosis] ?? 0;
-  const findings = `Federated AI diagnosis: ${diagnosis} (${Math.round(confidence)}% confidence). Evidence-grounded inference via FFA-LoRA + FedDyn.`;
+  const predClass = predictedClass ?? (DIAG_TO_CLASS[diagnosis] ?? 0);
+  const reportFindings =
+    findings ??
+    `Federated AI diagnosis: ${diagnosis} (${Math.round(confidence)}% confidence). Evidence-grounded inference via FFA-LoRA + FedDyn.`;
   return (
     `${baseUrl.replace(/\/$/, "")}/api/cdss/report-pdf` +
-    `?predicted_class=${predicted_class}` +
+    `?patient_id=${encodeURIComponent(patientId)}` +
+    `&predicted_class=${predClass}` +
     `&confidence=${confidence.toFixed(1)}` +
-    `&findings=${encodeURIComponent(findings)}`
+    `&findings=${encodeURIComponent(reportFindings)}`
   );
 }

@@ -3,7 +3,6 @@
 import pytest
 import math
 import torch
-import torch.nn as nn
 from torch.utils.data import DataLoader, TensorDataset
 
 from src.fed_xray.models.foundation import (
@@ -19,7 +18,6 @@ from src.fed_xray.core.privacy import (
 )
 from src.fed_xray.core.prototypes import (
     synthesize_multimodal_prototypes,
-    aggregate_prototypes_dispersion_weighted,
 )
 from src.fed_xray.core.server import CentralServer, run_federated_round
 from src.fed_xray.core.client import HospitalClient
@@ -75,7 +73,6 @@ def test_ckks_additive_homomorphism():
 
 def test_ckks_server_public_context_cannot_decrypt():
     """The aggregation server holds only the public context and must not be able to decrypt."""
-    import pytest
     import tenseal as ts
 
     engine = CKKSEncryptionEngine(scale_bits=40)

@@ -1,6 +1,5 @@
 """Integration tests for Fed-XRay FastAPI Async Endpoints."""
 
-import pytest
 from fastapi.testclient import TestClient
 from api.main import app
 
@@ -34,10 +33,10 @@ def test_cohort_generation_endpoint():
     assert len(data["hospitals"]) == 4
 
 
-def test_cdss_diagnose_endpoint():
+def test_cdss_diagnose_endpoint(trained_api):
     """Verify diagnostic inference and Grad-CAM heatmap generation."""
     payload = {"class_index": 1, "opacity": 0.5, "colormap": "Hot"}
-    res = client.post("/api/cdss/diagnose", json=payload)
+    res = trained_api.post("/api/cdss/diagnose", json=payload)
     assert res.status_code == 200
     data = res.json()
     assert "predicted_class" in data
@@ -46,9 +45,9 @@ def test_cdss_diagnose_endpoint():
     assert len(data["heatmap"]) == 28
 
 
-def test_cdss_rag_similar_endpoint():
-    """Verify evidence-grounded Federated RAG case matching."""
-    res = client.get("/api/cdss/rag-similar?query_class=1")
+def test_cdss_rag_similar_endpoint(diagnosed_api):
+    """Verify Federated RAG case matching against the loaded reference cohort."""
+    res = diagnosed_api.get("/api/cdss/rag-similar")
     assert res.status_code == 200
     data = res.json()
     assert "matched_cases" in data
@@ -56,9 +55,18 @@ def test_cdss_rag_similar_endpoint():
     assert "case_id" in data["matched_cases"][0]
 
 
-def test_pdf_report_endpoint():
+def test_pdf_report_endpoint(diagnosed_api):
     """Verify medical PDF report generation and binary streaming."""
-    res = client.get("/api/cdss/report-pdf?patient_id=PX-TEST&predicted_class=1&confidence=95.0&lang=en")
+    res = diagnosed_api.get(
+        "/api/cdss/report-pdf",
+        params={
+            "patient_id": "PX-TEST",
+            "predicted_class": 1,
+            "confidence": 95.0,
+            "findings": "Model-derived summary for report layout verification.",
+            "lang": "en",
+        },
+    )
     assert res.status_code == 200
     assert res.headers["content-type"] == "application/pdf"
     assert len(res.content) > 1000

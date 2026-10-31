@@ -8,12 +8,16 @@ Implements:
 
 from __future__ import annotations
 import math
-from typing import Any, List, Optional, Tuple
+from typing import Any, List, Optional, Sequence, Tuple
 import numpy as np
 from scipy.ndimage import zoom
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+
+
+class GradCAMUnavailableError(RuntimeError):
+    """Raised when a genuine Grad-CAM map cannot be computed for the given input."""
 
 
 class GradCAM:
@@ -82,7 +86,7 @@ class GradCAM:
                 output = output[0]
 
             if torch.isnan(output).any() or torch.isinf(output).any():
-                return np.ones((input_h, input_w), dtype=np.float32) * 0.5, 0, 0.33
+                raise GradCAMUnavailableError("Model produced non-finite logits for this input")
 
             probs = F.softmax(output, dim=1)
             confidence, predicted = probs.max(dim=1)
@@ -108,15 +112,18 @@ class GradCAM:
                     grad_input = input_tensor.grad.abs().mean(dim=1).squeeze().cpu().numpy()
                     grad_input = (grad_input - grad_input.min()) / (grad_input.max() - grad_input.min() + 1e-8)
                     return grad_input.astype(np.float32), pred_class, conf_score
-                return np.ones((input_h, input_w), dtype=np.float32) * 0.5, pred_class, conf_score
+                raise GradCAMUnavailableError("No gradients or activations were captured")
 
             cam_arr: np.ndarray
             if gradients.dim() == 4 and activations.dim() == 4:
                 # CNN / Conv2d patch embedding formulation
                 weights = gradients.mean(dim=(2, 3), keepdim=True)
                 cam_t = (weights * activations).sum(dim=1, keepdim=True)
-                cam_t = F.relu(cam_t)
-                cam_arr = cam_t.squeeze().cpu().detach().numpy()
+                cam_t_relu = F.relu(cam_t)
+                if cam_t_relu.max() > cam_t_relu.min():
+                    cam_arr = cam_t_relu.squeeze().cpu().detach().numpy()
+                else:
+                    cam_arr = torch.abs(cam_t).squeeze().cpu().detach().numpy()
             elif gradients.dim() == 3 and activations.dim() == 3:
                 # Token sequence formulation [B, N, D]
                 weights = gradients.mean(dim=1, keepdim=True)
@@ -124,16 +131,25 @@ class GradCAM:
                 # Exclude CLS token if present
                 if len(cam_seq) > 1:
                     cam_seq = cam_seq[1:]
+                cam_seq_relu = np.maximum(cam_seq, 0.0)
+                if cam_seq_relu.max() > cam_seq_relu.min():
+                    cam_seq = cam_seq_relu
+                else:
+                    cam_seq = np.abs(cam_seq)
                 grid_side = math.isqrt(len(cam_seq))
                 if grid_side * grid_side == len(cam_seq):
                     cam_arr = cam_seq.reshape(grid_side, grid_side)
                 else:
-                    cam_arr = np.ones((input_h, input_w), dtype=np.float32) * 0.5
+                    raise GradCAMUnavailableError(
+                        f"Token grid of length {len(cam_seq)} is not a square patch grid"
+                    )
             else:
-                cam_arr = np.ones((input_h, input_w), dtype=np.float32) * 0.5
+                raise GradCAMUnavailableError(
+                    f"Unsupported activation rank (gradients {gradients.dim()}D, activations {activations.dim()}D)"
+                )
 
-            if cam_arr.max() == 0 or np.isnan(cam_arr).any():
-                return np.ones((input_h, input_w), dtype=np.float32) * 0.5, pred_class, conf_score
+            if not np.isfinite(cam_arr).all() or cam_arr.max() == cam_arr.min():
+                raise GradCAMUnavailableError("Class activation map is degenerate (constant or non-finite)")
 
             cam_arr = (cam_arr - cam_arr.min()) / (cam_arr.max() - cam_arr.min() + 1e-8)
 
@@ -145,9 +161,10 @@ class GradCAM:
             cam_final = np.clip(cam_arr, 0.0, 1.0).astype(np.float32)
             return cam_final, pred_class, conf_score
 
-        except Exception as e:
-            print(f"[Grad-CAM Saliency Exception] {e}")
-            return np.ones((input_h, input_w), dtype=np.float32) * 0.5, 0, 0.33
+        except GradCAMUnavailableError:
+            raise
+        except Exception as exc:
+            raise GradCAMUnavailableError(f"Grad-CAM computation failed: {exc}") from exc
 
 
 def create_overlay(
@@ -170,16 +187,46 @@ def create_overlay(
     return np.clip(overlay, 0.0, 1.0)
 
 
-def get_explanation_text(predicted_class: int, confidence: float) -> str:
-    """Generate diagnostic clinical findings text."""
+def get_explanation_text(
+    predicted_class: int,
+    confidence: float,
+    probabilities: Optional[Sequence[float]] = None,
+    heatmap: Optional[np.ndarray] = None,
+) -> str:
+    """Summarize only quantities measured from the model output and Grad-CAM map.
+
+    No morphological or anatomical claim is made that the model did not compute.
+    ``confidence`` and ``probabilities`` are on the [0, 1] scale.
+    """
     class_names = {0: "Normal", 1: "Pneumonia", 2: "COVID-19"}
-    class_name = class_names.get(predicted_class, "Unknown")
+    lines = [
+        f"**Model prediction: {class_names.get(predicted_class, 'Unknown')}** "
+        f"(softmax confidence: {confidence * 100:.1f}%)"
+    ]
 
-    explanations = {
-        0: "The foundation model detected no significant pathological opacities. The lung parenchyma and vascular markings appear clear.",
-        1: "The foundation model identified focal alveolar consolidation patterns consistent with acute bacterial pneumonia. Highlighted red regions indicate dense opacification.",
-        2: "The foundation model detected bilateral peripheral ground-glass opacities (GGO) with crazy-paving features characteristic of viral COVID-19 pneumonia.",
-    }
+    if probabilities is not None and len(probabilities) > 1:
+        ranked = sorted(range(len(probabilities)), key=lambda k: -float(probabilities[k]))
+        runner = ranked[1]
+        margin = (float(probabilities[ranked[0]]) - float(probabilities[runner])) * 100.0
+        lines.append(
+            f"Runner-up class: {class_names.get(runner, 'Unknown')} "
+            f"({float(probabilities[runner]) * 100:.1f}%), margin {margin:.1f} percentage points."
+        )
 
-    base_explanation = explanations.get(predicted_class, "Analysis complete.")
-    return f"**Diagnosis: {class_name}** (Confidence: {confidence*100:.1f}%)\n\n{base_explanation}"
+    if heatmap is not None:
+        h = np.asarray(heatmap, dtype=np.float32)
+        rows, cols = h.shape
+        peak_r, peak_c = np.unravel_index(int(np.argmax(h)), h.shape)
+        vertical = "upper" if peak_r < rows / 3 else ("lower" if peak_r >= 2 * rows / 3 else "middle")
+        horizontal = "left" if peak_c < cols / 3 else ("right" if peak_c >= 2 * cols / 3 else "center")
+        active_pct = float((h >= 0.5).mean() * 100.0)
+        lines.append(
+            f"Grad-CAM peak relevance lies in the {vertical}-{horizontal} part of the image frame; "
+            f"{active_pct:.1f}% of pixels exceed 0.5 normalized relevance."
+        )
+
+    lines.append(
+        "Decision-support output of a research model. It is not a clinical diagnosis and "
+        "requires radiologist review."
+    )
+    return "\n\n".join(lines)

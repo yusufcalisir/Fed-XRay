@@ -78,16 +78,23 @@ def test_seven_imbalance_scenarios_a_to_g():
 
 def test_federated_rag_case_matching_and_distribution():
     """Verify Federated RAG digital twin search and outcome distribution estimation."""
-    rag_matcher = FederatedRAGCaseMatcher(n_cases=50, embedding_dim=64, temperature=0.1)
-    query_emb = np.random.randn(64).astype(np.float32)
-    query_emb = query_emb / np.linalg.norm(query_emb)
+    ecosystem = StrategyEDatasetEcosystem(seed=7)
+    records = ecosystem.generate_synthetic_realworld_cohort(num_patients=30, samples_per_patient=2, num_classes=3)
+    encoder = create_cnn_model(num_classes=3)
+    rag_matcher = FederatedRAGCaseMatcher(reference_records=records, model=encoder, temperature=0.1)
+
+    query_scan = records[0].image_tensor.unsqueeze(0)
+    query_emb = extract_embedding(encoder, query_scan)
 
     results = rag_matcher.find_similar(query_emb, top_k=3)
     assert len(results) == 3
+    # The query is itself a bank member, so the best match must be an identical embedding.
+    assert results[0]["similarity"] > 0.999
+    assert results[0]["case_id"].startswith(records[0].patient_id)
     for res in results:
         assert "case_id" in res
         assert "similarity" in res
-        assert "biopsy_finding" in res
+        assert "clinical_notes" in res
         assert 0.0 <= res["similarity"] <= 1.0
 
     prob_dist = rag_matcher.predict_rag_distribution(query_emb, top_k=5, num_classes=3)

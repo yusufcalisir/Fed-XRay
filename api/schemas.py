@@ -9,6 +9,13 @@ class CohortGenerateRequest(BaseModel):
     samples_per_hospital: int = Field(default=200, ge=50, le=500)
     scenario: str = Field(default="A", description="Imbalance Scenario: A (IID), B (Mild), C (Mod), D (Severe), E (Missing), F (Long-Tail), G (Combined)")
     dataset_name: str = Field(default="ISIC_2019", description="Medical Dataset: ISIC_2019, CRC_HISTO, MIMIC_CXR")
+    manifest_name: Optional[str] = Field(
+        default=None,
+        description="CSV/TSV manifest relative to the server FED_XRAY_DATA_DIR. When omitted, a labelled synthetic phantom cohort is generated.",
+    )
+    images_dir_name: Optional[str] = Field(
+        default=None, description="Image directory relative to FED_XRAY_DATA_DIR (defaults to the manifest directory)."
+    )
 
 
 class HospitalCohortInfo(BaseModel):
@@ -25,6 +32,7 @@ class CohortGenerateResponse(BaseModel):
     success: bool
     num_hospitals: int
     total_samples: int
+    data_source: str
     hospitals: List[HospitalCohortInfo]
 
 
@@ -80,7 +88,10 @@ class DiagnoseResponse(BaseModel):
     probabilities: List[float]
     findings: str
     raw_image: List[List[float]]
-    heatmap: List[List[float]]
+    heatmap: Optional[List[List[float]]] = None
+    heatmap_available: bool = True
+    heatmap_error: Optional[str] = None
+    image_source: str = "uploaded"
 
 
 class RagTwinCase(BaseModel):

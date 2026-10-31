@@ -1,9 +1,6 @@
 """Numerical Stability & Boundary Condition Testing Suite for Imbalance Losses & Option J Privacy."""
 
-import math
-import pytest
 import torch
-import torch.nn as nn
 
 from src.fed_xray.core.imbalance_losses import (
     DynamicAdaptiveFocalLoss,
@@ -14,9 +11,7 @@ from src.fed_xray.core.imbalance_losses import (
 )
 from src.fed_xray.core.privacy import (
     CKKSEncryptionEngine,
-    SecAggPlusProtocol,
     PatientLevelDPAccountant,
-    apply_patient_level_dp_clipping,
 )
 
 
@@ -87,7 +82,7 @@ def test_missing_class_repel_loss():
 def test_ckks_high_dimensional_vector_scaling():
     """Verify CKKS encryption engine across large parameter vectors and multi-client sums."""
     engine = CKKSEncryptionEngine(poly_modulus_degree=8192, scale_bits=30)
-    
+
     # Large 2048-dim vector
     K = 10
     client_vectors = [torch.randn(2048) for _ in range(K)]
@@ -107,7 +102,7 @@ def test_ckks_high_dimensional_vector_scaling():
 def test_rdp_accountant_deep_composition():
     """Verify Rényi Differential Privacy accountant over 50 composition steps."""
     accountant = PatientLevelDPAccountant(target_delta=1e-5)
-    
+
     epsilons = []
     for _ in range(50):
         accountant.step(q=0.05, sigma=2.0)

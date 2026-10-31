@@ -112,7 +112,7 @@ export default function DashboardPage() {
       const result = await fetchClinicalDiagnosis(apiUrl, classIndex, opacity, colormap);
       setDiagnosis(result);
       try {
-        const twinRes = await fetchRagTwins(apiUrl, result.predicted_class);
+        const twinRes = await fetchRagTwins(apiUrl, 2);
         if (twinRes?.matched_cases) setRagTwins(twinRes.matched_cases);
       } catch (ragErr: any) {
         console.warn("RAG retrieval warning:", ragErr.message);
@@ -219,7 +219,12 @@ export default function DashboardPage() {
             <RagDigitalTwins twins={ragTwins} />
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5 sm:gap-4 mb-5 sm:mb-6">
               <VoiceAssistant diagnosisName={diagName} confidence={diagConf} />
-              <ReportDownload diagnosisName={diagName} confidence={diagConf} />
+              <ReportDownload
+                diagnosisName={diagName}
+                confidence={diagConf}
+                predictedClass={diagnosis.predicted_class}
+                findings={diagnosis.findings}
+              />
             </div>
           </div>
         )}
