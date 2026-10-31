@@ -354,12 +354,15 @@ class CentralServer:
         # 2. FedDyn Aggregation
         if algo_name == "FEDDYN":
             for key in avg_weights.keys():
+                target_device = avg_weights[key].device
                 # Server dynamic state: h^{t+1} = h^t - alpha * (1/K) * sum (theta_k - theta_global^t)
                 delta_sum = torch.zeros_like(avg_weights[key])
                 for client_w in client_weights:
-                    delta_sum += (client_w[key].float() - current_weights[key].float())
+                    cw = client_w[key].to(target_device).float()
+                    gw = current_weights[key].to(target_device).float()
+                    delta_sum += (cw - gw)
 
-                h_k = self.h_server.get(key, torch.zeros_like(avg_weights[key]))
+                h_k = self.h_server.get(key, torch.zeros_like(avg_weights[key])).to(target_device)
                 h_k = h_k - (self.feddyn_alpha / K) * delta_sum
                 self.h_server[key] = h_k
 
@@ -369,11 +372,13 @@ class CentralServer:
         # 3. FedOpt / FedAdam Adaptive Momentum
         elif algo_name in ("FEDOPT", "FEDADAM"):
             for key in avg_weights.keys():
+                target_device = avg_weights[key].device
+                gw = current_weights[key].to(target_device).float()
                 # Pseudo-gradient: Delta^t = avg_weights - current_weights
-                delta = avg_weights[key] - current_weights[key].float()
+                delta = avg_weights[key] - gw
 
-                m = self.m_server.get(key, torch.zeros_like(delta))
-                v = self.v_server.get(key, torch.zeros_like(delta))
+                m = self.m_server.get(key, torch.zeros_like(delta)).to(target_device)
+                v = self.v_server.get(key, torch.zeros_like(delta)).to(target_device)
 
                 m = self.server_beta1 * m + (1.0 - self.server_beta1) * delta
                 v = self.server_beta2 * v + (1.0 - self.server_beta2) * (delta ** 2)
@@ -382,16 +387,17 @@ class CentralServer:
                 self.v_server[key] = v
 
                 # Adaptive server step
-                avg_weights[key] = current_weights[key].float() + self.server_lr * m / (torch.sqrt(v) + self.server_epsilon)
+                avg_weights[key] = gw + self.server_lr * m / (torch.sqrt(v) + self.server_epsilon)
 
         # 4. SCAFFOLD Global Control Variate Update
         if algo_name == "SCAFFOLD" and delta_cs:
             for key in first_client.keys():
-                c_g = self.c_global.get(key, torch.zeros_like(first_client[key]))
+                target_device = first_client[key].device
+                c_g = self.c_global.get(key, torch.zeros_like(first_client[key])).to(target_device)
                 delta_c_sum = torch.zeros_like(c_g)
                 for d_c in delta_cs:
                     if key in d_c:
-                        delta_c_sum += d_c[key].float()
+                        delta_c_sum += d_c[key].to(target_device).float()
                 self.c_global[key] = c_g + (1.0 / K) * delta_c_sum
 
         # Add Differential Privacy perturbation if active
@@ -405,7 +411,8 @@ class CentralServer:
         if self.peft_mode:
             load_peft_state_dict(self.global_model, avg_weights, mode=self.peft_mode)
         else:
-            self.global_model.load_state_dict(avg_weights)
+            model_state = {k: v.to(self.device) for k, v in avg_weights.items()}
+            self.global_model.load_state_dict(model_state)
 
         return avg_weights
 

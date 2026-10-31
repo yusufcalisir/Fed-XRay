@@ -281,7 +281,7 @@ class HospitalClient:
                         if name in initial_params:
                             diff = param - initial_params[name]
                             if self.grad_prev and name in self.grad_prev:
-                                dyn_linear = dyn_linear - torch.sum(self.grad_prev[name] * param)
+                                dyn_linear = dyn_linear - torch.sum(self.grad_prev[name].to(self.device) * param)
                             dyn_quad = dyn_quad + torch.sum(diff ** 2)
                     loss = loss + dyn_linear + (feddyn_alpha / 2.0) * dyn_quad
 
