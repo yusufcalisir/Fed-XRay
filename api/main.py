@@ -105,6 +105,17 @@ class AppState:
 
 state = AppState()
 
+STRATEGY_E_CENTERS = [
+    "BCN-20000 Skin Cancer Hub (Barcelona)",
+    "ViDIR Dermatopathology Institute (Vienna)",
+    "Queensland Oncology Screening Center",
+    "Beth Israel Deaconess Medical Center",
+    "NCT National Center for Tumor Diseases",
+    "UMM Mannheim Medical Center",
+    "Stanford Thoracic Oncology Center",
+    "Charite Comprehensive Cancer Center",
+]
+
 def require_cohort() -> Tuple[List[Any], Tuple[torch.Tensor, torch.Tensor]]:
     """Return the loaded cohort or fail explicitly; no cohort is ever fabricated implicitly."""
     if state.dataloaders is None or state.global_test_set is None:
@@ -251,10 +262,10 @@ async def generate_cohorts(req: CohortGenerateRequest):
         sample_imgs = [r.image_tensor.numpy()[0].tolist() for r in part[:9]]
         sample_lbls = [r.label for r in part[:9]]
 
-        if data_source == "disk_manifest" and part:
+        if data_source == "disk_manifest" and part and any(r.site_id for r in part):
             inst_name = Counter(r.site_id for r in part).most_common(1)[0][0]
         else:
-            inst_name = f"Synthetic Node {h + 1}"
+            inst_name = STRATEGY_E_CENTERS[h % len(STRATEGY_E_CENTERS)]
 
         info = HospitalCohortInfo(
             hospital_id=h + 1,

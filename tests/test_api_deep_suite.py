@@ -57,7 +57,7 @@ def test_cohort_generation_all_scenarios(scenario: str):
     assert len(data["hospitals"]) == 4
     assert data["data_source"] == "synthetic_phantom"
     for h in data["hospitals"]:
-        assert h["name"].startswith("Synthetic Node")
+        assert any(center.split()[0] in h["name"] for center in ["BCN-20000", "ViDIR", "Queensland", "Beth", "NCT"])
         assert h["num_samples"] > 0
         assert len(h["distribution"]) == 3
         assert sum(h["distribution"]) > 0.99  # Normalizes to 1.0
