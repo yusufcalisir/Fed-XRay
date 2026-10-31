@@ -11,44 +11,31 @@ Supports:
 
 from __future__ import annotations
 import asyncio
-import copy
-import io
 import json
 import time
 import threading
-from typing import Any, Dict, List, Optional
+from typing import Dict, List, Optional
 import numpy as np
 import torch
-from fastapi import FastAPI, HTTPException, Query, Request, Response
+from fastapi import FastAPI, HTTPException, Query, Response
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse, StreamingResponse
+from fastapi.responses import StreamingResponse
 
 from src.fed_xray.data.generator import (
     MedicalDataGenerator,
-    create_global_test_set,
-    create_hospital_dataloaders,
-    get_distribution_info,
 )
 from src.fed_xray.data.real_world import (
-    RealWorldPatientRecord,
     StrategyEDatasetEcosystem,
 )
-from src.fed_xray.models.cnn import count_parameters, create_model as create_cnn_model
-from src.fed_xray.models.vit import create_medical_vit
-from src.fed_xray.models.peft import inject_lora_to_model
 from src.fed_xray.core.client import HospitalClient
 from src.fed_xray.core.server import CentralServer, run_federated_round
-from src.fed_xray.cdss.xai import GradCAM, create_overlay, get_explanation_text
+from src.fed_xray.cdss.xai import GradCAM, get_explanation_text
 from src.fed_xray.cdss.similarity import (
     FederatedRAGCaseMatcher,
-    HistoricalCaseBank,
-    extract_embedding,
-    LABEL_COLORS,
     LABEL_NAMES,
 )
 from src.fed_xray.cdss.voice import get_or_create_audio
-from src.fed_xray.cdss.report import generate_medical_report, get_diagnosis_explanation
-from src.fed_xray.cdss.i18n import get_all_texts, get_text
+from src.fed_xray.cdss.report import generate_medical_report
 
 from api.schemas import (
     CohortGenerateRequest,
@@ -58,8 +45,6 @@ from api.schemas import (
     HospitalCohortInfo,
     RagSimilarResponse,
     RagTwinCase,
-    RoundTelemetryUpdate,
-    TrainFLRequest,
 )
 
 app = FastAPI(
@@ -628,14 +613,23 @@ async def stream_voice_briefing(
     text: str = Query(..., description="Text to synthesize"),
     lang: str = Query(default="en"),
 ):
-    """Generate audio MP3 briefing using edge-tts / gTTS."""
+    """Generate audio MP3 briefing using gTTS (offloaded to thread pool).
+
+    gTTS makes blocking HTTP requests to Google TTS API.
+    Running it via asyncio.to_thread() keeps the event loop free so
+    Render / uvicorn can still serve other requests during synthesis.
+    """
     try:
-        audio_bytes = await get_or_create_audio(text, lang)
+        audio_bytes = await asyncio.to_thread(get_or_create_audio, text, lang)
+        if not audio_bytes:
+            raise HTTPException(status_code=503, detail="TTS returned empty audio")
         return Response(
             content=audio_bytes,
             media_type="audio/mpeg",
             headers={"Content-Disposition": 'inline; filename="briefing.mp3"'},
         )
+    except HTTPException:
+        raise
     except Exception as exc:
         raise HTTPException(status_code=503, detail=f"TTS unavailable: {exc}")
 

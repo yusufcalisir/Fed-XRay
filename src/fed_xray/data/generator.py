@@ -5,7 +5,7 @@ Provides synthetic medical generator, PyTorch datasets, and hospital data loader
 """
 
 import numpy as np
-from typing import Tuple, List, Dict, Optional, Any
+from typing import Tuple, List, Dict, Optional
 from scipy.ndimage import gaussian_filter, rotate
 import torch
 from torch.utils.data import Dataset, DataLoader

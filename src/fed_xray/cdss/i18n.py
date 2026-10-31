@@ -5,7 +5,7 @@ Provides structured dictionary translations for English (EN, default) and
 Peer-Reviewed Clinical/Radiological Turkish (TR).
 """
 
-from typing import Dict, Any
+from typing import Dict
 
 TRANSLATIONS: Dict[str, Dict[str, str]] = {
     "EN": {

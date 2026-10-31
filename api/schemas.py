@@ -1,7 +1,7 @@
 """Fed-XRay FastAPI Request & Response Schemas (Pydantic v2)."""
 
 from pydantic import BaseModel, Field
-from typing import List, Dict, Optional, Any
+from typing import List, Dict, Optional
 
 
 class CohortGenerateRequest(BaseModel):

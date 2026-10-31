@@ -9,7 +9,6 @@ Implements:
 5. Missing-Class Prototype Margin Regularization (L_repel)
 """
 
-import math
 import torch
 import torch.nn as nn
 import torch.nn.functional as F

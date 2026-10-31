@@ -8,7 +8,7 @@ into Normal, Pneumonia, and COVID-19 categories.
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from typing import Dict, OrderedDict
+from typing import Dict
 
 
 class XRayClassifier(nn.Module):

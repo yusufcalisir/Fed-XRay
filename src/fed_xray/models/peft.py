@@ -12,11 +12,9 @@ Implements:
 
 from __future__ import annotations
 import math
-from typing import Any, Dict, List, Optional, Set, Tuple
-import numpy as np
+from typing import Any, Dict, List, Optional, Tuple
 import torch
 import torch.nn as nn
-import torch.nn.functional as F
 
 
 class LoRALinear(nn.Module):

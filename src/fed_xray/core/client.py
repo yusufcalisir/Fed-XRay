@@ -10,16 +10,14 @@ Supports:
 
 from __future__ import annotations
 import copy
-import math
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Dict, List, Optional, Tuple
 import torch
 import torch.nn as nn
-import torch.nn.functional as F
 import torch.optim as optim
 from torch.utils.data import DataLoader
 
 from ..models.cnn import create_model as create_cnn_model
-from ..models.vit import create_medical_vit, VisionTransformer
+from ..models.vit import create_medical_vit
 from ..models.peft import (
     inject_lora_to_model,
     extract_peft_state_dict,

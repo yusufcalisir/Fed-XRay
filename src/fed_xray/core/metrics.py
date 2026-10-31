@@ -4,7 +4,7 @@ Fed-XRay Core Metrics & Security Reporting Data Structures
 
 import numpy as np
 from dataclasses import dataclass, field
-from typing import Dict, List, Any, Optional
+from typing import Dict, List, Any
 
 
 @dataclass
