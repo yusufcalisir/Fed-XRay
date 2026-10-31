@@ -39,7 +39,9 @@ export default function DiagnosticStudio({
     canvas.width = s; canvas.height = s;
     const img = ctx.createImageData(s, s);
     for (let r = 0; r < s; r++) for (let c = 0; c < s; c++) {
-      const v = Math.floor(d[r][c] * 255);
+      const val = d[r][c];
+      const norm = val < 0.0 ? val * 0.5 + 0.5 : val;
+      const v = Math.floor(Math.min(1.0, Math.max(0.0, norm)) * 255);
       const i = (r * s + c) * 4;
       img.data[i] = v; img.data[i+1] = v; img.data[i+2] = v; img.data[i+3] = 255;
     }
@@ -58,7 +60,9 @@ export default function DiagnosticStudio({
     canvas.width = s; canvas.height = s;
     const img = ctx.createImageData(s, s);
     for (let r = 0; r < s; r++) for (let c = 0; c < s; c++) {
-      const rv = raw[r][c] * 255;
+      const rawVal = raw[r][c];
+      const norm = rawVal < 0.0 ? rawVal * 0.5 + 0.5 : rawVal;
+      const rv = Math.min(1.0, Math.max(0.0, norm)) * 255;
       const hv = heat[r][c];
       let hr = 0, hg = 0, hb = 0;
       if (colormap === "Hot") {
@@ -158,48 +162,52 @@ export default function DiagnosticStudio({
           </div>
 
           {/* Equal 3-Column Diagnostic Grid */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-3.5 sm:gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3.5 sm:gap-4 items-stretch">
             {/* Original X-Ray */}
-            <div className="card p-3.5 sm:p-4 flex flex-col">
-              <div className="metric-label mb-2">{t("sec3_dual_pane_orig")}</div>
-              <div className="xray-frame flex-1 flex items-center justify-center max-w-[280px] mx-auto w-full">
-                <canvas ref={rawRef} />
+            <div className="card p-3.5 sm:p-4 flex flex-col justify-between">
+              <div>
+                <div className="metric-label mb-2">{t("sec3_dual_pane_orig")}</div>
+                <div className="xray-frame aspect-square max-w-[280px] mx-auto w-full flex items-center justify-center">
+                  <canvas ref={rawRef} className="w-full h-full object-contain" />
+                </div>
               </div>
-              <div className="text-[10px] sm:text-[11px] text-[var(--text-muted)] mt-2 text-center">
+              <div className="text-[10px] sm:text-[11px] text-[var(--text-muted)] mt-3 py-2 text-center rounded-lg bg-[var(--bg-card-inner)] border border-[var(--border-subtle)]">
                 {t("sec3_ground_truth")}: <span className="text-[var(--text-heading)] font-semibold">{classLabels[diagnosis.true_class]}</span>
               </div>
             </div>
 
             {/* Grad-CAM Overlay */}
-            <div className="card p-3.5 sm:p-4 flex flex-col">
-              <div className="metric-label mb-2">{t("sec3_dual_pane_xai")}</div>
-              {diagnosis.heatmap_available === false || !diagnosis.heatmap ? (
-                <div className="xray-frame flex-1 flex flex-col items-center justify-center p-4 text-center max-w-[280px] mx-auto w-full bg-slate-900/40 rounded-lg border border-dashed border-slate-700">
-                  <div className="text-amber-400 text-xs font-semibold mb-1">Grad-CAM Unavailable</div>
-                  <div className="text-[10px] text-[var(--text-muted)]">
-                    {diagnosis.heatmap_error || "Saliency calculation is unavailable for this sample/architecture."}
+            <div className="card p-3.5 sm:p-4 flex flex-col justify-between">
+              <div>
+                <div className="metric-label mb-2">{t("sec3_dual_pane_xai")}</div>
+                {diagnosis.heatmap_available === false || !diagnosis.heatmap ? (
+                  <div className="xray-frame aspect-square max-w-[280px] mx-auto w-full flex flex-col items-center justify-center p-4 text-center bg-slate-900/40 rounded-xl border border-dashed border-slate-700">
+                    <div className="text-amber-400 text-xs font-semibold mb-1">Grad-CAM Unavailable</div>
+                    <div className="text-[10px] text-[var(--text-muted)]">
+                      {diagnosis.heatmap_error || "Saliency calculation is unavailable for this sample/architecture."}
+                    </div>
+                  </div>
+                ) : (
+                  <div className="xray-frame aspect-square max-w-[280px] mx-auto w-full flex items-center justify-center">
+                    <canvas ref={xaiRef} className="w-full h-full object-contain" />
+                  </div>
+                )}
+              </div>
+              {diagnosis.heatmap_available !== false && diagnosis.heatmap && (
+                <div className="mt-3 space-y-2 p-2 rounded-lg bg-[var(--bg-card-inner)] border border-[var(--border-subtle)]">
+                  <div className="flex items-center justify-between text-[10px] sm:text-[11px]">
+                    <span className="text-[var(--text-muted)]">{t("sec3_xai_opacity")}</span>
+                    <span className="font-mono text-[var(--text-heading)] font-bold">{Math.round(opacity * 100)}%</span>
+                  </div>
+                  <input type="range" min="0.1" max="1.0" step="0.05" value={opacity} onChange={(e) => setOpacity(parseFloat(e.target.value))} className="w-full accent-accent-500 h-1.5" />
+                  <div className="flex items-center justify-between text-[10px] sm:text-[11px]">
+                    <span className="text-[var(--text-muted)]">{t("sec3_xai_colormap")}</span>
+                    <select value={colormap} onChange={(e) => setColormap(e.target.value)} className="bg-[var(--bg-app)] text-[var(--text-heading)] text-[10px] sm:text-[11px] font-semibold rounded-md px-2 py-0.5 border border-[var(--border-card)]">
+                      <option value="Hot">Hot</option>
+                      <option value="Jet">Jet</option>
+                    </select>
                   </div>
                 </div>
-              ) : (
-                <>
-                  <div className="xray-frame flex-1 flex items-center justify-center max-w-[280px] mx-auto w-full">
-                    <canvas ref={xaiRef} />
-                  </div>
-                  <div className="mt-2.5 space-y-2">
-                    <div className="flex items-center justify-between text-[10px] sm:text-[11px]">
-                      <span className="text-[var(--text-muted)]">{t("sec3_xai_opacity")}</span>
-                      <span className="font-mono text-[var(--text-heading)] font-bold">{Math.round(opacity * 100)}%</span>
-                    </div>
-                    <input type="range" min="0.1" max="1.0" step="0.05" value={opacity} onChange={(e) => setOpacity(parseFloat(e.target.value))} className="w-full accent-accent-500 h-1.5" />
-                    <div className="flex items-center justify-between text-[10px] sm:text-[11px]">
-                      <span className="text-[var(--text-muted)]">{t("sec3_xai_colormap")}</span>
-                      <select value={colormap} onChange={(e) => setColormap(e.target.value)} className="bg-[var(--bg-app)] text-[var(--text-heading)] text-[10px] sm:text-[11px] font-semibold rounded-md px-2 py-1 border border-[var(--border-card)]">
-                        <option value="Hot">Hot</option>
-                        <option value="Jet">Jet</option>
-                      </select>
-                    </div>
-                  </div>
-                </>
               )}
             </div>
 

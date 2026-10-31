@@ -726,6 +726,12 @@ async def perform_diagnosis(req: DiagnoseRequest):
 
     true_name = LABEL_NAMES.get(true_class, "Uploaded scan (no reference label)" if true_class == -1 else "Unknown")
 
+    raw_for_export = (
+        ((image_np * 0.5 + 0.5).clip(0.0, 1.0)).round(4).tolist()
+        if float(image_np.min()) < 0.0
+        else image_np.round(4).tolist()
+    )
+
     return DiagnoseResponse(
         predicted_class=predicted_class,
         predicted_name=LABEL_NAMES.get(predicted_class, "Unknown"),
@@ -734,7 +740,7 @@ async def perform_diagnosis(req: DiagnoseRequest):
         confidence=round(confidence * 100.0, 2),
         probabilities=[round(float(p) * 100.0, 2) for p in probs],
         findings=findings,
-        raw_image=image_np.tolist(),
+        raw_image=raw_for_export,
         heatmap=heatmap.tolist() if heatmap is not None else None,
         heatmap_available=heatmap is not None,
         heatmap_error=heatmap_error,
