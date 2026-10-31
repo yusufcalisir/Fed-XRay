@@ -19,13 +19,19 @@ export async function fetchClinicalDiagnosis(
   baseUrl: string,
   classIndex?: number,
   opacity: number = 0.55,
-  colormap: string = "Hot"
+  colormap: string = "Hot",
+  imageBase64?: string
 ): Promise<DiagnosisResult> {
   const url = `${baseUrl.replace(/\/$/, "")}/api/cdss/diagnose`;
   const res = await fetch(url, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ class_index: classIndex, opacity, colormap }),
+    body: JSON.stringify({
+      class_index: classIndex,
+      image_base64: imageBase64,
+      opacity,
+      colormap,
+    }),
   });
   if (!res.ok) throw new Error(`Diagnosis failed (HTTP ${res.status})`);
   return await res.json();

@@ -11,12 +11,16 @@ Supports:
 
 from __future__ import annotations
 import asyncio
+import base64
+import io
 import json
 import time
 import threading
 from typing import Dict, List, Optional
 import numpy as np
+from PIL import Image
 import torch
+import torch.nn.functional as F
 from fastapi import FastAPI, HTTPException, Query, Response
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
@@ -542,14 +546,38 @@ async def perform_diagnosis(req: DiagnoseRequest):
     model = state.server.get_model()
     model.eval()
 
-    generator = MedicalDataGenerator(seed=int(time.time() * 1000) % 100000)
-    true_class = (
-        req.class_index
-        if req.class_index is not None and req.class_index in (0, 1, 2)
-        else np.random.choice([0, 1, 2], p=[0.35, 0.45, 0.20])
-    )
+    if req.image_base64:
+        try:
+            header, _, encoded = req.image_base64.partition(",")
+            raw_b64 = encoded if encoded else header
+            img_bytes = base64.b64decode(raw_b64)
+            pil_img = Image.open(io.BytesIO(img_bytes)).convert("L")
+            pil_img = pil_img.resize((28, 28), Image.Resampling.BILINEAR)
+            image_np = (np.array(pil_img, dtype=np.float32) / 255.0).clip(0.0, 1.0)
+            true_class = req.class_index if (req.class_index is not None and req.class_index in (0, 1, 2)) else -1
+        except Exception as exc:
+            raise HTTPException(status_code=400, detail=f"Invalid base64 image data: {exc}")
+    elif req.image_data:
+        try:
+            raw_arr = np.array(req.image_data, dtype=np.float32)
+            if raw_arr.ndim != 2:
+                raise ValueError("image_data must be a 2D matrix")
+            t_img = torch.tensor(raw_arr).unsqueeze(0).unsqueeze(0)
+            if t_img.shape[-2:] != (28, 28):
+                t_img = F.interpolate(t_img, size=(28, 28), mode="bilinear", align_corners=False)
+            image_np = t_img.squeeze().cpu().numpy().clip(0.0, 1.0)
+            true_class = req.class_index if (req.class_index is not None and req.class_index in (0, 1, 2)) else -1
+        except Exception as exc:
+            raise HTTPException(status_code=400, detail=f"Invalid image_data matrix: {exc}")
+    else:
+        generator = MedicalDataGenerator(seed=int(time.time() * 1000) % 100000)
+        true_class = (
+            req.class_index
+            if req.class_index is not None and req.class_index in (0, 1, 2)
+            else int(np.random.choice([0, 1, 2], p=[0.35, 0.45, 0.20]))
+        )
+        image_np = generator.generate_synthetic_xray(label=true_class, apply_augmentation=True)
 
-    image_np = generator.generate_synthetic_xray(label=true_class, apply_augmentation=True)
     state.last_scan = image_np
 
     image_tensor = torch.tensor(image_np, dtype=torch.float32).unsqueeze(0).unsqueeze(0).to(state.device)
@@ -568,11 +596,13 @@ async def perform_diagnosis(req: DiagnoseRequest):
 
     findings = get_explanation_text(predicted_class, confidence)
 
+    true_name = LABEL_NAMES.get(true_class, "Clinical Scan" if true_class == -1 else "Unknown")
+
     return DiagnoseResponse(
         predicted_class=predicted_class,
         predicted_name=LABEL_NAMES.get(predicted_class, "Unknown"),
         true_class=true_class,
-        true_name=LABEL_NAMES.get(true_class, "Unknown"),
+        true_name=true_name,
         confidence=round(confidence * 100.0, 2),
         probabilities=[round(float(p) * 100.0, 2) for p in probs],
         findings=findings,

@@ -60,6 +60,8 @@ class RoundTelemetryUpdate(BaseModel):
 
 class DiagnoseRequest(BaseModel):
     class_index: Optional[int] = None
+    image_data: Optional[List[List[float]]] = None
+    image_base64: Optional[str] = None
     opacity: float = Field(default=0.55, ge=0.0, le=1.0)
     colormap: str = Field(default="Hot")
 

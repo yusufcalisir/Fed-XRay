@@ -149,3 +149,45 @@ def test_pdf_report_generation_custom_findings():
     # PDF magic bytes verification
     assert res.content.startswith(b"%PDF-")
     assert len(res.content) > 1000
+
+
+def test_cdss_diagnose_with_matrix_data():
+    """Verify diagnosis endpoint accepting raw 2D image matrix."""
+    dummy_matrix = [[0.5] * 28 for _ in range(28)]
+    payload = {"image_data": dummy_matrix, "opacity": 0.5, "colormap": "Hot"}
+    res = client.post("/api/cdss/diagnose", json=payload)
+    assert res.status_code == 200
+    data = res.json()
+    assert data["predicted_class"] in (0, 1, 2)
+    assert data["true_class"] == -1
+    assert data["true_name"] == "Clinical Scan"
+    assert len(data["raw_image"]) == 28
+
+
+def test_cdss_diagnose_with_base64_image():
+    """Verify diagnosis endpoint accepting base64-encoded radiological scan."""
+    import io
+    import base64
+    from PIL import Image
+
+    img = Image.new("L", (32, 32), color=128)
+    buf = io.BytesIO()
+    img.save(buf, format="PNG")
+    b64_str = f"data:image/png;base64,{base64.b64encode(buf.getvalue()).decode('utf-8')}"
+
+    payload = {"image_base64": b64_str, "opacity": 0.6, "colormap": "Jet"}
+    res = client.post("/api/cdss/diagnose", json=payload)
+    assert res.status_code == 200
+    data = res.json()
+    assert data["predicted_class"] in (0, 1, 2)
+    assert len(data["raw_image"]) == 28
+    assert len(data["heatmap"]) == 28
+
+
+def test_cdss_diagnose_invalid_inputs():
+    """Verify rejection of malformed image inputs."""
+    res = client.post("/api/cdss/diagnose", json={"image_data": [1, 2, 3]})
+    assert res.status_code == 422
+
+    res2 = client.post("/api/cdss/diagnose", json={"image_base64": "not-valid-base64-content!!!"})
+    assert res2.status_code == 400
