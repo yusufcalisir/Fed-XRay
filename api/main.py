@@ -732,11 +732,11 @@ async def stream_voice_briefing(
     """Generate audio MP3 briefing using gTTS (offloaded to thread pool).
 
     gTTS makes blocking HTTP requests to Google TTS API.
-    Running it via asyncio.to_thread() keeps the event loop free so
+    Running it via async worker keeps the event loop free so
     Render / uvicorn can still serve other requests during synthesis.
     """
     try:
-        audio_bytes = await asyncio.to_thread(get_or_create_audio, text, lang)
+        audio_bytes = await get_or_create_audio(text, lang)
         if not audio_bytes:
             raise HTTPException(status_code=503, detail="TTS returned empty audio")
         return Response(

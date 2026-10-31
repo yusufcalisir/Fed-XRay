@@ -224,12 +224,34 @@ class CentralServer:
                 t.numel() * t.element_size() for t in client_weights[0].values()
             )
 
+        # 1. Compute validation accuracy for all client models
         for idx, (weights, count, cid) in enumerate(zip(client_weights, sample_counts, client_ids)):
             val_acc = self._validate_client_model(weights, test_images, test_labels)
             validation_accuracies[cid] = val_acc
 
-            if val_acc < self.MALICIOUS_THRESHOLD:
-                print(f"[SECURITY ALERT] Node {cid} failed validation (Acc: {val_acc:.1%}). BLOCKED!")
+        # 2. Consensus-relative Byzantine outlier detection
+        # Prevents deadlocks during early warm-up while isolating genuine adversaries
+        val_accs = [validation_accuracies[cid] for cid in client_ids]
+        cohort_max = float(np.max(val_accs)) if val_accs else 0.0
+        cohort_med = float(np.median(val_accs)) if val_accs else 0.0
+
+        for idx, (weights, count, cid) in enumerate(zip(client_weights, sample_counts, client_ids)):
+            val_acc = validation_accuracies[cid]
+            is_malicious = False
+
+            if len(client_ids) > 1:
+                # Relative outlier detection against peer consensus
+                if cohort_max >= 0.35 and (cohort_max - val_acc) >= 0.25:
+                    is_malicious = True
+                elif (cohort_med - val_acc) >= 0.20:
+                    is_malicious = True
+                elif val_acc < 0.10 and cohort_max >= 0.20:
+                    is_malicious = True
+            elif val_acc < 0.10:
+                is_malicious = True
+
+            if is_malicious:
+                print(f"[SECURITY ALERT] Node {cid} failed validation (Acc: {val_acc:.1%} vs Cohort: {cohort_med:.1%}). BLOCKED!")
                 clients_blocked.append(cid)
                 self.blocked_count += 1
             else:
@@ -257,7 +279,7 @@ class CentralServer:
             clients_blocked=clients_blocked,
             validation_accuracies=validation_accuracies,
             threat_detected=len(clients_blocked) > 0,
-            details=f"Blocked {len(clients_blocked)} node(s) below {self.MALICIOUS_THRESHOLD:.0%} threshold",
+            details=f"Blocked {len(clients_blocked)} node(s) deviating from consensus threshold",
         )
         self.last_security_report = security_report
         return aggregated_weights, security_report

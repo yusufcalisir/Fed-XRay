@@ -32,6 +32,13 @@ def _cache_path(text: str, lang: str) -> str:
     return os.path.join(tempfile.gettempdir(), f"fedxray_voice_{key}.mp3")
 
 
+def get_cached_audio_path(diagnosis: str, confidence: float) -> str:
+    """Generate a cache key path for diagnosis audio file."""
+    key = f"{diagnosis}_{int(confidence)}"
+    hash_key = hashlib.md5(key.encode()).hexdigest()[:8]
+    return os.path.join(tempfile.gettempdir(), f"fedxray_voice_{hash_key}.mp3")
+
+
 async def get_or_create_audio(text: str, lang: str = "en") -> bytes:
     """
     Async TTS wrapper.
