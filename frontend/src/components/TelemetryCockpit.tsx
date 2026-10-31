@@ -6,6 +6,18 @@ import { TelemetryRound } from "@/types";
 import { Cpu, Play, ShieldAlert, ShieldCheck, Zap, TrendingUp, Lock, ArrowUp } from "lucide-react";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from "recharts";
 
+function formatBytes(bytes: number): string {
+  if (!bytes || bytes <= 0) return "n/a";
+  const units = ["B", "KB", "MB", "GB"];
+  let v = bytes;
+  let i = 0;
+  while (v >= 1024 && i < units.length - 1) {
+    v /= 1024;
+    i += 1;
+  }
+  return `${v.toFixed(i === 0 ? 0 : 2)} ${units[i]}`;
+}
+
 interface TelemetryCockpitProps {
   history: TelemetryRound[];
   onStartTraining: () => void;
@@ -27,6 +39,9 @@ export default function TelemetryCockpit({
 }: TelemetryCockpitProps) {
   const { t } = useLanguage();
   const latestRound = history[history.length - 1];
+  const fullBytes = latestRound?.full_model_bytes ?? 0;
+  const uplinkBytes = latestRound?.uplink_bytes_per_client ?? 0;
+  const reductionPct = fullBytes > 0 ? (1 - uplinkBytes / fullBytes) * 100 : null;
 
   return (
     <section id="section-training" className="mb-5 sm:mb-6 scroll-mt-20">
@@ -168,11 +183,11 @@ export default function TelemetryCockpit({
                   <div className="space-y-2 text-[11px] sm:text-xs">
                     <div className="flex justify-between text-[var(--text-muted)]">
                       <span>{t("sec2_economics_full")}</span>
-                      <span className="font-mono font-bold text-[var(--text-heading)]">2.43 GB</span>
+                      <span className="font-mono font-bold text-[var(--text-heading)]">{formatBytes(fullBytes)}</span>
                     </div>
                     <div className="flex justify-between text-accent-600 dark:text-accent-400 font-semibold">
                       <span>{t("sec2_economics_peft")}</span>
-                      <span className="font-mono font-bold">1.60 MB</span>
+                      <span className="font-mono font-bold">{formatBytes(uplinkBytes)}</span>
                     </div>
                   </div>
                 </div>
@@ -180,7 +195,9 @@ export default function TelemetryCockpit({
                 <div className="mt-3 pt-2.5 border-t border-[var(--border-subtle)] flex items-center justify-between text-[11px] sm:text-xs">
                   <span className="text-[var(--text-muted)]">Optimization</span>
                   <span className="font-bold text-accent-600 dark:text-accent-400 bg-accent-500/10 px-2 py-0.5 rounded border border-accent-500/20">
-                    {t("sec2_economics_savings")}
+                    {reductionPct === null
+                      ? "n/a"
+                      : `${reductionPct >= 0 ? reductionPct.toFixed(1) : `+${Math.abs(reductionPct).toFixed(1)}`}% ${reductionPct >= 0 ? t("sec2_economics_savings") : t("sec2_economics_overhead")}`}
                   </span>
                 </div>
               </div>

@@ -373,6 +373,8 @@ async def stream_federated_training(
                 "model_type": model_type,
                 "peft_mode": peft_mode,
                 "privacy_epsilon": round(state.server.get_privacy_spent(), 4) if state.server else 0.0,
+                "uplink_bytes_per_client": int(metrics["uplink_bytes_per_client"]),
+                "full_model_bytes": int(metrics["full_model_bytes"]),
             }
 
             yield f"data: {json.dumps(data_payload)}\n\n"
@@ -517,6 +519,8 @@ async def start_training_background(
                     "model_type": model_type,
                     "peft_mode": peft_mode,
                     "privacy_epsilon": round(srv.get_privacy_spent(), 4),
+                    "uplink_bytes_per_client": int(metrics["uplink_bytes_per_client"]),
+                    "full_model_bytes": int(metrics["full_model_bytes"]),
                 }
                 state.task_rounds.append(round_data)
                 state.task_current_round = round_num

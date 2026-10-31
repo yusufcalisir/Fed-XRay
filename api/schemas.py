@@ -59,6 +59,8 @@ class RoundTelemetryUpdate(BaseModel):
     model_type: str = "vit_tiny"
     peft_mode: str = "ffa_lora"
     privacy_epsilon: float = 0.0
+    uplink_bytes_per_client: int = 0
+    full_model_bytes: int = 0
 
 
 class DiagnoseRequest(BaseModel):

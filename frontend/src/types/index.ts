@@ -28,6 +28,8 @@ export interface TelemetryRound {
   model_type?: string;
   peft_mode?: string;
   privacy_epsilon?: number;
+  uplink_bytes_per_client?: number;
+  full_model_bytes?: number;
 }
 
 export interface DiagnosisResult {

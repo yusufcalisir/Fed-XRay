@@ -98,6 +98,8 @@ class CentralServer:
         self.c_global: Dict[str, torch.Tensor] = {}
 
         self.blocked_count = 0
+        self.last_full_model_bytes = 0
+        self.last_uplink_bytes_per_client = 0
         self.last_security_report: Optional[SecurityReport] = None
         self.global_prototypes: Optional[Dict[int, torch.Tensor]] = None
 
@@ -269,10 +271,18 @@ class CentralServer:
 
         active_ckks = self.use_ckks if use_ckks is None else use_ckks
 
+        self.last_full_model_bytes = sum(
+            t.numel() * t.element_size() for t in self.global_model.state_dict().values()
+        )
+        self.last_uplink_bytes_per_client = sum(
+            t.numel() * t.element_size() for t in first_client.values()
+        )
+
         # 1. Base Aggregation: CKKS Homomorphic Aggregation vs Standard Sample-Weighted Average
         if active_ckks:
             engine = self.ckks_engine or CKKSEncryptionEngine(scale_bits=40)
             encrypted_updates = [engine.encrypt_state_dict(w) for w in client_weights]
+            self.last_uplink_bytes_per_client = sum(e.nbytes for e in encrypted_updates[0].values())
             agg_encrypted = engine.homomorphic_aggregate_state_dicts(
                 encrypted_updates, [float(c) for c in sample_counts]
             )
@@ -547,6 +557,8 @@ def run_federated_round(
         "secure_aggregation": active_secagg,
         "use_ckks": active_ckks,
         "privacy_epsilon": server.get_privacy_spent(),
+        "uplink_bytes_per_client": server.last_uplink_bytes_per_client,
+        "full_model_bytes": server.last_full_model_bytes,
     }
 
     test_metrics: Optional[EvaluationMetrics] = None
