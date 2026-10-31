@@ -172,6 +172,8 @@ export default function DashboardPage() {
           numHospitals={hospitals.length}
           isDefenseActive={true}
           isTrained={isTrained}
+          modelType={history.length > 0 && history[history.length - 1].model_type ? history[history.length - 1].model_type : "vit_tiny"}
+          peftMode={history.length > 0 && history[history.length - 1].peft_mode ? history[history.length - 1].peft_mode : "ffa_lora"}
         />
 
         {/* 4-Step Clinical Workflow Stepper */}

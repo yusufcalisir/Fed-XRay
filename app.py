@@ -11,32 +11,26 @@ Run with: streamlit run app.py
 import streamlit as st
 import numpy as np
 import plotly.graph_objects as go
-import plotly.express as px
 from plotly.subplots import make_subplots
 import torch
 import time
 import copy
-from datetime import datetime
-from typing import List, Dict, Tuple, Optional
 
 # Local module imports
 from utils.medical_data import (
-    MedicalDataGenerator, 
-    XRayDataset, 
+    MedicalDataGenerator,
     create_hospital_dataloaders,
     get_distribution_info,
     create_global_test_set
 )
-from utils.cnn_model import XRayClassifier, create_model, count_parameters
+from utils.cnn_model import create_model
 from utils.federated_core import (
-    HospitalClient, 
-    CentralServer, 
-    run_federated_round,
-    EvaluationMetrics,
-    SecurityReport
+    HospitalClient,
+    CentralServer,
+    run_federated_round
 )
-from utils.xai_engine import GradCAM, create_overlay, get_explanation_text
-from utils.similarity_engine import HistoricalCaseBank, extract_embedding, LABEL_NAMES, LABEL_COLORS
+from utils.xai_engine import GradCAM, create_overlay
+from utils.similarity_engine import HistoricalCaseBank, extract_embedding, LABEL_NAMES
 from utils.voice_engine import get_or_create_audio
 from utils.report_generator import generate_medical_report, get_diagnosis_explanation
 from utils.i18n import get_text
@@ -103,7 +97,6 @@ st.markdown("""
         --font-main: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
         --font-display: 'Outfit', -apple-system, BlinkMacSystemFont, sans-serif;
         --font-mono: 'JetBrains Mono', monospace;
-        
         --brand-blue: #2563EB;
         --brand-cyan: #0EA5E9;
         --status-emerald: #10B981;
@@ -115,7 +108,6 @@ st.markdown("""
     html, body, [class*="css"], .stMarkdown, p, div, span, label, li {
         font-family: var(--font-main) !important;
     }
-    
     h1, h2, h3, h4, h5, h6 {
         font-family: var(--font-display) !important;
         letter-spacing: -0.02em;
@@ -392,7 +384,6 @@ st.markdown("""
         background: linear-gradient(180deg, #0B1120 0%, #0F172A 100%) !important;
         border-right: 1px solid rgba(255,255,255,0.08) !important;
     }
-    
     [data-testid="stSidebar"] * {
         color: #F8FAFC !important;
     }
@@ -472,7 +463,7 @@ with st.sidebar:
         value=4,
         help=get_text("sidebar_num_hospitals_help", lang)
     )
-    
+
     samples_per_hospital = st.slider(
         get_text("sidebar_samples_hospital", lang),
         min_value=100,
@@ -481,9 +472,9 @@ with st.sidebar:
         step=50,
         help=get_text("sidebar_samples_hospital_help", lang)
     )
-    
+
     st.markdown("---")
-    
+
     # Section 2: Federated Optimization
     st.markdown(f"#### 🔄 {get_text('sidebar_training_sec', lang)}")
     n_rounds = st.slider(
@@ -493,7 +484,7 @@ with st.sidebar:
         value=5,
         help=get_text("sidebar_rounds_help", lang)
     )
-    
+
     local_epochs = st.slider(
         get_text("sidebar_epochs", lang),
         min_value=1,
@@ -501,7 +492,7 @@ with st.sidebar:
         value=2,
         help=get_text("sidebar_epochs_help", lang)
     )
-    
+
     privacy_noise = st.slider(
         "Differential Privacy (ε)",
         min_value=0.0,
@@ -510,9 +501,9 @@ with st.sidebar:
         step=0.01,
         format="%.2f"
     )
-    
+
     st.markdown("---")
-    
+
     # Section 3: Byzantine Adversarial Shield
     st.markdown(f"#### 🛡️ {get_text('sidebar_security_sec', lang)}")
     simulate_attack = st.checkbox(
@@ -520,13 +511,13 @@ with st.sidebar:
         value=False,
         help=get_text("sidebar_attack_sim_help", lang)
     )
-    
+
     activate_defense = st.checkbox(
         get_text("sidebar_defense_mode", lang),
         value=True,
         help=get_text("sidebar_defense_mode_help", lang)
     )
-    
+
     if simulate_attack:
         st.markdown(f"""
         <div style="background: rgba(239,68,68,0.15); border: 1px solid #EF4444; padding: 0.6rem; border-radius: 10px; font-size: 0.8rem; color: #FCA5A5 !important;">
@@ -619,7 +610,7 @@ if btn_generate:
     with st.spinner("Synthesizing patient cohorts with natural prevalence skew..."):
         generator = MedicalDataGenerator()
         st.session_state.hospital_samples = {}
-        
+
         for h in range(n_hospitals):
             distribution = get_distribution_info(h, n_hospitals)
             images, labels = generator.create_hospital_data(
@@ -633,17 +624,17 @@ if btn_generate:
                 'distribution': distribution,
                 'all_labels': labels
             }
-        
+
         st.session_state.dataloaders = create_hospital_dataloaders(
             n_hospitals=n_hospitals,
             samples_per_hospital=samples_per_hospital,
             batch_size=32
         )
-        
+
         test_images, test_labels = create_global_test_set(n_samples=300, seed=9999)
         st.session_state.global_test_set = (test_images, test_labels)
         st.session_state.hospital_data_generated = True
-        
+
     st.success(f"✅ {get_text('sec1_msg_generated', lang)}")
     st.rerun()
 
@@ -659,38 +650,38 @@ if st.session_state.hospital_data_generated and st.session_state.hospital_sample
         "Coastline Diagnostic Institute",
         "Mount Sinai Respiratory Lab"
     ]
-    
+
     hospital_tabs = st.tabs([
-        f"🏥 {get_text('sec1_hospital_prefix', lang)} {i+1}" 
+        f"🏥 {get_text('sec1_hospital_prefix', lang)} {i+1}"
         for i in range(min(n_hospitals, len(st.session_state.hospital_samples)))
     ])
-    
+
     for h_idx, tab in enumerate(hospital_tabs):
         if h_idx not in st.session_state.hospital_samples:
             continue
-            
+
         with tab:
             data = st.session_state.hospital_samples[h_idx]
             inst_name = institutional_names[h_idx % len(institutional_names)]
-            
+
             st.markdown(f"""
             <div class="hospital-card">
                 <strong style="font-size: 1.1rem; color: #0F172A;">{inst_name}</strong><br>
                 <span style="font-size: 0.85rem; color: #64748B;">Node ID: <code>client_node_{h_idx+1}</code> | Total Cohort: <strong>{samples_per_hospital} Scans</strong></span>
             </div>
             """, unsafe_allow_html=True)
-            
+
             col_chart, col_gallery = st.columns([1, 1.5])
-            
+
             with col_chart:
                 dist = data['distribution']
                 class_labels = [
-                    get_text("sec1_normal", lang), 
-                    get_text("sec1_pneumonia", lang), 
+                    get_text("sec1_normal", lang),
+                    get_text("sec1_pneumonia", lang),
                     get_text("sec1_covid", lang)
                 ]
                 palette = ['#10B981', '#F59E0B', '#EF4444']
-                
+
                 fig_pie = go.Figure(data=[go.Pie(
                     labels=class_labels,
                     values=[dist[0], dist[1], dist[2]],
@@ -700,7 +691,7 @@ if st.session_state.hospital_data_generated and st.session_state.hospital_sample
                     textfont=dict(size=14, color='white', family="Inter"),
                     hoverinfo='label+percent+value'
                 )])
-                
+
                 fig_pie.update_layout(
                     annotations=[dict(text=f"{samples_per_hospital}<br>SCANS", x=0.5, y=0.5, font_size=15, showarrow=False, font_family="Outfit", font_color="#0F172A")],
                     height=280,
@@ -711,19 +702,19 @@ if st.session_state.hospital_data_generated and st.session_state.hospital_sample
                     plot_bgcolor='rgba(0,0,0,0)',
                 )
                 st.plotly_chart(fig_pie, use_container_width=True)
-                
+
             with col_gallery:
                 st.markdown(f"**{get_text('sec1_sample_gallery', lang)} (3x3 Grid):**")
                 images = data['images'][:9]
                 sample_labels = data['labels'][:9]
-                
+
                 fig_grid = make_subplots(
                     rows=3, cols=3,
-                    subplot_titles=[class_labels[l] for l in sample_labels],
+                    subplot_titles=[class_labels[lbl_idx] for lbl_idx in sample_labels],
                     vertical_spacing=0.12,
                     horizontal_spacing=0.06
                 )
-                
+
                 for i in range(min(9, len(images))):
                     r = i // 3 + 1
                     c = i % 3 + 1
@@ -731,12 +722,12 @@ if st.session_state.hospital_data_generated and st.session_state.hospital_sample
                         go.Heatmap(z=images[i], colorscale='gray', showscale=False),
                         row=r, col=c
                     )
-                
+
                 fig_grid.update_layout(height=340, margin=dict(l=5, r=5, t=30, b=5))
                 for i in range(1, 10):
                     fig_grid.update_xaxes(showticklabels=False, showgrid=False, row=(i-1)//3+1, col=(i-1)%3+1)
                     fig_grid.update_yaxes(showticklabels=False, showgrid=False, row=(i-1)//3+1, col=(i-1)%3+1)
-                
+
                 st.plotly_chart(fig_grid, use_container_width=True)
 
 
@@ -790,10 +781,10 @@ if btn_start_fl and st.session_state.hospital_data_generated:
         'test_accuracy': [], 'test_loss': [],
         'blocked_count': 0
     }
-    
+
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     server = CentralServer(device=device, privacy_noise=privacy_noise, defense_mode=activate_defense)
-    
+
     clients = []
     for i in range(n_hospitals):
         is_malicious = (simulate_attack and i == 2)
@@ -805,24 +796,24 @@ if btn_start_fl and st.session_state.hospital_data_generated:
             local_epochs=local_epochs,
             malicious=is_malicious
         ))
-    
+
     test_images, test_labels = st.session_state.global_test_set
-    
+
     for round_num in range(1, n_rounds + 1):
         with progress_placeholder.container():
             st.progress(round_num / n_rounds, text=f"{get_text('sec2_progress', lang)}: {round_num}/{n_rounds}")
-        
+
         metrics, client_metrics, test_metrics, security_report = run_federated_round(
             server, clients, round_num,
             test_images=test_images,
             test_labels=test_labels,
             use_defense=activate_defense
         )
-        
+
         st.session_state.training_history['loss'].append(metrics['loss'])
         st.session_state.training_history['accuracy'].append(metrics['accuracy'] * 100)
         st.session_state.training_history['round'].append(round_num)
-        
+
         if test_metrics:
             st.session_state.training_history['test_accuracy'].append(test_metrics.accuracy * 100)
             st.session_state.training_history['test_loss'].append(test_metrics.loss)
@@ -830,11 +821,11 @@ if btn_start_fl and st.session_state.hospital_data_generated:
             st.session_state.training_history['recall'].append(test_metrics.recall * 100)
             st.session_state.training_history['f1_score'].append(test_metrics.f1_score * 100)
             st.session_state.confusion_matrix = test_metrics.confusion_matrix
-        
+
         # Real-time Telemetry Charts
         with chart_placeholder.container():
             col_t1, col_t2 = st.columns(2)
-            
+
             with col_t1:
                 fig_loss = go.Figure()
                 fig_loss.add_trace(go.Scatter(
@@ -856,7 +847,7 @@ if btn_start_fl and st.session_state.hospital_data_generated:
                     font=dict(family="Inter", color='#0F172A')
                 )
                 st.plotly_chart(fig_loss, use_container_width=True)
-                
+
             with col_t2:
                 fig_acc = go.Figure()
                 fig_acc.add_trace(go.Scatter(
@@ -879,7 +870,7 @@ if btn_start_fl and st.session_state.hospital_data_generated:
                     font=dict(family="Inter", color='#0F172A')
                 )
                 st.plotly_chart(fig_acc, use_container_width=True)
-        
+
         # Shield report
         with shield_placeholder.container():
             if security_report and security_report.clients_blocked:
@@ -894,9 +885,7 @@ if btn_start_fl and st.session_state.hospital_data_generated:
                     ✅ <strong>{get_text('sec2_shield_secure', lang)}</strong>
                 </div>
                 """, unsafe_allow_html=True)
-                
-        time.sleep(0.15)
-        
+
     trained_model = server.get_model()
     st.session_state.global_model = trained_model
     st.session_state.trained_weights = copy.deepcopy(trained_model.state_dict())
@@ -965,32 +954,39 @@ with col_scan_opt:
         st.session_state.xai_colormap = cmap_val
 
 if btn_scan_patient and st.session_state.model_trained:
-    generator = MedicalDataGenerator(seed=int(time.time()))
-    true_label = np.random.randint(0, 3)
-    raw_img = generator.generate_synthetic_xray(true_label)
-    
+    if hasattr(st.session_state, "global_test_set") and st.session_state.global_test_set is not None:
+        test_imgs, test_lbls = st.session_state.global_test_set
+        pick_idx = int(np.random.randint(0, len(test_lbls)))
+        raw_img = test_imgs[pick_idx, 0].cpu().numpy()
+        true_label = int(test_lbls[pick_idx])
+    else:
+        generator = MedicalDataGenerator(seed=int(time.time()))
+        true_label = int(np.random.randint(0, 3))
+        raw_img = generator.generate_synthetic_xray(true_label)
+
     st.session_state.scan_image = raw_img
     st.session_state.scan_true_label = true_label
-    
+
     model = create_model()
     if st.session_state.trained_weights is not None:
         model.load_state_dict(st.session_state.trained_weights)
     model.cpu().eval()
-    
+
     img_tensor = torch.FloatTensor(raw_img).unsqueeze(0).unsqueeze(0)
     torch.set_grad_enabled(True)
     gradcam = GradCAM(model)
     heatmap, predicted_class, confidence = gradcam.generate_heatmap(img_tensor)
     confidence_pct = confidence * 100.0
-    
+
     with torch.no_grad():
         logits = model(img_tensor)
         probs = torch.nn.functional.softmax(logits, dim=1)[0].cpu().numpy()
         if np.any(np.isnan(probs)):
-            probs = np.array([0.34, 0.33, 0.33])
-            
+            st.error("Model produced invalid (NaN) predictions. Ensure model has valid trained weights.")
+            st.stop()
+
     overlay_img = create_overlay(raw_img, heatmap, alpha=st.session_state.xai_opacity)
-    
+
     st.session_state.scan_heatmap = heatmap
     st.session_state.scan_overlay = overlay_img
     st.session_state.scan_probs = probs
@@ -1001,17 +997,17 @@ if btn_scan_patient and st.session_state.model_trained:
 # Render Diagnostic Results
 if hasattr(st.session_state, 'scan_image') and st.session_state.model_trained:
     class_names_local = [
-        get_text("sec1_normal", lang), 
-        get_text("sec1_pneumonia", lang), 
+        get_text("sec1_normal", lang),
+        get_text("sec1_pneumonia", lang),
         get_text("sec1_covid", lang)
     ]
     pred_idx = st.session_state.scan_predicted
     pred_name = class_names_local[pred_idx]
     conf_val = st.session_state.scan_confidence
-    
+
     banner_class = "diag-normal" if pred_idx == 0 else ("diag-pneumonia" if pred_idx == 1 else "diag-covid")
     emoji_icon = "🟢" if pred_idx == 0 else ("🟠" if pred_idx == 1 else "🔴")
-    
+
     st.markdown(f"""
     <div class="diag-banner {banner_class}">
         <div>
@@ -1026,24 +1022,24 @@ if hasattr(st.session_state, 'scan_image') and st.session_state.model_trained:
         </div>
     </div>
     """, unsafe_allow_html=True)
-    
+
     # Dual-Pane Radiological Inspector
     col_pane_raw, col_pane_xai, col_pane_conf = st.columns([1, 1, 1.2])
-    
+
     with col_pane_raw:
         st.markdown(f"**📷 {get_text('sec3_dual_pane_orig', lang)}**")
         fig_r = go.Figure(data=go.Heatmap(z=st.session_state.scan_image, colorscale='gray', showscale=False))
         fig_r.update_layout(height=260, margin=dict(l=5, r=5, t=5, b=5), xaxis=dict(showticklabels=False), yaxis=dict(showticklabels=False, scaleanchor='x'))
         st.plotly_chart(fig_r, use_container_width=True)
         st.caption(f"Ground Truth: **{class_names_local[st.session_state.scan_true_label]}**")
-        
+
     with col_pane_xai:
         st.markdown(f"**🔬 {get_text('sec3_dual_pane_xai', lang)}**")
         fig_x = go.Figure(data=go.Image(z=(create_overlay(st.session_state.scan_image, st.session_state.scan_heatmap, alpha=st.session_state.xai_opacity) * 255).astype(np.uint8)))
         fig_x.update_layout(height=260, margin=dict(l=5, r=5, t=5, b=5), xaxis=dict(showticklabels=False), yaxis=dict(showticklabels=False))
         st.plotly_chart(fig_x, use_container_width=True)
         st.caption(f"Grad-CAM Attention Overlay ({st.session_state.xai_colormap} Palette)")
-        
+
     with col_pane_conf:
         st.markdown(f"**📊 {get_text('sec3_results_header', lang)}**")
         probs = st.session_state.scan_probs
@@ -1068,26 +1064,26 @@ if hasattr(st.session_state, 'scan_image') and st.session_state.model_trained:
         st.plotly_chart(fig_b, use_container_width=True)
 
     st.markdown("---")
-    
+
     # Clinical Recommendations & Case-Based Reasoning (RAG)
     col_cbr, col_cdss_media = st.columns([1.2, 1])
-    
+
     with col_cbr:
         st.markdown(f"### 🧬 {get_text('sec3_rag_title', lang)}")
         st.caption(get_text('sec3_rag_desc', lang))
-        
+
         if st.session_state.case_bank is None:
             st.session_state.case_bank = HistoricalCaseBank(n_cases=100)
-            
+
         model_emb = create_model()
         if st.session_state.trained_weights is not None:
             model_emb.load_state_dict(st.session_state.trained_weights)
-        
+
         img_t = torch.FloatTensor(st.session_state.scan_image).unsqueeze(0).unsqueeze(0)
         emb = extract_embedding(model_emb, img_t)
         matched_cases = st.session_state.case_bank.find_similar(emb, top_k=2)
         st.session_state.similar_cases = matched_cases
-        
+
         for case in matched_cases:
             c_label = class_names_local[case['label']]
             c_sim = case['similarity'] * 100.0
@@ -1104,18 +1100,18 @@ if hasattr(st.session_state, 'scan_image') and st.session_state.model_trained:
                 </div>
             </div>
             """, unsafe_allow_html=True)
-            
+
     with col_cdss_media:
         st.markdown(f"### 🎙️ {get_text('sec3_voice_title', lang)}")
         voice_diag_name = LABEL_NAMES.get(pred_idx, "Normal")
         audio_bytes = get_or_create_audio(voice_diag_name, conf_val)
         if audio_bytes:
             st.audio(audio_bytes, format="audio/mp3")
-            
+
         st.markdown(f"### 📋 {get_text('sec3_report_title', lang)}")
         pat_id = f"PAT-{int(time.time()) % 100000}"
         report_name = f"FedXRay_{voice_diag_name}_{pat_id}.pdf"
-        
+
         try:
             pdf_exp = get_diagnosis_explanation(voice_diag_name, conf_val)
             pdf_bytes = generate_medical_report(
@@ -1134,7 +1130,7 @@ if hasattr(st.session_state, 'scan_image') and st.session_state.model_trained:
                 mime="application/pdf",
                 use_container_width=True
             )
-        except Exception as e:
+        except Exception:
             st.caption("PDF Report compilation standby.")
 
 

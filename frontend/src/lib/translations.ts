@@ -8,7 +8,7 @@ export const TRANSLATIONS: Record<Language, Record<string, string>> = {
     hero_subtitle: "Privacy-Preserving Federated Learning & Multimodal Decision Support for Lung Pathology Detection",
     live_hud_active: "CONSORTIUM ACTIVE",
     live_hud_nodes: "Hospital Nodes Online",
-    live_hud_model: "XRay-CNN (3,136 FL-Features)",
+    live_hud_model: "Medical Foundation Backbone",
     live_hud_shield: "Byzantine Defense Shield Active",
     
     kpi_hospitals: "Hospitals",
@@ -108,7 +108,7 @@ export const TRANSLATIONS: Record<Language, Record<string, string>> = {
     hero_subtitle: "Akciğer Patolojileri Teşhisi için Gizlilik Korumalı Federe Öğrenme ve Çok Modlu Karar Destek Platformu",
     live_hud_active: "KONSORSİYUM AKTİF",
     live_hud_nodes: "Hastane Düğümü Çevrimiçi",
-    live_hud_model: "XRay-CNN (3.136 Federe Öznitelik)",
+    live_hud_model: "Tıbbi Temel Model Omurgası",
     live_hud_shield: "Bizans Savunma Kalkanı Aktif",
     
     kpi_hospitals: "Hastaneler",

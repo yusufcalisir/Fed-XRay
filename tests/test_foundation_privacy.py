@@ -7,6 +7,8 @@ from torch.utils.data import DataLoader, TensorDataset
 
 from src.fed_xray.models.foundation import (
     TextSemanticAnchor,
+    OrthogonalClassAnchor,
+    ClinicalTextEncoder,
     MedSAMClientAdapter,
     FedMedCLIPModule,
 )
@@ -31,6 +33,24 @@ def test_text_semantic_anchor():
     # Check unit norm
     norms = torch.norm(protos, dim=-1)
     assert torch.allclose(norms, torch.ones_like(norms), atol=1e-5)
+
+
+def test_orthogonal_class_anchor():
+    """Verify OrthogonalClassAnchor generates pairwise orthogonal unit vectors."""
+    anchor = OrthogonalClassAnchor(embed_dim=128, num_classes=4, seed=123)
+    protos = anchor.get_text_prototypes()
+    assert protos.shape == (4, 128)
+    sim_matrix = protos @ protos.t()
+    assert torch.allclose(sim_matrix, torch.eye(4), atol=1e-4)
+
+
+def test_clinical_text_encoder_honest_failure():
+    """Verify ClinicalTextEncoder fails honestly with RuntimeError on invalid or offline models."""
+    import pytest
+
+    with pytest.raises(RuntimeError) as exc_info:
+        ClinicalTextEncoder(model_name="nonexistent/fake-biomed-encoder-model-path", local_files_only=True)
+    assert "could not load pretrained weights" in str(exc_info.value)
 
 
 def test_medsam_client_tailored_adapter():

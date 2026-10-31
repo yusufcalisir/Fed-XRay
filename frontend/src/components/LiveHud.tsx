@@ -8,10 +8,21 @@ interface LiveHudProps {
   numHospitals: number;
   isDefenseActive: boolean;
   isTrained: boolean;
+  modelType?: string;
+  peftMode?: string;
 }
 
-export default function LiveHud({ numHospitals, isDefenseActive, isTrained }: LiveHudProps) {
+export default function LiveHud({
+  numHospitals,
+  isDefenseActive,
+  isTrained,
+  modelType = "vit_tiny",
+  peftMode = "ffa_lora",
+}: LiveHudProps) {
   const { t } = useLanguage();
+  const modelLabel = modelType
+    ? `${modelType.toUpperCase()} (${peftMode ? peftMode.toUpperCase().replace("_", "-") : "Full"})`
+    : t("live_hud_model");
 
   return (
     <div className="card-inner flex flex-wrap items-center justify-between gap-x-4 sm:gap-x-6 gap-y-2 px-3.5 sm:px-5 py-2.5 sm:py-3 mb-5 sm:mb-6 text-[10px] sm:text-[11px] font-medium text-[var(--text-muted)]">
@@ -23,7 +34,7 @@ export default function LiveHud({ numHospitals, isDefenseActive, isTrained }: Li
       </div>
       <div className="flex items-center gap-1.5 sm:gap-2">
         <Cpu className="w-3.5 h-3.5 text-blue-500 dark:text-blue-400 shrink-0" />
-        <span className="truncate">{t("live_hud_model")}</span>
+        <span className="truncate">{modelLabel}</span>
       </div>
       <div className="flex items-center gap-1.5 sm:gap-2">
         <ShieldCheck className="w-3.5 h-3.5 text-accent-500 dark:text-accent-400 shrink-0" />
