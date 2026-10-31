@@ -2,4 +2,5 @@
 search-path = ["src", "."]
 
 [errors]
+missing-import = "none"
 missing-source-for-stubs = false
