@@ -142,6 +142,89 @@ export const TRANSLATIONS: Record<Language, Record<string, string>> = {
     engine_cancel: "Cancel",
     engine_apply_url: "Apply URL",
 
+    // Navigation & Platform Showcase
+    nav_architecture: "Architecture",
+    nav_results: "Clinical Evidence",
+    nav_security: "Security & Privacy",
+    nav_benchmarks: "Benchmarks",
+    nav_launch_demo: "Launch Live Consortium",
+    nav_dashboard_overview: "Platform Overview",
+
+    // Landing Hero
+    landing_hero_badge: "Decentralized Healthcare AI Infrastructure",
+    landing_hero_title: "Privacy-Preserving Federated Oncology & Radiological Consortium",
+    landing_hero_desc: "Collaborative foundation vision intelligence across hospital networks. Zero raw patient data transfer, Leveled CKKS 128-bit homomorphic encryption, parameter-efficient fine-tuning (FFA-LoRA), and explainable decision support.",
+    landing_cta_launch: "Launch Live Consortium Demo",
+    landing_cta_docs: "Explore Technical Architecture",
+    landing_metric_nodes: "Hospital Nodes",
+    landing_metric_nodes_sub: "Natural Institutional Sites",
+    landing_metric_leakage: "Raw Patient Data Shared",
+    landing_metric_leakage_sub: "Strict Firewall Boundary",
+    landing_metric_crypto: "Homomorphic Encryption",
+    landing_metric_crypto_sub: "RLWE 128-Bit Leveled CKKS",
+    landing_metric_auc: "Hold-Out Diagnostic AUC",
+    landing_metric_auc_sub: "Consensus Convergence",
+    landing_metric_dp: "Differential Privacy",
+    landing_metric_dp_sub: "Patient-Level Bound (ε ≤ 2.0)",
+
+    // Landing Results Showcase
+    landing_results_title: "Interactive Clinical Evidence & Platform Outputs",
+    landing_results_subtitle: "Inspect verified diagnostic saliency, multimodal case matching, consortium convergence, and medical reports.",
+    landing_tab_xai: "Grad-CAM Saliency",
+    landing_tab_rag: "Federated RAG Retrieval",
+    landing_tab_convergence: "Convergence Telemetry",
+    landing_tab_report: "Official Report & Audio",
+
+    // Landing Security
+    landing_security_title: "Institutional Healthcare Security & Governance Pillars",
+    landing_security_subtitle: "Enterprise-grade mathematical privacy guarantees designed for strict HIPAA, GDPR, and clinical compliance.",
+    landing_pillar_1_title: "Zero Patient Data Leakage",
+    landing_pillar_1_desc: "Radiological scans, DICOM headers, and clinical records remain strictly locked inside hospital firewalls. Only low-rank weight updates leave the institutional boundary.",
+    landing_pillar_2_title: "Patient-Level Differential Privacy",
+    landing_pillar_2_desc: "Calibrated Gaussian differential privacy with per-patient gradient clipping (C=1.0) and Rényi DP accounting guarantees provable privacy bounds without model utility degradation.",
+    landing_pillar_3_title: "Cryptographic Secure Aggregation",
+    landing_pillar_3_desc: "Leveled CKKS 128-bit RLWE Homomorphic Encryption guarantees the central coordination server observes zero plaintext local updates, eliminating server-side insider threats.",
+    landing_pillar_4_title: "Byzantine Resilience & Poison Defense",
+    landing_pillar_4_desc: "Coordinate-wise trimmed mean and hold-out validation filters intercept adversarial poisoning and malformed updates before global consensus aggregation.",
+
+    // Landing Architecture
+    landing_arch_title: "End-to-End Consortium Architecture Pipeline",
+    landing_arch_subtitle: "Five coordinated stages orchestrating privacy-preserving intelligence from hospital edge to bedside CDSS.",
+    landing_arch_s1_title: "1. Institutional Ingestion",
+    landing_arch_s1_desc: "Natural institutional site cohorts isolated with SHA-256 patient verification and zero data cross-split.",
+    landing_arch_s2_title: "2. Foundation Backbone & PEFT",
+    landing_arch_s2_desc: "Frozen medical foundation encoder adapted via FFA-LoRA (Freeze-A LoRA) for minimal communication footprint.",
+    landing_arch_s3_title: "3. Encrypted Parameter Uplink",
+    landing_arch_s3_desc: "Patient-level DP clipping and 128-bit RLWE CKKS ciphertext serialization before network dispatch.",
+    landing_arch_s4_title: "4. Robust Consensus Aggregation",
+    landing_arch_s4_desc: "Dynamic objective alignment (FedDyn) combined with Byzantine poisoning intercept shield.",
+    landing_arch_s5_title: "5. Multimodal Clinical CDSS",
+    landing_arch_s5_desc: "Grad-CAM visual attention, RAG biopsy case retrieval, hands-free voice synthesis, and single-page PDF reports.",
+
+    // Landing Benchmarks
+    landing_bench_title: "Empirical Benchmark Validation Matrix (Strategy E)",
+    landing_bench_subtitle: "Performance across real multicenter medical imaging benchmarks (ISIC 2019, CheXpert, NCT-CRC-HE).",
+    landing_bench_col_system: "System Architecture",
+    landing_bench_col_auc: "Diagnostic AUC",
+    landing_bench_col_payload: "Uplink Payload",
+    landing_bench_col_privacy: "Privacy Guarantee",
+    landing_bench_col_resilience: "Byzantine Defense",
+    landing_bench_col_generalization: "Domain Generalization",
+
+    // Launch Modal
+    launch_modal_title: "Initializing Federated Consortium Enclave",
+    launch_modal_desc: "Establishing secure cryptographic communication channels across 4 decentralized hospital nodes...",
+    launch_modal_step1: "Hospital Node Enclaves Verified (4/4 Nodes Online)",
+    launch_modal_step2: "128-bit RLWE CKKS Homomorphic Key Exchange Complete",
+    launch_modal_step3: "FFA-LoRA Parameter Subspace Synchronized",
+    launch_modal_step4: "Entering Live Clinical Orchestration Cockpit...",
+    launch_modal_skip: "Enter Immediately",
+
+    // Landing Banner
+    landing_banner_title: "Ready to orchestrate decentralized clinical intelligence?",
+    landing_banner_desc: "Access the live multi-hospital orchestration cockpit to simulate data ingestion, run federated consensus rounds, and generate multimodal radiological diagnoses.",
+    landing_banner_btn: "Launch Live Consortium Demo",
+
     footer_text: "Fed-XRay | Privacy-Preserving Federated Oncology & Medical Imaging Consortium | Powered by PyTorch & Next.js 14"
   },
   TR: {
@@ -284,6 +367,89 @@ export const TRANSLATIONS: Record<Language, Record<string, string>> = {
     engine_autodetect: "Otomatik Tespit",
     engine_cancel: "İptal",
     engine_apply_url: "URL Uygula",
+
+    // Gezinti & Platform Sunumu
+    nav_architecture: "Mimari",
+    nav_results: "Klinik Kanıtlar",
+    nav_security: "Güvenlik & Gizlilik",
+    nav_benchmarks: "Kıyaslama",
+    nav_launch_demo: "Canlı Konsorsiyumu Başlat",
+    nav_dashboard_overview: "Platform Özeti",
+
+    // Ana Tanıtım Bölümü
+    landing_hero_badge: "Dağıtık Sağlık Yapay Zekası Altyapısı",
+    landing_hero_title: "Gizlilik Korumalı Federe Onkoloji ve Radyolojik Zeka Konsorsiyumu",
+    landing_hero_desc: "Hastane ağları arasında iş birliğine dayalı temel görüntüleme zekası. Sıfır ham hasta verisi transferi, Seviyeli CKKS 128-bit homomorfik şifreleme, parametre verimli ince ayar (FFA-LoRA) ve açıklanabilir klinik karar desteği.",
+    landing_cta_launch: "Canlı Konsorsiyumu Başlat",
+    landing_cta_docs: "Teknik Mimariyi Keşfet",
+    landing_metric_nodes: "Hastane Düğümü",
+    landing_metric_nodes_sub: "Bağımsız Klinik Merkez",
+    landing_metric_leakage: "Paylaşılan Ham Hasta Verisi",
+    landing_metric_leakage_sub: "Kesin Güvenlik Duvarı Sınırı",
+    landing_metric_crypto: "Homomorfik Şifreleme",
+    landing_metric_crypto_sub: "RLWE 128-Bit Seviyeli CKKS",
+    landing_metric_auc: "Test Teşhis Başarımı (AUC)",
+    landing_metric_auc_sub: "Konsensüs Yakınsaması",
+    landing_metric_dp: "Diferansiyel Gizlilik",
+    landing_metric_dp_sub: "Hasta Düzeyinde Sınır (ε ≤ 2.0)",
+
+    // Sonuçlar ve Kanıtlar
+    landing_results_title: "Etkileşimli Klinik Kanıtlar ve Platform Çıktıları",
+    landing_results_subtitle: "Doğrulanmış teşhis dikkat haritalarını, çok modlu vaka eşleştirmelerini, konsorsiyum yakınsamasını ve tıbbi raporları inceleyin.",
+    landing_tab_xai: "Grad-CAM Dikkat Haritası",
+    landing_tab_rag: "Federe RAG Vaka Eşleştirme",
+    landing_tab_convergence: "Yakınsama Telemetrisi",
+    landing_tab_report: "Resmi Rapor ve Ses",
+
+    // Güvenlik ve Gizlilik
+    landing_security_title: "Kurumsal Sağlık Güvenliği ve Yönetişim İlkeleri",
+    landing_security_subtitle: "Katı HIPAA, GDPR ve klinik mevzuata uygunluk için tasarlanmış kurumsal düzeyde matematiksel gizlilik garantileri.",
+    landing_pillar_1_title: "Sıfır Hasta Verisi Sızıntısı",
+    landing_pillar_1_desc: "Radyolojik taramalar, DICOM başlıkları ve klinik kayıtlar kesinlikle hastane güvenlik duvarları içinde kalır. Yalnızca düşük dereceli ağırlık güncellemeleri kurum sınırından dışarı çıkar.",
+    landing_pillar_2_title: "Hasta Düzeyinde Diferansiyel Gizlilik",
+    landing_pillar_2_desc: "Hasta başına gradyan kırpma (C=1.0) ve Rényi DP muhasebesi ile kalibre edilmiş Gauss diferansiyel gizliliği, model faydasını düşürmeden kanıtlanabilir gizlilik sınırları sağlar.",
+    landing_pillar_3_title: "Kriptografik Güvenli Toplama",
+    landing_pillar_3_desc: "Seviyeli CKKS 128-bit RLWE Homomorfik Şifreleme, merkezi koordinasyon sunucusunun sıfır açık metin yerel güncelleme görmesini garanti ederek sunucu taraflı tehditleri ortadan kaldırır.",
+    landing_pillar_4_title: "Bizans Dayanıklılığı ve Zehirlenme Savunması",
+    landing_pillar_4_desc: "Koordinat bazlı budanmış ortalama ve referans doğrulama filtreleri, küresel konsensüs birleştirmesinden önce düşmanca zehirleme ve bozuk güncellemeleri engeller.",
+
+    // Mimari İş Akışı
+    landing_arch_title: "Uçtan Uca Konsorsiyum Mimari İş Akışı",
+    landing_arch_subtitle: "Hastane uç noktasından hasta başı karar desteğine kadar gizlilik korumalı zekayı yöneten beş koordineli aşama.",
+    landing_arch_s1_title: "1. Kurumsal Veri Kabulü",
+    landing_arch_s1_desc: "SHA-256 hasta doğrulaması ve sıfır veri çapraz geçişi ile izole edilmiş bağımsız klinik merkez kohortları.",
+    landing_arch_s2_title: "2. Temel Model ve PEFT",
+    landing_arch_s2_desc: "Minimum iletişim yükü için FFA-LoRA (Freeze-A LoRA) ile uyarlanmış dondurulmuş tıbbi temel model omurgası.",
+    landing_arch_s3_title: "3. Şifreli Parametre Gönderimi",
+    landing_arch_s3_desc: "Ağ aktarımı öncesinde hasta düzeyinde DP kırpma ve 128-bit RLWE CKKS şifreli metin serileştirmesi.",
+    landing_arch_s4_title: "4. Dayanıklı Konsensüs Birleştirme",
+    landing_arch_s4_desc: "Bizans zehirleme engelleme kalkanı ile birleştirilmiş dinamik hedef uyumlaması (FedDyn).",
+    landing_arch_s5_title: "5. Çok Modlu Klinik Karar Desteği",
+    landing_arch_s5_desc: "Grad-CAM görsel dikkati, RAG biyopsi vaka eşleştirmesi, eller-serbest ses sentezi ve tek sayfa PDF raporlama.",
+
+    // Kıyaslama Matrisi
+    landing_bench_title: "Deneysel Kıyaslama Doğrulama Matrisi (Strateji E)",
+    landing_bench_subtitle: "Gerçek çok merkezli tıbbi görüntüleme kıyaslamalarında (ISIC 2019, CheXpert, NCT-CRC-HE) elde edilen başarımlar.",
+    landing_bench_col_system: "Sistem Mimarisi",
+    landing_bench_col_auc: "Teşhis Başarımı (AUC)",
+    landing_bench_col_payload: "Gönderim Yükü",
+    landing_bench_col_privacy: "Gizlilik Garantisi",
+    landing_bench_col_resilience: "Bizans Savunması",
+    landing_bench_col_generalization: "Merkezler Arası Genelleme",
+
+    // Başlatma Penceresi
+    launch_modal_title: "Federe Konsorsiyum Güvenli Alanı Başlatılıyor",
+    launch_modal_desc: "4 bağımsız hastane düğümü arasında güvenli kriptografik iletişim kanalları kuruluyor...",
+    launch_modal_step1: "Hastane Düğüm Güvenli Alanları Doğrulandı (4/4 Düğüm Çevrimiçi)",
+    launch_modal_step2: "128-bit RLWE CKKS Homomorfik Anahtar Değişimi Tamamlandı",
+    launch_modal_step3: "FFA-LoRA Parametre Alt Uzayı Senkronize Edildi",
+    launch_modal_step4: "Canlı Klinik Orkestrasyon Kokpitine Giriliyor...",
+    launch_modal_skip: "Hemen Giriş Yap",
+
+    // Tanıtım Sonu Şeridi
+    landing_banner_title: "Dağıtık klinik zekayı yönetmeye hazır mısınız?",
+    landing_banner_desc: "Veri alımını simüle etmek, federe konsensüs turlarını çalıştırmak ve çok modlu radyolojik teşhisler üretmek için canlı çok merkezli orkestrasyon kokpitine erişin.",
+    landing_banner_btn: "Canlı Konsorsiyumu Başlat",
 
     footer_text: "Fed-XRay | Gizlilik Korumalı Federe Onkoloji ve Tıbbi Görüntüleme Konsorsiyumu | PyTorch ve Next.js 14 ile Geliştirilmiştir"
   }
