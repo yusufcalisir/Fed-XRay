@@ -15,6 +15,7 @@ import base64
 import hashlib
 import io
 import json
+import logging
 import os
 import time
 import threading
@@ -54,6 +55,8 @@ from api.schemas import (
     RagSimilarResponse,
     RagTwinCase,
 )
+
+logger = logging.getLogger("fed_xray.api")
 
 app = FastAPI(
     title="Fed-XRay Clinical AI API",
@@ -109,8 +112,94 @@ class AppState:
         self.task_complete: bool = False
         self.task_error: Optional[str] = None
 
+    def save_to_disk(self, checkpoint_dir: str = "checkpoints") -> bool:
+        """Persist trained model weights, metadata, and training history to disk."""
+        if not self.model_trained or self.server is None:
+            return False
+        try:
+            out_dir = Path(checkpoint_dir)
+            out_dir.mkdir(parents=True, exist_ok=True)
+            model_path = out_dir / "federated_global_model.pt"
+            meta_path = out_dir / "federated_state_metadata.json"
+
+            torch.save(self.server.global_model.state_dict(), model_path)
+
+            meta = {
+                "timestamp": time.time(),
+                "model_trained": self.model_trained,
+                "model_type": self.model_type,
+                "peft_mode": self.peft_mode,
+                "image_size": self.image_size,
+                "data_source": self.data_source,
+                "training_history": self.training_history,
+                "rounds_completed": len(self.training_history.get("round", [])),
+                "privacy_spent": self.server.get_privacy_spent() if self.server else 0.0,
+            }
+            with open(meta_path, "w", encoding="utf-8") as f:
+                json.dump(meta, f, indent=2)
+            logger.info("Persisted trained federated model state and weights to %s", out_dir)
+            return True
+        except Exception as exc:
+            logger.warning("Failed to persist federated state to disk: %s", exc)
+            return False
+
+    def restore_from_disk(self, checkpoint_dir: str = "checkpoints") -> bool:
+        """Restore trained model weights and metadata from disk if available."""
+        out_dir = Path(checkpoint_dir)
+        model_path = out_dir / "federated_global_model.pt"
+        meta_path = out_dir / "federated_state_metadata.json"
+
+        if not model_path.exists() or not meta_path.exists():
+            return False
+
+        try:
+            with open(meta_path, "r", encoding="utf-8") as f:
+                meta = json.load(f)
+
+            self.model_type = meta.get("model_type", "vit_tiny")
+            self.peft_mode = meta.get("peft_mode", "ffa_lora")
+            self.image_size = meta.get("image_size", 224)
+            self.data_source = meta.get("data_source", "strategy_e_disk_manifest")
+            self.training_history = meta.get("training_history", self.training_history)
+
+            server = CentralServer(
+                device=self.device,
+                model_type=self.model_type,
+                peft_mode=self.peft_mode,
+                img_size=self.image_size,
+            )
+            saved_weights = torch.load(model_path, map_location=self.device)
+            server.global_model.load_state_dict(saved_weights)
+            self.server = server
+            self.model_trained = True
+
+            default_manifest = Path("data/manifests/strategy_e_manifest.csv")
+            if default_manifest.exists():
+                try:
+                    ecosystem = StrategyEDatasetEcosystem(seed=42)
+                    records = ecosystem.load_from_disk_manifest(
+                        manifest_path=str(default_manifest),
+                        images_dir=str(Path("data")),
+                        target_size=(self.image_size, self.image_size),
+                        in_channels=1,
+                    )
+                    self.reference_records = records
+                    self.rag_matcher = FederatedRAGCaseMatcher(
+                        reference_records=self.reference_records,
+                        model=server.get_model(),
+                    )
+                except Exception:
+                    pass
+
+            logger.info("Successfully restored federated state and trained weights from %s", out_dir)
+            return True
+        except Exception as exc:
+            logger.warning("Failed to restore federated state from disk: %s", exc)
+            return False
+
 
 state = AppState()
+state.restore_from_disk()
 
 STRATEGY_E_CENTERS = [
     "BCN-20000 Skin Cancer Hub (Barcelona)",
@@ -191,6 +280,7 @@ async def health_check():
 
 @app.get("/api/state")
 async def get_state():
+    checkpoint_exists = Path("checkpoints/federated_global_model.pt").exists()
     return {
         "model_trained": state.model_trained,
         "hospitals_loaded": len(state.hospital_samples),
@@ -198,6 +288,33 @@ async def get_state():
         "history_rounds": len(state.training_history["round"]),
         "model_type": state.model_type,
         "peft_mode": state.peft_mode,
+        "persisted_on_disk": checkpoint_exists,
+        "data_source": state.data_source,
+    }
+
+
+@app.post("/api/state/save")
+async def save_state_endpoint():
+    """Explicitly save active federated state and trained weights to disk."""
+    if not state.model_trained or state.server is None:
+        raise HTTPException(status_code=400, detail="Cannot save un-trained model state.")
+    success = state.save_to_disk()
+    if not success:
+        raise HTTPException(status_code=500, detail="Failed to save state to disk.")
+    return {"status": "saved", "checkpoint_dir": "checkpoints"}
+
+
+@app.post("/api/state/restore")
+async def restore_state_endpoint():
+    """Restore federated state and weights from disk checkpoint."""
+    restored = state.restore_from_disk()
+    if not restored:
+        raise HTTPException(status_code=404, detail="No valid checkpoint found on disk.")
+    return {
+        "status": "restored",
+        "model_type": state.model_type,
+        "peft_mode": state.peft_mode,
+        "history_rounds": len(state.training_history["round"]),
     }
 
 
@@ -492,6 +609,7 @@ async def stream_federated_training(
         state.model_trained = True
         if state.server is not None and state.reference_records and state.rag_matcher is None:
             state.rag_matcher = build_rag_matcher(state.server)
+        state.save_to_disk()
 
     return StreamingResponse(
         event_generator(),
@@ -626,6 +744,7 @@ async def start_training_background(
             state.model_trained = True
             state.rag_matcher = build_rag_matcher(srv)
             state.task_complete = True
+            state.save_to_disk()
 
         except Exception as e:
             state.task_error = str(e)
