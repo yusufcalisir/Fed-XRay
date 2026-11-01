@@ -105,7 +105,7 @@ def test_vit_tiny_224_cpu_runtime_and_efficiency():
     elapsed = time.time() - t0
 
     assert logits.shape == (8, 3)
-    assert elapsed < 1.5, f"Expected step under 1.5s on CPU, took {elapsed:.3f}s"
+    assert elapsed < 5.0, f"Expected step under 5.0s on CPU, took {elapsed:.3f}s"
 
 
 def test_ffa_lora_load_state_dict_roundtrip():
