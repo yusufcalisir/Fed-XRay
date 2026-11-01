@@ -51,6 +51,7 @@ class XRayClassifier(nn.Module):
             padding=1
         )
         self.pool2 = nn.MaxPool2d(2, 2)  # Downsample: 14x14 -> 7x7
+        self.adaptive_pool = nn.AdaptiveAvgPool2d((7, 7))
 
         # ===== Classifier Head =====
         self.dropout = nn.Dropout(dropout_rate)
@@ -90,6 +91,7 @@ class XRayClassifier(nn.Module):
         x = self.conv2(x)
         x = F.relu(x)
         x = self.pool2(x)
+        x = self.adaptive_pool(x)
 
         x = x.view(x.size(0), -1)
         x = self.dropout(x)

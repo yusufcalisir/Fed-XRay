@@ -15,6 +15,7 @@ from plotly.subplots import make_subplots
 import torch
 import time
 import copy
+from pathlib import Path
 
 # Local module imports
 from utils.medical_data import (
@@ -23,6 +24,8 @@ from utils.medical_data import (
     get_distribution_info,
     create_global_test_set
 )
+from src.fed_xray.data.real_world import StrategyEDatasetEcosystem
+from src.fed_xray.data.ingest_real_world import ensure_strategy_e_dataset
 from utils.cnn_model import create_model
 from utils.federated_core import (
     HospitalClient,
@@ -72,6 +75,12 @@ def init_session_state():
         st.session_state.dataloaders = None
     if 'global_test_set' not in st.session_state:
         st.session_state.global_test_set = None
+    if 'reference_records' not in st.session_state:
+        st.session_state.reference_records = None
+    if 'data_source' not in st.session_state:
+        st.session_state.data_source = None
+    if 'scan_probs' not in st.session_state:
+        st.session_state.scan_probs = None
     if 'confusion_matrix' not in st.session_state:
         st.session_state.confusion_matrix = None
     if 'case_bank' not in st.session_state:
@@ -601,42 +610,148 @@ st.markdown(f"""
 </div>
 """, unsafe_allow_html=True)
 
+col_source, col_scenario = st.columns([1.2, 1])
+
+with col_source:
+    cohort_source = st.selectbox(
+        "Clinical Dataset Source",
+        options=[
+            "Strategy E Real-World Benchmark (ISIC 2019 / MIMIC-CXR / NCT-CRC-HE)",
+            "Legacy In Silico Simulation (28x28 Smoke-Test Unit Fixture)"
+        ],
+        index=0,
+        help="Strategy E adheres to Rule 9 with 224x224 clinical datasets. In Silico mode is strictly for low-resource smoke testing."
+    )
+
+with col_scenario:
+    skew_scenario = st.selectbox(
+        "Non-IID Heterogeneity Scenario",
+        options=[
+            "Scenario A: Natural Hospital Provenance (BCN / HAM10000 / UQ)",
+            "Scenario B: Mild Label Skew (Dirichlet alpha=1.0)",
+            "Scenario C: Moderate Label Skew (Dirichlet alpha=0.3)",
+            "Scenario D: Severe Label Skew (Dirichlet alpha=0.05)",
+            "Scenario E: Missing Institutional Classes (Disjoint Subsets)",
+            "Scenario F: Global Long-Tailed Skew (Pareto 100:1)",
+            "Scenario G: Combined Quantity & Extreme Label Skew"
+        ],
+        index=0,
+        help="Institutional distribution shifts according to Strategy E research benchmarks."
+    )
+
 col_gen_btn, col_gen_info = st.columns([1, 2])
 
 with col_gen_btn:
     btn_generate = st.button(f"🔬 {get_text('sec1_btn_generate', lang)}", key="btn_gen_cohorts")
 
+with col_gen_info:
+    if getattr(st.session_state, "data_source", None):
+        st.markdown(f"**Current Cohort:** `{st.session_state.data_source}`")
+
 if btn_generate:
-    with st.spinner("Synthesizing patient cohorts with natural prevalence skew..."):
-        generator = MedicalDataGenerator()
-        st.session_state.hospital_samples = {}
+    st.session_state.case_bank = None
+    if cohort_source.startswith("Strategy E"):
+        with st.spinner("Ingesting real-world Strategy E clinical cohorts (ISIC 2019 / MIMIC-CXR / NCT-CRC-HE)..."):
+            default_manifest = Path("data/manifests/strategy_e_manifest.csv")
+            if not default_manifest.exists():
+                ensure_strategy_e_dataset(base_data_dir="data", patients_per_hospital=max(40, samples_per_hospital // 2))
 
-        for h in range(n_hospitals):
-            distribution = get_distribution_info(h, n_hospitals)
-            images, labels = generator.create_hospital_data(
-                n_samples=samples_per_hospital,
-                distribution=distribution,
-                hospital_id=h
+            ecosystem = StrategyEDatasetEcosystem(seed=42)
+            target_size = (224, 224)
+            if default_manifest.exists():
+                records = ecosystem.load_from_disk_manifest(
+                    manifest_path=str(default_manifest),
+                    images_dir=str(Path("data")),
+                    target_size=target_size,
+                    in_channels=1
+                )
+            else:
+                records = ecosystem.generate_synthetic_realworld_cohort(
+                    dataset_name="MIMIC-CXR",
+                    num_patients=max(60, n_hospitals * 25),
+                    samples_per_patient=max(1, samples_per_hospital // 25),
+                    num_classes=3,
+                    image_size=224,
+                )
+
+            # Leak-free patient-level split (70% train / 15% val / 15% test)
+            train_recs, val_recs, test_recs = ecosystem.partition_train_val_test_by_patient(
+                records=records,
+                train_ratio=0.70,
+                val_ratio=0.15,
+                test_ratio=0.15,
             )
-            st.session_state.hospital_samples[h] = {
-                'images': images[:9],
-                'labels': labels[:9],
-                'distribution': distribution,
-                'all_labels': labels
-            }
 
-        st.session_state.dataloaders = create_hospital_dataloaders(
-            n_hospitals=n_hospitals,
-            samples_per_hospital=samples_per_hospital,
-            batch_size=32
-        )
+            scenario_code = skew_scenario.split(":")[0].replace("Scenario ", "").strip()
+            client_partitions = ecosystem.partition_by_patient_and_scenario(
+                records=train_recs,
+                num_clients=n_hospitals,
+                scenario=scenario_code,
+            )
 
-        test_images, test_labels = create_global_test_set(n_samples=300, seed=9999)
-        st.session_state.global_test_set = (test_images, test_labels)
-        st.session_state.hospital_data_generated = True
+            st.session_state.dataloaders = [
+                ecosystem.records_to_dataloader(client_partitions[h], batch_size=32, shuffle=True)
+                for h in range(n_hospitals)
+            ]
 
-    st.success(f"✅ {get_text('sec1_msg_generated', lang)}")
-    st.rerun()
+            st.session_state.hospital_samples = {}
+            for h in range(n_hospitals):
+                h_recs = client_partitions[h]
+                n_tot = max(1, len(h_recs))
+                counts = {c: sum(1 for r in h_recs if r.label == c) for c in (0, 1, 2)}
+                distribution = {c: counts[c] / n_tot for c in (0, 1, 2)}
+                sample_imgs = [r.image_tensor[0].cpu().numpy() for r in h_recs[:9]]
+                sample_lbls = [r.label for r in h_recs[:9]]
+                st.session_state.hospital_samples[h] = {
+                    'images': sample_imgs,
+                    'labels': sample_lbls,
+                    'distribution': distribution,
+                    'all_labels': [r.label for r in h_recs]
+                }
+
+            # Global test set from independent patient holdout
+            test_imgs = torch.stack([r.image_tensor for r in test_recs])
+            test_lbls = torch.tensor([r.label for r in test_recs], dtype=torch.long)
+            st.session_state.global_test_set = (test_imgs, test_lbls)
+            st.session_state.reference_records = test_recs
+            st.session_state.hospital_data_generated = True
+            st.session_state.data_source = "Strategy E Real-World Benchmark (224x224)"
+
+        st.success(f"✅ Ingested {len(records)} clinical records across {n_hospitals} institutions. Patient-level isolated.")
+        st.rerun()
+    else:
+        with st.spinner("Generating legacy in silico simulation cohort (28x28 unit test fixture)..."):
+            generator = MedicalDataGenerator()
+            st.session_state.hospital_samples = {}
+
+            for h in range(n_hospitals):
+                distribution = get_distribution_info(h, n_hospitals)
+                images, labels = generator.create_hospital_data(
+                    n_samples=samples_per_hospital,
+                    distribution=distribution,
+                    hospital_id=h
+                )
+                st.session_state.hospital_samples[h] = {
+                    'images': images[:9],
+                    'labels': labels[:9],
+                    'distribution': distribution,
+                    'all_labels': labels
+                }
+
+            st.session_state.dataloaders = create_hospital_dataloaders(
+                n_hospitals=n_hospitals,
+                samples_per_hospital=samples_per_hospital,
+                batch_size=32
+            )
+
+            test_images, test_labels = create_global_test_set(n_samples=300, seed=9999)
+            st.session_state.global_test_set = (test_images, test_labels)
+            st.session_state.reference_records = None
+            st.session_state.hospital_data_generated = True
+            st.session_state.data_source = "Legacy In Silico Simulation (28x28 Test Fixture)"
+
+        st.warning("⚠️ Ingested legacy 28x28 synthetic matrices. Strictly scoped as an in silico test fixture.")
+        st.rerun()
 
 # Display hospital data
 if st.session_state.hospital_data_generated and st.session_state.hospital_samples:
@@ -783,7 +898,19 @@ if btn_start_fl and st.session_state.hospital_data_generated:
     }
 
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-    server = CentralServer(device=device, privacy_noise=privacy_noise, defense_mode=activate_defense)
+    batch_img_size = 28
+    if st.session_state.dataloaders and len(st.session_state.dataloaders) > 0:
+        try:
+            batch_img_size = int(next(iter(st.session_state.dataloaders[0]))[0].shape[-1])
+        except Exception:
+            batch_img_size = 28
+
+    server = CentralServer(
+        device=device,
+        privacy_noise=privacy_noise,
+        defense_mode=activate_defense,
+        img_size=batch_img_size,
+    )
 
     clients = []
     for i in range(n_hospitals):
@@ -794,7 +921,8 @@ if btn_start_fl and st.session_state.hospital_data_generated:
             device=device,
             learning_rate=0.0001,
             local_epochs=local_epochs,
-            malicious=is_malicious
+            malicious=is_malicious,
+            img_size=batch_img_size,
         ))
 
     test_images, test_labels = st.session_state.global_test_set
@@ -953,16 +1081,53 @@ with col_scan_opt:
         cmap_val = st.selectbox(get_text("sec3_xai_colormap", lang), ["Hot", "Jet", "Turbo", "Magma", "Viridis"], index=0)
         st.session_state.xai_colormap = cmap_val
 
-if btn_scan_patient and st.session_state.model_trained:
-    if hasattr(st.session_state, "global_test_set") and st.session_state.global_test_set is not None:
+uploaded_patient_file = st.file_uploader(
+    "Or Upload Patient Radiograph / Histology / Dermoscopy Scan (PNG, JPG, NPY):",
+    type=["png", "jpg", "jpeg", "npy"],
+    key="uploader_patient_scan"
+)
+
+trigger_scan = (btn_scan_patient or uploaded_patient_file is not None)
+
+if trigger_scan and st.session_state.model_trained:
+    if uploaded_patient_file is not None:
+        try:
+            if uploaded_patient_file.name.endswith(".npy"):
+                loaded_arr = np.load(uploaded_patient_file)
+            else:
+                from PIL import Image
+                pil_img = Image.open(uploaded_patient_file).convert("L")
+                loaded_arr = np.array(pil_img, dtype=np.float32) / 255.0
+            raw_img = loaded_arr.astype(np.float32)
+            if raw_img.ndim == 3 and raw_img.shape[0] in (1, 3):
+                raw_img = raw_img[0]
+            true_label = 0
+        except Exception as exc:
+            st.error(f"Error processing uploaded scan: {exc}")
+            st.stop()
+    elif hasattr(st.session_state, "global_test_set") and st.session_state.global_test_set is not None:
         test_imgs, test_lbls = st.session_state.global_test_set
         pick_idx = int(np.random.randint(0, len(test_lbls)))
         raw_img = test_imgs[pick_idx, 0].cpu().numpy()
         true_label = int(test_lbls[pick_idx])
+    elif Path("data/manifests/strategy_e_manifest.csv").exists():
+        ecosystem = StrategyEDatasetEcosystem(seed=42)
+        test_records = ecosystem.load_from_disk_manifest(
+            manifest_path="data/manifests/strategy_e_manifest.csv",
+            images_dir="data",
+            target_size=(224, 224),
+            in_channels=1
+        )
+        if test_records:
+            pick_rec = np.random.choice(test_records)
+            raw_img = pick_rec.image_tensor[0].cpu().numpy()
+            true_label = int(pick_rec.label)
+        else:
+            st.error("No clinical test dataset available. Please ingest hospital cohorts in Section 1 or upload a patient scan.")
+            st.stop()
     else:
-        generator = MedicalDataGenerator(seed=int(time.time()))
-        true_label = int(np.random.randint(0, 3))
-        raw_img = generator.generate_synthetic_xray(true_label)
+        st.error("No clinical test dataset available. Please ingest hospital cohorts in Section 1 or upload a patient scan.")
+        st.stop()
 
     st.session_state.scan_image = raw_img
     st.session_state.scan_true_label = true_label
