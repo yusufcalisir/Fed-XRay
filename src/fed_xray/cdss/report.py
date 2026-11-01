@@ -111,24 +111,8 @@ def generate_medical_report(
     else:
         probs = [round(float(p), 1) for p in probabilities[:3]]
 
-    # Fallback historical digital twin cases if not supplied
-    if not similar_cases:
-        diag_up = diagnosis.upper()
-        if "NORMAL" in diag_up:
-            similar_cases = [
-                {"case_id": "PAT_REF_0114", "label": 0, "similarity": 0.974, "biopsy_finding": "Confirmed clear bilateral parenchyma without infiltrates."},
-                {"case_id": "PAT_REF_0189", "label": 0, "similarity": 0.958, "biopsy_finding": "Normal physiological bronchovascular markings; no consolidation."},
-            ]
-        elif "PNEUM" in diag_up:
-            similar_cases = [
-                {"case_id": "PAT_REF_1042", "label": 1, "similarity": 0.965, "biopsy_finding": "Confirmed acute bacterial lobar pneumonia (RLL consolidation)."},
-                {"case_id": "PAT_REF_1088", "label": 1, "similarity": 0.932, "biopsy_finding": "Segmental alveolar exudate with air bronchograms."},
-            ]
-        else:
-            similar_cases = [
-                {"case_id": "PAT_REF_2035", "label": 2, "similarity": 0.951, "biopsy_finding": "Diffuse bilateral ground-glass opacities; RT-PCR confirmed SARS-CoV-2."},
-                {"case_id": "PAT_REF_2077", "label": 2, "similarity": 0.928, "biopsy_finding": "Subpleural peripheral consolidating bands with septal thickening."},
-            ]
+    # Ensure similar cases is a clean list (zero hardcoded or fabricated mock twins)
+    verified_similar_cases = [c for c in (similar_cases or []) if isinstance(c, dict)]
 
     temp_files: List[str] = []
 
@@ -375,27 +359,51 @@ def generate_medical_report(
     pdf.cell(176, 4.5, "HISTORICAL DIGITAL TWINS: BIOPSY-VERIFIED CASE RETRIEVAL (FEDERATED RAG)", 0, 1)
 
     y_rag_box = y_rag + 5.5
-    for idx, case in enumerate(similar_cases[:2]):
-        y_c = y_rag_box + idx * 8
-        pdf.set_fill_color(255, 255, 255)
-        pdf.set_draw_color(203, 213, 225)
-        pdf.rect(15, y_c, 180, 7, "DF")
+    if verified_similar_cases:
+        for idx, case in enumerate(verified_similar_cases[:2]):
+            y_c = y_rag_box + idx * 8
+            pdf.set_fill_color(255, 255, 255)
+            pdf.set_draw_color(203, 213, 225)
+            pdf.rect(15, y_c, 180, 7, "DF")
 
-        pdf.set_xy(17, y_c + 1.5)
-        pdf.set_font("Arial", "B", 7)
-        pdf.set_text_color(14, 165, 233)
-        pdf.cell(28, 4, f"Twin Case {idx + 1}: {case.get('case_id', 'REF-000')}", 0, 0)
+            pdf.set_xy(17, y_c + 1.5)
+            pdf.set_font("Arial", "B", 7)
+            pdf.set_text_color(14, 165, 233)
+            raw_cid = str(case.get("case_id", f"REF-{idx + 1:03d}"))
+            clean_cid = raw_cid.split("#")[0]
+            pdf.cell(32, 4, f"Twin Case {idx + 1}: {clean_cid[:14]}", 0, 0)
 
+            pdf.set_font("Arial", "B", 7)
+            pdf.set_text_color(15, 23, 42)
+            sim_val = float(case.get("similarity", 0.0))
+            sim_pct = sim_val * 100.0 if sim_val <= 1.0 else sim_val
+            pdf.cell(26, 4, f"Similarity: {sim_pct:.1f}%", 0, 0)
+
+            pdf.set_font("Arial", "", 6.8)
+            pdf.set_text_color(71, 85, 105)
+            finding_note = (
+                case.get("clinical_notes")
+                or case.get("biopsy_finding")
+                or case.get("history")
+                or "Biopsy-confirmed pathology record retrieved from federated node."
+            )
+            clean_note = finding_note.encode("latin-1", "replace").decode("latin-1")
+            pdf.cell(122, 4, f"Reference Note: {clean_note[:85]}", 0, 1)
+    else:
+        # Honest clinical state: Disclose when no verified digital twins are retrieved
+        pdf.set_fill_color(248, 250, 252)  # Slate 50
+        pdf.set_draw_color(203, 213, 225)  # Slate 300
+        pdf.rect(15, y_rag_box, 180, 15, "DF")
+
+        pdf.set_xy(18, y_rag_box + 2.8)
         pdf.set_font("Arial", "B", 7)
-        pdf.set_text_color(15, 23, 42)
-        sim_val = float(case.get("similarity", 0.95))
-        sim_pct = sim_val * 100.0 if sim_val <= 1.0 else sim_val
-        pdf.cell(26, 4, f"Similarity: {sim_pct:.1f}%", 0, 0)
+        pdf.set_text_color(100, 116, 139)  # Slate 500
+        pdf.cell(174, 4, "NO VERIFIED REFERENCE CASES RETRIEVED (CASE BANK UNMATCHED OR UNINDEXED)", 0, 1)
 
         pdf.set_font("Arial", "", 6.8)
-        pdf.set_text_color(71, 85, 105)
-        finding_note = case.get("biopsy_finding") or case.get("history") or "Biopsy confirmed pathology matching feature subspace."
-        pdf.cell(120, 4, f"Histopathology / Biopsy: {finding_note[:85]}", 0, 1)
+        pdf.set_xy(18, y_rag_box + 7.8)
+        pdf.set_text_color(148, 163, 184)
+        pdf.cell(174, 4, "No biopsy-verified digital twins matched the query feature vector within the active confidence radius.", 0, 1)
 
     # F. Privacy & Cryptographic Verification Audit Trail
     y_audit = y_rag_box + 18.5

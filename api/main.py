@@ -848,14 +848,19 @@ async def download_diagnostic_pdf(
 
     p_name = LABEL_NAMES.get(predicted_class, "Unknown")
 
-    similar_cases = None
-    if state.rag_matcher is not None and state.server is not None:
+    similar_cases: List[Dict[str, Any]] = []
+    if state.server is not None and state.last_scan is not None:
         try:
-            model = state.server.get_model()
-            sims = state.rag_matcher.find_similar_for_image(state.last_scan, model=model, top_k=2)
-            similar_cases = sims
-        except Exception:
-            similar_cases = None
+            if state.rag_matcher is None and state.reference_records:
+                state.rag_matcher = build_rag_matcher(state.server)
+            if state.rag_matcher is not None:
+                model = state.server.get_model()
+                sims = state.rag_matcher.find_similar_for_image(state.last_scan, model=model, top_k=2)
+                similar_cases = sims
+        except Exception as exc:
+            import logging
+            logging.getLogger("uvicorn.error").warning("RAG case retrieval for PDF failed: %s", exc)
+            similar_cases = []
 
     try:
         pdf_bytes = generate_medical_report(

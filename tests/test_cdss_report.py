@@ -78,6 +78,23 @@ def test_generate_medical_report_with_rag_digital_twins():
     assert pdf_bytes.startswith(b"%PDF-")
 
 
+def test_generate_medical_report_empty_similar_cases_renders_honest_empty_state():
+    """Verify PDF generator renders honest empty state when no digital twins are retrieved."""
+    pdf_bytes = generate_medical_report(
+        patient_id="PAT-NO-TWINS-001",
+        diagnosis="Normal",
+        confidence=98.5,
+        explanation="Routine screening scan without matching reference cases.",
+        similar_cases=[],
+    )
+    assert isinstance(pdf_bytes, bytes)
+    assert pdf_bytes.startswith(b"%PDF-")
+    # Verify neither fake PAT_REF_0114 nor PAT_REF_1042 are embedded
+    assert b"PAT_REF_0114" not in pdf_bytes
+    assert b"PAT_REF_1042" not in pdf_bytes
+    assert b"PAT_REF_2035" not in pdf_bytes
+
+
 def test_get_diagnosis_explanation():
     """Verify clinical recommendations and text findings for known lung conditions."""
     normal_exp = get_diagnosis_explanation("Normal", 98.0)
