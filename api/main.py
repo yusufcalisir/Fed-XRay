@@ -84,6 +84,10 @@ class AppState:
         self.image_size: int = 224
         self.rag_matcher: Optional[FederatedRAGCaseMatcher] = None
         self.last_scan: Optional[np.ndarray] = None
+        self.last_heatmap: Optional[np.ndarray] = None
+        self.last_probabilities: Optional[List[float]] = None
+        self.last_predicted_class: Optional[int] = None
+        self.last_patient_id: Optional[str] = None
         self.reference_records: List[RealWorldPatientRecord] = []
         self.data_source: str = "none"
         self.training_history: Dict[str, Any] = {
@@ -731,6 +735,11 @@ async def perform_diagnosis(req: DiagnoseRequest):
 
     findings = get_explanation_text(predicted_class, confidence, probabilities=probs.tolist(), heatmap=heatmap)
 
+    state.last_heatmap = heatmap
+    state.last_probabilities = [round(float(p) * 100.0, 2) for p in probs]
+    state.last_predicted_class = predicted_class
+    state.last_patient_id = patient_id
+
     true_name = LABEL_NAMES.get(true_class, "Uploaded scan (no reference label)" if true_class == -1 else "Unknown")
 
     raw_for_export = (
@@ -839,13 +848,27 @@ async def download_diagnostic_pdf(
 
     p_name = LABEL_NAMES.get(predicted_class, "Unknown")
 
+    similar_cases = None
+    if state.rag_matcher is not None and state.server is not None:
+        try:
+            model = state.server.get_model()
+            sims = state.rag_matcher.find_similar_for_image(state.last_scan, model=model, top_k=2)
+            similar_cases = sims
+        except Exception:
+            similar_cases = None
+
     try:
         pdf_bytes = generate_medical_report(
             patient_id=patient_id,
             diagnosis=p_name,
             confidence=confidence,
             explanation=findings,
+            heatmap_image=state.last_heatmap,
             original_image=state.last_scan,
+            similar_cases=similar_cases,
+            probabilities=state.last_probabilities,
+            model_architecture=f"{state.model_type.upper()} ({state.peft_mode.upper() if state.peft_mode else 'Full'})",
+            institution_source=f"Strategy E Node ({state.data_source})",
         )
     except Exception as exc:
         raise HTTPException(status_code=500, detail=f"PDF generation failed: {exc}")
