@@ -17,7 +17,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 try:
-    import hnswlib
+    import hnswlib  # pyrefly: ignore[missing-source-for-stubs]
     HNSW_AVAILABLE = True
 except ImportError:
     hnswlib = None
@@ -98,14 +98,15 @@ class FederatedRAGCaseMatcher:
 
         # Initialize high-speed HNSW vector index
         self.hnsw_index: Optional[Any] = None
-        if HNSW_AVAILABLE and len(self.embeddings) > 0 and self.embeddings_matrix.ndim == 2:
-            dim = self.embeddings_matrix.shape[1]
-            num_elements = self.embeddings_matrix.shape[0]
+        if HNSW_AVAILABLE and hnswlib is not None and len(self.embeddings) > 0 and self.embeddings_matrix.ndim == 2:
+            dim = int(self.embeddings_matrix.shape[1])
+            num_elements = int(self.embeddings_matrix.shape[0])
             max_capacity = max(num_elements * 4, 256)
-            self.hnsw_index = hnswlib.Index(space="cosine", dim=dim)
-            self.hnsw_index.init_index(max_elements=max_capacity, ef_construction=200, M=16)
-            self.hnsw_index.add_items(self.embeddings_matrix, np.arange(num_elements))
-            self.hnsw_index.set_ef(min(50, num_elements))
+            index = hnswlib.Index(space="cosine", dim=dim)
+            index.init_index(max_elements=max_capacity, ef_construction=200, M=16)
+            index.add_items(self.embeddings_matrix, np.arange(num_elements))
+            index.set_ef(min(50, num_elements))
+            self.hnsw_index = index
 
     def find_similar(
         self,

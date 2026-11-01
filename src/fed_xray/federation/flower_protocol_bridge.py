@@ -128,8 +128,8 @@ class FlowerHospitalClient(fl.client.NumPyClient):
         metrics_dict: Dict[str, Scalar] = {
             "loss": float(metrics.loss),
             "accuracy": float(metrics.accuracy),
-            "client_id": int(self.hospital_client.client_id),
-            "samples_trained": int(metrics.samples_trained),
+            "client_id": self.hospital_client.client_id,
+            "samples_trained": metrics.samples_trained,
         }
 
         return arrays, num_samples, metrics_dict
