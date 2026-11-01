@@ -1,4 +1,4 @@
-import "@testing-library/jest-dom";
+import "@testing-library/jest-dom/vitest";
 
 // Global ResizeObserver polyfill for Recharts
 class ResizeObserverMock {

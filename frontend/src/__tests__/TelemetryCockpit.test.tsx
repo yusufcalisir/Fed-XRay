@@ -7,21 +7,33 @@ import { TelemetryRound } from "@/types";
 const mockTelemetry: TelemetryRound[] = [
   {
     round_num: 1,
+    total_rounds: 5,
+    train_loss: 0.95,
+    train_accuracy: 70.0,
     test_loss: 0.85,
     test_accuracy: 72.5,
+    precision: 0.73,
+    recall: 0.72,
+    f1_score: 0.725,
     threat_detected: false,
     blocked_nodes: [],
-    loss_reduction_pct: 12.0,
+    status: "completed",
     model_type: "vit_base",
     peft_mode: "ffa_lora",
   },
   {
     round_num: 2,
+    total_rounds: 5,
+    train_loss: 0.48,
+    train_accuracy: 88.0,
     test_loss: 0.42,
     test_accuracy: 89.1,
+    precision: 0.89,
+    recall: 0.89,
+    f1_score: 0.89,
     threat_detected: true,
     blocked_nodes: [3],
-    loss_reduction_pct: 35.0,
+    status: "completed",
     model_type: "vit_base",
     peft_mode: "ffa_lora",
   },
@@ -101,3 +113,4 @@ describe("TelemetryCockpit Component", () => {
     expect(screen.getByText(/Node\(s\) 3/i)).toBeInTheDocument();
   });
 });
+

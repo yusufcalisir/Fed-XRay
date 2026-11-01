@@ -26,7 +26,10 @@
       "@/*": [
         "./src/*"
       ]
-    }
+    },
+    "types": [
+      "@testing-library/jest-dom/vitest"
+    ]
   },
   "include": [
     "next-env.d.ts",

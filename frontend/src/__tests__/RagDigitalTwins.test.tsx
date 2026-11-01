@@ -7,14 +7,14 @@ import { RagCase } from "@/types";
 const mockTwins: RagCase[] = [
   {
     case_id: "REF-ONCO-401",
-    label: 1,
+    label_id: 1,
     label_name: "Pneumonia",
     similarity: 97.4,
     history: "Biopsy confirmed bacterial lobar consolidation. Successful resolution under 14-day levofloxacin course.",
   },
   {
     case_id: "REF-ONCO-402",
-    label: 1,
+    label_id: 1,
     label_name: "Pneumonia",
     similarity: 93.1,
     history: "Hospital-acquired pneumonia. Responded positively to IV ampicillin-sulbactam therapy.",
@@ -39,3 +39,4 @@ describe("RagDigitalTwins Component", () => {
     expect(screen.getByText("93.1%")).toBeInTheDocument();
   });
 });
+
