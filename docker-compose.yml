@@ -39,3 +39,4 @@ services:
 volumes:
   fedxray-data:
     driver: local
+

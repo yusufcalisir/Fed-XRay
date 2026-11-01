@@ -3,19 +3,12 @@
 import React, { useEffect, useState } from "react";
 import { useLanguage } from "@/context/LanguageContext";
 import { useApi } from "@/context/ApiContext";
-import { Server, Sun, Moon, Activity, RefreshCw } from "lucide-react";
+import { Sun, Moon, Activity } from "lucide-react";
 
 export default function Navbar() {
   const { language, setLanguage, t } = useLanguage();
-  const { apiUrl, setApiUrl, isConnected, isChecking, autoDiscoverApi, reconnectAttempts } = useApi();
+  const { isConnected, isChecking, reconnectAttempts } = useApi();
   const [isDark, setIsDark] = useState(true);
-  const [showConfig, setShowConfig] = useState(false);
-  const [inputUrl, setInputUrl] = useState(apiUrl);
-  const [isDiscovering, setIsDiscovering] = useState(false);
-
-  useEffect(() => {
-    setInputUrl(apiUrl);
-  }, [apiUrl]);
 
   useEffect(() => {
     const savedTheme = localStorage.getItem("theme");
@@ -39,21 +32,6 @@ export default function Navbar() {
       document.documentElement.classList.remove("dark");
       localStorage.setItem("theme", "light");
     }
-  };
-
-  const handleSaveUrl = (e: React.FormEvent) => {
-    e.preventDefault();
-    setApiUrl(inputUrl);
-    setShowConfig(false);
-  };
-
-  const handleAutoDetect = async () => {
-    setIsDiscovering(true);
-    const discovered = await autoDiscoverApi();
-    if (discovered !== null) {
-      setInputUrl(discovered);
-    }
-    setIsDiscovering(false);
   };
 
   const connectionLabel = isConnected
@@ -92,86 +70,27 @@ export default function Navbar() {
         {/* Right Action Controls */}
         <div className="flex items-center gap-1.5 sm:gap-2.5">
 
-          {/* Backend Connection Indicator & Configuration */}
-          <div className="relative">
-            <button
-              onClick={() => { setInputUrl(apiUrl); setShowConfig(!showConfig); }}
-              className={`flex items-center gap-1.5 sm:gap-2 px-2 sm:px-3 py-1.5 rounded-lg text-[11px] font-medium border transition-all ${
+          {/* Secure Backend Connection Status Badge */}
+          <div
+            className={`flex items-center gap-1.5 sm:gap-2 px-2.5 sm:px-3 py-1.5 rounded-lg text-[11px] font-medium border select-none transition-all ${
+              isConnected
+                ? "bg-emerald-500/10 border-emerald-500/20 text-emerald-600 dark:text-emerald-400"
+                : isChecking
+                ? "bg-amber-500/10 border-amber-500/20 text-amber-600 dark:text-amber-400"
+                : "bg-rose-500/10 border-rose-500/20 text-rose-600 dark:text-rose-400"
+            }`}
+          >
+            <span
+              className={`w-1.5 h-1.5 rounded-full shrink-0 ${
                 isConnected
-                  ? "bg-emerald-500/10 border-emerald-500/20 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/15"
+                  ? "bg-emerald-500 shadow-[0_0_6px_#10b981]"
                   : isChecking
-                  ? "bg-amber-500/10 border-amber-500/20 text-amber-600 dark:text-amber-400 hover:bg-amber-500/15"
-                  : "bg-rose-500/10 border-rose-500/20 text-rose-600 dark:text-rose-400 hover:bg-rose-500/15"
+                  ? "bg-amber-400 animate-pulse shadow-[0_0_6px_#f59e0b]"
+                  : "bg-rose-500 animate-pulse"
               }`}
-            >
-              <span
-                className={`w-1.5 h-1.5 rounded-full shrink-0 ${
-                  isConnected
-                    ? "bg-emerald-500 shadow-[0_0_6px_#10b981]"
-                    : isChecking
-                    ? "bg-amber-400 animate-pulse shadow-[0_0_6px_#f59e0b]"
-                    : "bg-rose-500 animate-pulse"
-                }`}
-              />
-              <span className="hidden sm:inline font-semibold">{connectionLabel}</span>
-              <span className="inline sm:hidden font-semibold">{mobileLabel}</span>
-              <Server className="w-3 h-3 opacity-60 hidden xs:inline" />
-            </button>
-
-            {showConfig && (
-              <div className="absolute right-0 mt-2 w-[calc(100vw-24px)] max-w-xs sm:w-84 p-4 card z-50 shadow-2xl animate-fade-in">
-                <div className="flex items-center justify-between mb-2">
-                  <span className="text-xs font-bold text-[var(--text-heading)]">{t("engine_fastapi_gateway")}</span>
-                  <span
-                    className={`text-[10px] font-mono font-bold px-1.5 py-0.5 rounded ${
-                      isConnected
-                        ? "bg-emerald-500/15 text-emerald-400"
-                        : isChecking
-                        ? "bg-amber-500/15 text-amber-400"
-                        : "bg-rose-500/15 text-rose-400"
-                    }`}
-                  >
-                    {isConnected ? "200 OK" : isChecking ? "PROBING..." : "OFFLINE"}
-                  </span>
-                </div>
-                <form onSubmit={handleSaveUrl} className="space-y-2.5">
-                  <input
-                    type="text"
-                    value={inputUrl}
-                    onChange={(e) => setInputUrl(e.target.value)}
-                    placeholder="http://127.0.0.1:8000"
-                    className="w-full px-3 py-2 rounded-lg bg-[var(--bg-card-inner)] border border-[var(--border-card)] text-xs text-[var(--text-heading)] focus:outline-none focus:border-emerald-500/50"
-                  />
-                  <div className="text-[10px] text-[var(--text-muted)] flex items-center justify-between">
-                    <span>{t("engine_autoreconnect_active")}</span>
-                    <button
-                      type="button"
-                      onClick={handleAutoDetect}
-                      disabled={isDiscovering}
-                      className="text-emerald-500 hover:text-emerald-400 flex items-center gap-1 font-semibold disabled:opacity-50"
-                    >
-                      <RefreshCw className={`w-3 h-3 ${isDiscovering ? "animate-spin" : ""}`} />
-                      {t("engine_autodetect")}
-                    </button>
-                  </div>
-                  <div className="flex items-center justify-end gap-2 pt-1">
-                    <button
-                      type="button"
-                      onClick={() => setShowConfig(false)}
-                      className="px-3 py-1 rounded-md text-[11px] text-slate-500 hover:text-[var(--text-heading)]"
-                    >
-                      {t("engine_cancel")}
-                    </button>
-                    <button
-                      type="submit"
-                      className="px-3.5 py-1.5 rounded-md bg-slate-900 dark:bg-white text-white dark:text-slate-900 text-[11px] font-bold shadow-sm"
-                    >
-                      {t("engine_apply_url")}
-                    </button>
-                  </div>
-                </form>
-              </div>
-            )}
+            />
+            <span className="hidden sm:inline font-semibold">{connectionLabel}</span>
+            <span className="inline sm:hidden font-semibold">{mobileLabel}</span>
           </div>
 
           {/* Theme Toggle Button */}
@@ -208,6 +127,7 @@ export default function Navbar() {
           </div>
 
         </div>
+
       </div>
     </header>
   );
