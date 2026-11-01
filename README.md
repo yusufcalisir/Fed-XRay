@@ -18,7 +18,7 @@ Fed-XRay is an enterprise-grade Federated Learning (FL) and Clinical Decision Su
   <img src="https://img.shields.io/badge/Privacy-Option_J_(CKKS_+_DP)-indigo" alt="Privacy">
   <img src="https://img.shields.io/badge/PEFT-FFA--LoRA_%7C_FedSA--LoRA_%7C_FedAS--LoRA-purple" alt="PEFT">
   <img src="https://img.shields.io/badge/Localization-EN%20%7C%20TR-blue" alt="Bilingual">
-  <img src="https://img.shields.io/badge/Automated_Tests-107_Passed_100%25-brightgreen" alt="Tests">
+  <img src="https://img.shields.io/badge/Automated_Tests-112_Passed_100%25-brightgreen" alt="Tests">
   <img src="https://img.shields.io/badge/License-MIT-yellow" alt="License">
 </p>
 

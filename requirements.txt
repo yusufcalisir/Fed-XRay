@@ -20,8 +20,14 @@ scipy>=1.11.0
 Pillow>=10.0.0
 matplotlib>=3.7.0
 
-# PDF Report Generation (fpdf2 — maintained fork of fpdf, used by report.py)
+# PDF Report Generation (fpdf2: maintained fork of fpdf, used by report.py)
 fpdf2>=2.7.0
+
+# Vector Database & High-Speed Case Indexing (Federated RAG)
+hnswlib>=0.8.0
+
+# Federated Learning Multi-Node Orchestration (Flower v1.8+)
+flwr>=1.8.0
 
 # Clinical Voice Briefing (gTTS — internet-based TTS)
 gTTS>=2.3.0

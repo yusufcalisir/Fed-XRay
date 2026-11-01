@@ -255,12 +255,97 @@ class VisionTransformer(nn.Module):
         return logits
 
 
+def load_pretrained_vit_b_weights(model: VisionTransformer) -> bool:
+    """Transfer official torchvision ViT-B/16 pretrained weights into VisionTransformer.
+
+    Transfers:
+    - conv_proj -> patch_embed.proj (channel-averaged for 1-channel medical scans)
+    - class_token -> cls_token
+    - pos_embedding -> pos_embed
+    - 12x MHSA layers (in_proj_weight chunked to q, k, v projections, out_proj)
+    - 12x MLP blocks (linear_1, linear_2) and LayerNorms
+    - Final LayerNorm (encoder.ln -> norm)
+    """
+    try:
+        import torchvision.models as models
+
+        weights = models.ViT_B_16_Weights.DEFAULT
+        state = weights.get_state_dict(progress=False)
+
+        # 1. Patch projection
+        if "conv_proj.weight" in state:
+            w = state["conv_proj.weight"]  # [768, 3, 16, 16]
+            if model.patch_embed.proj.in_channels == 1:
+                w = w.mean(dim=1, keepdim=True)  # [768, 1, 16, 16]
+            if model.patch_embed.proj.weight.shape == w.shape:
+                model.patch_embed.proj.weight.data.copy_(w)
+        if "conv_proj.bias" in state and model.patch_embed.proj.bias is not None:
+            model.patch_embed.proj.bias.data.copy_(state["conv_proj.bias"])
+
+        # 2. Tokens & Positional Embeddings
+        if "class_token" in state and model.cls_token.shape == state["class_token"].shape:
+            model.cls_token.data.copy_(state["class_token"])
+        if "encoder.pos_embedding" in state and model.pos_embed.shape == state["encoder.pos_embedding"].shape:
+            model.pos_embed.data.copy_(state["encoder.pos_embedding"])
+
+        # 3. Transformer Encoder Blocks (12 layers)
+        for i, blk in enumerate(model.blocks):
+            prefix = f"encoder.layers.encoder_layer_{i}"
+            # LayerNorm 1
+            if f"{prefix}.ln_1.weight" in state:
+                blk.norm1.weight.data.copy_(state[f"{prefix}.ln_1.weight"])
+                blk.norm1.bias.data.copy_(state[f"{prefix}.ln_1.bias"])
+
+            # Self-Attention (Q, K, V split)
+            if f"{prefix}.self_attention.in_proj_weight" in state:
+                in_w = state[f"{prefix}.self_attention.in_proj_weight"]
+                q_w, k_w, v_w = in_w.chunk(3, dim=0)
+                blk.attn.q_proj.weight.data.copy_(q_w)
+                blk.attn.k_proj.weight.data.copy_(k_w)
+                blk.attn.v_proj.weight.data.copy_(v_w)
+
+            if f"{prefix}.self_attention.in_proj_bias" in state:
+                in_b = state[f"{prefix}.self_attention.in_proj_bias"]
+                q_b, k_b, v_b = in_b.chunk(3, dim=0)
+                blk.attn.q_proj.bias.data.copy_(q_b)
+                blk.attn.k_proj.bias.data.copy_(k_b)
+                blk.attn.v_proj.bias.data.copy_(v_b)
+
+            # Self-Attention Output Projection
+            if f"{prefix}.self_attention.out_proj.weight" in state:
+                blk.attn.proj.weight.data.copy_(state[f"{prefix}.self_attention.out_proj.weight"])
+                blk.attn.proj.bias.data.copy_(state[f"{prefix}.self_attention.out_proj.bias"])
+
+            # LayerNorm 2
+            if f"{prefix}.ln_2.weight" in state:
+                blk.norm2.weight.data.copy_(state[f"{prefix}.ln_2.weight"])
+                blk.norm2.bias.data.copy_(state[f"{prefix}.ln_2.bias"])
+
+            # MLP Linear 1 & 2
+            if f"{prefix}.mlp.linear_1.weight" in state:
+                blk.mlp.fc1.weight.data.copy_(state[f"{prefix}.mlp.linear_1.weight"])
+                blk.mlp.fc1.bias.data.copy_(state[f"{prefix}.mlp.linear_1.bias"])
+            if f"{prefix}.mlp.linear_2.weight" in state:
+                blk.mlp.fc2.weight.data.copy_(state[f"{prefix}.mlp.linear_2.weight"])
+                blk.mlp.fc2.bias.data.copy_(state[f"{prefix}.mlp.linear_2.bias"])
+
+        # 4. Final LayerNorm
+        if "encoder.ln.weight" in state:
+            model.norm.weight.data.copy_(state["encoder.ln.weight"])
+            model.norm.bias.data.copy_(state["encoder.ln.bias"])
+
+        return True
+    except Exception:
+        return False
+
+
 def create_medical_vit(
     model_type: str = "vit_tiny",
     img_size: int = 28,
     patch_size: int = 4,
     in_channels: int = 1,
     num_classes: int = 3,
+    pretrained: bool = False,
 ) -> VisionTransformer:
     """Factory helper to build scaled Vision Transformers suited for medical benchmarks."""
     configs = {
@@ -269,7 +354,7 @@ def create_medical_vit(
         "vit_base": {"embed_dim": 768, "depth": 12, "num_heads": 12},
     }
     cfg = configs.get(model_type, configs["vit_tiny"])
-    return VisionTransformer(
+    model = VisionTransformer(
         img_size=img_size,
         patch_size=patch_size,
         in_channels=in_channels,
@@ -278,3 +363,6 @@ def create_medical_vit(
         depth=cfg["depth"],
         num_heads=cfg["num_heads"],
     )
+    if pretrained and model_type == "vit_base" and img_size == 224 and patch_size == 16:
+        load_pretrained_vit_b_weights(model)
+    return model

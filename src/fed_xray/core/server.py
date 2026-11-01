@@ -137,7 +137,7 @@ class CentralServer:
                 )
             return model
         elif self.model_type == "uni":
-            model = UNIFoundationBackbone(embed_dim=512, num_classes=3)
+            model = UNIFoundationBackbone(embed_dim=512, num_classes=3, patch_size=self.patch_size)
             if self.peft_mode:
                 inject_lora_to_model(
                     model=model,

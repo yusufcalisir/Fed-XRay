@@ -24,13 +24,20 @@ from .vit import TransformerEncoderBlock
 class UNIFoundationBackbone(nn.Module):
     """UNI Pathology Foundation Model (ViT-L/16, 1024-dim representation space)."""
 
-    def __init__(self, embed_dim: int = 1024, num_classes: int = 3, num_layers: int = 4) -> None:
+    def __init__(
+        self,
+        embed_dim: int = 1024,
+        num_classes: int = 3,
+        num_layers: int = 4,
+        patch_size: int = 16,
+    ) -> None:
         super().__init__()
         self.embed_dim = embed_dim
         self.num_classes = num_classes
+        self.patch_size = patch_size
 
-        # Patch projection layer (4x4 patch downsampling for medical scans)
-        self.patch_proj = nn.Conv2d(1, embed_dim, kernel_size=4, stride=4)
+        # Patch projection layer (patch_size x patch_size patch downsampling for medical scans)
+        self.patch_proj = nn.Conv2d(1, embed_dim, kernel_size=patch_size, stride=patch_size)
         num_heads = 8 if embed_dim % 8 == 0 else 4
         self.blocks = nn.ModuleList([
             TransformerEncoderBlock(embed_dim=embed_dim, num_heads=num_heads)

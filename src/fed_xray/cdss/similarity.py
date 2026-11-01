@@ -16,6 +16,13 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
+try:
+    import hnswlib
+    HNSW_AVAILABLE = True
+except ImportError:
+    hnswlib = None
+    HNSW_AVAILABLE = False
+
 
 class FederatedRAGCaseMatcher:
     """Case retrieval over a caller-supplied reference cohort using genuine encoder embeddings.
@@ -87,28 +94,52 @@ class FederatedRAGCaseMatcher:
             note = (getattr(rec, "clinical_notes", "") or "").strip()
             self.clinical_notes.append(note if note else "No clinical notes recorded for this case.")
 
-        self.embeddings_matrix = np.array(self.embeddings)
+        self.embeddings_matrix = np.array(self.embeddings, dtype=np.float32)
+
+        # Initialize high-speed HNSW vector index
+        self.hnsw_index: Optional[Any] = None
+        if HNSW_AVAILABLE and len(self.embeddings) > 0 and self.embeddings_matrix.ndim == 2:
+            dim = self.embeddings_matrix.shape[1]
+            num_elements = self.embeddings_matrix.shape[0]
+            max_capacity = max(num_elements * 4, 256)
+            self.hnsw_index = hnswlib.Index(space="cosine", dim=dim)
+            self.hnsw_index.init_index(max_elements=max_capacity, ef_construction=200, M=16)
+            self.hnsw_index.add_items(self.embeddings_matrix, np.arange(num_elements))
+            self.hnsw_index.set_ef(min(50, num_elements))
 
     def find_similar(
         self,
         query_embedding: np.ndarray,
         top_k: int = 2,
     ) -> List[Dict[str, Any]]:
-        """Find the top-k most similar reference cases by cosine similarity."""
+        """Find the top-k most similar reference cases using HNSW vector indexing."""
         if query_embedding.ndim == 1:
             query_embedding = query_embedding.reshape(1, -1)
+        query_float = query_embedding.astype(np.float32)
 
-        sims = cosine_similarity(query_embedding, self.embeddings_matrix)[0]
-        top_indices = np.argsort(sims)[::-1][:top_k]
+        k_val = min(top_k, len(self.embeddings))
+        if k_val == 0:
+            return []
+
+        if self.hnsw_index is not None:
+            labels_matched, distances = self.hnsw_index.knn_query(query_float, k=k_val)
+            top_indices = labels_matched[0]
+            # In hnswlib with space="cosine", distance = 1 - cosine_sim
+            sims = 1.0 - distances[0]
+        else:
+            sims_all = cosine_similarity(query_float, self.embeddings_matrix)[0]
+            top_indices = np.argsort(sims_all)[::-1][:k_val]
+            sims = sims_all[top_indices]
 
         results = []
-        for idx in top_indices:
+        for idx, sim in zip(top_indices, sims):
+            idx_int = int(idx)
             results.append({
-                "case_id": self.case_ids[idx],
-                "label": self.labels[idx],
-                "similarity": float(np.clip(sims[idx], 0.0, 1.0)),
-                "image": self.images[idx],
-                "clinical_notes": self.clinical_notes[idx],
+                "case_id": self.case_ids[idx_int],
+                "label": self.labels[idx_int],
+                "similarity": float(np.clip(sim, 0.0, 1.0)),
+                "image": self.images[idx_int],
+                "clinical_notes": self.clinical_notes[idx_int],
             })
         return results
 
@@ -124,18 +155,30 @@ class FederatedRAGCaseMatcher:
         """
         if query_embedding.ndim == 1:
             query_embedding = query_embedding.reshape(1, -1)
+        query_float = query_embedding.astype(np.float32)
 
-        sims = cosine_similarity(query_embedding, self.embeddings_matrix)[0]
-        top_indices = np.argsort(sims)[::-1][:top_k]
+        k_val = min(top_k, len(self.embeddings))
+        if k_val == 0:
+            return np.ones(num_classes, dtype=np.float32) / num_classes
 
-        top_sims = sims[top_indices] / self.temperature
+        if self.hnsw_index is not None:
+            labels_matched, distances = self.hnsw_index.knn_query(query_float, k=k_val)
+            top_indices = labels_matched[0]
+            sims = 1.0 - distances[0]
+        else:
+            sims_all = cosine_similarity(query_float, self.embeddings_matrix)[0]
+            top_indices = np.argsort(sims_all)[::-1][:k_val]
+            sims = sims_all[top_indices]
+
+        top_sims = sims / self.temperature
         # Numerically stable softmax
         exp_sims = np.exp(top_sims - np.max(top_sims))
         weights = exp_sims / np.sum(exp_sims)
 
         prob_dist = np.zeros(num_classes, dtype=np.float32)
         for w, idx in zip(weights, top_indices):
-            label = self.labels[idx]
+            idx_int = int(idx)
+            label = self.labels[idx_int]
             if label < num_classes:
                 prob_dist[label] += float(w)
 
