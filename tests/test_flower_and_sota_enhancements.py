@@ -45,7 +45,19 @@ def test_vit_base_224_pretrained_and_ffa_lora():
 
 def test_hnsw_vector_indexing_federated_rag():
     """Verify HNSW sub-millisecond vector indexing on verified clinical cases."""
-    matcher = FederatedRAGCaseMatcher(n_cases=25)
+    from src.fed_xray.data.real_world import RealWorldPatientRecord
+
+    records = [
+        RealWorldPatientRecord(
+            patient_id=f"TEST-HNSW-{i}",
+            site_id="Hospital-Beta",
+            image_tensor=torch.rand(1, 28, 28, dtype=torch.float32),
+            label=i % 3,
+            clinical_notes=f"HNSW test record {i}",
+        )
+        for i in range(25)
+    ]
+    matcher = FederatedRAGCaseMatcher(reference_records=records)
     assert matcher.hnsw_index is not None, "HNSW vector index must be initialized"
 
     query_vec = np.random.randn(64).astype(np.float32)

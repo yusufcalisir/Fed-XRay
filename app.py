@@ -1086,22 +1086,30 @@ if hasattr(st.session_state, 'scan_image') and st.session_state.model_trained:
         matched_cases = st.session_state.case_bank.find_similar(emb, top_k=2)
         st.session_state.similar_cases = matched_cases
 
-        for case in matched_cases:
-            c_label = class_names_local[case['label']]
-            c_sim = case['similarity'] * 100.0
-            st.markdown(f"""
-            <div class="glass-panel" style="padding: 1rem; margin-bottom: 0.75rem; display: flex; justify-content: space-between; align-items: center;">
-                <div>
-                    <strong style="color: #0F172A; font-size: 0.95rem;">{case['case_id']}</strong><br>
-                    <span style="font-size: 0.82rem; color: #64748B;">Diagnosis: <strong>{c_label}</strong></span>
+        if not matched_cases:
+            empty_rag_msg = (
+                "Referans klinik kohort dizinlenmedi. Federe dijital ikiz eslestirmesi icin vaka kayitlari gereklidir."
+                if lang == "tr"
+                else "No reference clinical cohort indexed. Reference case bank requires cohort ingestion."
+            )
+            st.info(f"ℹ️ {empty_rag_msg}")
+        else:
+            for case in matched_cases:
+                c_label = class_names_local[case['label']]
+                c_sim = case['similarity'] * 100.0
+                st.markdown(f"""
+                <div class="glass-panel" style="padding: 1rem; margin-bottom: 0.75rem; display: flex; justify-content: space-between; align-items: center;">
+                    <div>
+                        <strong style="color: #0F172A; font-size: 0.95rem;">{case['case_id']}</strong><br>
+                        <span style="font-size: 0.82rem; color: #64748B;">Diagnosis: <strong>{c_label}</strong></span>
+                    </div>
+                    <div>
+                        <span style="background: rgba(37,99,235,0.1); color: #1E40AF; padding: 4px 10px; border-radius: 9999px; font-weight: 700; font-size: 0.8rem;">
+                            {c_sim:.1f}% {get_text('sec3_rag_sim', lang)}
+                        </span>
+                    </div>
                 </div>
-                <div>
-                    <span style="background: rgba(37,99,235,0.1); color: #1E40AF; padding: 4px 10px; border-radius: 9999px; font-weight: 700; font-size: 0.8rem;">
-                        {c_sim:.1f}% {get_text('sec3_rag_sim', lang)}
-                    </span>
-                </div>
-            </div>
-            """, unsafe_allow_html=True)
+                """, unsafe_allow_html=True)
 
     with col_cdss_media:
         st.markdown(f"### 🎙️ {get_text('sec3_voice_title', lang)}")

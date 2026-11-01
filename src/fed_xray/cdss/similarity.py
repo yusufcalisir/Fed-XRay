@@ -27,8 +27,9 @@ except ImportError:
 class FederatedRAGCaseMatcher:
     """Case retrieval over a caller-supplied reference cohort using genuine encoder embeddings.
 
-    The case bank is built only from real records passed by the caller (for example a
-    disk manifest cohort). No cases, labels or clinical histories are fabricated here.
+    The case bank is built strictly from real patient records passed by the caller
+    (for example a disk manifest cohort). No cases, labels, or clinical histories
+    are fabricated or synthesized here under clinical integrity standards.
     """
 
     def __init__(
@@ -38,27 +39,6 @@ class FederatedRAGCaseMatcher:
         temperature: float = 0.1,
         n_cases: Optional[int] = None,
     ) -> None:
-        if reference_records is None or len(reference_records) == 0:
-            from ..data.generator import MedicalDataGenerator
-            from ..data.real_world import RealWorldPatientRecord
-
-            gen = MedicalDataGenerator(seed=42)
-            count = n_cases if n_cases is not None else 100
-            fallback_records = []
-            for i in range(count):
-                lbl = i % 3
-                img = gen.generate_synthetic_xray(label=lbl)
-                fallback_records.append(
-                    RealWorldPatientRecord(
-                        patient_id=f"REF-{lbl}-{1000 + i}",
-                        site_id="Reference Bank",
-                        image_tensor=torch.tensor(img, dtype=torch.float32).unsqueeze(0),
-                        label=lbl,
-                        clinical_notes=f"Reference Case {1000 + i} for class {lbl}",
-                    )
-                )
-            reference_records = fallback_records
-
         if model is None:
             from ..models.cnn import create_cnn_model
 
@@ -72,11 +52,36 @@ class FederatedRAGCaseMatcher:
         self.case_ids: List[str] = []
         self.images: List[np.ndarray] = []
         self.clinical_notes: List[str] = []
+        self.embeddings_matrix: np.ndarray = np.empty((0, 64), dtype=np.float32)
+        self.hnsw_index: Optional[Any] = None
 
-        self._build_case_bank(reference_records)
+        if reference_records is not None and len(reference_records) > 0:
+            records_to_index = list(reference_records)
+            if n_cases is not None and n_cases > 0:
+                records_to_index = records_to_index[:n_cases]
+            self._build_case_bank(records_to_index)
+
+    @property
+    def is_empty(self) -> bool:
+        """Return True if the case bank contains no indexed reference cases."""
+        return len(self.embeddings) == 0
+
+    def __len__(self) -> int:
+        return len(self.embeddings)
+
+    def add_records(self, new_records: Sequence[Any]) -> int:
+        """Add additional patient records to the case bank and refresh the index."""
+        if not new_records:
+            return 0
+        added_count = len(new_records)
+        self._build_case_bank(list(new_records))
+        return added_count
 
     def _build_case_bank(self, reference_records: Sequence[Any]) -> None:
         """Embed every reference record with the encoder and index it."""
+        if not reference_records:
+            return
+
         encoder = self.model
         encoder.eval()
         params = list(encoder.parameters())
@@ -89,7 +94,7 @@ class FederatedRAGCaseMatcher:
 
             self.embeddings.append(embedding.astype(np.float32))
             self.labels.append(int(rec.label))
-            self.case_ids.append(f"{rec.patient_id}#{idx}")
+            self.case_ids.append(f"{rec.patient_id}#{len(self.embeddings) - 1}")
             self.images.append(image)
             note = (getattr(rec, "clinical_notes", "") or "").strip()
             self.clinical_notes.append(note if note else "No clinical notes recorded for this case.")
@@ -97,7 +102,7 @@ class FederatedRAGCaseMatcher:
         self.embeddings_matrix = np.array(self.embeddings, dtype=np.float32)
 
         # Initialize high-speed HNSW vector index
-        self.hnsw_index: Optional[Any] = None
+        self.hnsw_index = None
         if HNSW_AVAILABLE and hnswlib is not None and len(self.embeddings) > 0 and self.embeddings_matrix.ndim == 2:
             dim = int(self.embeddings_matrix.shape[1])
             num_elements = int(self.embeddings_matrix.shape[0])
@@ -151,6 +156,9 @@ class FederatedRAGCaseMatcher:
         top_k: int = 5,
     ) -> List[Dict[str, Any]]:
         """Extract embedding from an input scan and retrieve top-K verified matching cases."""
+        if len(self.embeddings) == 0:
+            return []
+
         encoder = model if model is not None else self.model
         encoder.eval()
         params = list(encoder.parameters())
