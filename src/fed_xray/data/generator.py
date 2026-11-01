@@ -12,8 +12,15 @@ from torch.utils.data import Dataset, DataLoader
 
 
 class MedicalDataGenerator:
-    """
-    Synthetic X-Ray generator for federated learning simulations.
+    """Legacy synthetic generator for low-resolution unit testing and simulation.
+
+    [CLINICAL INTEGRITY AUDIT NOTICE - RULE 9 & RULE 12]:
+    This generator produces in silico low-resolution (default 28x28) pixel arrays.
+    It is retained strictly for backward compatibility with unit tests, CI pipelines,
+    and fast tensor communication smoke tests.
+    It MUST NOT be deployed in clinical decision loops or treated as real medical datasets
+    (ISIC 2019, MIMIC-CXR, NCT-CRC-HE).
+    For production Strategy E workflows, utilize DiskMedicalDataset or StrategyEDatasetEcosystem.
 
     Classes:
     - 0: Normal - Clear lungs with minimal opacity
@@ -23,6 +30,7 @@ class MedicalDataGenerator:
 
     LABELS: Dict[int, str] = {0: "Normal", 1: "Pneumonia", 2: "COVID-19"}
     NUM_CLASSES: int = 3
+    PROVENANCE: str = "legacy_synthetic_28x28_simulation"
 
     def __init__(
         self,
@@ -34,6 +42,7 @@ class MedicalDataGenerator:
         self.image_size = image_size
         self.noise_level = noise_level
         self.rotation_range = rotation_range
+        self.provenance = self.PROVENANCE
 
         if seed is not None:
             np.random.seed(seed)

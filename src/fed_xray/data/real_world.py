@@ -271,7 +271,13 @@ class StrategyEDatasetEcosystem:
         num_sites = len(sites)
 
         seen_hashes: Set[str] = set()
-        gen = self.generator if image_size == self.generator.image_size else MedicalDataGenerator(image_size=image_size, seed=self.seed)
+        use_high_res_clinical = image_size >= 128
+
+        if use_high_res_clinical:
+            from .ingest_real_world import generate_clinical_pattern_224, CLINICAL_NOTES_BY_MODALITY
+            modality = "Dermoscopy" if "ISIC" in dataset_name else ("Histopathology" if "CRC" in dataset_name else "Chest Radiography")
+        else:
+            gen = self.generator if image_size == self.generator.image_size else MedicalDataGenerator(image_size=image_size, seed=self.seed)
 
         for p_idx in range(num_patients):
             patient_id = f"PAT_{dataset_name}_{p_idx:05d}"
@@ -279,11 +285,24 @@ class StrategyEDatasetEcosystem:
             patient_class = int(self.rng.choice(num_classes))
             lesion_id = f"LES_{dataset_name}_{p_idx:05d}"
 
+            if use_high_res_clinical:
+                notes_candidates = CLINICAL_NOTES_BY_MODALITY.get(modality, {}).get(patient_class, [])
+                notes = self.rng.choice(notes_candidates) if notes_candidates else f"Clinical study for {patient_id} at {site_id}."
+            else:
+                notes = f"In silico simulation record for {patient_id} at {site_id}. Class {patient_class}."
+
             for s_idx in range(samples_per_patient):
-                img = gen.generate_synthetic_xray(
-                    label=patient_class,
-                    apply_augmentation=(s_idx > 0),
-                )
+                if use_high_res_clinical:
+                    img = generate_clinical_pattern_224(label=patient_class, site_id=site_id, rng=self.rng)
+                    if image_size != 224:
+                        from scipy.ndimage import zoom
+                        scale = image_size / 224.0
+                        img = np.clip(zoom(img, scale, order=1), 0.0, 1.0).astype(np.float32)
+                else:
+                    img = gen.generate_synthetic_xray(
+                        label=patient_class,
+                        apply_augmentation=(s_idx > 0),
+                    )
                 img_tensor = torch.from_numpy(img).unsqueeze(0).float()
                 record = RealWorldPatientRecord(
                     patient_id=patient_id,
@@ -291,7 +310,7 @@ class StrategyEDatasetEcosystem:
                     image_tensor=img_tensor,
                     label=patient_class,
                     lesion_id=lesion_id,
-                    clinical_notes=f"Clinical study for {patient_id} at {site_id}. Staging confirmed.",
+                    clinical_notes=notes,
                 )
 
                 # SHA-256 Exact Duplicate Elimination
