@@ -55,22 +55,22 @@ export default function ConsortiumLaunchOverlay({
   const steps = [
     {
       title: t("launch_modal_step1"),
-      desc: "Node 1-4 enclaves online. Zero cross-institution patient leakage verified.",
+      desc: t("launch_modal_step1_desc"),
       icon: Server,
     },
     {
       title: t("launch_modal_step2"),
-      desc: "RLWE ciphertext ring initialized. Central server receives zero plaintext updates.",
+      desc: t("launch_modal_step2_desc"),
       icon: Lock,
     },
     {
       title: t("launch_modal_step3"),
-      desc: "Rank-16 low-rank adapters frozen and synchronized for non-IID drift control.",
+      desc: t("launch_modal_step3_desc"),
       icon: Activity,
     },
     {
       title: t("launch_modal_step4"),
-      desc: "Loading real-time orchestration cockpit, telemetry cockpit, and Grad-CAM CDSS.",
+      desc: t("launch_modal_step4_desc"),
       icon: ShieldCheck,
     },
   ];
@@ -105,7 +105,7 @@ export default function ConsortiumLaunchOverlay({
         {/* Progress Bar */}
         <div className="mb-4 sm:mb-6">
           <div className="flex justify-between items-center text-[10px] sm:text-[11px] font-semibold text-[var(--text-muted)] mb-1.5">
-            <span>Federated Handshake</span>
+            <span>{t("launch_modal_handshake")}</span>
             <span className="font-mono text-emerald-600 dark:text-emerald-400">{progress}%</span>
           </div>
           <div className="w-full h-2 rounded-full bg-slate-200 dark:bg-white/[0.06] overflow-hidden">
@@ -161,7 +161,7 @@ export default function ConsortiumLaunchOverlay({
         {/* Footer Actions */}
         <div className="flex flex-wrap items-center justify-between gap-2 pt-3 border-t border-[var(--border-subtle)]">
           <span className="text-[10px] sm:text-[11px] text-[var(--text-muted)]">
-            4 Nodes: Patient DP ε ≤ 2.0
+            {t("launch_modal_footer_nodes")}
           </span>
           <button
             onClick={handleSkip}

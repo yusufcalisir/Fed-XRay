@@ -135,7 +135,7 @@ export default function PresentationLandingPage() {
           <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-3 mb-6">
             <div>
               <div className="text-xs font-bold uppercase tracking-wider text-emerald-600 dark:text-emerald-400 mb-1">
-                Clinical CDSS Verification
+                {t("landing_sec_results_badge")}
               </div>
               <h2 className="font-display text-xl sm:text-2xl lg:text-3xl font-bold text-[var(--text-heading)]">
                 {t("landing_results_title")}
@@ -197,23 +197,23 @@ export default function PresentationLandingPage() {
                 <div>
                   <div className="flex items-center gap-2">
                     <span className="px-2 py-0.5 rounded text-[10px] font-bold uppercase bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20">
-                      Primary Finding: Pneumonia
+                      {t("landing_tab1_finding")}
                     </span>
-                    <span className="text-xs text-[var(--text-muted)]">Patient Ref: #P-8821</span>
+                    <span className="text-xs text-[var(--text-muted)]">{t("landing_tab1_patient_ref")}</span>
                   </div>
                   <h3 className="font-display text-base sm:text-lg font-bold text-[var(--text-heading)] mt-1">
-                    Bilateral Alveolar Consolidation with Air Bronchogram Localization
+                    {t("landing_tab1_headline")}
                   </h3>
                 </div>
 
                 <div className="flex items-center gap-4 text-xs shrink-0">
                   <div>
-                    <span className="text-[var(--text-muted)] mr-1.5">Confidence:</span>
+                    <span className="text-[var(--text-muted)] mr-1.5">{t("landing_tab1_conf_label")}</span>
                     <span className="font-mono font-bold text-emerald-600 dark:text-emerald-400">94.8%</span>
                   </div>
                   <div>
-                    <span className="text-[var(--text-muted)] mr-1.5">Ground Truth:</span>
-                    <span className="font-semibold text-slate-800 dark:text-slate-200">Bacterial Lobar Consolidation</span>
+                    <span className="text-[var(--text-muted)] mr-1.5">{t("landing_tab1_gt_label")}</span>
+                    <span className="font-semibold text-slate-800 dark:text-slate-200">{t("landing_tab1_gt_val")}</span>
                   </div>
                 </div>
               </div>
@@ -250,7 +250,7 @@ export default function PresentationLandingPage() {
                 <div className="card-inner p-3 sm:p-4 flex flex-col items-center">
                   <div className="w-full flex items-center justify-between text-xs font-semibold text-[var(--text-muted)] mb-2">
                     <span>{t("sec3_dual_pane_xai")}</span>
-                    <span className="text-[10px] font-mono text-emerald-500">Peak Saliency: Right Lower Lobe</span>
+                    <span className="text-[10px] font-mono text-emerald-500">{t("landing_tab1_peak_saliency")}</span>
                   </div>
                   <div className="relative w-full aspect-square max-w-sm rounded-xl overflow-hidden bg-slate-900 border border-emerald-500/30 flex items-center justify-center">
                     <div className="w-full h-full bg-gradient-to-b from-slate-900 via-slate-800 to-slate-950 p-6 flex flex-col justify-between relative">
@@ -271,7 +271,7 @@ export default function PresentationLandingPage() {
                         <div className="w-24 h-40 rounded-full border border-slate-600/30 bg-slate-800/40" />
                       </div>
                       <div className="text-center text-[10px] font-mono text-emerald-400 font-semibold">
-                        Confidence: 94.8% · Active Layer: L-3 MHSA
+                        {t("landing_tab1_layer_info")}
                       </div>
                     </div>
                   </div>
@@ -298,7 +298,8 @@ export default function PresentationLandingPage() {
                 </div>
 
                 <div className="text-xs text-[var(--text-muted)] leading-relaxed">
-                  <strong className="text-[var(--text-heading)]">Radiologist Assessment:</strong> Focal alveolar opacification with air bronchograms localized to the right lower lobe, sparing apical segments.
+                  <strong className="text-[var(--text-heading)]">{t("landing_tab1_assessment_label")} </strong>
+                  {t("landing_tab1_assessment_text")}
                 </div>
               </div>
             </div>
@@ -317,7 +318,7 @@ export default function PresentationLandingPage() {
                   </p>
                 </div>
                 <span className="px-2.5 py-1 rounded-md text-[10px] font-mono font-bold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
-                  Dual Reference Matches
+                  {t("landing_tab2_badge")}
                 </span>
               </div>
 
@@ -326,17 +327,17 @@ export default function PresentationLandingPage() {
                   <div className="flex items-center justify-between">
                     <span className="font-mono text-xs font-bold text-emerald-600 dark:text-emerald-400">REF-ONCO-401</span>
                     <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
-                      97.4% Cosine Similarity
+                      {t("landing_tab2_c1_sim")}
                     </span>
                   </div>
                   <div className="text-xs font-semibold text-[var(--text-heading)]">
-                    Bacterial Lobar Consolidation (Confirmed Biopsy)
+                    {t("landing_tab2_c1_diag")}
                   </div>
                   <p className="text-xs text-[var(--text-muted)] leading-relaxed">
-                    Dense right lower lobe opacification. Complete radiological and clinical resolution documented following 14-day targeted levofloxacin therapy.
+                    {t("landing_tab2_c1_desc")}
                   </p>
                   <div className="text-[10px] font-mono text-slate-500 pt-1 border-t border-[var(--border-subtle)]">
-                    Origin: Metropolitan Clinical Center · Outcome: Complete Remission
+                    {t("landing_tab2_c1_meta")}
                   </div>
                 </div>
 
@@ -344,17 +345,17 @@ export default function PresentationLandingPage() {
                   <div className="flex items-center justify-between">
                     <span className="font-mono text-xs font-bold text-teal-600 dark:text-teal-400">REF-ONCO-402</span>
                     <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-teal-500/10 text-teal-600 dark:text-teal-400">
-                      93.1% Cosine Similarity
+                      {t("landing_tab2_c2_sim")}
                     </span>
                   </div>
                   <div className="text-xs font-semibold text-[var(--text-heading)]">
-                    Hospital-Acquired Pulmonary Infiltrate
+                    {t("landing_tab2_c2_diag")}
                   </div>
                   <p className="text-xs text-[var(--text-muted)] leading-relaxed">
-                    Multifocal ground-glass opacity. Patient demonstrated rapid inflammatory biomarker clearance under IV ampicillin-sulbactam regimen.
+                    {t("landing_tab2_c2_desc")}
                   </p>
                   <div className="text-[10px] font-mono text-slate-500 pt-1 border-t border-[var(--border-subtle)]">
-                    Origin: University Hospital Center · Outcome: Therapeutic Clearance
+                    {t("landing_tab2_c2_meta")}
                   </div>
                 </div>
               </div>
@@ -367,15 +368,17 @@ export default function PresentationLandingPage() {
               <div className="flex items-center justify-between pb-3 border-b border-[var(--border-subtle)]">
                 <div>
                   <h3 className="font-display text-base font-bold text-[var(--text-heading)]">
-                    Multi-Center Federated Convergence & Robustness Log
+                    {t("landing_tab3_title")}
                   </h3>
                   <p className="text-xs text-[var(--text-muted)]">
-                    Hold-out validation metrics across 5 consecutive rounds under FedDyn dynamic alignment.
+                    {t("landing_tab3_desc")}
                   </p>
                 </div>
                 <div className="flex items-center gap-2">
                   <span className="w-2 h-2 rounded-full bg-emerald-500" />
-                  <span className="text-xs font-semibold text-emerald-600 dark:text-emerald-400">Consensus Converged</span>
+                  <span className="text-xs font-semibold text-emerald-600 dark:text-emerald-400">
+                    {t("landing_tab3_status")}
+                  </span>
                 </div>
               </div>
 
@@ -384,72 +387,72 @@ export default function PresentationLandingPage() {
                 <table className="w-full min-w-[620px] text-xs text-left">
                   <thead>
                     <tr className="border-b border-[var(--border-subtle)] text-[var(--text-muted)] text-[10px] uppercase tracking-wider">
-                      <th className="py-2.5 px-3">Round</th>
-                      <th className="py-2.5 px-3">Global Test Loss</th>
-                      <th className="py-2.5 px-3">Hold-Out Accuracy</th>
-                      <th className="py-2.5 px-3">Macro F1</th>
-                      <th className="py-2.5 px-3">Bandwidth (FFA-LoRA)</th>
-                      <th className="py-2.5 px-3">Byzantine Threat Status</th>
+                      <th className="py-2.5 px-3">{t("landing_tab3_col_round")}</th>
+                      <th className="py-2.5 px-3">{t("landing_tab3_col_loss")}</th>
+                      <th className="py-2.5 px-3">{t("landing_tab3_col_acc")}</th>
+                      <th className="py-2.5 px-3">{t("landing_tab3_col_f1")}</th>
+                      <th className="py-2.5 px-3">{t("landing_tab3_col_bw")}</th>
+                      <th className="py-2.5 px-3">{t("landing_tab3_col_threat")}</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-[var(--border-subtle)] font-mono">
                     <tr>
-                      <td className="py-2 px-3 font-bold text-[var(--text-heading)]">Round 1</td>
+                      <td className="py-2 px-3 font-bold text-[var(--text-heading)]">{t("landing_tab3_col_round")} 1</td>
                       <td className="py-2 px-3">0.852</td>
                       <td className="py-2 px-3 text-emerald-600 dark:text-emerald-400">72.5%</td>
                       <td className="py-2 px-3">0.718</td>
                       <td className="py-2 px-3">4.2 MB</td>
                       <td className="py-2 px-3 text-emerald-500 flex items-center gap-1 font-sans">
-                        <CheckCircle2 className="w-3.5 h-3.5" /> All 4 Nodes Verified
+                        <CheckCircle2 className="w-3.5 h-3.5" /> {t("landing_tab3_verified")}
                       </td>
                     </tr>
                     <tr>
-                      <td className="py-2 px-3 font-bold text-[var(--text-heading)]">Round 2</td>
+                      <td className="py-2 px-3 font-bold text-[var(--text-heading)]">{t("landing_tab3_col_round")} 2</td>
                       <td className="py-2 px-3">0.614</td>
                       <td className="py-2 px-3 text-emerald-600 dark:text-emerald-400">81.3%</td>
                       <td className="py-2 px-3">0.809</td>
                       <td className="py-2 px-3">4.2 MB</td>
                       <td className="py-2 px-3 text-emerald-500 flex items-center gap-1 font-sans">
-                        <CheckCircle2 className="w-3.5 h-3.5" /> All 4 Nodes Verified
+                        <CheckCircle2 className="w-3.5 h-3.5" /> {t("landing_tab3_verified")}
                       </td>
                     </tr>
                     <tr className="bg-amber-500/[0.04]">
-                      <td className="py-2 px-3 font-bold text-[var(--text-heading)]">Round 3</td>
+                      <td className="py-2 px-3 font-bold text-[var(--text-heading)]">{t("landing_tab3_col_round")} 3</td>
                       <td className="py-2 px-3">0.491</td>
                       <td className="py-2 px-3 text-emerald-600 dark:text-emerald-400">87.2%</td>
                       <td className="py-2 px-3">0.868</td>
                       <td className="py-2 px-3">4.2 MB</td>
                       <td className="py-2 px-3 text-amber-500 flex items-center gap-1 font-sans font-semibold">
-                        <AlertTriangle className="w-3.5 h-3.5" /> Intercepted Node 3 Poisoning
+                        <AlertTriangle className="w-3.5 h-3.5" /> {t("landing_tab3_intercepted")}
                       </td>
                     </tr>
                     <tr>
-                      <td className="py-2 px-3 font-bold text-[var(--text-heading)]">Round 4</td>
+                      <td className="py-2 px-3 font-bold text-[var(--text-heading)]">{t("landing_tab3_col_round")} 4</td>
                       <td className="py-2 px-3">0.378</td>
                       <td className="py-2 px-3 text-emerald-600 dark:text-emerald-400">91.6%</td>
                       <td className="py-2 px-3">0.914</td>
                       <td className="py-2 px-3">4.2 MB</td>
                       <td className="py-2 px-3 text-emerald-500 flex items-center gap-1 font-sans">
-                        <CheckCircle2 className="w-3.5 h-3.5" /> Filtered Consensus Active
+                        <CheckCircle2 className="w-3.5 h-3.5" /> {t("landing_tab3_filtered")}
                       </td>
                     </tr>
                     <tr className="bg-emerald-500/[0.04]">
-                      <td className="py-2 px-3 font-bold text-emerald-600 dark:text-emerald-400">Round 5 (Final)</td>
+                      <td className="py-2 px-3 font-bold text-emerald-600 dark:text-emerald-400">{t("landing_tab3_col_round")} 5 (Final)</td>
                       <td className="py-2 px-3 font-bold">0.286</td>
                       <td className="py-2 px-3 font-bold text-emerald-600 dark:text-emerald-400">94.8%</td>
                       <td className="py-2 px-3 font-bold">0.947</td>
                       <td className="py-2 px-3 font-bold">4.2 MB</td>
                       <td className="py-2 px-3 text-emerald-500 flex items-center gap-1 font-sans font-bold">
-                        <CheckCircle2 className="w-3.5 h-3.5" /> Consensus Deployed
+                        <CheckCircle2 className="w-3.5 h-3.5" /> {t("landing_tab3_deployed")}
                       </td>
                     </tr>
                   </tbody>
                 </table>
               </div>
 
-              <div className="card-inner p-3 flex items-center justify-between text-xs text-[var(--text-muted)]">
-                <span>Total Communication: 21.0 MB across 5 rounds (vs 1.3 GB for uncompressed ViT-Base)</span>
-                <span className="font-semibold text-emerald-600 dark:text-emerald-400">98.4% Bandwidth Savings</span>
+              <div className="card-inner p-3 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-1 text-xs text-[var(--text-muted)]">
+                <span>{t("landing_tab3_comm_summary")}</span>
+                <span className="font-semibold text-emerald-600 dark:text-emerald-400">{t("landing_tab3_savings")}</span>
               </div>
             </div>
           )}
@@ -465,10 +468,10 @@ export default function PresentationLandingPage() {
                     <span className="text-xs font-bold uppercase tracking-wider">{t("sec3_report_title")}</span>
                   </div>
                   <h4 className="text-sm font-bold text-[var(--text-heading)]">
-                    Single-Page A4 Medical Intelligence Export
+                    {t("landing_tab4_pdf_title")}
                   </h4>
                   <p className="text-xs text-[var(--text-muted)] leading-relaxed">
-                    Embedded side-by-side standard radiograph and Grad-CAM attention heatmap, calibrated probability breakdown, patient cohort demographics, and SHA-256 integrity digest.
+                    {t("landing_tab4_pdf_desc")}
                   </p>
                   <div className="pt-2">
                     <button
@@ -476,7 +479,7 @@ export default function PresentationLandingPage() {
                       className="inline-flex items-center gap-2 px-3.5 py-2 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-emerald-600 dark:text-emerald-400 text-xs font-semibold hover:bg-emerald-500/20 transition-colors"
                     >
                       <FileText className="w-3.5 h-3.5" />
-                      <span>Generate Live in Cockpit</span>
+                      <span>{t("landing_tab4_pdf_btn")}</span>
                       <ArrowRight className="w-3.5 h-3.5" />
                     </button>
                   </div>
@@ -489,10 +492,10 @@ export default function PresentationLandingPage() {
                     <span className="text-xs font-bold uppercase tracking-wider">{t("sec3_voice_title")}</span>
                   </div>
                   <h4 className="text-sm font-bold text-[var(--text-heading)]">
-                    Hands-Free Synthesized Clinical Dictation
+                    {t("landing_tab4_voice_title")}
                   </h4>
                   <p className="text-xs text-[var(--text-muted)] leading-relaxed">
-                    Instant automated audio briefing for surgical suites and sterile reading rooms. Articulates primary pathology, confidence level, and anatomical focal regions.
+                    {t("landing_tab4_voice_desc")}
                   </p>
                   <div className="pt-2">
                     <button
@@ -500,7 +503,7 @@ export default function PresentationLandingPage() {
                       className="inline-flex items-center gap-2 px-3.5 py-2 rounded-lg bg-blue-500/10 border border-blue-500/20 text-blue-600 dark:text-blue-400 text-xs font-semibold hover:bg-blue-500/20 transition-colors"
                     >
                       <Volume2 className="w-3.5 h-3.5" />
-                      <span>Listen in Live Cockpit</span>
+                      <span>{t("landing_tab4_voice_btn")}</span>
                       <ArrowRight className="w-3.5 h-3.5" />
                     </button>
                   </div>
@@ -514,7 +517,7 @@ export default function PresentationLandingPage() {
         <section id="security" className="scroll-mt-20">
           <div className="mb-6">
             <div className="text-xs font-bold uppercase tracking-wider text-emerald-600 dark:text-emerald-400 mb-1">
-              Provable Cryptographic Privacy
+              {t("landing_sec_security_badge")}
             </div>
             <h2 className="font-display text-xl sm:text-2xl lg:text-3xl font-bold text-[var(--text-heading)]">
               {t("landing_security_title")}
@@ -538,7 +541,7 @@ export default function PresentationLandingPage() {
                 </p>
               </div>
               <div className="pt-3 mt-3 border-t border-[var(--border-subtle)] text-[10px] font-mono text-emerald-600 dark:text-emerald-400 font-semibold">
-                Strategy E Standard: 0% Cross-Split
+                {t("landing_p1_tag")}
               </div>
             </div>
 
@@ -555,7 +558,7 @@ export default function PresentationLandingPage() {
                 </p>
               </div>
               <div className="pt-3 mt-3 border-t border-[var(--border-subtle)] text-[10px] font-mono text-blue-600 dark:text-blue-400 font-semibold">
-                Bound: (ε ≤ 2.0, δ ≤ 10^-5)
+                {t("landing_p2_tag")}
               </div>
             </div>
 
@@ -572,7 +575,7 @@ export default function PresentationLandingPage() {
                 </p>
               </div>
               <div className="pt-3 mt-3 border-t border-[var(--border-subtle)] text-[10px] font-mono text-teal-600 dark:text-teal-400 font-semibold">
-                Leveled CKKS 128-Bit RLWE
+                {t("landing_p3_tag")}
               </div>
             </div>
 
@@ -589,7 +592,7 @@ export default function PresentationLandingPage() {
                 </p>
               </div>
               <div className="pt-3 mt-3 border-t border-[var(--border-subtle)] text-[10px] font-mono text-amber-600 dark:text-amber-400 font-semibold">
-                Trimmed Mean & Hold-Out Shield
+                {t("landing_p4_tag")}
               </div>
             </div>
           </div>
@@ -599,7 +602,7 @@ export default function PresentationLandingPage() {
         <section id="architecture" className="scroll-mt-20">
           <div className="mb-6">
             <div className="text-xs font-bold uppercase tracking-wider text-emerald-600 dark:text-emerald-400 mb-1">
-              System Specification
+              {t("landing_sec_arch_badge")}
             </div>
             <h2 className="font-display text-xl sm:text-2xl lg:text-3xl font-bold text-[var(--text-heading)]">
               {t("landing_arch_title")}
@@ -612,7 +615,7 @@ export default function PresentationLandingPage() {
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 sm:gap-4">
             <div className="card-inner p-3.5 sm:p-4 flex flex-col justify-between">
               <div>
-                <span className="text-[10px] font-mono font-bold text-emerald-500">STAGE 01</span>
+                <span className="text-[10px] font-mono font-bold text-emerald-500">{t("landing_arch_stage_label")} 01</span>
                 <h3 className="font-display text-xs sm:text-sm font-bold text-[var(--text-heading)] mt-1 mb-1.5">
                   {t("landing_arch_s1_title")}
                 </h3>
@@ -624,7 +627,7 @@ export default function PresentationLandingPage() {
 
             <div className="card-inner p-3.5 sm:p-4 flex flex-col justify-between">
               <div>
-                <span className="text-[10px] font-mono font-bold text-emerald-500">STAGE 02</span>
+                <span className="text-[10px] font-mono font-bold text-emerald-500">{t("landing_arch_stage_label")} 02</span>
                 <h3 className="font-display text-xs sm:text-sm font-bold text-[var(--text-heading)] mt-1 mb-1.5">
                   {t("landing_arch_s2_title")}
                 </h3>
@@ -636,7 +639,7 @@ export default function PresentationLandingPage() {
 
             <div className="card-inner p-3.5 sm:p-4 flex flex-col justify-between">
               <div>
-                <span className="text-[10px] font-mono font-bold text-teal-500">STAGE 03</span>
+                <span className="text-[10px] font-mono font-bold text-teal-500">{t("landing_arch_stage_label")} 03</span>
                 <h3 className="font-display text-xs sm:text-sm font-bold text-[var(--text-heading)] mt-1 mb-1.5">
                   {t("landing_arch_s3_title")}
                 </h3>
@@ -648,7 +651,7 @@ export default function PresentationLandingPage() {
 
             <div className="card-inner p-3.5 sm:p-4 flex flex-col justify-between">
               <div>
-                <span className="text-[10px] font-mono font-bold text-blue-500">STAGE 04</span>
+                <span className="text-[10px] font-mono font-bold text-blue-500">{t("landing_arch_stage_label")} 04</span>
                 <h3 className="font-display text-xs sm:text-sm font-bold text-[var(--text-heading)] mt-1 mb-1.5">
                   {t("landing_arch_s4_title")}
                 </h3>
@@ -660,7 +663,7 @@ export default function PresentationLandingPage() {
 
             <div className="card-inner p-3.5 sm:p-4 flex flex-col justify-between">
               <div>
-                <span className="text-[10px] font-mono font-bold text-emerald-500">STAGE 05</span>
+                <span className="text-[10px] font-mono font-bold text-emerald-500">{t("landing_arch_stage_label")} 05</span>
                 <h3 className="font-display text-xs sm:text-sm font-bold text-[var(--text-heading)] mt-1 mb-1.5">
                   {t("landing_arch_s5_title")}
                 </h3>
@@ -676,7 +679,7 @@ export default function PresentationLandingPage() {
         <section id="benchmarks" className="scroll-mt-20">
           <div className="mb-6">
             <div className="text-xs font-bold uppercase tracking-wider text-emerald-600 dark:text-emerald-400 mb-1">
-              Strategy E Scientific Evidence
+              {t("landing_sec_bench_badge")}
             </div>
             <h2 className="font-display text-xl sm:text-2xl lg:text-3xl font-bold text-[var(--text-heading)]">
               {t("landing_bench_title")}
@@ -706,32 +709,32 @@ export default function PresentationLandingPage() {
                   <td className="py-3 px-3 text-emerald-600 dark:text-emerald-400 font-bold">0.984</td>
                   <td className="py-3 px-3">4.2 MB / round</td>
                   <td className="py-3 px-3 text-emerald-500 font-sans">Patient DP (ε ≤ 2.0) + CKKS</td>
-                  <td className="py-3 px-3 text-emerald-500 font-sans">Trimmed Mean Active</td>
-                  <td className="py-3 px-3 text-emerald-600 dark:text-emerald-400 font-sans">High (Domain Aligned)</td>
+                  <td className="py-3 px-3 text-emerald-500 font-sans">{t("bench_val_trimmed_active")}</td>
+                  <td className="py-3 px-3 text-emerald-600 dark:text-emerald-400 font-sans">{t("bench_val_high_aligned")}</td>
                 </tr>
                 <tr>
-                  <td className="py-2.5 px-3 font-sans text-[var(--text-heading)]">Centralized Upper Bound</td>
+                  <td className="py-2.5 px-3 font-sans text-[var(--text-heading)]">{t("bench_row_centralized")}</td>
                   <td className="py-2.5 px-3">0.987</td>
-                  <td className="py-2.5 px-3 text-slate-500 font-sans">N/A (Centralized Data)</td>
-                  <td className="py-2.5 px-3 text-rose-500 font-sans">Zero (Full Leakage)</td>
+                  <td className="py-2.5 px-3 text-slate-500 font-sans">{t("bench_val_na_centralized")}</td>
+                  <td className="py-2.5 px-3 text-rose-500 font-sans">{t("bench_val_leakage_full")}</td>
                   <td className="py-2.5 px-3 text-slate-500 font-sans">N/A</td>
-                  <td className="py-2.5 px-3 font-sans">Optimal</td>
+                  <td className="py-2.5 px-3 font-sans">{t("bench_val_optimal")}</td>
                 </tr>
                 <tr>
-                  <td className="py-2.5 px-3 font-sans text-[var(--text-heading)]">Traditional FedAvg (Full ViT)</td>
+                  <td className="py-2.5 px-3 font-sans text-[var(--text-heading)]">{t("bench_row_fedavg")}</td>
                   <td className="py-2.5 px-3">0.912</td>
                   <td className="py-2.5 px-3 text-rose-500">340 MB / round</td>
-                  <td className="py-2.5 px-3 text-slate-500 font-sans">Plaintext Weights</td>
-                  <td className="py-2.5 px-3 text-rose-500 font-sans">Vulnerable to Poisoning</td>
-                  <td className="py-2.5 px-3 font-sans">Client Drift Oscillations</td>
+                  <td className="py-2.5 px-3 text-slate-500 font-sans">{t("bench_val_plaintext")}</td>
+                  <td className="py-2.5 px-3 text-rose-500 font-sans">{t("bench_val_vulnerable")}</td>
+                  <td className="py-2.5 px-3 font-sans">{t("bench_val_drift")}</td>
                 </tr>
                 <tr>
-                  <td className="py-2.5 px-3 font-sans text-[var(--text-heading)]">Local Hospital Standalone</td>
+                  <td className="py-2.5 px-3 font-sans text-[var(--text-heading)]">{t("bench_row_standalone")}</td>
                   <td className="py-2.5 px-3">0.824</td>
-                  <td className="py-2.5 px-3 text-slate-500 font-sans">0 MB (Isolated)</td>
-                  <td className="py-2.5 px-3 text-emerald-500 font-sans">Isolated (No Transfer)</td>
+                  <td className="py-2.5 px-3 text-slate-500 font-sans">{t("bench_val_isolated")}</td>
+                  <td className="py-2.5 px-3 text-emerald-500 font-sans">{t("bench_val_no_transfer")}</td>
                   <td className="py-2.5 px-3 text-slate-500 font-sans">N/A</td>
-                  <td className="py-2.5 px-3 text-rose-500 font-sans">Severe Institutional Overfitting</td>
+                  <td className="py-2.5 px-3 text-rose-500 font-sans">{t("bench_val_overfitting")}</td>
                 </tr>
               </tbody>
             </table>

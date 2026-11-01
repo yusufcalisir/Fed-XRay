@@ -170,7 +170,7 @@ export default function Navbar({ mode = "landing", onLaunchDemo }: NavbarProps) 
             >
               <ShieldCheck className="w-3.5 h-3.5" />
               <span className="hidden sm:inline">{t("nav_launch_demo")}</span>
-              <span className="sm:hidden">Demo</span>
+              <span className="sm:hidden">{t("nav_demo_short")}</span>
               <ArrowRight className="w-3.5 h-3.5" />
             </button>
           )}
@@ -182,7 +182,7 @@ export default function Navbar({ mode = "landing", onLaunchDemo }: NavbarProps) 
               className="lg:hidden inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-medium text-[var(--text-muted)] border border-[var(--border-card)] hover:text-[var(--text-heading)]"
             >
               <ArrowLeft className="w-3.5 h-3.5" />
-              <span>Overview</span>
+              <span>{t("nav_overview_short")}</span>
             </Link>
           )}
 

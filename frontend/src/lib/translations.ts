@@ -148,6 +148,8 @@ export const TRANSLATIONS: Record<Language, Record<string, string>> = {
     nav_security: "Security & Privacy",
     nav_benchmarks: "Benchmarks",
     nav_launch_demo: "Launch Live Consortium",
+    nav_demo_short: "Demo",
+    nav_overview_short: "Overview",
     nav_dashboard_overview: "Platform Overview",
 
     // Landing Hero
@@ -167,7 +169,8 @@ export const TRANSLATIONS: Record<Language, Record<string, string>> = {
     landing_metric_dp: "Differential Privacy",
     landing_metric_dp_sub: "Patient-Level Bound (ε ≤ 2.0)",
 
-    // Landing Results Showcase
+    // Landing Results Showcase Badges & Tabs
+    landing_sec_results_badge: "Clinical CDSS Verification",
     landing_results_title: "Interactive Clinical Evidence & Platform Outputs",
     landing_results_subtitle: "Inspect verified diagnostic saliency, multimodal case matching, consortium convergence, and medical reports.",
     landing_tab_xai: "Grad-CAM Saliency",
@@ -175,7 +178,56 @@ export const TRANSLATIONS: Record<Language, Record<string, string>> = {
     landing_tab_convergence: "Convergence Telemetry",
     landing_tab_report: "Official Report & Audio",
 
+    // Results Tab 1: Grad-CAM XAI
+    landing_tab1_finding: "Primary Finding: Pneumonia",
+    landing_tab1_patient_ref: "Patient Ref: #P-8821",
+    landing_tab1_headline: "Bilateral Alveolar Consolidation with Air Bronchogram Localization",
+    landing_tab1_conf_label: "Confidence:",
+    landing_tab1_gt_label: "Ground Truth:",
+    landing_tab1_gt_val: "Bacterial Lobar Consolidation",
+    landing_tab1_peak_saliency: "Peak Saliency: Right Lower Lobe",
+    landing_tab1_layer_info: "Confidence: 94.8% · Active Layer: L-3 MHSA",
+    landing_tab1_assessment_label: "Radiologist Assessment:",
+    landing_tab1_assessment_text: "Focal alveolar opacification with air bronchograms localized to the right lower lobe, sparing apical segments.",
+
+    // Results Tab 2: RAG Twins
+    landing_tab2_badge: "Dual Reference Matches",
+    landing_tab2_c1_sim: "97.4% Cosine Similarity",
+    landing_tab2_c1_diag: "Bacterial Lobar Consolidation (Confirmed Biopsy)",
+    landing_tab2_c1_desc: "Dense right lower lobe opacification. Complete radiological and clinical resolution documented following 14-day targeted levofloxacin therapy.",
+    landing_tab2_c1_meta: "Origin: Metropolitan Clinical Center · Outcome: Complete Remission",
+    landing_tab2_c2_sim: "93.1% Cosine Similarity",
+    landing_tab2_c2_diag: "Hospital-Acquired Pulmonary Infiltrate",
+    landing_tab2_c2_desc: "Multifocal ground-glass opacity. Patient demonstrated rapid inflammatory biomarker clearance under IV ampicillin-sulbactam regimen.",
+    landing_tab2_c2_meta: "Origin: University Hospital Center · Outcome: Therapeutic Clearance",
+
+    // Results Tab 3: Convergence Telemetry
+    landing_tab3_title: "Multi-Center Federated Convergence & Robustness Log",
+    landing_tab3_desc: "Hold-out validation metrics across 5 consecutive rounds under FedDyn dynamic alignment.",
+    landing_tab3_status: "Consensus Converged",
+    landing_tab3_col_round: "Round",
+    landing_tab3_col_loss: "Global Test Loss",
+    landing_tab3_col_acc: "Hold-Out Accuracy",
+    landing_tab3_col_f1: "Macro F1",
+    landing_tab3_col_bw: "Bandwidth (FFA-LoRA)",
+    landing_tab3_col_threat: "Byzantine Threat Status",
+    landing_tab3_verified: "All 4 Nodes Verified",
+    landing_tab3_intercepted: "Intercepted Node 3 Poisoning",
+    landing_tab3_filtered: "Filtered Consensus Active",
+    landing_tab3_deployed: "Consensus Deployed",
+    landing_tab3_comm_summary: "Total Communication: 21.0 MB across 5 rounds (vs 1.3 GB for uncompressed ViT-Base)",
+    landing_tab3_savings: "98.4% Bandwidth Savings",
+
+    // Results Tab 4: Official Report & Audio
+    landing_tab4_pdf_title: "Single-Page A4 Medical Intelligence Export",
+    landing_tab4_pdf_desc: "Embedded side-by-side standard radiograph and Grad-CAM attention heatmap, calibrated probability breakdown, patient cohort demographics, and SHA-256 integrity digest.",
+    landing_tab4_pdf_btn: "Generate Live in Cockpit",
+    landing_tab4_voice_title: "Hands-Free Synthesized Clinical Dictation",
+    landing_tab4_voice_desc: "Instant automated audio briefing for surgical suites and sterile reading rooms. Articulates primary pathology, confidence level, and anatomical focal regions.",
+    landing_tab4_voice_btn: "Listen in Live Cockpit",
+
     // Landing Security
+    landing_sec_security_badge: "Provable Cryptographic Privacy",
     landing_security_title: "Institutional Healthcare Security & Governance Pillars",
     landing_security_subtitle: "Enterprise-grade mathematical privacy guarantees designed for strict HIPAA, GDPR, and clinical compliance.",
     landing_pillar_1_title: "Zero Patient Data Leakage",
@@ -186,10 +238,16 @@ export const TRANSLATIONS: Record<Language, Record<string, string>> = {
     landing_pillar_3_desc: "Leveled CKKS 128-bit RLWE Homomorphic Encryption guarantees the central coordination server observes zero plaintext local updates, eliminating server-side insider threats.",
     landing_pillar_4_title: "Byzantine Resilience & Poison Defense",
     landing_pillar_4_desc: "Coordinate-wise trimmed mean and hold-out validation filters intercept adversarial poisoning and malformed updates before global consensus aggregation.",
+    landing_p1_tag: "Strategy E Standard: 0% Cross-Split",
+    landing_p2_tag: "Bound: (ε ≤ 2.0, δ ≤ 10^-5)",
+    landing_p3_tag: "Leveled CKKS 128-Bit RLWE",
+    landing_p4_tag: "Trimmed Mean & Hold-Out Shield",
 
     // Landing Architecture
+    landing_sec_arch_badge: "System Specification",
     landing_arch_title: "End-to-End Consortium Architecture Pipeline",
     landing_arch_subtitle: "Five coordinated stages orchestrating privacy-preserving intelligence from hospital edge to bedside CDSS.",
+    landing_arch_stage_label: "STAGE",
     landing_arch_s1_title: "1. Institutional Ingestion",
     landing_arch_s1_desc: "Natural institutional site cohorts isolated with SHA-256 patient verification and zero data cross-split.",
     landing_arch_s2_title: "2. Foundation Backbone & PEFT",
@@ -202,6 +260,7 @@ export const TRANSLATIONS: Record<Language, Record<string, string>> = {
     landing_arch_s5_desc: "Grad-CAM visual attention, RAG biopsy case retrieval, hands-free voice synthesis, and single-page PDF reports.",
 
     // Landing Benchmarks
+    landing_sec_bench_badge: "Strategy E Scientific Evidence",
     landing_bench_title: "Empirical Benchmark Validation Matrix (Strategy E)",
     landing_bench_subtitle: "Performance across real multicenter medical imaging benchmarks (ISIC 2019, CheXpert, NCT-CRC-HE).",
     landing_bench_col_system: "System Architecture",
@@ -210,14 +269,34 @@ export const TRANSLATIONS: Record<Language, Record<string, string>> = {
     landing_bench_col_privacy: "Privacy Guarantee",
     landing_bench_col_resilience: "Byzantine Defense",
     landing_bench_col_generalization: "Domain Generalization",
+    bench_row_centralized: "Centralized Upper Bound",
+    bench_val_na_centralized: "N/A (Centralized Data)",
+    bench_val_leakage_full: "Zero (Full Leakage)",
+    bench_val_optimal: "Optimal",
+    bench_row_fedavg: "Traditional FedAvg (Full ViT)",
+    bench_val_plaintext: "Plaintext Weights",
+    bench_val_vulnerable: "Vulnerable to Poisoning",
+    bench_val_drift: "Client Drift Oscillations",
+    bench_row_standalone: "Local Hospital Standalone",
+    bench_val_isolated: "0 MB (Isolated)",
+    bench_val_no_transfer: "Isolated (No Transfer)",
+    bench_val_overfitting: "Severe Institutional Overfitting",
+    bench_val_high_aligned: "High (Domain Aligned)",
+    bench_val_trimmed_active: "Trimmed Mean Active",
 
     // Launch Modal
     launch_modal_title: "Initializing Federated Consortium Enclave",
     launch_modal_desc: "Establishing secure cryptographic communication channels across 4 decentralized hospital nodes...",
     launch_modal_step1: "Hospital Node Enclaves Verified (4/4 Nodes Online)",
+    launch_modal_step1_desc: "Node 1-4 enclaves online. Zero cross-institution patient leakage verified.",
     launch_modal_step2: "128-bit RLWE CKKS Homomorphic Key Exchange Complete",
+    launch_modal_step2_desc: "RLWE ciphertext ring initialized. Central server receives zero plaintext updates.",
     launch_modal_step3: "FFA-LoRA Parameter Subspace Synchronized",
+    launch_modal_step3_desc: "Rank-16 low-rank adapters frozen and synchronized for non-IID drift control.",
     launch_modal_step4: "Entering Live Clinical Orchestration Cockpit...",
+    launch_modal_step4_desc: "Loading real-time orchestration cockpit, telemetry cockpit, and Grad-CAM CDSS.",
+    launch_modal_handshake: "Federated Handshake",
+    launch_modal_footer_nodes: "4 Nodes: Patient DP ε ≤ 2.0",
     launch_modal_skip: "Enter Immediately",
 
     // Landing Banner
@@ -373,14 +452,16 @@ export const TRANSLATIONS: Record<Language, Record<string, string>> = {
     nav_results: "Klinik Kanıtlar",
     nav_security: "Güvenlik & Gizlilik",
     nav_benchmarks: "Kıyaslama",
-    nav_launch_demo: "Canlı Konsorsiyumu Başlat",
-    nav_dashboard_overview: "Platform Özeti",
+    nav_launch_demo: "Konsorsiyum Kokpiti",
+    nav_demo_short: "Kokpit",
+    nav_overview_short: "Özet",
+    nav_dashboard_overview: "Platform Genel Bakışı",
 
     // Ana Tanıtım Bölümü
     landing_hero_badge: "Dağıtık Sağlık Yapay Zekası Altyapısı",
     landing_hero_title: "Gizlilik Korumalı Federe Onkoloji ve Radyolojik Zeka Konsorsiyumu",
     landing_hero_desc: "Hastane ağları arasında iş birliğine dayalı temel görüntüleme zekası. Sıfır ham hasta verisi transferi, Seviyeli CKKS 128-bit homomorfik şifreleme, parametre verimli ince ayar (FFA-LoRA) ve açıklanabilir klinik karar desteği.",
-    landing_cta_launch: "Canlı Konsorsiyumu Başlat",
+    landing_cta_launch: "Konsorsiyum Simülasyonunu Başlat",
     landing_cta_docs: "Teknik Mimariyi Keşfet",
     landing_metric_nodes: "Hastane Düğümü",
     landing_metric_nodes_sub: "Bağımsız Klinik Merkez",
@@ -394,6 +475,7 @@ export const TRANSLATIONS: Record<Language, Record<string, string>> = {
     landing_metric_dp_sub: "Hasta Düzeyinde Sınır (ε ≤ 2.0)",
 
     // Sonuçlar ve Kanıtlar
+    landing_sec_results_badge: "Klinik CDSS Doğrulaması",
     landing_results_title: "Etkileşimli Klinik Kanıtlar ve Platform Çıktıları",
     landing_results_subtitle: "Doğrulanmış teşhis dikkat haritalarını, çok modlu vaka eşleştirmelerini, konsorsiyum yakınsamasını ve tıbbi raporları inceleyin.",
     landing_tab_xai: "Grad-CAM Dikkat Haritası",
@@ -401,7 +483,56 @@ export const TRANSLATIONS: Record<Language, Record<string, string>> = {
     landing_tab_convergence: "Yakınsama Telemetrisi",
     landing_tab_report: "Resmi Rapor ve Ses",
 
+    // Sonuçlar Sekme 1: Grad-CAM XAI
+    landing_tab1_finding: "Birincil Teşhis: Pnömoni",
+    landing_tab1_patient_ref: "Hasta No: #P-8821",
+    landing_tab1_headline: "Hava Bronkogramı ile Bilateral Alveolar Konsolidasyon",
+    landing_tab1_conf_label: "Güven Skoru:",
+    landing_tab1_gt_label: "Doğrulanmış Gerçek:",
+    landing_tab1_gt_val: "Bakteriyel Lobar Konsolidasyon",
+    landing_tab1_peak_saliency: "En Yüksek Dikkat: Sağ Alt Lob",
+    landing_tab1_layer_info: "Güven Skoru: %94.8 · Aktif Katman: L-3 MHSA",
+    landing_tab1_assessment_label: "Radyolog Değerlendirmesi:",
+    landing_tab1_assessment_text: "Sağ alt lobda yerleşimli, apikal segmentleri koruyan hava bronkogramlı fokal alveolar opasifikasyon.",
+
+    // Sonuçlar Sekme 2: RAG İkizleri
+    landing_tab2_badge: "Çift Referans Eşleşmesi",
+    landing_tab2_c1_sim: "%97.4 Kosinüs Benzerliği",
+    landing_tab2_c1_diag: "Bakteriyel Lobar Konsolidasyon (Biyopsi Onaylı)",
+    landing_tab2_c1_desc: "Yoğun sağ alt lob opasifikasyonu. 14 günlük hedefe yönelik levofloksasin tedavisi sonrası tam radyolojik ve klinik iyileşme belgelendi.",
+    landing_tab2_c1_meta: "Kaynak: Metropol Sağlık Merkezi · Sonuç: Tam Remisyon",
+    landing_tab2_c2_sim: "%93.1 Kosinüs Benzerliği",
+    landing_tab2_c2_diag: "Hastane Kaynaklı Akciğer İnfiltratı",
+    landing_tab2_c2_desc: "Çok odaklı buzlu cam opasitesi. Hasta IV ampisilin-sulbaktam rejimi altında hızlı inflamatuar biyobelirteç temizliği gösterdi.",
+    landing_tab2_c2_meta: "Kaynak: Üniversite Hastanesi Merkezi · Sonuç: Terapötik İyileşme",
+
+    // Sonuçlar Sekme 3: Yakınsama Telemetrisi
+    landing_tab3_title: "Çok Merkezli Federe Yakınsama ve Dayanıklılık Kaydı",
+    landing_tab3_desc: "FedDyn dinamik hedef uyumlaması altında 5 ardışık tur boyunca bağımsız test doğrulama metrikleri.",
+    landing_tab3_status: "Konsensüs Yakınsadı",
+    landing_tab3_col_round: "Tur",
+    landing_tab3_col_loss: "Genel Test Kaybı",
+    landing_tab3_col_acc: "Bağımsız Test Doğruluğu",
+    landing_tab3_col_f1: "Makro F1",
+    landing_tab3_col_bw: "Bant Genişliği (FFA-LoRA)",
+    landing_tab3_col_threat: "Bizans Tehdit Durumu",
+    landing_tab3_verified: "4 Düğümün Tümü Doğrulandı",
+    landing_tab3_intercepted: "Düğüm 3 Zehirlenmesi Engellendi",
+    landing_tab3_filtered: "Filtrelenmiş Konsensüs Devrede",
+    landing_tab3_deployed: "Konsensüs Yayında",
+    landing_tab3_comm_summary: "Toplam İletişim: 5 turda 21.0 MB (Sıkıştırılmamış ViT-Base için 1.3 GB yerine)",
+    landing_tab3_savings: "%98.4 Bant Genişliği Tasarrufu",
+
+    // Sonuçlar Sekme 4: Resmi Rapor ve Ses
+    landing_tab4_pdf_title: "Tek Sayfa A4 Tıbbi Zeka Raporu",
+    landing_tab4_pdf_desc: "Yan yana standart radyografi ve Grad-CAM dikkat haritası, kalibre edilmiş olasılık dağılımı, hasta kohort demografisi ve SHA-256 bütünlük özeti.",
+    landing_tab4_pdf_btn: "Kokpitte Canlı Oluştur",
+    landing_tab4_voice_title: "Eller-Serbest Sentezlenmiş Klinik Ses Özeti",
+    landing_tab4_voice_desc: "Ameliyathaneler ve steril okuma odaları için anlık otomatik sesli brifing. Birincil patolojiyi, güven düzeyini ve anatomik odak bölgelerini seslendirir.",
+    landing_tab4_voice_btn: "Canlı Kokpitte Dinle",
+
     // Güvenlik ve Gizlilik
+    landing_sec_security_badge: "Kanıtlanabilir Kriptografik Gizlilik",
     landing_security_title: "Kurumsal Sağlık Güvenliği ve Yönetişim İlkeleri",
     landing_security_subtitle: "Katı HIPAA, GDPR ve klinik mevzuata uygunluk için tasarlanmış kurumsal düzeyde matematiksel gizlilik garantileri.",
     landing_pillar_1_title: "Sıfır Hasta Verisi Sızıntısı",
@@ -412,10 +543,16 @@ export const TRANSLATIONS: Record<Language, Record<string, string>> = {
     landing_pillar_3_desc: "Seviyeli CKKS 128-bit RLWE Homomorfik Şifreleme, merkezi koordinasyon sunucusunun sıfır açık metin yerel güncelleme görmesini garanti ederek sunucu taraflı tehditleri ortadan kaldırır.",
     landing_pillar_4_title: "Bizans Dayanıklılığı ve Zehirlenme Savunması",
     landing_pillar_4_desc: "Koordinat bazlı budanmış ortalama ve referans doğrulama filtreleri, küresel konsensüs birleştirmesinden önce düşmanca zehirleme ve bozuk güncellemeleri engeller.",
+    landing_p1_tag: "Strateji E Standardı: %0 Çapraz Bölünme",
+    landing_p2_tag: "Sınır: (ε ≤ 2.0, δ ≤ 10^-5)",
+    landing_p3_tag: "Seviyeli CKKS 128-Bit RLWE",
+    landing_p4_tag: "Budanmış Ortalama ve Referans Kalkanı",
 
     // Mimari İş Akışı
+    landing_sec_arch_badge: "Sistem Özellikleri ve Mimarisi",
     landing_arch_title: "Uçtan Uca Konsorsiyum Mimari İş Akışı",
     landing_arch_subtitle: "Hastane uç noktasından hasta başı karar desteğine kadar gizlilik korumalı zekayı yöneten beş koordineli aşama.",
+    landing_arch_stage_label: "AŞAMA",
     landing_arch_s1_title: "1. Kurumsal Veri Kabulü",
     landing_arch_s1_desc: "SHA-256 hasta doğrulaması ve sıfır veri çapraz geçişi ile izole edilmiş bağımsız klinik merkez kohortları.",
     landing_arch_s2_title: "2. Temel Model ve PEFT",
@@ -428,6 +565,7 @@ export const TRANSLATIONS: Record<Language, Record<string, string>> = {
     landing_arch_s5_desc: "Grad-CAM görsel dikkati, RAG biyopsi vaka eşleştirmesi, eller-serbest ses sentezi ve tek sayfa PDF raporlama.",
 
     // Kıyaslama Matrisi
+    landing_sec_bench_badge: "Strateji E Bilimsel Kanıtları",
     landing_bench_title: "Deneysel Kıyaslama Doğrulama Matrisi (Strateji E)",
     landing_bench_subtitle: "Gerçek çok merkezli tıbbi görüntüleme kıyaslamalarında (ISIC 2019, CheXpert, NCT-CRC-HE) elde edilen başarımlar.",
     landing_bench_col_system: "Sistem Mimarisi",
@@ -436,20 +574,40 @@ export const TRANSLATIONS: Record<Language, Record<string, string>> = {
     landing_bench_col_privacy: "Gizlilik Garantisi",
     landing_bench_col_resilience: "Bizans Savunması",
     landing_bench_col_generalization: "Merkezler Arası Genelleme",
+    bench_row_centralized: "Merkezi Üst Sınır",
+    bench_val_na_centralized: "Uygulanamaz (Merkezi Veri)",
+    bench_val_leakage_full: "Sıfır (Tam Sızıntı)",
+    bench_val_optimal: "Optimal",
+    bench_row_fedavg: "Geleneksel FedAvg (Tam ViT)",
+    bench_val_plaintext: "Şifresiz Açık Metin Ağırlıkları",
+    bench_val_vulnerable: "Zehirlenmeye Karşı Savunmasız",
+    bench_val_drift: "İstemci Kayması Salınımları",
+    bench_row_standalone: "Yerel Hastane Tek Başına",
+    bench_val_isolated: "0 MB (İzole)",
+    bench_val_no_transfer: "İzole (Bilgi Aktarımı Yok)",
+    bench_val_overfitting: "Ciddi Kurumsal Aşırı Uyum",
+    bench_val_high_aligned: "Yüksek (Alan Uyumlu)",
+    bench_val_trimmed_active: "Budanmış Ortalama Devrede",
 
     // Başlatma Penceresi
     launch_modal_title: "Federe Konsorsiyum Güvenli Alanı Başlatılıyor",
     launch_modal_desc: "4 bağımsız hastane düğümü arasında güvenli kriptografik iletişim kanalları kuruluyor...",
     launch_modal_step1: "Hastane Düğüm Güvenli Alanları Doğrulandı (4/4 Düğüm Çevrimiçi)",
+    launch_modal_step1_desc: "Düğüm 1-4 güvenli alanları devrede. Kurumlar arası sıfır hasta sızıntısı doğrulandı.",
     launch_modal_step2: "128-bit RLWE CKKS Homomorfik Anahtar Değişimi Tamamlandı",
+    launch_modal_step2_desc: "RLWE şifreli metin halkası başlatıldı. Merkezi sunucu sıfır açık metin güncelleme alır.",
     launch_modal_step3: "FFA-LoRA Parametre Alt Uzayı Senkronize Edildi",
+    launch_modal_step3_desc: "Rank-16 düşük dereceli adaptörler donduruldu ve Non-IID kayma kontrolü için senkronize edildi.",
     launch_modal_step4: "Canlı Klinik Orkestrasyon Kokpitine Giriliyor...",
+    launch_modal_step4_desc: "Gerçek zamanlı orkestrasyon kokpiti, telemetri paneli ve Grad-CAM CDSS yükleniyor.",
+    launch_modal_handshake: "Federe Kriptografik El Sıkışma",
+    launch_modal_footer_nodes: "4 Düğüm: Hasta Düzeyinde DP ε ≤ 2.0",
     launch_modal_skip: "Hemen Giriş Yap",
 
     // Tanıtım Sonu Şeridi
     landing_banner_title: "Dağıtık klinik zekayı yönetmeye hazır mısınız?",
     landing_banner_desc: "Veri alımını simüle etmek, federe konsensüs turlarını çalıştırmak ve çok modlu radyolojik teşhisler üretmek için canlı çok merkezli orkestrasyon kokpitine erişin.",
-    landing_banner_btn: "Canlı Konsorsiyumu Başlat",
+    landing_banner_btn: "Orkestrasyon Kokpitini Başlat",
 
     footer_text: "Fed-XRay | Gizlilik Korumalı Federe Onkoloji ve Tıbbi Görüntüleme Konsorsiyumu | PyTorch ve Next.js 14 ile Geliştirilmiştir"
   }
