@@ -32,6 +32,8 @@ export default function DashboardPage() {
   const [currentRound, setCurrentRound] = useState(0);
   const [history, setHistory] = useState<TelemetryRound[]>([]);
   const [isTrained, setIsTrained] = useState(false);
+  const [activeModel, setActiveModel] = useState<string>("vit_base");
+  const [activePeft, setActivePeft] = useState<string>("ffa_lora");
 
   const [diagnosis, setDiagnosis] = useState<DiagnosisResult | null>(null);
   const [isDiagLoading, setIsDiagLoading] = useState(false);
@@ -102,6 +104,7 @@ export default function DashboardPage() {
     const selectedModel = config?.modelType || "vit_base";
     const selectedAlgorithm = config?.algorithm || "FedDyn";
     const selectedAttack = config?.simulateAttack ?? false;
+    setActiveModel(selectedModel);
 
     await streamFederatedTraining(
       apiUrl,
@@ -119,6 +122,8 @@ export default function DashboardPage() {
       (roundData) => {
         setCurrentRound(roundData.round_num);
         setHistory((prev) => [...prev, roundData]);
+        if (roundData.model_type) setActiveModel(roundData.model_type);
+        if (roundData.peft_mode) setActivePeft(roundData.peft_mode);
       },
       () => {
         setIsTraining(false);
@@ -208,8 +213,8 @@ export default function DashboardPage() {
           numHospitals={hospitals.length}
           isDefenseActive={true}
           isTrained={isTrained}
-          modelType={history.length > 0 && history[history.length - 1].model_type ? history[history.length - 1].model_type : "vit_base"}
-          peftMode={history.length > 0 && history[history.length - 1].peft_mode ? history[history.length - 1].peft_mode : "ffa_lora"}
+          modelType={activeModel}
+          peftMode={activePeft}
         />
 
         {/* 4-Step Clinical Workflow Stepper */}

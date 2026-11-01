@@ -267,10 +267,10 @@ export default function HospitalStudio({ hospitals, onGenerate, isLoading }: Hos
             <div className="w-12 h-12 rounded-2xl bg-accent-500/10 border border-accent-500/20 flex items-center justify-center mx-auto mb-3 text-accent-500">
               <Sparkles className="w-6 h-6 animate-pulse" />
             </div>
-            <h3 className="font-display text-sm sm:text-base font-bold text-[var(--text-heading)] mb-1">
+            <h3 className="font-display text-sm sm:text-base font-bold text-[var(--text-heading)] mb-1" suppressHydrationWarning>
               {t("sec1_empty_state_title")}
             </h3>
-            <p className="text-xs text-[var(--text-muted)] max-w-md mx-auto mb-4 leading-relaxed">
+            <p className="text-xs text-[var(--text-muted)] max-w-md mx-auto mb-4 leading-relaxed" suppressHydrationWarning>
               {t("sec1_empty_state_desc")}
             </p>
             <button
