@@ -9,7 +9,7 @@ Implements:
 """
 
 from __future__ import annotations
-from typing import Any, Dict, List, Optional, Sequence
+from typing import Any, Dict, List, Optional, Sequence, Union
 import numpy as np
 from sklearn.metrics.pairwise import cosine_similarity  # pyrefly: ignore[missing-source-for-stubs]
 import torch
@@ -144,6 +144,30 @@ class FederatedRAGCaseMatcher:
             })
         return results
 
+    def find_similar_for_image(
+        self,
+        image: Union[np.ndarray, torch.Tensor],
+        model: Optional[nn.Module] = None,
+        top_k: int = 5,
+    ) -> List[Dict[str, Any]]:
+        """Extract embedding from an input scan and retrieve top-K verified matching cases."""
+        encoder = model if model is not None else self.model
+        encoder.eval()
+        params = list(encoder.parameters())
+        device = params[0].device if params else torch.device("cpu")
+
+        if isinstance(image, np.ndarray):
+            t_img = torch.tensor(image, dtype=torch.float32)
+        else:
+            t_img = image.float()
+
+        while t_img.ndim < 4:
+            t_img = t_img.unsqueeze(0)
+        t_img = t_img.to(device)
+
+        embedding = extract_embedding(encoder, t_img)
+        return self.find_similar(embedding, top_k=top_k)
+
     def predict_rag_distribution(
         self,
         query_embedding: np.ndarray,
@@ -199,7 +223,11 @@ def extract_embedding(model: Any, image_tensor: torch.Tensor) -> np.ndarray:
             feats = model.extract_features(image_tensor)
             emb = feats[0].cpu().numpy().flatten()
         elif hasattr(model, "conv1") and hasattr(model, "fc1"):
-            x = model.conv1(image_tensor)
+            if image_tensor.shape[-2:] != (28, 28):
+                img_in = F.interpolate(image_tensor, size=(28, 28), mode="bilinear", align_corners=False)
+            else:
+                img_in = image_tensor
+            x = model.conv1(img_in)
             x = F.relu(x)
             x = model.pool1(x)
             x = model.conv2(x)
