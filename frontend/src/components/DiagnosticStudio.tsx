@@ -124,89 +124,15 @@ export default function DiagnosticStudio({
           </div>
         </div>
 
-        {!isLocked && (
-          <div className="flex flex-wrap items-center gap-2 mt-2.5 sm:mt-0">
-            {/* Target Pathology Filter */}
-            <div className="flex items-center gap-1 bg-[var(--bg-card-inner)] border border-[var(--border-subtle)] p-1 rounded-lg text-[10px] sm:text-[11px]">
-              <button
-                type="button"
-                onClick={() => setTargetClass(undefined)}
-                disabled={isLoading}
-                className={`px-2 py-0.5 rounded font-medium transition-colors ${
-                  targetClass === undefined
-                    ? "bg-purple-500/20 text-purple-600 dark:text-purple-300 font-bold"
-                    : "text-[var(--text-muted)] hover:text-[var(--text-heading)]"
-                }`}
-              >
-                Random
-              </button>
-              <button
-                type="button"
-                onClick={() => setTargetClass(0)}
-                disabled={isLoading}
-                className={`px-2 py-0.5 rounded font-medium transition-colors ${
-                  targetClass === 0
-                    ? "bg-emerald-500/20 text-emerald-600 dark:text-emerald-300 font-bold"
-                    : "text-[var(--text-muted)] hover:text-[var(--text-heading)]"
-                }`}
-              >
-                Normal
-              </button>
-              <button
-                type="button"
-                onClick={() => setTargetClass(1)}
-                disabled={isLoading}
-                className={`px-2 py-0.5 rounded font-medium transition-colors ${
-                  targetClass === 1
-                    ? "bg-amber-500/20 text-amber-600 dark:text-amber-300 font-bold"
-                    : "text-[var(--text-muted)] hover:text-[var(--text-heading)]"
-                }`}
-              >
-                Pneumonia
-              </button>
-              <button
-                type="button"
-                onClick={() => setTargetClass(2)}
-                disabled={isLoading}
-                className={`px-2 py-0.5 rounded font-medium transition-colors ${
-                  targetClass === 2
-                    ? "bg-rose-500/20 text-rose-600 dark:text-rose-300 font-bold"
-                    : "text-[var(--text-muted)] hover:text-[var(--text-heading)]"
-                }`}
-              >
-                COVID-19
-              </button>
-            </div>
-
-            {/* Custom Scan File Input */}
-            <input
-              type="file"
-              ref={fileInputRef}
-              accept="image/*"
-              className="hidden"
-              onChange={handleFileUpload}
-            />
-            <button
-              type="button"
-              onClick={() => fileInputRef.current?.click()}
-              disabled={isLoading}
-              className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-[var(--border-card)] bg-[var(--bg-card-inner)] hover:bg-black/5 dark:hover:bg-white/5 text-[11px] font-semibold text-[var(--text-heading)] transition-all cursor-pointer"
-              title="Upload custom medical scan"
-            >
-              <Upload className="w-3.5 h-3.5 text-purple-500 shrink-0" />
-              <span>Upload Scan</span>
-            </button>
-
-            {/* Run Diagnosis Button */}
-            <button
-              onClick={() => onDiagnose(targetClass, opacity, colormap)}
-              disabled={isLoading}
-              className="btn-primary"
-            >
-              <Search className={`w-3.5 h-3.5 sm:w-4 sm:h-4 ${isLoading ? "animate-spin" : ""}`} />
-              <span>{t("sec3_btn_run_diag")}</span>
-            </button>
-          </div>
+        {!isLocked && diagnosis && (
+          <button
+            onClick={() => onDiagnose(targetClass, opacity, colormap)}
+            disabled={isLoading}
+            className="btn-primary w-full sm:w-auto mt-2.5 sm:mt-0"
+          >
+            <Search className={`w-3.5 h-3.5 sm:w-4 sm:h-4 ${isLoading ? "animate-spin" : ""}`} />
+            <span>{t("sec3_btn_run_diag")}</span>
+          </button>
         )}
       </div>
 
@@ -232,7 +158,90 @@ export default function DiagnosticStudio({
             </button>
           )}
         </div>
-      ) : diagnosis ? (
+      ) : (
+        <>
+          {/* Diagnostic Target & Scan Ingestion Toolbar */}
+          <div className="card p-3 sm:p-3.5 mb-3.5 sm:mb-4 flex flex-col md:flex-row md:items-center justify-between gap-3">
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="text-xs text-[var(--text-muted)] font-medium mr-1 hidden sm:inline">
+                {t("sec3_results_header")}:
+              </span>
+              {/* Target Pathology Filter Chips */}
+              <div className="flex flex-wrap items-center gap-1 bg-[var(--bg-card-inner)] border border-[var(--border-subtle)] p-1 rounded-lg text-xs">
+                <button
+                  type="button"
+                  onClick={() => setTargetClass(undefined)}
+                  disabled={isLoading}
+                  className={`px-2.5 py-1 rounded-md font-medium transition-all ${
+                    targetClass === undefined
+                      ? "bg-purple-500/20 text-purple-600 dark:text-purple-300 font-bold"
+                      : "text-[var(--text-muted)] hover:text-[var(--text-heading)]"
+                  }`}
+                >
+                  {t("sec3_filter_all")}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setTargetClass(0)}
+                  disabled={isLoading}
+                  className={`px-2.5 py-1 rounded-md font-medium transition-all ${
+                    targetClass === 0
+                      ? "bg-emerald-500/20 text-emerald-600 dark:text-emerald-300 font-bold"
+                      : "text-[var(--text-muted)] hover:text-[var(--text-heading)]"
+                  }`}
+                >
+                  {t("sec1_normal")}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setTargetClass(1)}
+                  disabled={isLoading}
+                  className={`px-2.5 py-1 rounded-md font-medium transition-all ${
+                    targetClass === 1
+                      ? "bg-amber-500/20 text-amber-600 dark:text-amber-300 font-bold"
+                      : "text-[var(--text-muted)] hover:text-[var(--text-heading)]"
+                  }`}
+                >
+                  {t("sec1_pneumonia")}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setTargetClass(2)}
+                  disabled={isLoading}
+                  className={`px-2.5 py-1 rounded-md font-medium transition-all ${
+                    targetClass === 2
+                      ? "bg-rose-500/20 text-rose-600 dark:text-rose-300 font-bold"
+                      : "text-[var(--text-muted)] hover:text-[var(--text-heading)]"
+                  }`}
+                >
+                  {t("sec1_covid")}
+                </button>
+              </div>
+            </div>
+
+            {/* Custom Scan File Input */}
+            <div className="flex items-center gap-2">
+              <input
+                type="file"
+                ref={fileInputRef}
+                accept="image/*"
+                className="hidden"
+                onChange={handleFileUpload}
+              />
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                disabled={isLoading}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-[var(--border-card)] bg-[var(--bg-card-inner)] hover:bg-black/5 dark:hover:bg-white/5 text-xs font-semibold text-[var(--text-heading)] transition-all cursor-pointer"
+                title={t("sec3_upload_tooltip")}
+              >
+                <Upload className="w-3.5 h-3.5 text-purple-500 shrink-0" />
+                <span>{t("sec3_btn_upload")}</span>
+              </button>
+            </div>
+          </div>
+
+          {diagnosis ? (
         <div className="space-y-3.5 sm:space-y-4">
           {/* Diagnosis Banner */}
           <div className={`card p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-l-4 ${
@@ -249,7 +258,7 @@ export default function DiagnosticStudio({
                 )}
                 {diagnosis.image_source && (
                   <span className="text-[10px] font-medium text-[var(--text-muted)]">
-                    ({diagnosis.image_source.startsWith("uploaded") ? "Custom Upload" : "Holdout Cohort"})
+                    ({diagnosis.image_source.startsWith("uploaded") ? t("sec3_source_custom") : t("sec3_source_cohort")})
                   </span>
                 )}
               </div>
@@ -291,9 +300,9 @@ export default function DiagnosticStudio({
                 <div className="metric-label mb-2">{t("sec3_dual_pane_xai")}</div>
                 {diagnosis.heatmap_available === false || !diagnosis.heatmap ? (
                   <div className="xray-frame aspect-square max-w-[280px] mx-auto w-full flex flex-col items-center justify-center p-4 text-center bg-slate-900/40 rounded-xl border border-dashed border-slate-700">
-                    <div className="text-amber-400 text-xs font-semibold mb-1">Grad-CAM Unavailable</div>
+                    <div className="text-amber-400 text-xs font-semibold mb-1">{t("sec3_xai_unavailable")}</div>
                     <div className="text-[10px] text-[var(--text-muted)]">
-                      {diagnosis.heatmap_error || "Saliency calculation is unavailable for this sample/architecture."}
+                      {diagnosis.heatmap_error || t("sec3_xai_unavailable_desc")}
                     </div>
                   </div>
                 ) : (
@@ -355,13 +364,13 @@ export default function DiagnosticStudio({
       ) : (
         <div className="card text-center py-10 sm:py-14 px-4">
           <h3 className="font-display text-sm sm:text-base font-bold text-[var(--text-heading)] mb-1">
-            Global Federated Model Ready
+            {t("sec3_ready_title")}
           </h3>
           <p className="text-xs text-[var(--text-muted)] max-w-md mx-auto mb-4 leading-relaxed">
-            {t("sec3_subtitle")}
+            {t("sec3_ready_desc")}
           </p>
           <button
-            onClick={() => onDiagnose(undefined, opacity, colormap)}
+            onClick={() => onDiagnose(targetClass, opacity, colormap)}
             disabled={isLoading}
             className="btn-primary inline-flex items-center gap-2"
           >
@@ -369,6 +378,8 @@ export default function DiagnosticStudio({
             <span>{t("sec3_btn_run_diag")}</span>
           </button>
         </div>
+      )}
+        </>
       )}
     </section>
   );

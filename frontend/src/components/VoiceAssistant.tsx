@@ -35,7 +35,7 @@ export default function VoiceAssistant({ diagnosisName, confidence }: VoiceAssis
               onClick={() => setAudioError(false)}
               className="underline underline-offset-2 font-semibold hover:no-underline"
             >
-              Retry
+              {t("btn_retry")}
             </button>
           </span>
         </div>

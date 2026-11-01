@@ -83,12 +83,12 @@ export default function WorkflowStepper({
         </div>
         <div className="text-[10px] sm:text-[11px] font-mono text-[var(--text-muted)]">
           {hasDiagnosis
-            ? "4 / 4 Completed"
+            ? `4 / 4 ${t("workflow_completed_count")}`
             : isTrained
-            ? "2 / 4 Completed"
+            ? `2 / 4 ${t("workflow_completed_count")}`
             : hasIngested
-            ? "1 / 4 Completed"
-            : "0 / 4 Completed"}
+            ? `1 / 4 ${t("workflow_completed_count")}`
+            : `0 / 4 ${t("workflow_completed_count")}`}
         </div>
       </div>
 
@@ -135,7 +135,7 @@ export default function WorkflowStepper({
               </div>
 
               <div className="flex items-center justify-between text-[9px] sm:text-[10px] pt-1.5 border-t border-[var(--border-subtle)]">
-                <span className="text-[var(--text-muted)]">Status</span>
+                <span className="text-[var(--text-muted)]">{t("workflow_status_col")}</span>
                 <span
                   className={`font-semibold uppercase tracking-wider ${
                     s.isCompleted
