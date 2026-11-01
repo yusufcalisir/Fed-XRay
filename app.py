@@ -1115,7 +1115,12 @@ if hasattr(st.session_state, 'scan_image') and st.session_state.model_trained:
         report_name = f"FedXRay_{voice_diag_name}_{pat_id}.pdf"
 
         try:
-            pdf_exp = get_diagnosis_explanation(voice_diag_name, conf_val)
+            pdf_exp = get_diagnosis_explanation(
+                voice_diag_name,
+                conf_val,
+                probabilities=st.session_state.scan_probs,
+                heatmap=getattr(st.session_state, 'scan_heatmap', None),
+            )
             pdf_bytes = generate_medical_report(
                 patient_id=pat_id,
                 diagnosis=voice_diag_name,

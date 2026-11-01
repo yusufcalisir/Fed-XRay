@@ -126,12 +126,39 @@ def test_generate_medical_report_with_scan_only_renders_unavailable_saliency():
 
 
 def test_get_diagnosis_explanation():
-    """Verify clinical recommendations and text findings for known lung conditions."""
+    """Verify evidence-grounded findings report actual model predictions without canned claims."""
     normal_exp = get_diagnosis_explanation("Normal", 98.0)
-    assert "clear lung fields" in normal_exp.lower() or "normal" in normal_exp.lower()
+    assert "normal" in normal_exp.lower()
+    assert "98.0%" in normal_exp
+    # Verify canned anatomical hallucinations are eliminated
+    assert "cardiomediastinal silhouette" not in normal_exp.lower()
 
     pneu_exp = get_diagnosis_explanation("Pneumonia", 94.5)
-    assert "consolidation" in pneu_exp.lower() or "pneumonia" in pneu_exp.lower()
+    assert "pneumonia" in pneu_exp.lower()
+    assert "94.5%" in pneu_exp
+    assert "air bronchograms" not in pneu_exp.lower()
 
     covid_exp = get_diagnosis_explanation("COVID-19", 91.0)
-    assert "ground-glass" in covid_exp.lower() or "covid" in covid_exp.lower()
+    assert "covid" in covid_exp.lower()
+    assert "91.0%" in covid_exp
+    assert "interlobular septal" not in covid_exp.lower()
+
+
+def test_get_diagnosis_explanation_with_probabilities_and_heatmap():
+    """Verify explanation dynamically computes runner-up margin and Grad-CAM peak relevance."""
+    probs = [0.10, 0.75, 0.15]
+    # Create synthetic heatmap with peak in top-left
+    heatmap = np.zeros((224, 224), dtype=np.float32)
+    heatmap[20:40, 20:40] = 1.0
+
+    exp = get_diagnosis_explanation(
+        diagnosis="Pneumonia",
+        confidence=75.0,
+        probabilities=probs,
+        heatmap=heatmap,
+    )
+    assert "pneumonia" in exp.lower()
+    assert "runner-up class" in exp.lower()
+    assert "covid-19" in exp.lower()
+    assert "grad-cam peak relevance" in exp.lower()
+    assert "upper-left" in exp.lower()

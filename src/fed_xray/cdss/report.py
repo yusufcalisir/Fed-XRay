@@ -13,7 +13,7 @@ import time
 import tempfile
 import hashlib
 from datetime import datetime
-from typing import Optional, List, Dict, Any
+from typing import Optional, List, Dict, Any, Sequence
 import numpy as np
 import matplotlib
 matplotlib.use("Agg")
@@ -364,9 +364,14 @@ def generate_medical_report(
     pdf.set_font("Arial", "", 7.2)
     pdf.set_text_color(51, 65, 85)
 
-    clean_text = explanation.replace("**", "").replace("*", "").strip()
+    clean_text = (explanation or "").replace("**", "").replace("*", "").strip()
     if not clean_text:
-        clean_text = get_diagnosis_explanation(diagnosis, confidence)
+        clean_text = get_diagnosis_explanation(
+            diagnosis=diagnosis,
+            confidence=confidence,
+            probabilities=[p / 100.0 for p in probs] if probs else None,
+            heatmap=heatmap_np,
+        ).replace("**", "").replace("*", "").strip()
     pdf.multi_cell(174, 3.7, clean_text[:500])
 
     # E. Historical Digital Twins (Federated RAG Case Retrieval)
@@ -504,34 +509,36 @@ def generate_medical_report(
     return pdf_output
 
 
-def get_diagnosis_explanation(diagnosis: str, confidence: float) -> str:
-    """Get detailed textual findings and recommendations for diagnosis."""
-    if diagnosis == "Normal":
-        return f"""The AI analysis indicates a Normal scan with {confidence:.1f}% confidence.
+def get_diagnosis_explanation(
+    diagnosis: str,
+    confidence: float,
+    probabilities: Optional[Sequence[float]] = None,
+    heatmap: Optional[np.ndarray] = None,
+) -> str:
+    """Generate evidence-grounded radiological findings computed directly from model outputs.
 
-Findings:
-- No significant pulmonary abnormalities detected
-- Lung fields appear clear with normal vascular markings
-- Cardiomediastinal silhouette within normal limits
+    Does not invent unobserved anatomical features (no fake air bronchograms or false claims).
+    Delegates strictly to the explainable AI engine to report factual measured quantities.
+    """
+    conf_pct = confidence if confidence > 1.0 else confidence * 100.0
+    conf_norm = conf_pct / 100.0
+    diag_map = {"NORMAL": 0, "PNEUMONIA": 1, "COVID": 2, "COVID-19": 2}
+    diag_code = diag_map.get(diagnosis.upper(), 0)
 
-Recommendation: No immediate follow-up required unless clinical symptoms suggest otherwise."""
+    norm_probs: Optional[List[float]] = None
+    if probabilities is not None and len(probabilities) > 0:
+        p_arr = [float(p) for p in probabilities]
+        total_p = sum(p_arr)
+        if total_p > 1.5:
+            norm_probs = [p / 100.0 for p in p_arr]
+        elif total_p > 0.0:
+            norm_probs = [p / total_p for p in p_arr]
 
-    elif diagnosis == "Pneumonia":
-        return f"""The AI analysis suggests Pneumonia with {confidence:.1f}% confidence.
+    from .xai import get_explanation_text
 
-Findings:
-- Focal consolidation patterns detected
-- Areas of increased opacity consistent with bacterial infection
-- Possible air bronchograms within consolidated regions
-
-Recommendation: Clinical correlation recommended. Consider antibiotic therapy if clinical presentation supports diagnosis."""
-
-    else:  # COVID-19
-        return f"""The AI analysis indicates potential COVID-19 with {confidence:.1f}% confidence.
-
-Findings:
-- Diffuse bilateral ground-glass opacities observed
-- Peripheral distribution pattern characteristic of viral pneumonia
-- Possible interlobular septal thickening
-
-Recommendation: Urgent RT-PCR testing recommended. Implement isolation protocols pending confirmation."""
+    return get_explanation_text(
+        predicted_class=diag_code,
+        confidence=conf_norm,
+        probabilities=norm_probs,
+        heatmap=heatmap,
+    )
