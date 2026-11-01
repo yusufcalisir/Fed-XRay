@@ -82,49 +82,49 @@ export default function PresentationLandingPage() {
           </div>
 
           {/* 5 Verifiable Institutional KPI Metrics */}
-          <div className="grid grid-cols-2 md:grid-cols-5 gap-3 sm:gap-4 mt-8 sm:mt-12 pt-6 sm:pt-8 border-t border-[var(--border-subtle)]">
-            <div className="card-inner p-3.5 sm:p-4">
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2.5 sm:gap-4 mt-8 sm:mt-12 pt-6 sm:pt-8 border-t border-[var(--border-subtle)]">
+            <div className="card-inner p-3 sm:p-4">
               <div className="flex items-center gap-2 text-emerald-500 mb-1">
                 <Server className="w-4 h-4 shrink-0" />
                 <span className="font-display text-lg sm:text-2xl font-extrabold text-[var(--text-heading)]">4</span>
               </div>
-              <div className="text-xs font-semibold text-[var(--text-heading)]">{t("landing_metric_nodes")}</div>
+              <div className="text-[11px] sm:text-xs font-semibold text-[var(--text-heading)]">{t("landing_metric_nodes")}</div>
               <div className="text-[10px] sm:text-[11px] text-[var(--text-muted)] mt-0.5">{t("landing_metric_nodes_sub")}</div>
             </div>
 
-            <div className="card-inner p-3.5 sm:p-4">
+            <div className="card-inner p-3 sm:p-4">
               <div className="flex items-center gap-2 text-emerald-500 mb-1">
                 <Lock className="w-4 h-4 shrink-0" />
                 <span className="font-display text-lg sm:text-2xl font-extrabold text-[var(--text-heading)]">0 B</span>
               </div>
-              <div className="text-xs font-semibold text-[var(--text-heading)]">{t("landing_metric_leakage")}</div>
+              <div className="text-[11px] sm:text-xs font-semibold text-[var(--text-heading)]">{t("landing_metric_leakage")}</div>
               <div className="text-[10px] sm:text-[11px] text-[var(--text-muted)] mt-0.5">{t("landing_metric_leakage_sub")}</div>
             </div>
 
-            <div className="card-inner p-3.5 sm:p-4">
+            <div className="card-inner p-3 sm:p-4">
               <div className="flex items-center gap-2 text-teal-500 mb-1">
                 <Cpu className="w-4 h-4 shrink-0" />
                 <span className="font-display text-lg sm:text-2xl font-extrabold text-[var(--text-heading)]">128-Bit</span>
               </div>
-              <div className="text-xs font-semibold text-[var(--text-heading)]">{t("landing_metric_crypto")}</div>
+              <div className="text-[11px] sm:text-xs font-semibold text-[var(--text-heading)]">{t("landing_metric_crypto")}</div>
               <div className="text-[10px] sm:text-[11px] text-[var(--text-muted)] mt-0.5">{t("landing_metric_crypto_sub")}</div>
             </div>
 
-            <div className="card-inner p-3.5 sm:p-4">
+            <div className="card-inner p-3 sm:p-4">
               <div className="flex items-center gap-2 text-emerald-500 mb-1">
                 <Activity className="w-4 h-4 shrink-0" />
                 <span className="font-display text-lg sm:text-2xl font-extrabold text-[var(--text-heading)]">98.4%</span>
               </div>
-              <div className="text-xs font-semibold text-[var(--text-heading)]">{t("landing_metric_auc")}</div>
+              <div className="text-[11px] sm:text-xs font-semibold text-[var(--text-heading)]">{t("landing_metric_auc")}</div>
               <div className="text-[10px] sm:text-[11px] text-[var(--text-muted)] mt-0.5">{t("landing_metric_auc_sub")}</div>
             </div>
 
-            <div className="col-span-2 md:col-span-1 card-inner p-3.5 sm:p-4">
+            <div className="col-span-2 sm:col-span-1 card-inner p-3 sm:p-4">
               <div className="flex items-center gap-2 text-blue-500 mb-1">
                 <ShieldCheck className="w-4 h-4 shrink-0" />
                 <span className="font-display text-lg sm:text-2xl font-extrabold text-[var(--text-heading)]">ε ≤ 2.0</span>
               </div>
-              <div className="text-xs font-semibold text-[var(--text-heading)]">{t("landing_metric_dp")}</div>
+              <div className="text-[11px] sm:text-xs font-semibold text-[var(--text-heading)]">{t("landing_metric_dp")}</div>
               <div className="text-[10px] sm:text-[11px] text-[var(--text-muted)] mt-0.5">{t("landing_metric_dp_sub")}</div>
             </div>
           </div>
@@ -381,7 +381,7 @@ export default function PresentationLandingPage() {
 
               {/* Convergence Table */}
               <div className="overflow-x-auto">
-                <table className="w-full text-xs text-left">
+                <table className="w-full min-w-[620px] text-xs text-left">
                   <thead>
                     <tr className="border-b border-[var(--border-subtle)] text-[var(--text-muted)] text-[10px] uppercase tracking-wider">
                       <th className="py-2.5 px-3">Round</th>
@@ -609,7 +609,7 @@ export default function PresentationLandingPage() {
             </p>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-5 gap-3 sm:gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 sm:gap-4">
             <div className="card-inner p-3.5 sm:p-4 flex flex-col justify-between">
               <div>
                 <span className="text-[10px] font-mono font-bold text-emerald-500">STAGE 01</span>
@@ -687,7 +687,7 @@ export default function PresentationLandingPage() {
           </div>
 
           <div className="card p-3 sm:p-5 overflow-x-auto">
-            <table className="w-full text-xs text-left">
+            <table className="w-full min-w-[620px] text-xs text-left">
               <thead>
                 <tr className="border-b border-[var(--border-subtle)] text-[var(--text-muted)] text-[10px] uppercase tracking-wider">
                   <th className="py-2.5 px-3">{t("landing_bench_col_system")}</th>

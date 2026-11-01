@@ -77,34 +77,34 @@ export default function ConsortiumLaunchOverlay({
 
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-3 sm:p-5 bg-black/75 backdrop-blur-md transition-all">
-      <div className="relative w-full max-w-lg bg-[var(--bg-card)] border border-[var(--border-card)] rounded-2xl p-5 sm:p-7 shadow-2xl">
+      <div className="relative w-full max-w-lg max-h-[92vh] overflow-y-auto bg-[var(--bg-card)] border border-[var(--border-card)] rounded-2xl p-4 sm:p-6 shadow-2xl">
         {/* Close Button */}
         <button
           onClick={onClose}
-          className="absolute top-4 right-4 p-1.5 rounded-lg text-slate-400 hover:text-[var(--text-heading)] hover:bg-black/5 dark:hover:bg-white/5 transition-all"
+          className="absolute top-3.5 right-3.5 sm:top-4 sm:right-4 p-1.5 rounded-lg text-slate-400 hover:text-[var(--text-heading)] hover:bg-black/5 dark:hover:bg-white/5 transition-all"
           aria-label="Close"
         >
           <X className="w-4 h-4" />
         </button>
 
         {/* Header */}
-        <div className="flex items-center gap-3 mb-4">
-          <div className="w-10 h-10 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-500 shrink-0">
-            <Activity className="w-5 h-5 animate-pulse" />
+        <div className="flex items-center gap-2.5 sm:gap-3 mb-4 pr-6">
+          <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-500 shrink-0">
+            <Activity className="w-4 h-4 sm:w-5 sm:h-5 animate-pulse" />
           </div>
           <div>
-            <h3 className="font-display text-base sm:text-lg font-bold text-[var(--text-heading)]">
+            <h3 className="font-display text-sm sm:text-base font-bold text-[var(--text-heading)] leading-snug">
               {t("launch_modal_title")}
             </h3>
-            <p className="text-xs text-[var(--text-muted)]">
+            <p className="text-[11px] sm:text-xs text-[var(--text-muted)] leading-relaxed mt-0.5">
               {t("launch_modal_desc")}
             </p>
           </div>
         </div>
 
         {/* Progress Bar */}
-        <div className="mb-6">
-          <div className="flex justify-between items-center text-[11px] font-semibold text-[var(--text-muted)] mb-1.5">
+        <div className="mb-4 sm:mb-6">
+          <div className="flex justify-between items-center text-[10px] sm:text-[11px] font-semibold text-[var(--text-muted)] mb-1.5">
             <span>Federated Handshake</span>
             <span className="font-mono text-emerald-600 dark:text-emerald-400">{progress}%</span>
           </div>
@@ -117,7 +117,7 @@ export default function ConsortiumLaunchOverlay({
         </div>
 
         {/* Animated Handshake Steps */}
-        <div className="space-y-3 mb-6">
+        <div className="space-y-2.5 mb-5 sm:mb-6">
           {steps.map((step, idx) => {
             const Icon = step.icon;
             const isCompleted = activeStage > idx || progress === 100;
@@ -126,7 +126,7 @@ export default function ConsortiumLaunchOverlay({
             return (
               <div
                 key={idx}
-                className={`p-3 rounded-xl border transition-all ${
+                className={`p-2.5 sm:p-3 rounded-xl border transition-all ${
                   isCompleted
                     ? "bg-emerald-500/[0.04] border-emerald-500/20 text-slate-800 dark:text-slate-200"
                     : isCurrent
@@ -134,9 +134,9 @@ export default function ConsortiumLaunchOverlay({
                     : "bg-transparent border-transparent text-slate-400 opacity-60"
                 }`}
               >
-                <div className="flex items-start gap-3">
+                <div className="flex items-start gap-2.5 sm:gap-3">
                   <div
-                    className={`w-6 h-6 rounded-lg flex items-center justify-center shrink-0 mt-0.5 transition-colors ${
+                    className={`w-5 h-5 sm:w-6 sm:h-6 rounded-lg flex items-center justify-center shrink-0 mt-0.5 transition-colors ${
                       isCompleted
                         ? "bg-emerald-500 text-white"
                         : isCurrent
@@ -144,11 +144,11 @@ export default function ConsortiumLaunchOverlay({
                         : "bg-slate-200 dark:bg-white/[0.06] text-slate-400"
                     }`}
                   >
-                    <Icon className="w-3.5 h-3.5" />
+                    <Icon className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
                   </div>
                   <div className="flex-1 min-w-0">
-                    <div className="text-xs font-semibold leading-tight">{step.title}</div>
-                    <div className="text-[11px] text-[var(--text-muted)] mt-0.5 leading-relaxed">
+                    <div className="text-[11px] sm:text-xs font-semibold leading-tight">{step.title}</div>
+                    <div className="text-[10px] sm:text-[11px] text-[var(--text-muted)] mt-0.5 leading-relaxed">
                       {step.desc}
                     </div>
                   </div>
@@ -159,9 +159,9 @@ export default function ConsortiumLaunchOverlay({
         </div>
 
         {/* Footer Actions */}
-        <div className="flex items-center justify-between pt-2 border-t border-[var(--border-subtle)]">
-          <span className="text-[11px] text-[var(--text-muted)]">
-            4 Nodes Protected: Patient DP ε ≤ 2.0
+        <div className="flex flex-wrap items-center justify-between gap-2 pt-3 border-t border-[var(--border-subtle)]">
+          <span className="text-[10px] sm:text-[11px] text-[var(--text-muted)]">
+            4 Nodes: Patient DP ε ≤ 2.0
           </span>
           <button
             onClick={handleSkip}
@@ -175,3 +175,4 @@ export default function ConsortiumLaunchOverlay({
     </div>
   );
 }
+

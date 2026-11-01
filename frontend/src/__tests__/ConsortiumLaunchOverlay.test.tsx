@@ -1,0 +1,71 @@
+import React from "react";
+import { describe, it, expect, vi, beforeEach } from "vitest";
+import { render, screen, fireEvent } from "@/test/test-utils";
+import ConsortiumLaunchOverlay from "@/components/ConsortiumLaunchOverlay";
+import * as nextNavigation from "next/navigation";
+
+describe("ConsortiumLaunchOverlay Component", () => {
+  const pushMock = vi.fn();
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.spyOn(nextNavigation, "useRouter").mockReturnValue({
+      push: pushMock,
+      replace: vi.fn(),
+      prefetch: vi.fn(),
+      back: vi.fn(),
+      forward: vi.fn(),
+      refresh: vi.fn(),
+    } as any);
+  });
+
+  it("renders null when isOpen is false", () => {
+    const { container } = render(
+      <ConsortiumLaunchOverlay isOpen={false} onClose={vi.fn()} />
+    );
+    expect(container).toBeEmptyDOMElement();
+  });
+
+  it("renders overlay title, description, and steps when isOpen is true", () => {
+    render(
+      <ConsortiumLaunchOverlay isOpen={true} onClose={vi.fn()} />
+    );
+
+    expect(screen.getByText("Initializing Federated Consortium Enclave")).toBeInTheDocument();
+    expect(screen.getByText(/Establishing secure cryptographic communication channels/i)).toBeInTheDocument();
+    expect(screen.getByText("Federated Handshake")).toBeInTheDocument();
+  });
+
+  it("calls onClose when the close button is clicked", () => {
+    const onCloseMock = vi.fn();
+    render(
+      <ConsortiumLaunchOverlay isOpen={true} onClose={onCloseMock} />
+    );
+
+    const closeBtn = screen.getByRole("button", { name: "Close" });
+    expect(closeBtn).toBeInTheDocument();
+    fireEvent.click(closeBtn);
+    expect(onCloseMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("invokes router.push to /dashboard when skip button is clicked", () => {
+    render(
+      <ConsortiumLaunchOverlay isOpen={true} onClose={vi.fn()} />
+    );
+
+    const skipBtn = screen.getByText("Enter Immediately");
+    expect(skipBtn).toBeInTheDocument();
+    fireEvent.click(skipBtn);
+    expect(pushMock).toHaveBeenCalledWith("/dashboard");
+  });
+
+  it("displays verified node enclaves and homomorphic key exchange steps", () => {
+    render(
+      <ConsortiumLaunchOverlay isOpen={true} onClose={vi.fn()} />
+    );
+
+    expect(screen.getByText("Hospital Node Enclaves Verified (4/4 Nodes Online)")).toBeInTheDocument();
+    expect(screen.getByText("128-bit RLWE CKKS Homomorphic Key Exchange Complete")).toBeInTheDocument();
+    expect(screen.getByText("FFA-LoRA Parameter Subspace Synchronized")).toBeInTheDocument();
+  });
+});

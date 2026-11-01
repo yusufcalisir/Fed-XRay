@@ -1,5 +1,5 @@
 import React from "react";
-import { describe, it, expect, beforeEach } from "vitest";
+import { describe, it, expect, beforeEach, vi } from "vitest";
 import { render, screen, fireEvent } from "@/test/test-utils";
 import Navbar from "@/components/Navbar";
 import { ApiProvider } from "@/context/ApiContext";
@@ -9,10 +9,10 @@ describe("Navbar Component", () => {
     localStorage.clear();
   });
 
-  const renderNavbar = () => {
+  const renderNavbar = (props = {}) => {
     return render(
       <ApiProvider>
-        <Navbar />
+        <Navbar {...props} />
       </ApiProvider>
     );
   };
@@ -52,5 +52,26 @@ describe("Navbar Component", () => {
     // Verify there is no input field or popover exposing internal URLs
     expect(screen.queryByPlaceholderText(/http/i)).not.toBeInTheDocument();
     expect(screen.queryByText("Apply URL")).not.toBeInTheDocument();
+  });
+
+  it("renders navigation links and triggers onLaunchDemo when in landing mode", () => {
+    const onLaunchMock = vi.fn();
+    renderNavbar({ mode: "landing", onLaunchDemo: onLaunchMock });
+
+    expect(screen.getByText("Clinical Evidence")).toBeInTheDocument();
+    expect(screen.getByText("Security & Privacy")).toBeInTheDocument();
+    expect(screen.getByText("Architecture")).toBeInTheDocument();
+    expect(screen.getByText("Benchmarks")).toBeInTheDocument();
+
+    const launchBtn = screen.getByRole("button", { name: /Launch Live Consortium/i });
+    expect(launchBtn).toBeInTheDocument();
+    fireEvent.click(launchBtn);
+    expect(onLaunchMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("renders overview back link when in dashboard mode", () => {
+    renderNavbar({ mode: "dashboard" });
+
+    expect(screen.getByText("Platform Overview")).toBeInTheDocument();
   });
 });

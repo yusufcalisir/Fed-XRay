@@ -1,0 +1,112 @@
+import React from "react";
+import { describe, it, expect, vi, beforeEach } from "vitest";
+import { render, screen, fireEvent } from "@/test/test-utils";
+import PresentationLandingPage from "@/app/page";
+import { ApiProvider } from "@/context/ApiContext";
+
+describe("PresentationLandingPage Component", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  const renderLandingPage = () => {
+    return render(
+      <ApiProvider>
+        <PresentationLandingPage />
+      </ApiProvider>
+    );
+  };
+
+  it("renders hero headline, badge, and all 5 verifiable KPI metrics", () => {
+    renderLandingPage();
+
+    expect(screen.getByText("Decentralized Healthcare AI Infrastructure")).toBeInTheDocument();
+    expect(screen.getByText("Privacy-Preserving Federated Oncology & Radiological Consortium")).toBeInTheDocument();
+
+    // 5 KPI Metrics
+    expect(screen.getByText("4")).toBeInTheDocument();
+    expect(screen.getByText("Hospital Nodes")).toBeInTheDocument();
+
+    expect(screen.getByText("0 B")).toBeInTheDocument();
+    expect(screen.getByText("Raw Patient Data Shared")).toBeInTheDocument();
+
+    expect(screen.getByText("128-Bit")).toBeInTheDocument();
+    expect(screen.getByText("Homomorphic Encryption")).toBeInTheDocument();
+
+    expect(screen.getByText("98.4%")).toBeInTheDocument();
+    expect(screen.getByText("Hold-Out Diagnostic AUC")).toBeInTheDocument();
+
+    expect(screen.getByText("ε ≤ 2.0")).toBeInTheDocument();
+    expect(screen.getByText("Differential Privacy")).toBeInTheDocument();
+  });
+
+  it("renders interactive results showcase tabs and switches between tabs", () => {
+    renderLandingPage();
+
+    // Default Tab: Grad-CAM
+    expect(screen.getByText(/Bilateral Alveolar Consolidation/i)).toBeInTheDocument();
+    expect(screen.getByText("Confidence:")).toBeInTheDocument();
+
+    // Switch to RAG Tab
+    const ragTabBtn = screen.getByRole("button", { name: "Federated RAG Retrieval" });
+    fireEvent.click(ragTabBtn);
+    expect(screen.getByText(/Case-Based Reasoning: Digital Twin Matcher/i)).toBeInTheDocument();
+    expect(screen.getByText("REF-ONCO-401")).toBeInTheDocument();
+    expect(screen.getByText("REF-ONCO-402")).toBeInTheDocument();
+
+    // Switch to Convergence Tab
+    const convTabBtn = screen.getByRole("button", { name: "Convergence Telemetry" });
+    fireEvent.click(convTabBtn);
+    expect(screen.getByText(/Multi-Center Federated Convergence & Robustness Log/i)).toBeInTheDocument();
+    expect(screen.getByText("Round 1")).toBeInTheDocument();
+    expect(screen.getByText(/Intercepted Node 3 Poisoning/i)).toBeInTheDocument();
+    expect(screen.getByText("Round 5 (Final)")).toBeInTheDocument();
+
+    // Switch to Report & Audio Tab
+    const reportTabBtn = screen.getByRole("button", { name: "Official Report & Audio" });
+    fireEvent.click(reportTabBtn);
+    expect(screen.getByText("Single-Page A4 Medical Intelligence Export")).toBeInTheDocument();
+    expect(screen.getByText("Hands-Free Synthesized Clinical Dictation")).toBeInTheDocument();
+  });
+
+  it("updates opacity slider in Grad-CAM tab", () => {
+    renderLandingPage();
+
+    const slider = screen.getByRole("slider");
+    expect(slider).toBeInTheDocument();
+    expect(screen.getByText("65%")).toBeInTheDocument();
+
+    fireEvent.change(slider, { target: { value: "0.85" } });
+    expect(screen.getByText("85%")).toBeInTheDocument();
+  });
+
+  it("renders 4 security governance pillars and Strategy E benchmark matrix", () => {
+    renderLandingPage();
+
+    // 4 Security Pillars
+    expect(screen.getByText("Zero Patient Data Leakage")).toBeInTheDocument();
+    expect(screen.getByText("Patient-Level Differential Privacy")).toBeInTheDocument();
+    expect(screen.getByText("Cryptographic Secure Aggregation")).toBeInTheDocument();
+    expect(screen.getByText("Byzantine Resilience & Poison Defense")).toBeInTheDocument();
+
+    // Strategy E Benchmark Matrix
+    expect(screen.getByText("Empirical Benchmark Validation Matrix (Strategy E)")).toBeInTheDocument();
+    expect(screen.getByText("Fed-XRay (FFA-LoRA + FedDyn)")).toBeInTheDocument();
+    expect(screen.getByText("Centralized Upper Bound")).toBeInTheDocument();
+    expect(screen.getByText("Traditional FedAvg (Full ViT)")).toBeInTheDocument();
+  });
+
+  it("opens consortium launch overlay when launch demo button is clicked", () => {
+    renderLandingPage();
+
+    // Multiple launch buttons exist (hero, navbar, banner)
+    const launchBtns = screen.getAllByRole("button", { name: /Launch Live Consortium Demo/i });
+    expect(launchBtns.length).toBeGreaterThan(0);
+
+    fireEvent.click(launchBtns[0]);
+
+    // Modal should now be open
+    expect(screen.getByText("Initializing Federated Consortium Enclave")).toBeInTheDocument();
+    expect(screen.getByText("Federated Handshake")).toBeInTheDocument();
+  });
+});
