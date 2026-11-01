@@ -21,53 +21,51 @@ import matplotlib.pyplot as plt
 from fpdf import FPDF  # pyrefly: ignore[missing-source-for-stubs]
 
 
-def _ensure_normalized_scan(
+def _normalize_scan(
     original_image: Optional[np.ndarray],
-    diagnosis: str,
-) -> tuple[np.ndarray, np.ndarray]:
-    """Ensure original scan and attention heatmap are valid 2D matrices."""
-    dim = 224
-    if original_image is not None and original_image.ndim == 2:
-        scan = original_image.astype(np.float32)
-        if scan.shape != (dim, dim):
-            # Bilinear zoom/resize or crop
-            from PIL import Image
-            pil_img = Image.fromarray((scan * 255.0).clip(0, 255).astype(np.uint8))
-            pil_img = pil_img.resize((dim, dim), Image.Resampling.BILINEAR)
-            scan = np.array(pil_img, dtype=np.float32) / 255.0
-        # Normalize to 0.0 .. 1.0
-        if scan.min() < 0.0 or scan.max() > 1.0:
-            scan = ((scan - scan.min()) / (scan.max() - scan.min() + 1e-7)).clip(0.0, 1.0)
-    else:
-        # Standardized anatomical chest cavity projection
-        x = np.linspace(-1, 1, dim)
-        y = np.linspace(-1, 1, dim)
-        xx, yy = np.meshgrid(x, y)
-        left_lung = np.exp(-((xx + 0.35) ** 2 / 0.12 + yy ** 2 / 0.5))
-        right_lung = np.exp(-((xx - 0.35) ** 2 / 0.12 + yy ** 2 / 0.5))
-        scan = 0.15 + 0.65 * (left_lung + right_lung)
-        ribs = 0.08 * np.sin(yy * 24)
-        scan = np.clip(scan + ribs + np.random.randn(dim, dim) * 0.02, 0.0, 1.0)
+    dim: int = 224,
+) -> Optional[np.ndarray]:
+    """Validate and normalize a 2D radiological scan to [0, 1] without synthetic hallucination."""
+    if original_image is None or not isinstance(original_image, np.ndarray) or original_image.ndim != 2:
+        return None
 
-    # Generate synthetic focal heatmap if not supplied
-    diag_up = diagnosis.upper()
-    x = np.linspace(-1, 1, dim)
-    y = np.linspace(-1, 1, dim)
-    xx, yy = np.meshgrid(x, y)
-    if "COVID" in diag_up:
-        # Diffuse peripheral bilateral ground glass
-        hm_left = np.exp(-((xx + 0.45) ** 2 / 0.08 + (yy - 0.1) ** 2 / 0.18))
-        hm_right = np.exp(-((xx - 0.45) ** 2 / 0.08 + (yy - 0.1) ** 2 / 0.18))
-        heatmap = np.clip(hm_left + hm_right, 0.0, 1.0)
-    elif "PNEUM" in diag_up:
-        # Right lower lobe focal consolidation
-        heatmap = np.exp(-((xx - 0.36) ** 2 / 0.06 + (yy - 0.25) ** 2 / 0.08))
-    else:
-        # Normal scan: minimal diffuse background activity
-        heatmap = 0.05 * np.exp(-(xx ** 2 + yy ** 2) / 0.6)
+    scan = original_image.astype(np.float32)
+    if scan.shape != (dim, dim):
+        from PIL import Image
 
-    heatmap = np.clip(heatmap / (heatmap.max() + 1e-7), 0.0, 1.0)
-    return scan, heatmap
+        pil_img = Image.fromarray((scan * 255.0).clip(0, 255).astype(np.uint8))
+        pil_img = pil_img.resize((dim, dim), Image.Resampling.BILINEAR)
+        scan = np.array(pil_img, dtype=np.float32) / 255.0
+
+    s_min, s_max = float(scan.min()), float(scan.max())
+    if s_max > s_min:
+        scan = ((scan - s_min) / (s_max - s_min)).clip(0.0, 1.0)
+    else:
+        scan = np.zeros_like(scan, dtype=np.float32)
+
+    return scan
+
+
+def _normalize_heatmap(
+    heatmap_image: Optional[np.ndarray],
+    target_shape: tuple[int, int] = (224, 224),
+) -> Optional[np.ndarray]:
+    """Validate and normalize a Grad-CAM attention heatmap to [0, 1] without synthetic blobs."""
+    if heatmap_image is None or not isinstance(heatmap_image, np.ndarray) or heatmap_image.ndim != 2:
+        return None
+
+    hm = heatmap_image.astype(np.float32)
+    if hm.shape != target_shape:
+        from PIL import Image
+
+        pil_hm = Image.fromarray((hm * 255.0).clip(0, 255).astype(np.uint8))
+        pil_hm = pil_hm.resize((target_shape[1], target_shape[0]), Image.Resampling.BILINEAR)
+        hm = np.array(pil_hm, dtype=np.float32) / 255.0
+
+    hm_min, hm_max = float(hm.min()), float(hm.max())
+    if hm_max > hm_min and np.isfinite(hm).all():
+        return ((hm - hm_min) / (hm_max - hm_min)).clip(0.0, 1.0)
+    return None
 
 
 def generate_medical_report(
@@ -83,19 +81,8 @@ def generate_medical_report(
     institution_source: Optional[str] = None,
 ) -> bytes:
     """Generate a single-page medical PDF report adhering to clinical SaaS design standards."""
-    scan_np, heatmap_fallback = _ensure_normalized_scan(original_image, diagnosis)
-    if heatmap_image is not None and heatmap_image.ndim == 2:
-        # Use genuine heatmap if available
-        heatmap_np = heatmap_image.astype(np.float32)
-        if heatmap_np.shape != scan_np.shape:
-            from PIL import Image
-            pil_hm = Image.fromarray((heatmap_np * 255.0).clip(0, 255).astype(np.uint8))
-            pil_hm = pil_hm.resize((scan_np.shape[1], scan_np.shape[0]), Image.Resampling.BILINEAR)
-            heatmap_np = np.array(pil_hm, dtype=np.float32) / 255.0
-        if heatmap_np.max() > 0:
-            heatmap_np = (heatmap_np / heatmap_np.max()).clip(0.0, 1.0)
-    else:
-        heatmap_np = heatmap_fallback
+    scan_np = _normalize_scan(original_image, dim=224)
+    heatmap_np = _normalize_heatmap(heatmap_image, target_shape=(224, 224))
 
     # Resolve probabilities if not provided
     if probabilities is None or len(probabilities) < 3:
@@ -121,31 +108,61 @@ def generate_medical_report(
     fig.patch.set_facecolor("#FFFFFF")
 
     # Left: Original Chest Radiograph
-    axes[0].imshow(scan_np, cmap="gray", vmin=0.0, vmax=1.0)
-    axes[0].set_title("Primary Radiograph (PA View)", fontsize=8, fontweight="bold", pad=4, color="#0F172A")
-    axes[0].axis("on")
-    axes[0].tick_params(left=False, bottom=False, labelleft=False, labelbottom=False)
-    # Anatomical markers
-    axes[0].text(0.04, 0.5, "R", transform=axes[0].transAxes, fontsize=10, fontweight="bold", color="#38BDF8", va="center")
-    axes[0].text(0.93, 0.5, "L", transform=axes[0].transAxes, fontsize=10, fontweight="bold", color="#38BDF8", va="center")
-    axes[0].text(0.5, 0.94, "Superior", transform=axes[0].transAxes, fontsize=6.5, color="#CBD5E1", ha="center")
+    if scan_np is not None:
+        axes[0].imshow(scan_np, cmap="gray", vmin=0.0, vmax=1.0)
+        axes[0].set_title("Primary Radiograph (PA View)", fontsize=8, fontweight="bold", pad=4, color="#0F172A")
+        axes[0].axis("on")
+        axes[0].tick_params(left=False, bottom=False, labelleft=False, labelbottom=False)
+        # Anatomical markers
+        axes[0].text(0.04, 0.5, "R", transform=axes[0].transAxes, fontsize=10, fontweight="bold", color="#38BDF8", va="center")
+        axes[0].text(0.93, 0.5, "L", transform=axes[0].transAxes, fontsize=10, fontweight="bold", color="#38BDF8", va="center")
+        axes[0].text(0.5, 0.94, "Superior", transform=axes[0].transAxes, fontsize=6.5, color="#CBD5E1", ha="center")
+    else:
+        axes[0].set_facecolor("#0F172A")
+        axes[0].set_title("Primary Radiograph (Not Attached)", fontsize=8, fontweight="bold", pad=4, color="#0F172A")
+        axes[0].axis("on")
+        axes[0].tick_params(left=False, bottom=False, labelleft=False, labelbottom=False)
+        axes[0].text(0.5, 0.55, "PRIMARY SCAN\nNOT ATTACHED", transform=axes[0].transAxes, fontsize=8, fontweight="bold", color="#94A3B8", ha="center", va="center")
+        axes[0].text(0.5, 0.35, "Direct pixel matrix omitted from payload", transform=axes[0].transAxes, fontsize=6, color="#64748B", ha="center", va="center")
+
     for spine in axes[0].spines.values():
         spine.set_edgecolor("#CBD5E1")
         spine.set_linewidth(1.0)
 
     # Right: Grad-CAM Explainable AI Saliency Map
-    axes[1].imshow(scan_np, cmap="gray", vmin=0.0, vmax=1.0)
-    overlay = axes[1].imshow(heatmap_np, cmap="jet", alpha=0.55, vmin=0.0, vmax=1.0)
-    axes[1].set_title("Grad-CAM XAI Saliency (Layer 12 Attention)", fontsize=8, fontweight="bold", pad=4, color="#0F172A")
-    axes[1].axis("on")
-    axes[1].tick_params(left=False, bottom=False, labelleft=False, labelbottom=False)
+    if scan_np is not None and heatmap_np is not None:
+        axes[1].imshow(scan_np, cmap="gray", vmin=0.0, vmax=1.0)
+        overlay = axes[1].imshow(heatmap_np, cmap="jet", alpha=0.55, vmin=0.0, vmax=1.0)
+        axes[1].set_title("Grad-CAM XAI Saliency (Layer 12 Attention)", fontsize=8, fontweight="bold", pad=4, color="#0F172A")
+        axes[1].axis("on")
+        axes[1].tick_params(left=False, bottom=False, labelleft=False, labelbottom=False)
+        cbar = fig.colorbar(overlay, ax=axes[1], fraction=0.046, pad=0.04)
+        cbar.ax.tick_params(labelsize=6)
+        cbar.set_label("Attention Saliency", fontsize=6.5, color="#475569")
+    elif heatmap_np is not None:
+        overlay = axes[1].imshow(heatmap_np, cmap="jet", vmin=0.0, vmax=1.0)
+        axes[1].set_title("Grad-CAM XAI Saliency Map", fontsize=8, fontweight="bold", pad=4, color="#0F172A")
+        axes[1].axis("on")
+        axes[1].tick_params(left=False, bottom=False, labelleft=False, labelbottom=False)
+        cbar = fig.colorbar(overlay, ax=axes[1], fraction=0.046, pad=0.04)
+        cbar.ax.tick_params(labelsize=6)
+        cbar.set_label("Attention Saliency", fontsize=6.5, color="#475569")
+    elif scan_np is not None:
+        axes[1].imshow(scan_np, cmap="gray", vmin=0.0, vmax=1.0)
+        axes[1].set_title("Grad-CAM Saliency (Unavailable)", fontsize=8, fontweight="bold", pad=4, color="#0F172A")
+        axes[1].axis("on")
+        axes[1].tick_params(left=False, bottom=False, labelleft=False, labelbottom=False)
+        axes[1].text(0.5, 0.5, "GRAD-CAM SALIENCY UNAVAILABLE\n(Feature gradients uncomputed)", transform=axes[1].transAxes, fontsize=7, fontweight="bold", color="#F59E0B", ha="center", va="center", bbox=dict(boxstyle="round,pad=0.4", fc="#0F172A", ec="#F59E0B", alpha=0.85))
+    else:
+        axes[1].set_facecolor("#0F172A")
+        axes[1].set_title("Grad-CAM Saliency (Unavailable)", fontsize=8, fontweight="bold", pad=4, color="#0F172A")
+        axes[1].axis("on")
+        axes[1].tick_params(left=False, bottom=False, labelleft=False, labelbottom=False)
+        axes[1].text(0.5, 0.5, "GRAD-CAM UNAVAILABLE\nNo scan or attention map", transform=axes[1].transAxes, fontsize=7, fontweight="bold", color="#94A3B8", ha="center", va="center")
+
     for spine in axes[1].spines.values():
         spine.set_edgecolor("#CBD5E1")
         spine.set_linewidth(1.0)
-
-    cbar = fig.colorbar(overlay, ax=axes[1], fraction=0.046, pad=0.04)
-    cbar.ax.tick_params(labelsize=6)
-    cbar.set_label("Attention Saliency", fontsize=6.5, color="#475569")
 
     plt.tight_layout(pad=0.3)
     temp_img_path = os.path.join(tempfile.gettempdir(), f"fedxray_vis_{int(time.time() * 1000)}.png")
@@ -321,7 +338,11 @@ def generate_medical_report(
     pdf.cell(32, 3.5, "EXPLAINABLE AI NOTE:", 0, 0)
     pdf.set_font("Arial", "", 6.5)
     pdf.set_text_color(71, 85, 105)
-    pdf.cell(145, 3.5, "Warm colors (Red/Yellow) pinpoint focal pathological gradients driving the Vision Transformer classification.", 0, 1)
+    if heatmap_np is not None:
+        xai_caption = "Warm colors (Red/Yellow) pinpoint focal pathological gradients driving the Vision Transformer classification."
+    else:
+        xai_caption = "Grad-CAM attention saliency map was uncomputed or unavailable for this study. Diagnosis based on raw feature logits."
+    pdf.cell(145, 3.5, xai_caption, 0, 1)
 
     # D. Structured AI Radiological Interpretation
     y_narrative = y_caption + 7.5

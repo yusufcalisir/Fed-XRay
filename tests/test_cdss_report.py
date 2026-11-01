@@ -95,6 +95,36 @@ def test_generate_medical_report_empty_similar_cases_renders_honest_empty_state(
     assert b"PAT_REF_2035" not in pdf_bytes
 
 
+def test_generate_medical_report_without_images_renders_honest_placeholders():
+    """Verify PDF generator renders honest placeholders when no scan or heatmap is attached."""
+    pdf_bytes = generate_medical_report(
+        patient_id="PAT-NO-IMG-001",
+        diagnosis="Pneumonia",
+        confidence=91.0,
+        explanation="Clinical evaluation based on non-imaging biomarkers.",
+        original_image=None,
+        heatmap_image=None,
+    )
+    assert isinstance(pdf_bytes, bytes)
+    assert pdf_bytes.startswith(b"%PDF-")
+    assert len(pdf_bytes) > 1000
+
+
+def test_generate_medical_report_with_scan_only_renders_unavailable_saliency():
+    """Verify PDF generator renders primary scan and unavailable saliency indicator when heatmap is omitted."""
+    scan = np.random.rand(224, 224).astype(np.float32)
+    pdf_bytes = generate_medical_report(
+        patient_id="PAT-SCAN-ONLY-001",
+        diagnosis="COVID-19",
+        confidence=89.5,
+        explanation="Bilateral infiltrate assessment.",
+        original_image=scan,
+        heatmap_image=None,
+    )
+    assert isinstance(pdf_bytes, bytes)
+    assert pdf_bytes.startswith(b"%PDF-")
+
+
 def test_get_diagnosis_explanation():
     """Verify clinical recommendations and text findings for known lung conditions."""
     normal_exp = get_diagnosis_explanation("Normal", 98.0)
