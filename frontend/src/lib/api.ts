@@ -139,24 +139,31 @@ export async function streamFederatedTraining(
     const decoder = new TextDecoder("utf-8");
     let buffer       = "";
     let receivedAny  = false;
-    const sseTimeout = new Promise<"timeout">((res) => setTimeout(() => res("timeout"), 4000));
+
+    // Handshake timeout: If backend/proxy buffers SSE and doesn't send even the initial handshake within 8s, fallback to polling
+    let handshakeTimer: NodeJS.Timeout | null = null;
+    const handshakeTimeout = new Promise<"timeout">((resolve) => {
+      handshakeTimer = setTimeout(() => resolve("timeout"), 8000);
+    });
 
     const consumeSSE = async (): Promise<"done" | "timeout"> => {
       while (true) {
-        const readPromise = reader.read();
-        const result = await Promise.race([readPromise, sseTimeout]);
-
-        if (result === "timeout") {
-          if (!receivedAny) return "timeout";
-          const { done, value } = await readPromise;
-          if (done) return "done";
-          buffer += decoder.decode(value, { stream: true });
+        let result: ReadableStreamReadResult<Uint8Array> | "timeout";
+        if (!receivedAny) {
+          result = await Promise.race([reader.read(), handshakeTimeout]);
+          if (result === "timeout") {
+            try { await reader.cancel(); } catch {}
+            return "timeout";
+          }
+          if (handshakeTimer) clearTimeout(handshakeTimer);
         } else {
-          const { done, value } = result as ReadableStreamReadResult<Uint8Array>;
-          if (done) return "done";
-          buffer += decoder.decode(value, { stream: true });
-          receivedAny = true;
+          result = await reader.read();
         }
+
+        const { done, value } = result as ReadableStreamReadResult<Uint8Array>;
+        if (done) return "done";
+        buffer += decoder.decode(value, { stream: true });
+        receivedAny = true;
 
         const lines = buffer.split("\n");
         buffer = lines.pop() || "";
@@ -166,13 +173,20 @@ export async function streamFederatedTraining(
             const jsonStr = trimmed.replace(/^data:\s*/, "");
             try {
               const data: TelemetryRound = JSON.parse(jsonStr);
-              onRound(data);
-              if (data.status === "complete" || data.round_num >= numRounds) { onComplete(); return "done"; }
-            } catch (e) { console.error("Failed to parse SSE line:", trimmed, e); }
+              if (data.round_num && data.round_num > 0) {
+                onRound(data);
+              }
+              if (data.status === "complete" || (data.round_num && data.round_num >= numRounds)) {
+                onComplete();
+                return "done";
+              }
+            } catch (e) {
+              console.error("Failed to parse SSE line:", trimmed, e);
+            }
           }
         }
       }
-    }
+    };
 
     const outcome = await consumeSSE();
     if (outcome === "timeout") {

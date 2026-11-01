@@ -30,14 +30,19 @@ export default function PresentationLandingPage() {
 
   useEffect(() => {
     let isMounted = true;
-    fetch("http://localhost:8000/api/health")
-      .then((res) => {
-        if (res.ok && isMounted) setBackendStatus("online");
-        else if (isMounted) setBackendStatus("standby");
-      })
-      .catch(() => {
+    const checkBackend = async () => {
+      try {
+        const res = await fetch("/api/health").catch(() => fetch("http://127.0.0.1:8000/api/health"));
+        if (res && res.ok && isMounted) {
+          setBackendStatus("online");
+        } else if (isMounted) {
+          setBackendStatus("standby");
+        }
+      } catch {
         if (isMounted) setBackendStatus("standby");
-      });
+      }
+    };
+    checkBackend();
     return () => {
       isMounted = false;
     };

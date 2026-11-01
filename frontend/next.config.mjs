@@ -2,7 +2,7 @@
 const backendUrl = process.env.NEXT_PUBLIC_API_URL?.replace(/\/$/, '') || 'http://127.0.0.1:8000';
 
 const nextConfig = {
-  output: 'standalone',
+  output: process.env.DOCKER_BUILD === '1' ? 'standalone' : undefined,
   reactStrictMode: true,
   async rewrites() {
     return [

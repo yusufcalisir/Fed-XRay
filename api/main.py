@@ -129,6 +129,9 @@ class AppState:
                 "model_trained": self.model_trained,
                 "model_type": self.model_type,
                 "peft_mode": self.peft_mode,
+                "lora_r": getattr(self.server, "lora_r", 8) if self.server else 8,
+                "lora_alpha": getattr(self.server, "lora_alpha", 16.0) if self.server else 16.0,
+                "deep_layers_only": getattr(self.server, "deep_layers_only", True) if self.server else True,
                 "image_size": self.image_size,
                 "data_source": self.data_source,
                 "training_history": self.training_history,
@@ -161,11 +164,17 @@ class AppState:
             self.image_size = meta.get("image_size", 224)
             self.data_source = meta.get("data_source", "strategy_e_disk_manifest")
             self.training_history = meta.get("training_history", self.training_history)
+            lora_r = meta.get("lora_r", 8)
+            lora_alpha = meta.get("lora_alpha", 16.0)
+            deep_layers_only = meta.get("deep_layers_only", True)
 
             server = CentralServer(
                 device=self.device,
                 model_type=self.model_type,
                 peft_mode=self.peft_mode,
+                lora_r=lora_r,
+                lora_alpha=lora_alpha,
+                deep_layers_only=deep_layers_only,
                 img_size=self.image_size,
             )
             saved_weights = torch.load(model_path, map_location=self.device)
@@ -539,6 +548,9 @@ async def stream_federated_training(
             "test_loss": [],
             "blocked_count": 0,
         }
+
+        # Immediate SSE keepalive ping to flush HTTP response headers and prevent proxy buffering stalls
+        yield ": ping\n\n"
 
         for round_num in range(1, num_rounds + 1):
             metrics, client_metrics, test_metrics, sec_report = run_federated_round(
