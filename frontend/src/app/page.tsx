@@ -84,7 +84,11 @@ export default function DashboardPage() {
     }
   }, [apiUrl, isConnected]);
 
-  const handleStartTraining = async () => {
+  const handleStartTraining = async (config?: {
+    modelType: string;
+    algorithm: string;
+    simulateAttack: boolean;
+  }) => {
     setErrorMessage(null);
     setIsTraining(true);
     setHistory([]);
@@ -95,17 +99,21 @@ export default function DashboardPage() {
     }
     abortControllerRef.current = new AbortController();
 
+    const selectedModel = config?.modelType || "vit_base";
+    const selectedAlgorithm = config?.algorithm || "FedDyn";
+    const selectedAttack = config?.simulateAttack ?? false;
+
     await streamFederatedTraining(
       apiUrl,
       {
         numRounds: totalRounds,
         localEpochs: 2,
         learningRate: 0.0001,
-        simulateAttack: false,
+        simulateAttack: selectedAttack,
         activateDefense: true,
-        algorithm: "FedDyn",
+        algorithm: selectedAlgorithm,
         lossFn: "DAFL",
-        modelType: "vit_tiny",
+        modelType: selectedModel,
         peftMode: "ffa_lora",
       },
       (roundData) => {
@@ -124,7 +132,12 @@ export default function DashboardPage() {
     );
   };
 
-  const handleRunDiagnosis = async (classIndex?: number, opacity?: number, colormap?: string) => {
+  const handleRunDiagnosis = async (
+    classIndex?: number,
+    opacity?: number,
+    colormap?: string,
+    imageBase64?: string
+  ) => {
     if (!isTrained) {
       setErrorMessage("Federated model is not trained yet. Complete Step 2 before initiating diagnosis.");
       return;
@@ -132,7 +145,7 @@ export default function DashboardPage() {
     setErrorMessage(null);
     try {
       setIsDiagLoading(true);
-      const result = await fetchClinicalDiagnosis(apiUrl, classIndex, opacity, colormap);
+      const result = await fetchClinicalDiagnosis(apiUrl, classIndex, opacity, colormap, imageBase64);
       setDiagnosis(result);
       try {
         const twinRes = await fetchRagTwins(apiUrl, 2);
@@ -195,7 +208,7 @@ export default function DashboardPage() {
           numHospitals={hospitals.length}
           isDefenseActive={true}
           isTrained={isTrained}
-          modelType={history.length > 0 && history[history.length - 1].model_type ? history[history.length - 1].model_type : "vit_tiny"}
+          modelType={history.length > 0 && history[history.length - 1].model_type ? history[history.length - 1].model_type : "vit_base"}
           peftMode={history.length > 0 && history[history.length - 1].peft_mode ? history[history.length - 1].peft_mode : "ffa_lora"}
         />
 
@@ -247,6 +260,7 @@ export default function DashboardPage() {
               <ReportDownload
                 diagnosisName={diagName}
                 confidence={diagConf}
+                patientId={diagnosis.patient_id}
                 predictedClass={diagnosis.predicted_class}
                 findings={diagnosis.findings}
               />

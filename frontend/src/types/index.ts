@@ -33,6 +33,7 @@ export interface TelemetryRound {
 }
 
 export interface DiagnosisResult {
+  patient_id?: string;
   predicted_class: number;
   predicted_name: string;
   true_class: number;

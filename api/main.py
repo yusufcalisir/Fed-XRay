@@ -12,6 +12,7 @@ Supports:
 from __future__ import annotations
 import asyncio
 import base64
+import hashlib
 import io
 import json
 import os
@@ -667,6 +668,7 @@ async def perform_diagnosis(req: DiagnoseRequest):
         except Exception as exc:
             raise HTTPException(status_code=400, detail=f"Invalid base64 image data: {exc}")
         image_source = "uploaded"
+        patient_id = f"PAT_UPLOAD_{hashlib.md5(image_np.tobytes()).hexdigest()[:6].upper()}"
     elif req.image_data:
         try:
             raw_arr = np.array(req.image_data, dtype=np.float32)
@@ -679,6 +681,7 @@ async def perform_diagnosis(req: DiagnoseRequest):
         except Exception as exc:
             raise HTTPException(status_code=400, detail=f"Invalid image_data matrix: {exc}")
         image_source = "uploaded"
+        patient_id = f"PAT_UPLOAD_{hashlib.md5(image_np.tobytes()).hexdigest()[:6].upper()}"
     else:
         if state.global_test_set is None:
             raise HTTPException(status_code=409, detail="No held-out test set is loaded and no image was supplied.")
@@ -696,6 +699,10 @@ async def perform_diagnosis(req: DiagnoseRequest):
         image_np = test_images[pick, 0].cpu().numpy()
         true_class = int(test_labels[pick])
         image_source = f"holdout_test_set:{state.data_source}"
+        if state.reference_records and pick < len(state.reference_records):
+            patient_id = state.reference_records[pick].patient_id
+        else:
+            patient_id = f"PAT_{state.data_source}_{pick + 1:04d}"
 
     if req.class_index is not None and req.class_index in (0, 1, 2) and true_class == -1:
         true_class = req.class_index
@@ -733,6 +740,7 @@ async def perform_diagnosis(req: DiagnoseRequest):
     )
 
     return DiagnoseResponse(
+        patient_id=patient_id,
         predicted_class=predicted_class,
         predicted_name=LABEL_NAMES.get(predicted_class, "Unknown"),
         true_class=true_class,

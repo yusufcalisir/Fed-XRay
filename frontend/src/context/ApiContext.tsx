@@ -32,7 +32,12 @@ export function ApiProvider({ children }: { children: React.ReactNode }) {
   const getCandidateUrls = useCallback((): string[] => {
     const candidates: string[] = [];
 
-    // 1. Saved preference in localStorage
+    // 1. Next.js Public Environment Variable (authoritative configuration)
+    if (process.env.NEXT_PUBLIC_API_URL) {
+      candidates.push(process.env.NEXT_PUBLIC_API_URL.trim().replace(/\/$/, ""));
+    }
+
+    // 2. Saved preference in localStorage
     if (typeof window !== "undefined") {
       try {
         const saved = localStorage.getItem("fedxray_api_url");
@@ -42,11 +47,6 @@ export function ApiProvider({ children }: { children: React.ReactNode }) {
       } catch {
         // Ignore localStorage access restrictions
       }
-    }
-
-    // 2. Next.js Public Environment Variable
-    if (process.env.NEXT_PUBLIC_API_URL) {
-      candidates.push(process.env.NEXT_PUBLIC_API_URL.trim().replace(/\/$/, ""));
     }
 
     // 3. Loopback IP and Localhost standards
@@ -118,8 +118,11 @@ export function ApiProvider({ children }: { children: React.ReactNode }) {
     const candidates = getCandidateUrls();
     setIsChecking(true);
 
+    const envUrl = process.env.NEXT_PUBLIC_API_URL?.trim().replace(/\/$/, "");
     const saved = typeof window !== "undefined" ? localStorage.getItem("fedxray_api_url") : null;
-    const prioritized = saved
+    const prioritized = envUrl
+      ? [envUrl, ...candidates.filter((c) => c !== envUrl)]
+      : saved
       ? [saved.trim().replace(/\/$/, ""), ...candidates.filter((c) => c !== saved.trim().replace(/\/$/, ""))]
       : candidates;
 

@@ -83,6 +83,7 @@ class DiagnoseRequest(BaseModel):
 
 
 class DiagnoseResponse(BaseModel):
+    patient_id: str = "PAT_UNKNOWN"
     predicted_class: int
     predicted_name: str
     true_class: int

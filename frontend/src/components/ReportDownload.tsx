@@ -17,13 +17,14 @@ interface ReportDownloadProps {
 export default function ReportDownload({
   diagnosisName,
   confidence,
-  patientId = "PT-EHR-7721",
+  patientId,
   findings,
   predictedClass,
 }: ReportDownloadProps) {
   const { t } = useLanguage();
   const { apiUrl } = useApi();
-  const pdfUrl = getPdfReportUrl(apiUrl, diagnosisName, confidence, patientId, findings, predictedClass);
+  const effectivePatientId = patientId || "PAT-CDSS-LIVE";
+  const pdfUrl = getPdfReportUrl(apiUrl, diagnosisName, confidence, effectivePatientId, findings, predictedClass);
 
   return (
     <div className="card p-3.5 sm:p-5 flex flex-col justify-between">

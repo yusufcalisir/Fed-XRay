@@ -1,6 +1,6 @@
 "use client";
 
-import React from "react";
+import React, { useState } from "react";
 import { useLanguage } from "@/context/LanguageContext";
 import { TelemetryRound } from "@/types";
 import { Cpu, Play, ShieldAlert, ShieldCheck, Zap, TrendingUp, Lock, ArrowUp } from "lucide-react";
@@ -18,9 +18,15 @@ function formatBytes(bytes: number): string {
   return `${v.toFixed(i === 0 ? 0 : 2)} ${units[i]}`;
 }
 
+export interface TrainingConfig {
+  modelType: string;
+  algorithm: string;
+  simulateAttack: boolean;
+}
+
 interface TelemetryCockpitProps {
   history: TelemetryRound[];
-  onStartTraining: () => void;
+  onStartTraining: (config: TrainingConfig) => void;
   isTraining: boolean;
   currentRound: number;
   totalRounds: number;
@@ -38,6 +44,10 @@ export default function TelemetryCockpit({
   onUnlock,
 }: TelemetryCockpitProps) {
   const { t } = useLanguage();
+  const [modelType, setModelType] = useState<string>("vit_base");
+  const [algorithm, setAlgorithm] = useState<string>("FedDyn");
+  const [simulateAttack, setSimulateAttack] = useState<boolean>(false);
+
   const latestRound = history[history.length - 1];
   const fullBytes = latestRound?.full_model_bytes ?? 0;
   const uplinkBytes = latestRound?.uplink_bytes_per_client ?? 0;
@@ -68,10 +78,61 @@ export default function TelemetryCockpit({
         </div>
 
         {!isLocked && (
-          <button onClick={onStartTraining} disabled={isTraining} className="btn-primary w-full sm:w-auto mt-2.5 sm:mt-0">
-            <Play className={`w-3.5 h-3.5 sm:w-4 sm:h-4 ${isTraining ? "animate-spin" : ""}`} />
-            <span>{t("sec2_btn_start")}</span>
-          </button>
+          <div className="flex flex-wrap items-center gap-2 mt-2.5 sm:mt-0">
+            {/* Model Architecture Selector */}
+            <div className="flex items-center gap-1.5 bg-[var(--bg-card-inner)] border border-[var(--border-subtle)] px-2 py-1 rounded-lg text-[10px] sm:text-[11px]">
+              <span className="text-[var(--text-muted)] font-medium">Model:</span>
+              <select
+                value={modelType}
+                onChange={(e) => setModelType(e.target.value)}
+                disabled={isTraining}
+                className="bg-transparent text-[var(--text-heading)] font-semibold outline-none cursor-pointer"
+              >
+                <option value="vit_base" className="bg-slate-900 text-slate-100">ViT-Base (224x224 SOTA)</option>
+                <option value="vit_tiny" className="bg-slate-900 text-slate-100">ViT-Tiny (28x28 Fast)</option>
+              </select>
+            </div>
+
+            {/* FL Optimizer Selector */}
+            <div className="flex items-center gap-1.5 bg-[var(--bg-card-inner)] border border-[var(--border-subtle)] px-2 py-1 rounded-lg text-[10px] sm:text-[11px]">
+              <span className="text-[var(--text-muted)] font-medium">Algo:</span>
+              <select
+                value={algorithm}
+                onChange={(e) => setAlgorithm(e.target.value)}
+                disabled={isTraining}
+                className="bg-transparent text-[var(--text-heading)] font-semibold outline-none cursor-pointer"
+              >
+                <option value="FedDyn" className="bg-slate-900 text-slate-100">FedDyn</option>
+                <option value="FedAvg" className="bg-slate-900 text-slate-100">FedAvg</option>
+                <option value="FedProx" className="bg-slate-900 text-slate-100">FedProx</option>
+              </select>
+            </div>
+
+            {/* Byzantine Attack Simulation Toggle */}
+            <label className={`flex items-center gap-1.5 px-2 py-1 rounded-lg border text-[10px] sm:text-[11px] font-semibold cursor-pointer select-none transition-colors ${
+              simulateAttack
+                ? "bg-rose-500/10 border-rose-500/30 text-rose-600 dark:text-rose-400"
+                : "bg-[var(--bg-card-inner)] border-[var(--border-subtle)] text-[var(--text-muted)] hover:text-[var(--text-heading)]"
+            }`}>
+              <input
+                type="checkbox"
+                checked={simulateAttack}
+                onChange={(e) => setSimulateAttack(e.target.checked)}
+                disabled={isTraining}
+                className="w-3.5 h-3.5 rounded accent-rose-500 cursor-pointer"
+              />
+              <span className="whitespace-nowrap">Simulate Attack (Node 3)</span>
+            </label>
+
+            <button
+              onClick={() => onStartTraining({ modelType, algorithm, simulateAttack })}
+              disabled={isTraining}
+              className="btn-primary"
+            >
+              <Play className={`w-3.5 h-3.5 sm:w-4 sm:h-4 ${isTraining ? "animate-spin" : ""}`} />
+              <span>{t("sec2_btn_start")}</span>
+            </button>
+          </div>
         )}
       </div>
 
