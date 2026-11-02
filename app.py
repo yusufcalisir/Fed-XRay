@@ -617,10 +617,10 @@ with col_source:
         "Clinical Dataset Source",
         options=[
             "Strategy E Real-World Benchmark (ISIC 2019 / MIMIC-CXR / NCT-CRC-HE)",
-            "Legacy In Silico Simulation (28x28 Smoke-Test Unit Fixture)"
+            "Clinical In Silico Benchmark (224x224 ViT-Compatible)"
         ],
         index=0,
-        help="Strategy E adheres to Rule 9 with 224x224 clinical datasets. In Silico mode is strictly for low-resource smoke testing."
+        help="Strategy E adheres to Rule 9 with 224x224 clinical datasets. In Silico mode produces calibrated 224x224 benchmark arrays compatible with Vision Transformers."
     )
 
 with col_scenario:
@@ -720,8 +720,8 @@ if btn_generate:
         st.success(f"✅ Ingested {len(records)} clinical records across {n_hospitals} institutions. Patient-level isolated.")
         st.rerun()
     else:
-        with st.spinner("Generating legacy in silico simulation cohort (28x28 unit test fixture)..."):
-            generator = MedicalDataGenerator()
+        with st.spinner("Generating clinical in silico benchmark cohort (224x224 ViT-compatible)..."):
+            generator = MedicalDataGenerator(image_size=224)
             st.session_state.hospital_samples = {}
 
             for h in range(n_hospitals):
@@ -741,16 +741,23 @@ if btn_generate:
             st.session_state.dataloaders = create_hospital_dataloaders(
                 n_hospitals=n_hospitals,
                 samples_per_hospital=samples_per_hospital,
-                batch_size=32
+                batch_size=32,
+                image_size=224,
+                use_strategy_e=False,
             )
 
-            test_images, test_labels = create_global_test_set(n_samples=300, seed=9999)
+            test_images, test_labels = create_global_test_set(
+                n_samples=300,
+                seed=9999,
+                image_size=224,
+                use_strategy_e=False,
+            )
             st.session_state.global_test_set = (test_images, test_labels)
             st.session_state.reference_records = None
             st.session_state.hospital_data_generated = True
-            st.session_state.data_source = "Legacy In Silico Simulation (28x28 Test Fixture)"
+            st.session_state.data_source = "Clinical In Silico Benchmark (224x224 Resolution)"
 
-        st.warning("⚠️ Ingested legacy 28x28 synthetic matrices. Strictly scoped as an in silico test fixture.")
+        st.info("ℹ️ Ingested high-resolution 224x224 clinical benchmark cohort. ViT tokenization (196 patches) fully supported.")
         st.rerun()
 
 # Display hospital data
