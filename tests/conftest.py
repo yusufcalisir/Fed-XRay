@@ -1,6 +1,10 @@
 """Shared API fixtures: the CDSS endpoints require a loaded cohort and a trained model."""
 
 import pytest
+try:
+    import transformers  # noqa: F401 - Pre-load early to prevent Windows CRT heap allocator collision
+except ImportError:
+    pass
 from fastapi.testclient import TestClient
 
 from api.main import app, state

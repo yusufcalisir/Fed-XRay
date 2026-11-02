@@ -55,7 +55,7 @@ def test_cohort_generation_all_scenarios(scenario: str):
     assert data["success"] is True
     assert data["num_hospitals"] == 4
     assert len(data["hospitals"]) == 4
-    assert data["data_source"] in ("strategy_e_disk_manifest", "synthetic_phantom")
+    assert data["data_source"] in ("strategy_e_disk_manifest", "isic_archive_v2_real_clinical", "synthetic_phantom")
     for h in data["hospitals"]:
         assert any(center.split()[0] in h["name"] for center in ["BCN-20000", "ViDIR", "Queensland", "Beth", "NCT"])
         assert h["num_samples"] > 0
@@ -148,7 +148,7 @@ def test_rag_similar_cases_retrieval(diagnosed_api):
     assert sims == sorted(sims, reverse=True)
     for c in data["matched_cases"]:
         assert 0.0 <= c["similarity"] <= 100.0
-        assert c["case_id"].startswith("PAT_")
+        assert c["case_id"].startswith(("REF-", "PAT_"))
         assert len(c["history"]) > 0
 
 

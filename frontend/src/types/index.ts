@@ -10,6 +10,7 @@ export interface HospitalCohort {
   };
   sample_images: number[][][];
   sample_labels: number[];
+  provenance?: string;
 }
 
 export interface TelemetryRound {
@@ -46,6 +47,9 @@ export interface DiagnosisResult {
   heatmap_available?: boolean;
   heatmap_error?: string | null;
   image_source?: string;
+  provenance?: string;
+  anatomical_site?: string;
+  biopsy_confirmed?: boolean;
 }
 
 export interface RagCase {
@@ -54,4 +58,9 @@ export interface RagCase {
   label_name: string;
   similarity: number;
   history: string;
+  biopsy_confirmed?: boolean;
+  therapeutic_outcome?: string;
+  anatomical_site?: string;
+  site_id?: string;
+  provenance?: string;
 }

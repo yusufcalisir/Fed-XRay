@@ -137,3 +137,107 @@ def test_similarity_tensor_input():
 
     results = matcher.find_similar_for_image(tensor_input, top_k=3)
     assert len(results) == 3
+
+
+def test_biopsy_reference_cohort_loading_and_matching():
+    """Verify genuine Strategy E biopsy reference digital twin cohort loads and indexes into RAG."""
+    from pathlib import Path
+    from src.fed_xray.data.real_world import StrategyEDatasetEcosystem
+
+    ref_csv = Path("data/reference_cohort/strategy_e_rag_reference.csv")
+    assert ref_csv.exists(), "strategy_e_rag_reference.csv must exist on disk"
+
+    ecosystem = StrategyEDatasetEcosystem(seed=42)
+    records = ecosystem.load_from_disk_manifest(
+        manifest_path=str(ref_csv),
+        images_dir="data",
+        target_size=(224, 224),
+    )
+    assert len(records) >= 12, f"Expected at least 12 reference twins, got {len(records)}"
+
+    # Verify all are biopsy confirmed and have therapeutic outcomes
+    for r in records:
+        assert r.biopsy_confirmed is True, f"Record {r.patient_id} must be biopsy confirmed"
+        assert r.therapeutic_outcome is not None and len(r.therapeutic_outcome) > 10
+        assert r.anatomical_site is not None and len(r.anatomical_site) > 2
+        assert r.clinical_notes is not None and "Histopathology" in r.clinical_notes
+
+    # Verify all 3 classes are represented
+    classes = {r.label for r in records}
+    assert classes == {0, 1, 2}, f"All 3 diagnostic classes must be present, found {classes}"
+
+    # Build matcher and query with one record
+    matcher = FederatedRAGCaseMatcher(reference_records=records)
+    assert not matcher.is_empty
+    assert len(matcher) == len(records)
+
+    query_tensor = records[0].image_tensor.unsqueeze(0)
+    matches = matcher.find_similar_for_image(query_tensor, top_k=2)
+    assert len(matches) == 2
+    assert matches[0]["biopsy_confirmed"] is True
+    assert matches[0]["therapeutic_outcome"] is not None
+    assert matches[0]["anatomical_site"] is not None
+    assert "diagnosis" in matches[0]
+
+
+def test_dynamic_dimension_preservation_and_mismatch_guard():
+    """Verify matcher dynamically adopts model dimension and rejects mismatched vectors."""
+    import pytest
+    from src.fed_xray.models.vit import create_medical_vit
+
+    recs = _make_test_patient_records(8)
+    model = create_medical_vit(model_type="vit_tiny", img_size=28, patch_size=4, in_channels=1, num_classes=3)
+    matcher = FederatedRAGCaseMatcher(reference_records=recs, model=model)
+
+    assert matcher.embedding_dim == 128, f"Expected 128-dim for ViT-Tiny, got {matcher.embedding_dim}"
+    assert matcher.embeddings_matrix.shape == (8, 128)
+
+    # Valid 128-dim query should succeed
+    valid_query = np.random.randn(128).astype(np.float32)
+    results = matcher.find_similar(valid_query, top_k=2)
+    assert len(results) == 2
+
+    # Incompatible 64-dim query must raise ValueError
+    incompatible_query = np.random.randn(64).astype(np.float32)
+    with pytest.raises(ValueError, match="Query embedding dimension mismatch"):
+        matcher.find_similar(incompatible_query, top_k=2)
+
+
+def test_cnn_extract_features_contract():
+    """Verify XRayClassifier provides penultimate 128-dim feature representation."""
+    from src.fed_xray.models.cnn import create_cnn_model
+    from src.fed_xray.cdss.similarity import extract_embedding
+
+    model = create_cnn_model(num_classes=3)
+    assert hasattr(model, "extract_features"), "XRayClassifier must implement extract_features"
+
+    x = torch.randn(2, 1, 28, 28)
+    feats = model.extract_features(x)
+    assert feats.shape == (2, 128), f"Expected (2, 128), got {feats.shape}"
+
+    emb = extract_embedding(model, x[:1])
+    assert emb.shape == (128,), f"Expected 128-dim normalized embedding, got {emb.shape}"
+    assert abs(np.linalg.norm(emb) - 1.0) < 1e-4
+
+
+def test_dataset_label_mappings():
+    """Verify ISIC and Chest X-ray label mappings are distinct and clinically accurate."""
+    from src.fed_xray.cdss.similarity import (
+        ISIC_LABEL_NAMES,
+        CHEST_XRAY_LABEL_NAMES,
+        get_dataset_label_map,
+    )
+
+    assert ISIC_LABEL_NAMES[0] == "Benign Dysplastic Nevus"
+    assert ISIC_LABEL_NAMES[1] == "Malignant Melanoma"
+    assert ISIC_LABEL_NAMES[2] == "Basal Cell Carcinoma"
+
+    assert CHEST_XRAY_LABEL_NAMES[0] == "Normal"
+    assert CHEST_XRAY_LABEL_NAMES[1] == "Bacterial Pneumonia"
+    assert CHEST_XRAY_LABEL_NAMES[2] == "COVID-19"
+
+    assert get_dataset_label_map("isic_archive_v2") == ISIC_LABEL_NAMES
+    assert get_dataset_label_map("strategy_e_disk_manifest") == ISIC_LABEL_NAMES
+    assert get_dataset_label_map("mimic_cxr_jpg") == CHEST_XRAY_LABEL_NAMES
+
+

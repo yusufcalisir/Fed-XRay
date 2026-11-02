@@ -44,6 +44,12 @@ class RealWorldPatientRecord:
         label: int,
         lesion_id: Optional[str] = None,
         clinical_notes: str = "",
+        provenance: str = "strategy_e_disk_manifest",
+        age: Optional[int] = None,
+        sex: Optional[str] = None,
+        anatomical_site: Optional[str] = None,
+        biopsy_confirmed: bool = False,
+        therapeutic_outcome: Optional[str] = None,
     ) -> None:
         self.patient_id = patient_id
         self.site_id = site_id
@@ -51,6 +57,12 @@ class RealWorldPatientRecord:
         self.label = label
         self.lesion_id = lesion_id or patient_id
         self.clinical_notes = clinical_notes
+        self.provenance = provenance
+        self.age = age
+        self.sex = sex
+        self.anatomical_site = anatomical_site
+        self.biopsy_confirmed = biopsy_confirmed
+        self.therapeutic_outcome = therapeutic_outcome
         self.sha256 = self._compute_sha256()
 
     def _compute_sha256(self) -> str:
@@ -126,16 +138,32 @@ class DiskMedicalDataset(Dataset):
             for idx, row in enumerate(reader):
                 img_path_str = row.get("image_path") or row.get("image_id") or row.get("path")
                 if not img_path_str:
+                    cid = row.get("case_id") or row.get("patient_id")
+                    if cid:
+                        clean_id = cid.replace("REF-", "").replace("PAT_", "").lower()
+                        candidate = f"images/{clean_id}.png"
+                        if self.images_dir and (self.images_dir / candidate).exists():
+                            img_path_str = candidate
+                if not img_path_str:
                     continue
                 full_path = Path(img_path_str)
                 if not full_path.is_absolute() and self.images_dir:
                     full_path = self.images_dir / full_path
 
-                patient_id = row.get("patient_id") or f"PAT_{idx:05d}"
+                patient_id = row.get("patient_id") or row.get("case_id") or f"PAT_{idx:05d}"
                 site_id = row.get("site_id") or row.get("site") or "Institutional_Site_1"
                 lesion_id = row.get("lesion_id") or row.get("lesion") or patient_id
                 label_val = row.get("label") or row.get("class") or 0
-                clinical_notes = row.get("clinical_notes") or row.get("diagnosis") or ""
+                clinical_notes = row.get("clinical_notes") or row.get("biopsy_confirmation") or row.get("diagnosis") or ""
+                provenance = row.get("provenance") or "strategy_e_disk_manifest"
+                age_val = row.get("age")
+                age = int(age_val) if age_val and age_val.strip().isdigit() else None
+                sex = row.get("sex") or None
+                anatomical_site = row.get("anatomical_site") or row.get("lesion_location") or None
+                biopsy_confirmed = str(row.get("biopsy_confirmed", "")).strip().lower() in ("true", "1", "yes")
+                if not biopsy_confirmed and "biopsy_confirmation" in row and row["biopsy_confirmation"]:
+                    biopsy_confirmed = True
+                therapeutic_outcome = row.get("therapeutic_outcome") or None
 
                 samples.append({
                     "image_path": str(full_path),
@@ -144,6 +172,12 @@ class DiskMedicalDataset(Dataset):
                     "lesion_id": lesion_id,
                     "label": int(label_val),
                     "clinical_notes": clinical_notes,
+                    "provenance": provenance,
+                    "age": age,
+                    "sex": sex,
+                    "anatomical_site": anatomical_site,
+                    "biopsy_confirmed": biopsy_confirmed,
+                    "therapeutic_outcome": therapeutic_outcome,
                 })
         return samples
 
@@ -217,6 +251,12 @@ class DiskMedicalDataset(Dataset):
                 label=label,
                 lesion_id=sample["lesion_id"],
                 clinical_notes=sample["clinical_notes"],
+                provenance=sample.get("provenance", "strategy_e_disk_manifest"),
+                age=sample.get("age"),
+                sex=sample.get("sex"),
+                anatomical_site=sample.get("anatomical_site"),
+                biopsy_confirmed=sample.get("biopsy_confirmed", False),
+                therapeutic_outcome=sample.get("therapeutic_outcome"),
             )
             if record.sha256 not in seen_hashes:
                 seen_hashes.add(record.sha256)

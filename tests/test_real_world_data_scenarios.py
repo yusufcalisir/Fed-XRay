@@ -113,8 +113,8 @@ def test_embedding_extraction_across_architectures():
     emb_cnn = extract_embedding(cnn, img_tensor)
     emb_vit = extract_embedding(vit, img_tensor)
 
-    assert emb_cnn.shape == (64,)
-    assert emb_vit.shape == (64,)
+    assert emb_cnn.shape == (128,)
+    assert emb_vit.shape == (128,)
     assert not np.isnan(emb_cnn).any()
     assert not np.isnan(emb_vit).any()
 

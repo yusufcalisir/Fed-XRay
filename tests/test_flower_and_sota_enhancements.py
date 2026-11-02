@@ -60,7 +60,7 @@ def test_hnsw_vector_indexing_federated_rag():
     matcher = FederatedRAGCaseMatcher(reference_records=records)
     assert matcher.hnsw_index is not None, "HNSW vector index must be initialized"
 
-    query_vec = np.random.randn(64).astype(np.float32)
+    query_vec = np.random.randn(matcher.embedding_dim).astype(np.float32)
     results = matcher.find_similar(query_vec, top_k=3)
     assert len(results) == 3
     for r in results:

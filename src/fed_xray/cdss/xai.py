@@ -8,7 +8,7 @@ Implements:
 
 from __future__ import annotations
 import math
-from typing import Any, List, Optional, Sequence, Tuple
+from typing import Any, Dict, List, Optional, Sequence, Tuple
 import numpy as np
 from scipy.ndimage import zoom
 import torch
@@ -192,15 +192,16 @@ def get_explanation_text(
     confidence: float,
     probabilities: Optional[Sequence[float]] = None,
     heatmap: Optional[np.ndarray] = None,
+    class_names: Optional[Dict[int, str]] = None,
 ) -> str:
     """Summarize only quantities measured from the model output and Grad-CAM map.
 
     No morphological or anatomical claim is made that the model did not compute.
     ``confidence`` and ``probabilities`` are on the [0, 1] scale.
     """
-    class_names = {0: "Normal", 1: "Pneumonia", 2: "COVID-19"}
+    labels = class_names if class_names is not None else {0: "Normal", 1: "Pneumonia", 2: "COVID-19"}
     lines = [
-        f"**Model prediction: {class_names.get(predicted_class, 'Unknown')}** "
+        f"**Model prediction: {labels.get(predicted_class, 'Unknown')}** "
         f"(softmax confidence: {confidence * 100:.1f}%)"
     ]
 
@@ -209,7 +210,7 @@ def get_explanation_text(
         runner = ranked[1]
         margin = (float(probabilities[ranked[0]]) - float(probabilities[runner])) * 100.0
         lines.append(
-            f"Runner-up class: {class_names.get(runner, 'Unknown')} "
+            f"Runner-up class: {labels.get(runner, 'Unknown')} "
             f"({float(probabilities[runner]) * 100:.1f}%), margin {margin:.1f} percentage points."
         )
 

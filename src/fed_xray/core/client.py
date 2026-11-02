@@ -37,6 +37,7 @@ from .prototypes import (
     compute_local_prototypes_and_dispersion,
     compute_prototype_distance_loss,
 )
+from .privacy import SecAggPeer, SecAggPlusProtocol, clip_and_perturb_state_dict
 
 
 class HospitalClient:
@@ -59,6 +60,12 @@ class HospitalClient:
         deep_layers_only: bool = False,
         img_size: Optional[int] = None,
         patch_size: Optional[int] = None,
+        pretrained: bool = True,
+        foundation_checkpoint: Optional[str] = None,
+        dp_enabled: bool = False,
+        dp_clipping_bound: float = 1.0,
+        dp_noise_multiplier: float = 0.0,
+        dp_mode: str = "distributed",  # "distributed", "local", "central", "off"
     ) -> None:
         self.client_id = client_id
         self.dataloader = dataloader
@@ -71,6 +78,12 @@ class HospitalClient:
         self.lora_r = lora_r
         self.lora_alpha = lora_alpha
         self.deep_layers_only = deep_layers_only
+        self.pretrained = pretrained
+        self.foundation_checkpoint = foundation_checkpoint
+        self.dp_enabled = dp_enabled
+        self.dp_clipping_bound = dp_clipping_bound
+        self.dp_noise_multiplier = dp_noise_multiplier
+        self.dp_mode = dp_mode
 
         if img_size is not None:
             self.img_size = img_size
@@ -96,6 +109,9 @@ class HospitalClient:
         self.n_samples = len(ds) if ds is not None and hasattr(ds, "__len__") else 0
         self.class_counts = self._compute_class_counts()
 
+        # Decentralized cryptographic peer enclave for SecAgg+ (Option J standard)
+        self.secagg_peer = SecAggPeer(client_id=self.client_id)
+
     def _create_local_model(self) -> nn.Module:
         """Instantiate backbone and inject PEFT adapters if requested."""
         model: nn.Module
@@ -105,6 +121,8 @@ class HospitalClient:
                 img_size=self.img_size,
                 patch_size=self.patch_size,
                 num_classes=3,
+                pretrained=self.pretrained,
+                checkpoint_path=self.foundation_checkpoint,
             )
             if self.peft_mode:
                 inject_lora_to_model(
@@ -116,7 +134,13 @@ class HospitalClient:
                 )
             return model
         elif self.model_type == "uni":
-            model = UNIFoundationBackbone(embed_dim=512, num_classes=3, patch_size=self.patch_size)
+            model = UNIFoundationBackbone(
+                embed_dim=512,
+                num_classes=3,
+                patch_size=self.patch_size,
+                pretrained=self.pretrained,
+                checkpoint_path=self.foundation_checkpoint,
+            )
             if self.peft_mode:
                 inject_lora_to_model(
                     model=model,
@@ -127,7 +151,12 @@ class HospitalClient:
                 )
             return model
         elif self.model_type in ("swin_unetr", "swin"):
-            model = SwinUNETRRadiologyBackbone(embed_dim=384, num_classes=3)
+            model = SwinUNETRRadiologyBackbone(
+                embed_dim=384,
+                num_classes=3,
+                pretrained=self.pretrained,
+                checkpoint_path=self.foundation_checkpoint,
+            )
             if self.peft_mode:
                 inject_lora_to_model(
                     model=model,
@@ -158,6 +187,51 @@ class HospitalClient:
 
     def is_malicious(self) -> bool:
         return self.malicious
+
+    def get_weights(self) -> Dict[str, torch.Tensor]:
+        """Extract client's trainable weights or PEFT adapter state dict."""
+        if self.peft_mode:
+            return extract_peft_state_dict(self.model, mode=self.peft_mode)
+        return {k: v.clone() for k, v in self.model.state_dict().items()}
+
+    def get_secagg_public_key(self) -> bytes:
+        """Export client's 32-byte raw X25519 public key for consortium key exchange."""
+        return self.secagg_peer.public_key_bytes
+
+    def generate_secagg_mask(
+        self,
+        peer_public_keys: Dict[int, bytes],
+        weights_map: Optional[Dict[int, float]] = None,
+        tensor_shapes: Optional[Dict[str, torch.Size]] = None,
+        round_num: int = 1,
+    ) -> Dict[str, torch.Tensor]:
+        """Locally synthesize decentralized zero-sum additive mask using ECDH shared secrets."""
+        if tensor_shapes is None:
+            tensor_shapes = {k: v.shape for k, v in self.get_weights().items()}
+        return self.secagg_peer.compute_mask(
+            peer_public_keys=peer_public_keys,
+            tensor_shapes=tensor_shapes,
+            weights_map=weights_map,
+            round_num=round_num,
+            device=self.device,
+        )
+
+    def mask_local_weights(
+        self,
+        weights: Dict[str, torch.Tensor],
+        peer_public_keys: Dict[int, bytes],
+        weights_map: Optional[Dict[int, float]] = None,
+        round_num: int = 1,
+    ) -> Dict[str, torch.Tensor]:
+        """Apply locally synthesized ECDH zero-sum mask to client's candidate weights."""
+        tensor_shapes = {k: v.shape for k, v in weights.items()}
+        mask = self.generate_secagg_mask(
+            peer_public_keys=peer_public_keys,
+            weights_map=weights_map,
+            tensor_shapes=tensor_shapes,
+            round_num=round_num,
+        )
+        return SecAggPlusProtocol.mask_state_dict(weights, mask)
 
     def _flip_labels(self, labels: torch.Tensor) -> torch.Tensor:
         flipped = labels.clone()
@@ -200,6 +274,11 @@ class HospitalClient:
         c_global: Optional[Dict[str, torch.Tensor]] = None,
         moon_mu: float = 0.0,
         moon_temp: float = 0.5,
+        dp_enabled: Optional[bool] = None,
+        dp_clipping_bound: Optional[float] = None,
+        dp_noise_multiplier: Optional[float] = None,
+        dp_mode: Optional[str] = None,
+        num_consortium_clients: Optional[int] = None,
     ) -> Tuple[Dict[str, torch.Tensor], TrainingMetrics, Optional[Dict[str, torch.Tensor]]]:
         """Perform local optimization on private client dataset.
 
@@ -364,12 +443,44 @@ class HospitalClient:
                 for name, param in self.model.state_dict().items()
             }
 
+        # Patient-Level Differential Privacy: sensitivity clipping & calibrated perturbation
+        active_dp_mode = dp_mode if dp_mode is not None else self.dp_mode
+        active_clipping = dp_clipping_bound if dp_clipping_bound is not None else self.dp_clipping_bound
+        active_noise = dp_noise_multiplier if dp_noise_multiplier is not None else self.dp_noise_multiplier
+        is_dp_active = (dp_enabled if dp_enabled is not None else self.dp_enabled) or (active_noise > 0.0)
+
+        pre_clip_norm: Optional[float] = None
+        if is_dp_active and active_dp_mode != "off":
+            deltas: Dict[str, torch.Tensor] = {}
+            for name, curr_t in updated_weights.items():
+                if name in initial_params:
+                    deltas[name] = curr_t.float() - initial_params[name].cpu().float()
+                else:
+                    deltas[name] = torch.zeros_like(curr_t.float())
+
+            k_clients = num_consortium_clients or 1
+            perturbed_deltas, pre_clip_norm = clip_and_perturb_state_dict(
+                delta_weights=deltas,
+                clipping_bound=active_clipping,
+                noise_multiplier=active_noise,
+                num_clients=k_clients,
+                dp_mode=active_dp_mode,
+            )
+
+            for name in updated_weights.keys():
+                if name in initial_params and name in perturbed_deltas:
+                    orig_dtype = updated_weights[name].dtype
+                    updated_weights[name] = (
+                        initial_params[name].cpu() + perturbed_deltas[name]
+                    ).to(orig_dtype)
+
         metrics = TrainingMetrics(
             loss=avg_loss,
             accuracy=accuracy,
             samples_trained=total_samples,
             client_id=self.client_id,
             is_malicious=self.malicious,
+            dp_clipped_norm=pre_clip_norm,
         )
 
         return updated_weights, metrics, delta_c

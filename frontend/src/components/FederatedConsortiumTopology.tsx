@@ -93,23 +93,20 @@ export default function FederatedConsortiumTopology({
   return (
     <div className="card relative h-[480px] sm:h-[520px] lg:h-[550px] flex flex-col justify-between overflow-hidden p-4 sm:p-5 select-none border border-[var(--border-card)] bg-[var(--bg-card)] shadow-xl rounded-2xl">
       {/* Top Console Navigation Bar */}
-      <div className="relative z-20 flex items-center justify-between gap-2 border-b border-[var(--border-subtle)] pb-3">
-        <div className="flex items-center gap-2">
-          <div className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse shadow-[0_0_8px_#10b981]" />
-          <span className="font-mono text-[11px] sm:text-xs font-bold uppercase tracking-wider text-[var(--text-heading)]">
+      <div className="relative z-20 flex items-center justify-between gap-2 border-b border-[var(--border-subtle)] pb-2.5">
+        <div className="flex items-center gap-2 min-w-0">
+          <div className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse shadow-[0_0_8px_#10b981] shrink-0" />
+          <span className="font-mono text-[11px] sm:text-xs font-bold uppercase tracking-wider text-[var(--text-heading)] whitespace-nowrap">
             {t("topo_badge_title")}
-          </span>
-          <span className="hidden sm:inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-mono font-semibold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
-            {t("topo_badge_synced")}
           </span>
         </div>
 
         {/* Console View Switcher */}
-        <div className="flex items-center p-0.5 rounded-lg bg-[var(--bg-card-inner)] border border-[var(--border-card)] text-[10px] sm:text-[11px] font-semibold">
+        <div className="flex items-center p-0.5 rounded-lg bg-[var(--bg-card-inner)] border border-[var(--border-card)] text-[10px] sm:text-[11px] font-semibold shrink-0">
           <button
             type="button"
             onClick={() => setActiveView("topology")}
-            className={`px-2.5 py-1 rounded-md transition-all ${
+            className={`px-2 sm:px-2.5 py-1 rounded-md transition-all whitespace-nowrap ${
               activeView === "topology"
                 ? "bg-emerald-500 text-white shadow-sm"
                 : "text-[var(--text-muted)] hover:text-[var(--text-heading)]"
@@ -120,7 +117,7 @@ export default function FederatedConsortiumTopology({
           <button
             type="button"
             onClick={() => setActiveView("crypto")}
-            className={`px-2.5 py-1 rounded-md transition-all ${
+            className={`px-2 sm:px-2.5 py-1 rounded-md transition-all whitespace-nowrap ${
               activeView === "crypto"
                 ? "bg-emerald-500 text-white shadow-sm"
                 : "text-[var(--text-muted)] hover:text-[var(--text-heading)]"
@@ -131,7 +128,7 @@ export default function FederatedConsortiumTopology({
           <button
             type="button"
             onClick={() => setActiveView("telemetry")}
-            className={`px-2.5 py-1 rounded-md transition-all ${
+            className={`px-2 sm:px-2.5 py-1 rounded-md transition-all whitespace-nowrap ${
               activeView === "telemetry"
                 ? "bg-emerald-500 text-white shadow-sm"
                 : "text-[var(--text-muted)] hover:text-[var(--text-heading)]"
@@ -411,39 +408,46 @@ export default function FederatedConsortiumTopology({
 
       {/* Bottom Node Inspector Bar */}
       {activeView === "topology" && (
-        <div className="relative z-20 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 p-2.5 rounded-xl bg-[var(--bg-card-inner)] border border-[var(--border-subtle)] text-xs mt-1">
-          <div className="flex items-center gap-2">
-            <div className="w-7 h-7 rounded-lg bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-500 shrink-0">
-              <Server className="w-3.5 h-3.5" />
-            </div>
-            <div>
-              <div className="font-display font-bold text-[var(--text-heading)] text-[11px] sm:text-xs">
+        <div className="relative z-20 p-2.5 rounded-xl bg-[var(--bg-card-inner)] border border-[var(--border-subtle)] text-xs mt-1">
+          <div className="flex items-center justify-between gap-2">
+            {/* Left: Server icon + Hospital Name + Location */}
+            <div className="flex items-center gap-2 min-w-0 flex-1">
+              <div className="w-6 h-6 rounded-lg bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-500 shrink-0">
+                <Server className="w-3.5 h-3.5" />
+              </div>
+              <span className="font-display font-bold text-[var(--text-heading)] text-xs truncate">
                 {selectedNode.name}
+              </span>
+              <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 shrink-0">
+                {selectedNode.location}
+              </span>
+            </div>
+
+            {/* Right: DP Budget & Simulate */}
+            <div className="flex items-center gap-2 shrink-0 text-[10px] font-mono">
+              <div className="hidden sm:inline-flex items-center px-2 py-0.5 rounded bg-[var(--bg-card)] border border-[var(--border-subtle)]">
+                <span className="text-slate-400 mr-1">{t("topo_dp_budget")}</span>
+                <span className="font-bold text-emerald-600 dark:text-emerald-400">ε={selectedNode.dpEpsilon}</span>
               </div>
-              <div className="text-[10px] font-mono text-[var(--text-muted)]">
-                {selectedNode.scanner} · {t("topo_skew_label")} {t(selectedNode.skewKey)}
-              </div>
+              {onLaunchDemo && (
+                <button
+                  type="button"
+                  onClick={onLaunchDemo}
+                  className="px-2.5 py-1 rounded-md bg-emerald-500 hover:bg-emerald-600 text-white font-bold text-[10px] sm:text-[11px] transition-all shadow-sm"
+                >
+                  {t("topo_simulate")}
+                </button>
+              )}
             </div>
           </div>
 
-          <div className="flex items-center gap-3 shrink-0 text-[10px] font-mono">
-            <div>
-              <span className="text-slate-400">{t("topo_dp_budget")}</span>{" "}
-              <span className="font-bold text-emerald-600 dark:text-emerald-400">ε={selectedNode.dpEpsilon}</span>
-            </div>
-            <div>
-              <span className="text-slate-400">{t("topo_adapter")}</span>{" "}
-              <span className="font-bold text-sky-600 dark:text-sky-400">FFA-LoRA</span>
-            </div>
-            {onLaunchDemo && (
-              <button
-                type="button"
-                onClick={onLaunchDemo}
-                className="px-2.5 py-1 rounded-md bg-emerald-500 hover:bg-emerald-600 text-white font-bold transition-all shadow-sm"
-              >
-                {t("topo_simulate")}
-              </button>
-            )}
+          {/* Subline: Scanner · Skew */}
+          <div className="text-[10px] font-mono text-[var(--text-muted)] truncate mt-1 pt-1 border-t border-[var(--border-subtle)] flex items-center gap-1.5">
+            <span className="truncate">{selectedNode.scanner}</span>
+            <span className="text-slate-400 shrink-0">·</span>
+            <span className="text-amber-600 dark:text-amber-400 font-semibold shrink-0">
+              {t("topo_skew_label")} {t(selectedNode.skewKey)}
+            </span>
           </div>
         </div>
       )}

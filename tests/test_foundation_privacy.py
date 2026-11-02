@@ -26,22 +26,81 @@ from src.fed_xray.core.client import HospitalClient
 
 
 def test_text_semantic_anchor():
-    """Verify invariant text semantic codebook creates orthogonal normalized anchors."""
-    anchor = TextSemanticAnchor(embed_dim=256)
+    """Verify TextSemanticAnchor produces genuine, normalized clinical language coordinates."""
+    # 1. Strategy E ISIC Dermoscopy Anchors
+    anchor = TextSemanticAnchor(dataset_name="isic", embed_dim=256)
     protos = anchor.get_text_prototypes()
     assert protos.shape == (3, 256)
-    # Check unit norm
+    # Check unit norm on hypersphere S^{d-1}
     norms = torch.norm(protos, dim=-1)
     assert torch.allclose(norms, torch.ones_like(norms), atol=1e-5)
+    # Check that embeddings are authentic semantic vectors (not orthogonal noise)
+    sim_01 = (protos[0] @ protos[1]).item()
+    sim_02 = (protos[0] @ protos[2]).item()
+    assert 0.85 < sim_01 < 0.999
+    assert 0.85 < sim_02 < 0.999
+    # Verify prompt metadata retrieval
+    prompts = anchor.get_prompts()
+    assert len(prompts) == 3
+    assert "melanoma" in prompts[1].lower()
+
+    # 2. Strategy E Chest X-Ray Anchors with Disease Neighborhood Structure
+    cxr_anchor = TextSemanticAnchor(dataset_name="chest_xray", embed_dim=768)
+    cxr_p = cxr_anchor.get_text_prototypes()
+    assert cxr_p.shape == (3, 768)
+    assert torch.allclose(torch.norm(cxr_p, dim=-1), torch.ones(3), atol=1e-5)
+    # Clinical consistency: Bacterial pneumonia (1) and COVID-19 (2) are closer than normal (0)
+    sim_bact_covid = (cxr_p[1] @ cxr_p[2]).item()
+    sim_norm_bact = (cxr_p[0] @ cxr_p[1]).item()
+    sim_norm_covid = (cxr_p[0] @ cxr_p[2]).item()
+    assert sim_bact_covid > sim_norm_bact
+    assert sim_bact_covid > sim_norm_covid
+
+    # 3. Forward lookup indexing
+    indexed = anchor(torch.tensor([0, 2]))
+    assert indexed.shape == (2, 256)
+    assert torch.allclose(indexed[0], protos[0])
+    assert torch.allclose(indexed[1], protos[2])
+
+
+def test_text_semantic_anchor_custom_prompts():
+    """Verify TextSemanticAnchor handles custom clinical prompts and encoder injection."""
+    class MockClinicalEncoder(torch.nn.Module):
+        def encode_text(self, texts):
+            # Deterministic pseudo-encoder for testing custom prompts
+            tensors = []
+            for t in texts:
+                val = float(len(t))
+                tensors.append(torch.full((768,), val))
+            stacked = torch.stack(tensors)
+            return torch.nn.functional.normalize(stacked, p=2, dim=-1)
+
+    custom_prompts = [
+        "Histopathology finding: colorectal adenocarcinoma with high microsatellite instability.",
+        "Histopathology finding: normal colonic mucosa with intact crypt architecture.",
+    ]
+    custom_anchor = TextSemanticAnchor(
+        class_prompts=custom_prompts,
+        embed_dim=128,
+        num_classes=2,
+        encoder=MockClinicalEncoder(),
+    )
+    p = custom_anchor.get_text_prototypes()
+    assert p.shape == (2, 128)
+    assert torch.allclose(torch.norm(p, dim=-1), torch.ones(2), atol=1e-5)
+    assert custom_anchor.get_prompts() == custom_prompts
 
 
 def test_orthogonal_class_anchor():
-    """Verify OrthogonalClassAnchor generates pairwise orthogonal unit vectors."""
+    """Verify OrthogonalClassAnchor generates pairwise orthogonal unit vectors as geometric baseline."""
     anchor = OrthogonalClassAnchor(embed_dim=128, num_classes=4, seed=123)
-    protos = anchor.get_text_prototypes()
+    protos = anchor.get_prototypes()
     assert protos.shape == (4, 128)
     sim_matrix = protos @ protos.t()
     assert torch.allclose(sim_matrix, torch.eye(4), atol=1e-4)
+
+    # Verify backwards compatibility method
+    assert torch.allclose(anchor.get_text_prototypes(), protos)
 
 
 def test_clinical_text_encoder_honest_failure():

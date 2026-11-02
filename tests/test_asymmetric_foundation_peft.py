@@ -1,5 +1,6 @@
 """Unit and integration tests for Asymmetric LoRA (FedAS/FlexLoRA), FedPerfix, and Medical Foundation Models."""
 
+import pytest
 import torch
 import torch.nn as nn
 
@@ -15,6 +16,7 @@ from src.fed_xray.models.foundation import (
     FedColaModalityBridge,
     FedDATDualAdapter,
 )
+from src.fed_xray.models.vit import create_medical_vit
 
 
 def test_flexlora_svd_reconstruction():
@@ -84,9 +86,19 @@ def test_fedperfix_parallel_plugin():
 
 
 def test_uni_and_swin_unetr_foundation_backbones():
-    """Verify UNI pathology and Swin UNETR radiology foundation backbones."""
-    uni = UNIFoundationBackbone(embed_dim=512, num_classes=3)
-    swin = SwinUNETRRadiologyBackbone(embed_dim=384, num_classes=3)
+    """Verify UNI pathology and Swin UNETR radiology foundation backbones with pretrained weights."""
+    uni = UNIFoundationBackbone(embed_dim=512, num_classes=3, pretrained=True)
+    swin = SwinUNETRRadiologyBackbone(embed_dim=384, num_classes=3, pretrained=True)
+
+    # Verify backbones are frozen by default (Rule 2)
+    assert not uni.patch_proj.weight.requires_grad
+    for blk in uni.blocks:
+        assert not blk.norm1.weight.requires_grad
+    assert not swin.conv_stem.weight.requires_grad
+
+    # Verify weight magnitudes indicate initialized pretrained features
+    assert uni.patch_proj.weight.norm().item() > 0.1
+    assert swin.conv_stem.weight.norm().item() > 0.1
 
     x = torch.randn(2, 1, 28, 28)
     logits_uni, feats_uni = uni(x, return_features=True)
@@ -96,6 +108,27 @@ def test_uni_and_swin_unetr_foundation_backbones():
     assert feats_uni.shape == (2, 512)
     assert logits_swin.shape == (2, 3)
     assert feats_swin.shape == (2, 384)
+
+
+def test_foundation_backbones_strict_checkpoint_honest_failure():
+    """Verify strict checkpoint mode fails honestly when foundation weights are absent (Rule 12)."""
+    with pytest.raises(RuntimeError) as exc_uni:
+        UNIFoundationBackbone(strict_checkpoint=True, checkpoint_path="nonexistent/uni_path.pt")
+    assert "UNI foundation checkpoint not found" in str(exc_uni.value)
+
+    with pytest.raises(RuntimeError) as exc_swin:
+        SwinUNETRRadiologyBackbone(strict_checkpoint=True, checkpoint_path="nonexistent/swin_path.pt")
+    assert "Swin UNETR foundation checkpoint not found" in str(exc_swin.value)
+
+
+def test_medical_vit_pretrained_weights_transfer():
+    """Verify Vision Transformers transfer official pretrained weights across scales (Base & Tiny)."""
+    vit_base = create_medical_vit(model_type="vit_base", img_size=224, patch_size=16, pretrained=True)
+    assert vit_base.blocks[0].attn.q_proj.weight.norm().item() > 20.0
+
+    vit_tiny = create_medical_vit(model_type="vit_tiny", img_size=28, patch_size=4, pretrained=True)
+    assert vit_tiny.blocks[0].attn.q_proj.weight.norm().item() > 0.1
+    assert vit_tiny(torch.randn(2, 1, 28, 28)).shape == (2, 3)
 
 
 def test_fedcola_and_feddat_multimodal_modules():

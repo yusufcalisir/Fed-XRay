@@ -52,7 +52,14 @@ class FederatedRAGCaseMatcher:
         self.case_ids: List[str] = []
         self.images: List[np.ndarray] = []
         self.clinical_notes: List[str] = []
-        self.embeddings_matrix: np.ndarray = np.empty((0, 64), dtype=np.float32)
+        self.site_ids: List[str] = []
+        self.biopsy_confirmed: List[bool] = []
+        self.therapeutic_outcomes: List[str] = []
+        self.anatomical_sites: List[str] = []
+        self.diagnoses: List[str] = []
+        self.provenance: List[str] = []
+        self.embedding_dim: int = 0
+        self.embeddings_matrix: np.ndarray = np.empty((0, 0), dtype=np.float32)
         self.hnsw_index: Optional[Any] = None
 
         if reference_records is not None and len(reference_records) > 0:
@@ -100,6 +107,12 @@ class FederatedRAGCaseMatcher:
             self.images.append(image)
             note = (getattr(rec, "clinical_notes", "") or "").strip()
             self.clinical_notes.append(note if note else "No clinical notes recorded for this case.")
+            self.site_ids.append(getattr(rec, "site_id", "Institutional Center"))
+            self.biopsy_confirmed.append(getattr(rec, "biopsy_confirmed", False))
+            self.therapeutic_outcomes.append(getattr(rec, "therapeutic_outcome", ""))
+            self.anatomical_sites.append(getattr(rec, "anatomical_site", ""))
+            self.diagnoses.append(getattr(rec, "diagnosis", "") or "")
+            self.provenance.append(getattr(rec, "provenance", "consortium_reference_twin") or "")
             tensor_list.append(torch.tensor(image, dtype=torch.float32).unsqueeze(0))
 
         # Batched feature extraction under torch.no_grad() for sub-second execution
@@ -128,19 +141,16 @@ class FederatedRAGCaseMatcher:
 
                 for f in feats:
                     emb = f.flatten()
-                    if len(emb) > 64:
-                        emb = emb[:64]
-                    elif len(emb) < 64:
-                        emb = np.pad(emb, (0, 64 - len(emb)))
                     norm = float(np.linalg.norm(emb))
                     self.embeddings.append(((emb / (norm + 1e-8)).astype(np.float32)))
 
         self.embeddings_matrix = np.array(self.embeddings, dtype=np.float32)
+        self.embedding_dim = int(self.embeddings_matrix.shape[1]) if len(self.embeddings) > 0 and self.embeddings_matrix.ndim == 2 else 0
 
         # Initialize high-speed HNSW vector index
         self.hnsw_index = None
         if HNSW_AVAILABLE and hnswlib is not None and len(self.embeddings) > 0 and self.embeddings_matrix.ndim == 2:
-            dim = int(self.embeddings_matrix.shape[1])
+            dim = self.embedding_dim
             num_elements = int(self.embeddings_matrix.shape[0])
             max_capacity = max(num_elements * 4, 256)
             index = hnswlib.Index(space="cosine", dim=dim)
@@ -163,6 +173,13 @@ class FederatedRAGCaseMatcher:
         if k_val == 0:
             return []
 
+        # Strict dimension consistency guard to prevent unhandled C++ hnswlib crashes
+        if self.embedding_dim > 0 and query_float.shape[1] != self.embedding_dim:
+            raise ValueError(
+                f"Query embedding dimension mismatch: query vector has {query_float.shape[1]} dimensions, "
+                f"but active case bank was indexed with {self.embedding_dim} dimensions."
+            )
+
         if self.hnsw_index is not None:
             labels_matched, distances = self.hnsw_index.knn_query(query_float, k=k_val)
             top_indices = labels_matched[0]
@@ -179,9 +196,15 @@ class FederatedRAGCaseMatcher:
             results.append({
                 "case_id": self.case_ids[idx_int],
                 "label": self.labels[idx_int],
+                "diagnosis": self.diagnoses[idx_int] if idx_int < len(self.diagnoses) else "",
                 "similarity": float(np.clip(sim, 0.0, 1.0)),
                 "image": self.images[idx_int],
                 "clinical_notes": self.clinical_notes[idx_int],
+                "site_id": self.site_ids[idx_int],
+                "biopsy_confirmed": self.biopsy_confirmed[idx_int],
+                "therapeutic_outcome": self.therapeutic_outcomes[idx_int],
+                "anatomical_site": self.anatomical_sites[idx_int],
+                "provenance": self.provenance[idx_int] if idx_int < len(self.provenance) else "consortium_reference_twin",
             })
         return results
 
@@ -255,7 +278,11 @@ class FederatedRAGCaseMatcher:
 
 
 def extract_embedding(model: Any, image_tensor: torch.Tensor) -> np.ndarray:
-    """Extract 64-dimensional feature representation from CNN or ViT."""
+    """Extract full normalized feature representation from CNN or ViT foundation backbones.
+
+    Dynamically captures the native latent representation dimension without arbitrary truncation
+    (e.g., 128 for ViT-Tiny and CNN, 768 for ViT-Base, 1024 for MahmoodLab UNI).
+    """
     model.eval()
 
     device = next(model.parameters()).device if list(model.parameters()) else image_tensor.device
@@ -284,17 +311,35 @@ def extract_embedding(model: Any, image_tensor: torch.Tensor) -> np.ndarray:
             out = model(image_tensor)
             emb = out[0].cpu().numpy().flatten()
 
-    if len(emb) > 64:
-        emb = emb[:64]
-    elif len(emb) < 64:
-        emb = np.pad(emb, (0, 64 - len(emb)))
-
     norm = np.linalg.norm(emb)
-    return emb / (norm + 1e-8)
+    return (emb / (norm + 1e-8)).astype(np.float32)
 
 
 # Alias for backward compatibility
 HistoricalCaseBank = FederatedRAGCaseMatcher
 
-LABEL_NAMES = {0: "Normal", 1: "Pneumonia", 2: "COVID-19"}
+ISIC_LABEL_NAMES = {
+    0: "Benign Dysplastic Nevus",
+    1: "Malignant Melanoma",
+    2: "Basal Cell Carcinoma",
+}
+
+CHEST_XRAY_LABEL_NAMES = {
+    0: "Normal",
+    1: "Bacterial Pneumonia",
+    2: "COVID-19",
+}
+
+# Default label map aligned with Strategy E primary benchmark
+LABEL_NAMES = ISIC_LABEL_NAMES
 LABEL_COLORS = {0: "🟢", 1: "🟠", 2: "🔴"}
+
+
+def get_dataset_label_map(dataset_name: Optional[str] = None) -> Dict[int, str]:
+    """Return authentic diagnostic label mapping based on active dataset modality."""
+    if dataset_name is None:
+        return ISIC_LABEL_NAMES
+    d_lower = dataset_name.lower()
+    if "xray" in d_lower or "chest" in d_lower or "mimic" in d_lower or "chexpert" in d_lower:
+        return CHEST_XRAY_LABEL_NAMES
+    return ISIC_LABEL_NAMES

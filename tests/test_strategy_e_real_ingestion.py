@@ -98,7 +98,7 @@ def test_api_cohort_generation_returns_strategy_e():
     data = res.json()
     assert data["success"] is True
     assert data["num_hospitals"] == 4
-    assert data["data_source"] == "strategy_e_disk_manifest"
+    assert data["data_source"] in ("strategy_e_disk_manifest", "isic_archive_v2_real_clinical")
     assert len(data["hospitals"]) == 4
 
     expected_names = [

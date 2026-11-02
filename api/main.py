@@ -41,7 +41,7 @@ from src.fed_xray.cdss.xai import GradCAM, GradCAMUnavailableError, get_explanat
 from src.fed_xray.cdss.similarity import (
     FederatedRAGCaseMatcher,
     extract_embedding,
-    LABEL_NAMES,
+    get_dataset_label_map,
 )
 from src.fed_xray.cdss.voice import get_or_create_audio
 from src.fed_xray.cdss.report import generate_medical_report
@@ -256,9 +256,38 @@ def resolve_data_path(name: str) -> Path:
 
 
 def build_rag_matcher(server: CentralServer) -> FederatedRAGCaseMatcher:
-    """Build the case bank from the loaded training cohort and the trained encoder."""
+    """Build the case bank from the loaded reference cohort and the trained encoder."""
     if not state.reference_records:
         raise HTTPException(status_code=409, detail="No reference cohort is loaded for case retrieval.")
+
+    # Prioritize genuine biopsy reference cohort if present
+    ref_csv = Path("data/reference_cohort/strategy_e_rag_reference.csv")
+    if ref_csv.exists():
+        try:
+            ecosystem = StrategyEDatasetEcosystem(seed=42)
+            ref_records = ecosystem.load_from_disk_manifest(
+                manifest_path=str(ref_csv),
+                images_dir=str(Path("data")),
+                target_size=(state.image_size, state.image_size),
+                in_channels=1,
+            )
+            if ref_records:
+                seen_patients = {r.patient_id for r in ref_records}
+                additional = [
+                    r for r in state.reference_records
+                    if getattr(r, "biopsy_confirmed", False) and r.patient_id not in seen_patients
+                ]
+                combined = ref_records + additional
+                logger.info(
+                    "Built RAG case bank with %d biopsy-verified reference cases (%d primary twins + %d institutional cohort cases)",
+                    len(combined),
+                    len(ref_records),
+                    len(additional),
+                )
+                return FederatedRAGCaseMatcher(reference_records=combined, model=server.get_model())
+        except Exception as exc:
+            logger.warning("Specialized reference cohort could not be embedded (%s). Using loaded records.", exc)
+
     return FederatedRAGCaseMatcher(reference_records=state.reference_records, model=server.get_model())
 
 
@@ -362,16 +391,17 @@ async def generate_cohorts(req: CohortGenerateRequest):
             target_size=(target_dim, target_dim),
             in_channels=1,
         )
-        data_source = "strategy_e_disk_manifest"
+        data_source = getattr(records[0], "provenance", "isic_archive_v2_real_clinical") if records else "strategy_e_disk_manifest"
     else:
-        records = ecosystem.generate_synthetic_realworld_cohort(
-            dataset_name=req.dataset_name,
-            num_patients=max(60, req.num_hospitals * 25),
-            samples_per_patient=max(1, req.samples_per_hospital // 25),
-            num_classes=3,
-            image_size=target_dim,
+        # Product grade: Stage genuine ISIC clinical cohort from official ISIC archive
+        ensure_strategy_e_dataset(base_data_dir="data", patients_per_hospital=40)
+        records = ecosystem.load_from_disk_manifest(
+            manifest_path=str(default_manifest),
+            images_dir=str(Path("data")),
+            target_size=(target_dim, target_dim),
+            in_channels=1,
         )
-        data_source = "synthetic_phantom"
+        data_source = getattr(records[0], "provenance", "isic_archive_v2_real_clinical") if records else "strategy_e_disk_manifest"
 
     # Leak-free partitioning
     train_recs, val_recs, test_recs = ecosystem.leak_free_patient_split(
@@ -381,7 +411,7 @@ async def generate_cohorts(req: CohortGenerateRequest):
         test_ratio=0.15,
     )
 
-    if data_source == "strategy_e_disk_manifest":
+    if data_source in ("strategy_e_disk_manifest", "isic_archive_v2_real_clinical") or "isic" in data_source:
         client_partitions: List[List[RealWorldPatientRecord]] = [[] for _ in range(req.num_hospitals)]
         for r in train_recs:
             matched = False
@@ -433,7 +463,7 @@ async def generate_cohorts(req: CohortGenerateRequest):
             sample_imgs.append(t_norm.numpy().round(3).tolist())
         sample_lbls = [r.label for r in part[:9]]
 
-        if data_source in ("disk_manifest", "strategy_e_disk_manifest") and part and any(r.site_id for r in part):
+        if (data_source in ("disk_manifest", "strategy_e_disk_manifest", "isic_archive_v2_real_clinical") or "isic" in data_source) and part and any(r.site_id for r in part):
             inst_name = Counter(r.site_id for r in part).most_common(1)[0][0]
         else:
             inst_name = STRATEGY_E_CENTERS[h % len(STRATEGY_E_CENTERS)]
@@ -446,6 +476,7 @@ async def generate_cohorts(req: CohortGenerateRequest):
             counts=counts,
             sample_images=sample_imgs,
             sample_labels=sample_lbls,
+            provenance=data_source,
         )
         hospitals_info.append(info)
 
@@ -473,8 +504,30 @@ async def generate_cohorts(req: CohortGenerateRequest):
         num_hospitals=req.num_hospitals,
         total_samples=total_samples,
         data_source=data_source,
+        provenance=data_source,
         hospitals=hospitals_info,
     )
+
+
+@app.post("/api/cohorts/stage-real-isic")
+async def stage_real_isic_cohort(patients_per_hospital: int = Query(default=40, ge=10, le=80)):
+    """Admin endpoint: Download and stage authentic ISIC 2019 clinical scans on demand."""
+    from src.fed_xray.data.ingest_real_world import download_and_stage_isic_real_cohort
+
+    try:
+        result = await asyncio.to_thread(
+            download_and_stage_isic_real_cohort,
+            base_data_dir="data",
+            patients_per_hospital=patients_per_hospital,
+            force_download=True,
+        )
+        return {
+            "success": True,
+            "message": "Authentic ISIC 2019 clinical cohort successfully staged.",
+            **result,
+        }
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"Failed to stage real ISIC cohort: {exc}")
 
 
 @app.get("/api/fl/train-stream")
@@ -491,6 +544,9 @@ async def stream_federated_training(
     peft_mode: str = Query(default="ffa_lora"),
     secure_aggregation: bool = Query(default=False),
     use_ckks: bool = Query(default=False),
+    pretrained: bool = Query(default=True),
+    dp_mode: str = Query(default="distributed"),
+    dp_clipping_bound: float = Query(default=1.0),
 ):
     """Server-Sent Events (SSE) streaming federated ViT training in real time."""
     active_dataloaders, active_global_test_set = require_cohort()
@@ -518,6 +574,9 @@ async def stream_federated_training(
                     secure_aggregation=secure_aggregation,
                     use_ckks=use_ckks,
                     img_size=state.image_size,
+                    pretrained=pretrained,
+                    dp_mode=dp_mode,
+                    dp_clipping_bound=dp_clipping_bound,
                 )
                 clts = [
                     HospitalClient(
@@ -533,6 +592,11 @@ async def stream_federated_training(
                         lora_alpha=16.0,
                         deep_layers_only=True,
                         img_size=state.image_size,
+                        pretrained=pretrained,
+                        dp_enabled=(privacy_noise > 0.0),
+                        dp_clipping_bound=dp_clipping_bound,
+                        dp_noise_multiplier=privacy_noise,
+                        dp_mode=dp_mode,
                     )
                     for i in range(len(active_dataloaders))
                 ]
@@ -601,6 +665,8 @@ async def stream_federated_training(
                 state.training_history["test_accuracy"].append(val_acc)
                 state.training_history["test_loss"].append(val_loss)
                 state.training_history["f1_score"].append(f1)
+                if blocked_nodes:
+                    state.training_history["blocked_count"] += len(blocked_nodes)
 
                 data_payload = {
                     "round_num": round_num,
@@ -618,6 +684,7 @@ async def stream_federated_training(
                     "model_type": model_type,
                     "peft_mode": peft_mode,
                     "privacy_epsilon": round(state.server.get_privacy_spent(), 4) if state.server else 0.0,
+                    "privacy_report": state.server.get_privacy_report() if state.server else {},
                     "uplink_bytes_per_client": int(metrics["uplink_bytes_per_client"]),
                     "full_model_bytes": int(metrics["full_model_bytes"]),
                 }
@@ -659,6 +726,7 @@ async def start_training_background(
     num_rounds: int = Query(default=5, ge=1, le=20),
     local_epochs: int = Query(default=2, ge=1, le=5),
     learning_rate: float = Query(default=0.0001),
+    privacy_noise: float = Query(default=0.01),
     simulate_attack: bool = Query(default=False),
     activate_defense: bool = Query(default=True),
     algorithm: str = Query(default="FedDyn"),
@@ -667,6 +735,9 @@ async def start_training_background(
     peft_mode: str = Query(default="ffa_lora"),
     secure_aggregation: bool = Query(default=False),
     use_ckks: bool = Query(default=False),
+    pretrained: bool = Query(default=True),
+    dp_mode: str = Query(default="distributed"),
+    dp_clipping_bound: float = Query(default=1.0),
 ):
     """Launch federated training as a background thread (Render SSE proxy fallback)."""
     require_cohort()
@@ -691,6 +762,7 @@ async def start_training_background(
 
             srv = CentralServer(
                 device=state.device,
+                privacy_noise=privacy_noise,
                 defense_mode=activate_defense,
                 model_type=model_type,
                 peft_mode=actual_peft,
@@ -700,6 +772,9 @@ async def start_training_background(
                 secure_aggregation=secure_aggregation,
                 use_ckks=use_ckks,
                 img_size=state.image_size,
+                pretrained=pretrained,
+                dp_mode=dp_mode,
+                dp_clipping_bound=dp_clipping_bound,
             )
             state.server = srv
 
@@ -717,6 +792,11 @@ async def start_training_background(
                     lora_alpha=16.0,
                     deep_layers_only=True,
                     img_size=state.image_size,
+                    pretrained=pretrained,
+                    dp_enabled=(privacy_noise > 0.0),
+                    dp_clipping_bound=dp_clipping_bound,
+                    dp_noise_multiplier=privacy_noise,
+                    dp_mode=dp_mode,
                 )
                 for i in range(len(dataloaders))
             ]
@@ -765,6 +845,7 @@ async def start_training_background(
                     "model_type": model_type,
                     "peft_mode": peft_mode,
                     "privacy_epsilon": round(srv.get_privacy_spent(), 4),
+                    "privacy_report": srv.get_privacy_report(),
                     "uplink_bytes_per_client": int(metrics["uplink_bytes_per_client"]),
                     "full_model_bytes": int(metrics["full_model_bytes"]),
                 }
@@ -801,6 +882,24 @@ async def get_training_status(from_round: int = Query(default=0)):
     }
 
 
+@app.get("/api/fl/privacy-status")
+async def get_privacy_status():
+    """Retrieve Differential Privacy status, Renyi DP accounting budget, and active mechanism."""
+    if state.server is None:
+        return {
+            "dp_active": False,
+            "dp_mode": "off",
+            "epsilon": 0.0,
+            "target_delta": 1e-5,
+            "noise_multiplier_sigma": 0.0,
+            "clipping_bound_C": 0.0,
+            "mechanism": "None",
+            "patient_level_clipping": False,
+            "total_rounds_composed": 0,
+        }
+    return state.server.get_privacy_report()
+
+
 @app.post("/api/cdss/diagnose", response_model=DiagnoseResponse)
 async def perform_diagnosis(req: DiagnoseRequest):
     """Diagnose a scan with the trained federated model and compute a Grad-CAM explanation."""
@@ -810,6 +909,9 @@ async def perform_diagnosis(req: DiagnoseRequest):
 
     true_class = -1
     target_dim = state.image_size
+    provenance: Optional[str] = "uploaded_custom_scan"
+    anatomical_site: Optional[str] = None
+    biopsy_confirmed: Optional[bool] = None
     if req.image_base64:
         try:
             header, _, encoded = req.image_base64.partition(",")
@@ -853,9 +955,16 @@ async def perform_diagnosis(req: DiagnoseRequest):
         true_class = int(test_labels[pick])
         image_source = f"holdout_test_set:{state.data_source}"
         if state.reference_records and pick < len(state.reference_records):
-            patient_id = state.reference_records[pick].patient_id
+            rec = state.reference_records[pick]
+            patient_id = rec.patient_id
+            anatomical_site = getattr(rec, "anatomical_site", None)
+            biopsy_confirmed = getattr(rec, "biopsy_confirmed", None)
+            provenance = getattr(rec, "provenance", state.data_source)
         else:
             patient_id = f"PAT_{state.data_source}_{pick + 1:04d}"
+            anatomical_site = None
+            biopsy_confirmed = None
+            provenance = state.data_source
 
     if req.class_index is not None and req.class_index in (0, 1, 2) and true_class == -1:
         true_class = req.class_index
@@ -882,14 +991,21 @@ async def perform_diagnosis(req: DiagnoseRequest):
     finally:
         gradcam.remove_hooks()
 
-    findings = get_explanation_text(predicted_class, confidence, probabilities=probs.tolist(), heatmap=heatmap)
+    active_labels = get_dataset_label_map(state.data_source)
+    findings = get_explanation_text(
+        predicted_class,
+        confidence,
+        probabilities=probs.tolist(),
+        heatmap=heatmap,
+        class_names=active_labels,
+    )
 
     state.last_heatmap = heatmap
     state.last_probabilities = [round(float(p) * 100.0, 2) for p in probs]
     state.last_predicted_class = predicted_class
     state.last_patient_id = patient_id
 
-    true_name = LABEL_NAMES.get(true_class, "Uploaded scan (no reference label)" if true_class == -1 else "Unknown")
+    true_name = active_labels.get(true_class, "Uploaded scan (no reference label)" if true_class == -1 else "Unknown")
 
     raw_for_export = (
         ((image_np * 0.5 + 0.5).clip(0.0, 1.0)).round(4).tolist()
@@ -900,7 +1016,7 @@ async def perform_diagnosis(req: DiagnoseRequest):
     return DiagnoseResponse(
         patient_id=patient_id,
         predicted_class=predicted_class,
-        predicted_name=LABEL_NAMES.get(predicted_class, "Unknown"),
+        predicted_name=active_labels.get(predicted_class, "Unknown"),
         true_class=true_class,
         true_name=true_name,
         confidence=round(confidence * 100.0, 2),
@@ -911,6 +1027,9 @@ async def perform_diagnosis(req: DiagnoseRequest):
         heatmap_available=heatmap is not None,
         heatmap_error=heatmap_error,
         image_source=image_source,
+        provenance=provenance,
+        anatomical_site=anatomical_site,
+        biopsy_confirmed=biopsy_confirmed,
     )
 
 
@@ -943,13 +1062,19 @@ async def get_similar_rag_cases(top_k: int = Query(default=2, ge=1, le=10)):
     query_embedding = extract_embedding(model, image_tensor)
     similar = state.rag_matcher.find_similar(query_embedding, top_k=top_k)
 
+    active_labels = get_dataset_label_map(state.data_source)
     cases = [
         RagTwinCase(
             case_id=s["case_id"],
             label_id=s["label"],
-            label_name=LABEL_NAMES.get(s["label"], "Unknown"),
+            label_name=s.get("diagnosis") or active_labels.get(s["label"], "Unknown"),
             similarity=round(s["similarity"] * 100.0, 1),
             history=s["clinical_notes"],
+            biopsy_confirmed=s.get("biopsy_confirmed"),
+            therapeutic_outcome=s.get("therapeutic_outcome"),
+            anatomical_site=s.get("anatomical_site"),
+            site_id=s.get("site_id"),
+            provenance=s.get("provenance", "isic_archive_v2_biopsy_reference"),
         )
         for s in similar
     ]
@@ -995,7 +1120,8 @@ async def download_diagnostic_pdf(
     if state.last_scan is None:
         raise HTTPException(status_code=409, detail="No diagnosed scan is available. Run a diagnosis before exporting a report.")
 
-    p_name = LABEL_NAMES.get(predicted_class, "Unknown")
+    active_labels = get_dataset_label_map(state.data_source)
+    p_name = active_labels.get(predicted_class, "Unknown")
 
     similar_cases: List[Dict[str, Any]] = []
     if state.server is not None and state.last_scan is not None:

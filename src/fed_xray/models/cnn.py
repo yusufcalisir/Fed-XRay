@@ -82,6 +82,20 @@ class XRayClassifier(nn.Module):
                 return False
         return True
 
+    def extract_features(self, x: torch.Tensor) -> torch.Tensor:
+        """Extract penultimate feature representation (128-dimensional)."""
+        if x.shape[-2:] != (28, 28):
+            x = F.interpolate(x, size=(28, 28), mode="bilinear", align_corners=False)
+        x = self.conv1(x)
+        x = F.relu(x)
+        x = self.pool1(x)
+        x = self.conv2(x)
+        x = F.relu(x)
+        x = self.pool2(x)
+        x = self.adaptive_pool(x)
+        x = x.view(x.size(0), -1)
+        return F.relu(self.fc1(x))
+
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         """Forward pass returning output logits of shape (batch, num_classes)."""
         x = self.conv1(x)

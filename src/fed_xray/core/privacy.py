@@ -12,6 +12,9 @@ Implements:
 from __future__ import annotations
 import math
 from typing import Dict, List, Optional, Tuple
+from cryptography.hazmat.primitives import hashes, serialization
+from cryptography.hazmat.primitives.asymmetric import x25519
+from cryptography.hazmat.primitives.kdf.hkdf import HKDF
 import torch
 
 
@@ -146,8 +149,98 @@ class CKKSEncryptionEngine:
         return decrypted
 
 
+class SecAggPeer:
+    """Decentralized cryptographic peer enclave for SecAgg+ key agreement and mask synthesis.
+
+    Each federated hospital client holds its own private X25519 key (RFC 7748) and derives
+    antisymmetric pairwise zero-sum masks using HKDF-SHA256 key agreement with peer nodes.
+    The central aggregation server receives only masked parameters and possesses zero private keys.
+    """
+
+    def __init__(self, client_id: int) -> None:
+        self.client_id = client_id
+        self._private_key: x25519.X25519PrivateKey = x25519.X25519PrivateKey.generate()
+        self._public_key: x25519.X25519PublicKey = self._private_key.public_key()
+
+    @property
+    def public_key_bytes(self) -> bytes:
+        """32-byte raw public key for network exchange with peer nodes."""
+        return self._public_key.public_bytes(
+            encoding=serialization.Encoding.Raw,
+            format=serialization.PublicFormat.Raw,
+        )
+
+    def derive_pairwise_key(
+        self,
+        peer_id: int,
+        peer_pk_bytes: bytes,
+        round_num: int = 1,
+    ) -> bytes:
+        """Derive 256-bit symmetric shared key with a peer using ECDH and HKDF-SHA256."""
+        peer_pk = x25519.X25519PublicKey.from_public_bytes(peer_pk_bytes)
+        shared_secret = self._private_key.exchange(peer_pk)
+
+        # Canonical pair tag ensures client u and client v derive the identical 256-bit key
+        low_id, high_id = min(self.client_id, peer_id), max(self.client_id, peer_id)
+        info_tag = f"secagg_pair_{low_id}_{high_id}_round_{round_num}".encode()
+
+        hkdf = HKDF(
+            algorithm=hashes.SHA256(),
+            length=32,
+            salt=b"fed-xray-secagg-v2",
+            info=info_tag,
+        )
+        return hkdf.derive(shared_secret)
+
+    def compute_mask(
+        self,
+        peer_public_keys: Dict[int, bytes],
+        tensor_shapes: Dict[str, torch.Size],
+        weights_map: Optional[Dict[int, float]] = None,
+        round_num: int = 1,
+        device: torch.device = torch.device("cpu"),
+    ) -> Dict[str, torch.Tensor]:
+        """Locally synthesize the client's zero-sum additive mask using ECDH shared secrets."""
+        my_weight = 1.0
+        if weights_map is not None:
+            total_w = sum(weights_map.values())
+            my_weight = max(1e-12, float(weights_map.get(self.client_id, 1.0)) / max(1e-12, total_w))
+
+        mask = {
+            param_name: torch.zeros(shape, device=device, dtype=torch.float32)
+            for param_name, shape in tensor_shapes.items()
+        }
+
+        for peer_id, peer_pk_bytes in sorted(peer_public_keys.items()):
+            if peer_id == self.client_id:
+                continue
+
+            pairwise_key = self.derive_pairwise_key(peer_id, peer_pk_bytes, round_num=round_num)
+
+            for param_name, shape in tensor_shapes.items():
+                h = hashes.Hash(hashes.SHA256())
+                h.update(pairwise_key)
+                h.update(param_name.encode())
+                digest = h.finalize()
+                seed_64 = int.from_bytes(digest[:8], byteorder="big") % (2**63 - 1)
+
+                gen = torch.Generator(device=device).manual_seed(seed_64)
+                pairwise_noise = torch.randn(shape, generator=gen, device=device) * 0.1
+
+                # Antisymmetric accumulation:
+                # If self.client_id < peer_id: add noise / my_weight
+                # If self.client_id > peer_id: subtract noise / my_weight
+                # Thus sum_{u} p_u * S_u = sum_{u < v} (noise - noise) = 0 identically.
+                if self.client_id < peer_id:
+                    mask[param_name] += pairwise_noise / my_weight
+                else:
+                    mask[param_name] -= pairwise_noise / my_weight
+
+        return mask
+
+
 class SecAggPlusProtocol:
-    """Cryptographic Secure Aggregation (SecAgg+) with pairwise zero-sum masking."""
+    """Cryptographic Secure Aggregation (SecAgg+) with decentralized ECDH zero-sum masking."""
 
     @staticmethod
     def generate_pairwise_masks(
@@ -155,40 +248,29 @@ class SecAggPlusProtocol:
         tensor_shapes: Dict[str, torch.Size],
         device: torch.device = torch.device("cpu"),
         weights: Optional[List[float]] = None,
+        round_num: int = 1,
     ) -> List[Dict[str, torch.Tensor]]:
-        """Generates pairwise masks s_u such that sum_{u=1}^K p_u * s_u = 0.
+        """Generates authentic ECDH-derived pairwise masks s_u such that sum_{u=1}^K p_u * s_u = 0.
 
-        When weights is None, uniform weighting (p_u = 1/K) is assumed so sum s_u = 0.
-        When weights is provided, p_u = w_u / sum(w), and noise is scaled inversely by p_u:
-        s_i += Delta_{i,j} / p_i, s_j -= Delta_{i,j} / p_j => sum p_u * s_u = 0.
+        Uses ephemeral X25519 key agreements and HKDF-SHA256 key derivation across decentralized peers.
         """
-        # Initialize client masks
-        client_masks = [
-            {k: torch.zeros(shape, device=device) for k, shape in tensor_shapes.items()}
-            for _ in range(num_clients)
-        ]
+        peers = [SecAggPeer(client_id=i) for i in range(num_clients)]
+        pk_registry = {i: peer.public_key_bytes for i, peer in enumerate(peers)}
 
+        weights_map: Optional[Dict[int, float]] = None
         if weights is not None:
-            total_w = sum(weights)
-            p = [max(1e-12, float(w) / max(1e-12, total_w)) for w in weights]
-        else:
-            p = [1.0] * num_clients
+            weights_map = {i: float(w) for i, w in enumerate(weights)}
 
-        # Generate antisymmetric pairwise random seeds
-        for i in range(num_clients):
-            for j in range(i + 1, num_clients):
-                seed = (i * 1000 + j) + 42
-                gen = torch.Generator(device=device).manual_seed(seed)
-                for k, shape in tensor_shapes.items():
-                    pairwise_noise = torch.randn(shape, generator=gen, device=device) * 0.1
-                    if weights is not None:
-                        client_masks[i][k] += pairwise_noise / p[i]
-                        client_masks[j][k] -= pairwise_noise / p[j]
-                    else:
-                        client_masks[i][k] += pairwise_noise
-                        client_masks[j][k] -= pairwise_noise
-
-        return client_masks
+        return [
+            peer.compute_mask(
+                peer_public_keys=pk_registry,
+                tensor_shapes=tensor_shapes,
+                weights_map=weights_map,
+                round_num=round_num,
+                device=device,
+            )
+            for peer in peers
+        ]
 
     @staticmethod
     def mask_state_dict(
@@ -200,6 +282,54 @@ class SecAggPlusProtocol:
             k: (v.float() + mask[k].to(v.device)).to(v.dtype) if k in mask else v.clone()
             for k, v in state_dict.items()
         }
+
+    @staticmethod
+    def reconstruct_dropout_residual(
+        dropped_client_ids: List[int],
+        surviving_peers: Dict[int, SecAggPeer],
+        all_public_keys: Dict[int, bytes],
+        tensor_shapes: Dict[str, torch.Size],
+        weights_map: Dict[int, float],
+        round_num: int = 1,
+        device: torch.device = torch.device("cpu"),
+    ) -> Dict[str, torch.Tensor]:
+        """Reconstruct the pairwise mask contributions of dropped clients for exact cancellation.
+
+        When client v drops out or is excluded, surviving peers share pairwise seeds with v,
+        allowing the server to reconstruct and subtract the dropped node's un-cancelled masks
+        without revealing any surviving client's model parameters.
+        """
+        residual = {
+            param_name: torch.zeros(shape, device=device, dtype=torch.float32)
+            for param_name, shape in tensor_shapes.items()
+        }
+
+        for dropped_id in dropped_client_ids:
+            if dropped_id not in all_public_keys:
+                continue
+            dropped_pk = all_public_keys[dropped_id]
+
+            for surviving_id, peer in surviving_peers.items():
+                pairwise_key = peer.derive_pairwise_key(dropped_id, dropped_pk, round_num=round_num)
+
+                for param_name, shape in tensor_shapes.items():
+                    h = hashes.Hash(hashes.SHA256())
+                    h.update(pairwise_key)
+                    h.update(param_name.encode())
+                    digest = h.finalize()
+                    seed_64 = int.from_bytes(digest[:8], byteorder="big") % (2**63 - 1)
+
+                    gen = torch.Generator(device=device).manual_seed(seed_64)
+                    pairwise_noise = torch.randn(shape, generator=gen, device=device) * 0.1
+
+                    # If surviving_id < dropped_id, surviving added noise (weighted by p_surv)
+                    # When summed, it remains in the aggregate. We subtract it:
+                    if surviving_id < dropped_id:
+                        residual[param_name] += pairwise_noise
+                    else:
+                        residual[param_name] -= pairwise_noise
+
+        return residual
 
 
 class PatientLevelDPAccountant:
@@ -277,3 +407,64 @@ def apply_patient_level_dp_clipping(
     noise = torch.randn_like(sum_clipped) * (noise_multiplier_sigma * clipping_bound_C)
     num_patients = len(patient_gradients)
     return (sum_clipped + noise) / max(1, num_patients)
+
+
+def clip_and_perturb_state_dict(
+    delta_weights: Dict[str, torch.Tensor],
+    clipping_bound: float = 1.0,
+    noise_multiplier: float = 0.0,
+    num_clients: int = 1,
+    dp_mode: str = "distributed",
+) -> Tuple[Dict[str, torch.Tensor], float]:
+    """Applies patient-level sensitivity clipping and calibrated Gaussian perturbation.
+
+    Args:
+        delta_weights: Parameter update deltas: Delta W_k = W_k - W_0.
+        clipping_bound: L2 sensitivity clipping threshold C.
+        noise_multiplier: Gaussian mechanism noise multiplier sigma.
+        num_clients: Total participating consortium clients K for distributed noise scaling.
+        dp_mode: Differential privacy operating mode:
+            - "distributed": Option J standard. Client perturbs locally with
+              sigma_client = (sigma * C) / sqrt(K). After consensus aggregation across
+              K clients, the aggregate model achieves exact central Gaussian (epsilon, delta)-DP
+              with zero plaintext individual leakage in transit.
+            - "local": Local Differential Privacy. Client perturbs with
+              sigma_local = sigma * C, guaranteeing local (epsilon, delta)-LDP at hospital boundary.
+            - "central": Central DP. Client clips delta to C to guarantee bounded sensitivity,
+              leaving noise perturbation to the aggregator.
+            - "off": Identity pass-through with no clipping or noise.
+
+    Returns:
+        (perturbed_deltas, pre_clip_l2_norm)
+    """
+    if not delta_weights:
+        return {}, 0.0
+
+    if dp_mode == "off":
+        return {k: v.clone() for k, v in delta_weights.items()}, 0.0
+
+    norm_sq = 0.0
+    for v in delta_weights.values():
+        norm_sq += torch.sum(v.float() ** 2).item()
+    total_l2_norm = math.sqrt(norm_sq)
+
+    clip_factor = min(1.0, clipping_bound / (total_l2_norm + 1e-8))
+    clipped = {k: v.float() * clip_factor for k, v in delta_weights.items()}
+
+    k_clients = max(1, num_clients)
+    if dp_mode == "distributed" and noise_multiplier > 0.0:
+        client_sigma = (noise_multiplier * clipping_bound) / math.sqrt(k_clients)
+        perturbed = {
+            k: v + torch.randn_like(v) * client_sigma
+            for k, v in clipped.items()
+        }
+    elif dp_mode == "local" and noise_multiplier > 0.0:
+        local_sigma = noise_multiplier * clipping_bound
+        perturbed = {
+            k: v + torch.randn_like(v) * local_sigma
+            for k, v in clipped.items()
+        }
+    else:
+        perturbed = clipped
+
+    return perturbed, total_l2_norm

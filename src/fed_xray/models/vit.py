@@ -9,9 +9,11 @@ Provides isotropic Vision Transformer backbones with:
 
 from __future__ import annotations
 import math
-from typing import Any, Optional, Tuple
+from pathlib import Path
+from typing import Any, Optional, Tuple, Dict
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
 
 
 class PatchEmbedding(nn.Module):
@@ -66,6 +68,7 @@ class MultiHeadSelfAttention(nn.Module):
         self.k_proj = nn.Linear(embed_dim, embed_dim, bias=qkv_bias)
         self.v_proj = nn.Linear(embed_dim, embed_dim, bias=qkv_bias)
         self.out_proj = nn.Linear(embed_dim, embed_dim, bias=True)
+        self.proj = self.out_proj  # Alias for backward compatibility
 
         self.attn_drop = nn.Dropout(attn_drop)
         self.proj_drop = nn.Dropout(proj_drop)
@@ -255,89 +258,141 @@ class VisionTransformer(nn.Module):
         return logits
 
 
-def load_pretrained_vit_b_weights(model: VisionTransformer) -> bool:
-    """Transfer official torchvision ViT-B/16 pretrained weights into VisionTransformer.
+def load_pretrained_vit_weights(
+    model: VisionTransformer,
+    checkpoint_path: Optional[str] = None,
+    strict: bool = False,
+) -> bool:
+    """Transfer official torchvision ViT pretrained weights or custom checkpoint into VisionTransformer.
 
-    Transfers:
-    - conv_proj -> patch_embed.proj (channel-averaged for 1-channel medical scans)
-    - class_token -> cls_token
-    - pos_embedding -> pos_embed
-    - 12x MHSA layers (in_proj_weight chunked to q, k, v projections, out_proj)
-    - 12x MLP blocks (linear_1, linear_2) and LayerNorms
-    - Final LayerNorm (encoder.ln -> norm)
+    Supports:
+    - Loading from local or custom checkpoint path (if provided)
+    - Full-parameter weight transfer for ViT-Base (768-dim, 12 layers)
+    - Progressive subspace projection for scaled variants (ViT-Small 256-dim, ViT-Tiny 128-dim)
+    - Dynamic bicubic resampling for patch embedding projection filter (1-channel medical scans)
+    - 2D bicubic grid interpolation for position embeddings (supporting 28x28, 224x224, etc.)
+    - Direct loading into q_proj, k_proj, v_proj, and out_proj layers
     """
     try:
-        import torchvision.models as models
+        state: Dict[str, torch.Tensor]
+        if checkpoint_path is not None:
+            p = Path(checkpoint_path)
+            if not p.exists():
+                if strict:
+                    raise RuntimeError(f"VisionTransformer checkpoint not found at: {checkpoint_path}")
+                return False
+            state = torch.load(p, map_location="cpu", weights_only=True)
+        else:
+            import torchvision.models as models
 
-        weights = models.ViT_B_16_Weights.DEFAULT
-        state = weights.get_state_dict(progress=False)
+            weights = models.ViT_B_16_Weights.DEFAULT
+            state = weights.get_state_dict(progress=False)
+
+        dim = model.embed_dim
 
         # 1. Patch projection
         if "conv_proj.weight" in state:
             w = state["conv_proj.weight"]  # [768, 3, 16, 16]
             if model.patch_embed.proj.in_channels == 1:
                 w = w.mean(dim=1, keepdim=True)  # [768, 1, 16, 16]
-            if model.patch_embed.proj.weight.shape == w.shape:
-                model.patch_embed.proj.weight.data.copy_(w)
+            kh, kw = model.patch_embed.proj.kernel_size
+            if (kh, kw) != (w.shape[2], w.shape[3]):
+                w = F.interpolate(w, size=(kh, kw), mode="bicubic", align_corners=True)
+            out_c = model.patch_embed.proj.out_channels
+            model.patch_embed.proj.weight.data.copy_(w[:out_c])
         if "conv_proj.bias" in state and model.patch_embed.proj.bias is not None:
-            model.patch_embed.proj.bias.data.copy_(state["conv_proj.bias"])
+            out_c = model.patch_embed.proj.out_channels
+            model.patch_embed.proj.bias.data.copy_(state["conv_proj.bias"][:out_c])
 
         # 2. Tokens & Positional Embeddings
-        if "class_token" in state and model.cls_token.shape == state["class_token"].shape:
-            model.cls_token.data.copy_(state["class_token"])
-        if "encoder.pos_embedding" in state and model.pos_embed.shape == state["encoder.pos_embedding"].shape:
-            model.pos_embed.data.copy_(state["encoder.pos_embedding"])
+        if "class_token" in state:
+            model.cls_token.data.copy_(state["class_token"][:, :, :dim])
+        if "encoder.pos_embedding" in state:
+            target_tokens = model.pos_embed.shape[1]
+            if target_tokens == state["encoder.pos_embedding"].shape[1]:
+                model.pos_embed.data.copy_(state["encoder.pos_embedding"][:, :, :dim])
+            else:
+                cls_p = state["encoder.pos_embedding"][:, :1, :dim]
+                patch_p = state["encoder.pos_embedding"][:, 1:, :dim]
+                orig_grid = int(math.isqrt(patch_p.shape[1]))
+                target_grid = int(math.isqrt(target_tokens - 1))
+                if target_grid * target_grid == target_tokens - 1:
+                    patch_2d = patch_p.reshape(1, orig_grid, orig_grid, dim).permute(0, 3, 1, 2)
+                    patch_interp = F.interpolate(
+                        patch_2d, size=(target_grid, target_grid), mode="bicubic", align_corners=True
+                    )
+                    patch_interp = patch_interp.permute(0, 2, 3, 1).flatten(1, 2)
+                    new_pos = torch.cat([cls_p, patch_interp], dim=1)
+                    model.pos_embed.data.copy_(new_pos)
+                else:
+                    p_interp = F.interpolate(
+                        state["encoder.pos_embedding"][:, :, :dim].transpose(1, 2),
+                        size=target_tokens,
+                        mode="linear",
+                        align_corners=True,
+                    ).transpose(1, 2)
+                    model.pos_embed.data.copy_(p_interp)
 
-        # 3. Transformer Encoder Blocks (12 layers)
+        # 3. Transformer Encoder Blocks
         for i, raw_blk in enumerate(model.blocks):
             blk: Any = raw_blk
-            prefix = f"encoder.layers.encoder_layer_{i}"
+            src_idx = min(i, 11)
+            prefix = f"encoder.layers.encoder_layer_{src_idx}"
+
             # LayerNorm 1
             if f"{prefix}.ln_1.weight" in state:
-                blk.norm1.weight.data.copy_(state[f"{prefix}.ln_1.weight"])
-                blk.norm1.bias.data.copy_(state[f"{prefix}.ln_1.bias"])
+                blk.norm1.weight.data.copy_(state[f"{prefix}.ln_1.weight"][:dim])
+                blk.norm1.bias.data.copy_(state[f"{prefix}.ln_1.bias"][:dim])
 
-            # Self-Attention (Q, K, V split)
+            # Self-Attention
             if f"{prefix}.self_attention.in_proj_weight" in state:
                 in_w = state[f"{prefix}.self_attention.in_proj_weight"]
-                q_w, k_w, v_w = in_w.chunk(3, dim=0)
-                blk.attn.q_proj.weight.data.copy_(q_w)
-                blk.attn.k_proj.weight.data.copy_(k_w)
-                blk.attn.v_proj.weight.data.copy_(v_w)
+                qw, kw, vw = in_w.chunk(3, dim=0)
+                blk.attn.q_proj.weight.data.copy_(qw[:dim, :dim])
+                blk.attn.k_proj.weight.data.copy_(kw[:dim, :dim])
+                blk.attn.v_proj.weight.data.copy_(vw[:dim, :dim])
 
             if f"{prefix}.self_attention.in_proj_bias" in state:
                 in_b = state[f"{prefix}.self_attention.in_proj_bias"]
-                q_b, k_b, v_b = in_b.chunk(3, dim=0)
-                blk.attn.q_proj.bias.data.copy_(q_b)
-                blk.attn.k_proj.bias.data.copy_(k_b)
-                blk.attn.v_proj.bias.data.copy_(v_b)
+                qb, kb, vb = in_b.chunk(3, dim=0)
+                blk.attn.q_proj.bias.data.copy_(qb[:dim])
+                blk.attn.k_proj.bias.data.copy_(kb[:dim])
+                blk.attn.v_proj.bias.data.copy_(vb[:dim])
 
-            # Self-Attention Output Projection
             if f"{prefix}.self_attention.out_proj.weight" in state:
-                blk.attn.proj.weight.data.copy_(state[f"{prefix}.self_attention.out_proj.weight"])
-                blk.attn.proj.bias.data.copy_(state[f"{prefix}.self_attention.out_proj.bias"])
+                out_p = getattr(blk.attn, "out_proj", getattr(blk.attn, "proj", None))
+                if out_p is not None:
+                    out_p.weight.data.copy_(state[f"{prefix}.self_attention.out_proj.weight"][:dim, :dim])
+                    out_p.bias.data.copy_(state[f"{prefix}.self_attention.out_proj.bias"][:dim])
 
             # LayerNorm 2
             if f"{prefix}.ln_2.weight" in state:
-                blk.norm2.weight.data.copy_(state[f"{prefix}.ln_2.weight"])
-                blk.norm2.bias.data.copy_(state[f"{prefix}.ln_2.bias"])
+                blk.norm2.weight.data.copy_(state[f"{prefix}.ln_2.weight"][:dim])
+                blk.norm2.bias.data.copy_(state[f"{prefix}.ln_2.bias"][:dim])
 
-            # MLP Linear 1 & 2
+            # MLP
+            mlp_dim = blk.mlp.fc1.out_features
             if f"{prefix}.mlp.linear_1.weight" in state:
-                blk.mlp.fc1.weight.data.copy_(state[f"{prefix}.mlp.linear_1.weight"])
-                blk.mlp.fc1.bias.data.copy_(state[f"{prefix}.mlp.linear_1.bias"])
+                blk.mlp.fc1.weight.data.copy_(state[f"{prefix}.mlp.linear_1.weight"][:mlp_dim, :dim])
+                blk.mlp.fc1.bias.data.copy_(state[f"{prefix}.mlp.linear_1.bias"][:mlp_dim])
             if f"{prefix}.mlp.linear_2.weight" in state:
-                blk.mlp.fc2.weight.data.copy_(state[f"{prefix}.mlp.linear_2.weight"])
-                blk.mlp.fc2.bias.data.copy_(state[f"{prefix}.mlp.linear_2.bias"])
+                blk.mlp.fc2.weight.data.copy_(state[f"{prefix}.mlp.linear_2.weight"][:dim, :mlp_dim])
+                blk.mlp.fc2.bias.data.copy_(state[f"{prefix}.mlp.linear_2.bias"][:dim])
 
         # 4. Final LayerNorm
         if "encoder.ln.weight" in state:
-            model.norm.weight.data.copy_(state["encoder.ln.weight"])
-            model.norm.bias.data.copy_(state["encoder.ln.bias"])
+            model.norm.weight.data.copy_(state["encoder.ln.weight"][:dim])
+            model.norm.bias.data.copy_(state["encoder.ln.bias"][:dim])
 
         return True
-    except Exception:
+    except Exception as exc:
+        if strict:
+            raise RuntimeError(f"Failed to load pretrained ViT weights: {exc}") from exc
         return False
+
+
+# Backward compatibility alias
+load_pretrained_vit_b_weights = load_pretrained_vit_weights
 
 
 def create_medical_vit(
@@ -346,7 +401,8 @@ def create_medical_vit(
     patch_size: int = 4,
     in_channels: int = 1,
     num_classes: int = 3,
-    pretrained: bool = False,
+    pretrained: bool = True,
+    checkpoint_path: Optional[str] = None,
 ) -> VisionTransformer:
     """Factory helper to build scaled Vision Transformers suited for medical benchmarks."""
     configs = {
@@ -364,6 +420,6 @@ def create_medical_vit(
         depth=cfg["depth"],
         num_heads=cfg["num_heads"],
     )
-    if pretrained and model_type == "vit_base" and img_size == 224 and patch_size == 16:
-        load_pretrained_vit_b_weights(model)
+    if pretrained:
+        load_pretrained_vit_weights(model, checkpoint_path=checkpoint_path)
     return model

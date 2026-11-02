@@ -131,7 +131,12 @@ export default function HospitalStudio({ hospitals, onGenerate, isLoading }: Hos
                   <div className="min-w-0">
                     <h3 className="text-xs sm:text-sm font-bold text-[var(--text-heading)] truncate">{active.name}</h3>
                     <div className="text-[10px] sm:text-[11px] text-[var(--text-muted)] mt-0.5">
-                      Provenance: <span className="font-medium text-[var(--text-main)]">ISIC 2019 / NCT Benchmark</span>
+                      Provenance:{" "}
+                      <span className="font-medium text-[var(--text-main)]">
+                        {active.provenance === "isic_archive_v2_real_clinical"
+                          ? "ISIC Archive v2 (Official Real Clinical Benchmark)"
+                          : (active.provenance || "ISIC 2019 Clinical Benchmark")}
+                      </span>
                     </div>
                   </div>
                   <div className="flex flex-col items-end shrink-0">

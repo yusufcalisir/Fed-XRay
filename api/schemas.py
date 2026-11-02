@@ -29,6 +29,7 @@ class HospitalCohortInfo(BaseModel):
     counts: Dict[str, int]
     sample_images: List[List[List[float]]]
     sample_labels: List[int]
+    provenance: Optional[str] = None
 
 
 class CohortGenerateResponse(BaseModel):
@@ -36,6 +37,7 @@ class CohortGenerateResponse(BaseModel):
     num_hospitals: int
     total_samples: int
     data_source: str
+    provenance: Optional[str] = None
     hospitals: List[HospitalCohortInfo]
 
 
@@ -96,6 +98,9 @@ class DiagnoseResponse(BaseModel):
     heatmap_available: bool = True
     heatmap_error: Optional[str] = None
     image_source: str = "uploaded"
+    provenance: Optional[str] = None
+    anatomical_site: Optional[str] = None
+    biopsy_confirmed: Optional[bool] = None
 
 
 class RagTwinCase(BaseModel):
@@ -104,6 +109,11 @@ class RagTwinCase(BaseModel):
     label_name: str
     similarity: float
     history: str
+    biopsy_confirmed: Optional[bool] = None
+    therapeutic_outcome: Optional[str] = None
+    anatomical_site: Optional[str] = None
+    site_id: Optional[str] = None
+    provenance: Optional[str] = None
 
 
 class RagSimilarResponse(BaseModel):

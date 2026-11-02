@@ -106,7 +106,13 @@ export default function DiagnosticStudio({
     ctx.putImageData(img, 0, 0);
   }, [diagnosis, opacity, colormap]);
 
-  const classLabels = [t("sec1_normal"), t("sec1_pneumonia"), t("sec1_covid")];
+  const isIsic = (diagnosis?.image_source || "").toLowerCase().includes("isic") ||
+                 (diagnosis?.provenance || "").toLowerCase().includes("isic") ||
+                 (diagnosis?.image_source || "").toLowerCase().includes("strategy_e") ||
+                 (diagnosis?.provenance || "").toLowerCase().includes("strategy_e");
+  const isicLabels = [t("isic_class_0") || "Benign Dysplastic Nevus", t("isic_class_1") || "Malignant Melanoma", t("isic_class_2") || "Basal Cell Carcinoma"];
+  const xrayLabels = [t("sec1_normal"), t("sec1_pneumonia"), t("sec1_covid")];
+  const classLabels = isIsic ? isicLabels : xrayLabels;
   const heatAvailable = !!diagnosis && diagnosis.heatmap_available !== false && !!diagnosis.heatmap;
 
   return (
@@ -312,11 +318,21 @@ export default function DiagnosticStudio({
             diagnosis.predicted_class === 1 ? "border-l-amber-500" : "border-l-red-500"
           }`}>
             <div>
-              <div className="flex items-center gap-2 mb-0.5 sm:mb-1">
+              <div className="flex flex-wrap items-center gap-2 mb-0.5 sm:mb-1">
                 <span className="metric-label">{t("sec3_diagnosis")}</span>
                 {diagnosis.patient_id && (
                   <span className="font-mono text-[10px] font-bold px-1.5 py-0.5 rounded bg-slate-200/80 dark:bg-white/10 text-slate-700 dark:text-slate-300 border border-slate-300/60 dark:border-white/10">
                     {diagnosis.patient_id}
+                  </span>
+                )}
+                {diagnosis.anatomical_site && (
+                  <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-black/5 dark:bg-white/5 border border-[var(--border-subtle)] text-[var(--text-heading)]">
+                    {diagnosis.anatomical_site}
+                  </span>
+                )}
+                {diagnosis.biopsy_confirmed && (
+                  <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
+                    Histopathology Verified
                   </span>
                 )}
                 {diagnosis.image_source && (

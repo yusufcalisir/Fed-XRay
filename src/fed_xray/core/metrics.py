@@ -4,7 +4,7 @@ Fed-XRay Core Metrics & Security Reporting Data Structures
 
 import numpy as np
 from dataclasses import dataclass, field
-from typing import Dict, List, Any
+from typing import Dict, List, Any, Optional
 
 
 @dataclass
@@ -16,6 +16,7 @@ class TrainingMetrics:
     client_id: int = 0
     is_malicious: bool = False
     was_blocked: bool = False
+    dp_clipped_norm: Optional[float] = None
 
 
 @dataclass
@@ -57,6 +58,8 @@ class SecurityReport:
     threat_detected: bool = False
     details: str = ""
     clients_evaluated: List[int] = field(default_factory=list)
+    secagg_active: bool = False
+    threat_detection_status: str = "verified_clean"
 
     def __post_init__(self):
         if not self.total_clients and self.clients_evaluated:
@@ -67,10 +70,13 @@ class SecurityReport:
             self.threat_detected = len(self.clients_blocked) > 0
         if not self.malicious_detected:
             self.malicious_detected = list(self.clients_blocked)
+        if self.threat_detected and self.threat_detection_status == "verified_clean":
+            self.threat_detection_status = "threat_isolated_and_blocked"
 
     def get_summary(self) -> str:
         if not self.defense_active:
             return "Defense Shield: OFF"
+        secagg_suffix = " (SecAgg+ Active)" if self.secagg_active else ""
         if not self.clients_blocked:
-            return f"Defense Shield: ACTIVE ({self.total_clients} clients verified)"
-        return f"ALERT: {len(self.clients_blocked)} malicious client(s) blocked: {self.clients_blocked}"
+            return f"Defense Shield: ACTIVE ({self.total_clients} clients verified){secagg_suffix}"
+        return f"ALERT: {len(self.clients_blocked)} malicious client(s) blocked: {self.clients_blocked}{secagg_suffix}"

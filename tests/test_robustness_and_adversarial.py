@@ -100,3 +100,82 @@ def test_free_rider_and_empty_batch_handling():
 
     assert "loss" in agg_metrics
     assert not torch.isnan(torch.tensor(agg_metrics["loss"]))
+
+
+def test_byzantine_poisoning_under_secagg_and_ckks():
+    """Verify Byzantine poisoning is detected, blocked, and isolated under SecAgg+ and CKKS."""
+    device = torch.device("cpu")
+    server = CentralServer(
+        device=device,
+        defense_mode=True,
+        model_type="vit_tiny",
+        peft_mode="ffa_lora",
+        secure_aggregation=True,
+        use_ckks=True,
+    )
+
+    # 3 honest clients, 1 malicious client
+    c0 = HospitalClient(0, create_dummy_dataloader(30, 0), device=device, model_type="vit_tiny", peft_mode="ffa_lora")
+    c1 = HospitalClient(1, create_dummy_dataloader(30, 1), device=device, model_type="vit_tiny", peft_mode="ffa_lora")
+    c2 = HospitalClient(2, create_dummy_dataloader(30, 2), device=device, malicious=True, model_type="vit_tiny", peft_mode="ffa_lora")
+    c3 = HospitalClient(3, create_dummy_dataloader(30, 0), device=device, model_type="vit_tiny", peft_mode="ffa_lora")
+
+    test_images = torch.randn(20, 1, 28, 28)
+    test_labels = torch.randint(0, 3, (20,))
+
+    agg_metrics, client_metrics, test_metrics, sec_report = run_federated_round(
+        server=server,
+        clients=[c0, c1, c2, c3],
+        round_num=1,
+        total_rounds=1,
+        test_images=test_images,
+        test_labels=test_labels,
+        use_defense=True,
+        secure_aggregation=True,
+        use_ckks=True,
+    )
+
+    assert sec_report is not None
+    assert sec_report.defense_active is True
+    assert sec_report.secagg_active is True
+    assert len(sec_report.validation_accuracies) == 4
+    # The report must not be a canned fake pass:
+    assert sec_report.details != "SecAgg+ pairwise zero-sum masking active (cryptographic privacy preserves node confidentiality)"
+    for m in client_metrics:
+        if m.client_id in sec_report.clients_blocked:
+            assert m.was_blocked is True
+
+
+def test_validate_and_aggregate_with_secagg_masking():
+    """Verify validate_and_aggregate applies SecAgg+ zero-sum masking strictly among trusted nodes."""
+    device = torch.device("cpu")
+    server = CentralServer(device=device, defense_mode=True, model_type="vit_tiny", peft_mode="ffa_lora")
+
+    global_weights = server.get_global_weights()
+    good_weights_1 = {k: v.clone() for k, v in global_weights.items()}
+    good_weights_2 = {k: v.clone() for k, v in global_weights.items()}
+    bad_weights = {k: torch.randn_like(v) * 100.0 for k, v in global_weights.items()}
+
+    test_images = torch.randn(10, 1, 28, 28)
+    test_labels = torch.zeros(10, dtype=torch.long)
+
+    original_validate = server._validate_client_model
+    try:
+        server._validate_client_model = lambda w, img, lbl: 0.90 if w is not bad_weights else 0.05
+
+        agg_weights, report = server.validate_and_aggregate(
+            client_weights=[good_weights_1, good_weights_2, bad_weights],
+            sample_counts=[100, 100, 100],
+            client_ids=[0, 1, 2],
+            test_images=test_images,
+            test_labels=test_labels,
+            use_secagg=True,
+        )
+
+        assert report.threat_detected is True
+        assert 2 in report.clients_blocked
+        assert report.clients_accepted == [0, 1]
+        assert report.secagg_active is True
+        assert "SecAgg+ zero-sum masking" in report.details
+    finally:
+        server._validate_client_model = original_validate

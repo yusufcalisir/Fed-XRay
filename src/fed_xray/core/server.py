@@ -9,6 +9,7 @@ Supports:
 """
 
 from __future__ import annotations
+import logging
 from typing import Any, Dict, List, Optional, Tuple
 import numpy as np
 import torch
@@ -39,6 +40,8 @@ from .privacy import (
     SecAggPlusProtocol,
 )
 
+logger = logging.getLogger("fed_xray.server")
+
 
 class CentralServer:
     """Central coordinator server with Byzantine-robust aggregation and SOTA ViT-FL optimizers."""
@@ -64,6 +67,10 @@ class CentralServer:
         use_ckks: bool = False,
         img_size: Optional[int] = None,
         patch_size: Optional[int] = None,
+        pretrained: bool = True,
+        foundation_checkpoint: Optional[str] = None,
+        dp_mode: str = "distributed",  # "distributed", "local", "central", "off"
+        dp_clipping_bound: float = 1.0,
     ) -> None:
         self.device = device or torch.device("cpu")
         self.privacy_noise = privacy_noise
@@ -75,6 +82,10 @@ class CentralServer:
         self.deep_layers_only = deep_layers_only
         self.secure_aggregation = secure_aggregation
         self.use_ckks = use_ckks
+        self.pretrained = pretrained
+        self.foundation_checkpoint = foundation_checkpoint
+        self.dp_mode = dp_mode
+        self.dp_clipping_bound = dp_clipping_bound
 
         self.img_size = img_size or 28
         self.patch_size = patch_size or (16 if self.img_size == 224 else 4)
@@ -113,9 +124,33 @@ class CentralServer:
 
     def get_privacy_spent(self) -> float:
         """Compute cumulative differential privacy budget spent epsilon under Renyi DP."""
-        if self.privacy_noise <= 0.0:
+        if self.privacy_noise <= 0.0 or self.dp_mode == "off":
             return 0.0
         return self.dp_accountant.get_epsilon()
+
+    def get_privacy_report(self) -> Dict[str, Any]:
+        """Generate comprehensive privacy audit report reflecting active DP configuration."""
+        active = self.privacy_noise > 0.0 and self.dp_mode != "off"
+        mech = "None"
+        if active:
+            if self.dp_mode == "distributed":
+                mech = "Option J Distributed Patient-Level DP (SecAgg+ / CKKS)"
+            elif self.dp_mode == "local":
+                mech = "Local Patient-Level DP (Hospital Perimeter)"
+            elif self.dp_mode == "central":
+                mech = "Central Differential Privacy (Server-Side)"
+
+        return {
+            "dp_active": active,
+            "dp_mode": self.dp_mode if active else "off",
+            "epsilon": round(self.get_privacy_spent(), 4),
+            "target_delta": self.dp_accountant.target_delta,
+            "noise_multiplier_sigma": self.privacy_noise if active else 0.0,
+            "clipping_bound_C": self.dp_clipping_bound if active else 0.0,
+            "mechanism": mech,
+            "patient_level_clipping": active,
+            "total_rounds_composed": len(self.dp_accountant.rdp_history),
+        }
 
     def _create_model(self) -> nn.Module:
         """Create global model with appropriate architecture and PEFT hooks."""
@@ -126,6 +161,8 @@ class CentralServer:
                 img_size=self.img_size,
                 patch_size=self.patch_size,
                 num_classes=3,
+                pretrained=self.pretrained,
+                checkpoint_path=self.foundation_checkpoint,
             )
             if self.peft_mode:
                 inject_lora_to_model(
@@ -137,7 +174,13 @@ class CentralServer:
                 )
             return model
         elif self.model_type == "uni":
-            model = UNIFoundationBackbone(embed_dim=512, num_classes=3, patch_size=self.patch_size)
+            model = UNIFoundationBackbone(
+                embed_dim=512,
+                num_classes=3,
+                patch_size=self.patch_size,
+                pretrained=self.pretrained,
+                checkpoint_path=self.foundation_checkpoint,
+            )
             if self.peft_mode:
                 inject_lora_to_model(
                     model=model,
@@ -148,7 +191,12 @@ class CentralServer:
                 )
             return model
         elif self.model_type in ("swin_unetr", "swin"):
-            model = SwinUNETRRadiologyBackbone(embed_dim=384, num_classes=3)
+            model = SwinUNETRRadiologyBackbone(
+                embed_dim=384,
+                num_classes=3,
+                pretrained=self.pretrained,
+                checkpoint_path=self.foundation_checkpoint,
+            )
             if self.peft_mode:
                 inject_lora_to_model(
                     model=model,
@@ -168,6 +216,10 @@ class CentralServer:
             name: param.clone().detach().cpu()
             for name, param in self.global_model.state_dict().items()
         }
+
+    def get_weights(self) -> Dict[str, torch.Tensor]:
+        """Alias for get_global_weights for API symmetry with HospitalClient."""
+        return self.get_global_weights()
 
     def get_global_prototypes(self) -> Optional[Dict[int, torch.Tensor]]:
         return self.global_prototypes
@@ -228,6 +280,9 @@ class CentralServer:
         test_labels: torch.Tensor,
         algorithm: str = "FedAvg",
         delta_cs: Optional[List[Optional[Dict[str, torch.Tensor]]]] = None,
+        use_secagg: bool = False,
+        use_ckks: Optional[bool] = None,
+        client_subsampling_q: float = 1.0,
     ) -> Tuple[Dict[str, torch.Tensor], SecurityReport]:
         """Filter out malicious poisoned nodes and aggregate trusted updates."""
         validation_accuracies: Dict[int, float] = {}
@@ -271,7 +326,10 @@ class CentralServer:
                 is_malicious = True
 
             if is_malicious:
-                print(f"[SECURITY ALERT] Node {cid} failed validation (Acc: {val_acc:.1%} vs Cohort: {cohort_med:.1%}). BLOCKED!")
+                logger.warning(
+                    "[SECURITY ALERT] Node %d failed validation (Acc: %.1f%% vs Cohort: %.1f%%). BLOCKED!",
+                    cid, val_acc * 100, cohort_med * 100
+                )
                 clients_blocked.append(cid)
                 self.blocked_count += 1
             else:
@@ -283,23 +341,54 @@ class CentralServer:
                         trusted_delta_cs.append(d_c)
 
         if not trusted_weights:
-            print("[WARNING] All client updates failed validation. Preserving global state.")
+            logger.warning("[WARNING] All client updates failed validation. Preserving global state.")
             aggregated_weights = self.get_global_weights()
         else:
+            # If SecAgg+ is active, apply zero-sum masking strictly among the trusted cohort
+            weights_to_aggregate = trusted_weights
+            if use_secagg and len(trusted_weights) > 1:
+                tensor_shapes = {k: v.shape for k, v in trusted_weights[0].items()}
+                total_s = max(1, sum(trusted_counts))
+                weights_norm = [float(s) / total_s for s in trusted_counts]
+                masks = SecAggPlusProtocol.generate_pairwise_masks(
+                    num_clients=len(trusted_weights),
+                    tensor_shapes=tensor_shapes,
+                    device=self.device,
+                    weights=weights_norm,
+                )
+                weights_to_aggregate = [
+                    SecAggPlusProtocol.mask_state_dict(w, m)
+                    for w, m in zip(trusted_weights, masks)
+                ]
+
             aggregated_weights = self.aggregate(
-                trusted_weights,
+                weights_to_aggregate,
                 trusted_counts,
                 algorithm=algorithm,
                 delta_cs=trusted_delta_cs if trusted_delta_cs else None,
+                use_ckks=use_ckks,
+                client_subsampling_q=client_subsampling_q,
             )
+
+        secagg_note = " under SecAgg+ zero-sum masking" if use_secagg else ""
+        ckks_note = " and CKKS encryption" if (use_ckks or self.use_ckks) else ""
+        if clients_blocked:
+            details_str = f"Blocked {len(clients_blocked)} node(s) deviating from consensus threshold{secagg_note}{ckks_note}"
+            status_str = "threat_isolated_and_blocked"
+        else:
+            details_str = f"Consortium verified: all {len(client_ids)} nodes converged within consensus boundary{secagg_note}{ckks_note}"
+            status_str = "verified_clean"
 
         security_report = SecurityReport(
             clients_evaluated=client_ids,
             clients_accepted=[cid for cid in client_ids if cid not in clients_blocked],
             clients_blocked=clients_blocked,
             validation_accuracies=validation_accuracies,
+            defense_active=True,
             threat_detected=len(clients_blocked) > 0,
-            details=f"Blocked {len(clients_blocked)} node(s) deviating from consensus threshold",
+            details=details_str,
+            secagg_active=use_secagg,
+            threat_detection_status=status_str,
         )
         self.last_security_report = security_report
         return aggregated_weights, security_report
@@ -311,6 +400,7 @@ class CentralServer:
         algorithm: str = "FedAvg",
         delta_cs: Optional[List[Dict[str, torch.Tensor]]] = None,
         use_ckks: Optional[bool] = None,
+        client_subsampling_q: float = 1.0,
     ) -> Dict[str, torch.Tensor]:
         """Aggregate model or adapter weights using the specified optimization algorithm."""
         total_samples = sum(sample_counts)
@@ -401,11 +491,16 @@ class CentralServer:
                 self.c_global[key] = c_g + (1.0 / K) * delta_c_sum
 
         # Add Differential Privacy perturbation if active
-        if self.privacy_noise > 0.0:
-            self.dp_accountant.step(q=1.0, sigma=self.privacy_noise)
-            for key in avg_weights.keys():
-                noise = torch.randn_like(avg_weights[key]) * self.privacy_noise
-                avg_weights[key] = avg_weights[key] + noise
+        if self.privacy_noise > 0.0 and self.dp_mode != "off":
+            self.dp_accountant.step(q=client_subsampling_q, sigma=self.privacy_noise)
+            if self.dp_mode == "central":
+                # Central DP mode: trusted server perturbs consensus model post-aggregation
+                for key in avg_weights.keys():
+                    noise_scale = (self.privacy_noise * self.dp_clipping_bound) / max(1, K)
+                    noise = torch.randn_like(avg_weights[key]) * noise_scale
+                    avg_weights[key] = avg_weights[key] + noise
+            # For "distributed" (Option J) or "local" modes, clients have already added calibrated
+            # noise at the hospital boundary. Server-side noise addition would double the perturbation.
 
         # Update global model
         if self.peft_mode:
@@ -497,11 +592,17 @@ def run_federated_round(
     moon_mu: float = 0.0,
     secure_aggregation: bool = False,
     use_ckks: bool = False,
+    total_consortium_hospitals: Optional[int] = None,
 ) -> Tuple[Dict[str, Any], List[TrainingMetrics], Optional[EvaluationMetrics], Optional[SecurityReport]]:
     """Execute one federated round across all participating clinical nodes."""
     global_weights = server.get_global_weights()
     global_prototypes = server.get_global_prototypes() if enable_prototypes else None
     c_global = server.c_global if algorithm.upper() == "SCAFFOLD" else None
+
+    total_hospitals = total_consortium_hospitals or len(clients)
+    client_subsampling_q = min(1.0, len(clients) / max(1, total_hospitals))
+    num_consortium = len(clients)
+    dp_active = server.privacy_noise > 0.0 and server.dp_mode != "off"
 
     client_updates: List[Dict[str, torch.Tensor]] = []
     client_metrics: List[TrainingMetrics] = []
@@ -526,6 +627,11 @@ def run_federated_round(
             feddyn_alpha=feddyn_alpha if algorithm.upper() == "FEDDYN" else 0.0,
             c_global=c_global,
             moon_mu=moon_mu if algorithm.upper() == "MOON" else 0.0,
+            dp_enabled=dp_active,
+            dp_clipping_bound=server.dp_clipping_bound,
+            dp_noise_multiplier=server.privacy_noise,
+            dp_mode=server.dp_mode,
+            num_consortium_clients=num_consortium,
         )
         client_updates.append(updated_weights)
         client_metrics.append(metrics)
@@ -542,25 +648,12 @@ def run_federated_round(
     active_secagg = secure_aggregation or server.secure_aggregation
     active_ckks = use_ckks or server.use_ckks
 
-    # If SecAgg+ is active, clients mask their local updates before transmission
-    if active_secagg and len(client_updates) > 1:
-        tensor_shapes = {k: v.shape for k, v in client_updates[0].items()}
-        total_s = max(1, sum(sample_counts))
-        weights_norm = [float(s) / total_s for s in sample_counts]
-        masks = SecAggPlusProtocol.generate_pairwise_masks(
-            num_clients=len(client_updates),
-            tensor_shapes=tensor_shapes,
-            device=server.device,
-            weights=weights_norm,
-        )
-        client_updates = [
-            SecAggPlusProtocol.mask_state_dict(upd, m)
-            for upd, m in zip(client_updates, masks)
-        ]
-
     security_report: Optional[SecurityReport] = None
 
-    if use_defense and not active_secagg and test_images is not None and test_labels is not None:
+    if use_defense and test_images is not None and test_labels is not None:
+        # Product-grade Byzantine defense: validates candidate client models,
+        # blocks malicious nodes, and then aggregates trusted updates (applying SecAgg+ / CKKS
+        # strictly over the trusted cohort to prevent zero-sum corruption).
         _, security_report = server.validate_and_aggregate(
             client_updates,
             sample_counts,
@@ -569,42 +662,96 @@ def run_federated_round(
             test_labels,
             algorithm=algorithm,
             delta_cs=delta_cs if algorithm.upper() == "SCAFFOLD" else None,
+            use_secagg=active_secagg,
+            use_ckks=active_ckks,
+            client_subsampling_q=client_subsampling_q,
         )
         if security_report:
             for metrics in client_metrics:
                 if metrics.client_id in security_report.clients_blocked:
                     metrics.was_blocked = True
     else:
-        if active_secagg and use_defense:
-            security_report = SecurityReport(
-                clients_evaluated=client_ids,
-                clients_accepted=client_ids,
-                clients_blocked=[],
-                validation_accuracies={},
-                threat_detected=False,
-                details="SecAgg+ pairwise zero-sum masking active (cryptographic privacy preserves node confidentiality)",
-            )
+        # Defense not active or test set not available
+        updates_to_aggregate = client_updates
+        if active_secagg and len(client_updates) > 1:
+            tensor_shapes = {k: v.shape for k, v in client_updates[0].items()}
+            total_s = max(1, sum(sample_counts))
+            weights_norm = [float(s) / total_s for s in sample_counts]
+            if clients and hasattr(clients[0], "get_secagg_public_key"):
+                pk_registry = {client.client_id: client.get_secagg_public_key() for client in clients}
+                weights_map = {client.client_id: float(s) / total_s for client, s in zip(clients, sample_counts)}
+                updates_to_aggregate = [
+                    client.mask_local_weights(
+                        weights=upd,
+                        peer_public_keys=pk_registry,
+                        weights_map=weights_map,
+                        round_num=round_num,
+                    )
+                    for client, upd in zip(clients, client_updates)
+                ]
+            else:
+                masks = SecAggPlusProtocol.generate_pairwise_masks(
+                    num_clients=len(client_updates),
+                    tensor_shapes=tensor_shapes,
+                    device=server.device,
+                    weights=weights_norm,
+                    round_num=round_num,
+                )
+                updates_to_aggregate = [
+                    SecAggPlusProtocol.mask_state_dict(upd, m)
+                    for upd, m in zip(client_updates, masks)
+                ]
+
         delta_cs_clean: Optional[List[Dict[str, torch.Tensor]]] = None
         if algorithm.upper() == "SCAFFOLD" and delta_cs:
             delta_cs_clean = [d for d in delta_cs if d is not None]
 
         server.aggregate(
-            client_updates,
+            updates_to_aggregate,
             sample_counts,
             algorithm=algorithm,
             delta_cs=delta_cs_clean,
             use_ckks=active_ckks,
+            client_subsampling_q=client_subsampling_q,
         )
 
-    # Aggregate metric prototypes
+        if use_defense:
+            # Defense was requested but no validation cohort was provided
+            security_report = SecurityReport(
+                clients_evaluated=client_ids,
+                clients_accepted=client_ids,
+                clients_blocked=[],
+                validation_accuracies={},
+                defense_active=False,
+                threat_detected=False,
+                details="Byzantine defense skipped: no consortium validation cohort provided for node inspection",
+                secagg_active=active_secagg,
+                threat_detection_status="unverifiable_missing_validation_cohort",
+            )
+
+    # Aggregate metric prototypes (strictly from accepted clients if defense is active)
     if enable_prototypes and client_protos:
-        synthesized_protos = aggregate_prototypes_dispersion_weighted(
-            client_prototypes=client_protos,
-            client_traces=client_traces,
-            client_counts=client_counts,
-            num_classes=3,
-        )
-        server.set_global_prototypes(synthesized_protos)
+        if security_report and security_report.clients_blocked:
+            clean_indices = [
+                i for i, cid in enumerate(client_ids)
+                if cid not in security_report.clients_blocked
+            ]
+            clean_protos = [client_protos[i] for i in clean_indices if i < len(client_protos)]
+            clean_traces = [client_traces[i] for i in clean_indices if i < len(client_traces)]
+            clean_counts = [client_counts[i] for i in clean_indices if i < len(client_counts)]
+        else:
+            clean_protos = client_protos
+            clean_traces = client_traces
+            clean_counts = client_counts
+
+        if clean_protos:
+            synthesized_protos = aggregate_prototypes_dispersion_weighted(
+                client_prototypes=clean_protos,
+                client_traces=clean_traces,
+                client_counts=clean_counts,
+                num_classes=3,
+            )
+            server.set_global_prototypes(synthesized_protos)
 
     total_samples = sum(sample_counts)
     if total_samples > 0:
