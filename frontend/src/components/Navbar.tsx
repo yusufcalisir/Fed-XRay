@@ -127,74 +127,75 @@ export default function Navbar({ mode = "landing", onLaunchDemo }: NavbarProps) 
         )}
 
         {/* Right Action Controls */}
-        <div className="flex items-center gap-1.5 sm:gap-2.5">
+        <div className="flex items-center gap-2 sm:gap-3">
 
-          {/* Secure Backend Connection Status Badge */}
+          {/* Clean Enterprise Engine Status Indicator */}
           <div
-            className={`flex items-center gap-1.5 sm:gap-2 px-2.5 sm:px-3 py-1.5 rounded-lg text-[11px] font-medium border select-none transition-all ${
-              isConnected
-                ? "bg-emerald-500/10 border-emerald-500/20 text-emerald-600 dark:text-emerald-400"
-                : isChecking
-                ? "bg-amber-500/10 border-amber-500/20 text-amber-600 dark:text-amber-400"
-                : "bg-rose-500/10 border-rose-500/20 text-rose-600 dark:text-rose-400"
-            }`}
+            className="hidden sm:inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[11px] font-medium text-[var(--text-muted)] bg-[var(--bg-card-inner)] border border-[var(--border-subtle)] select-none"
           >
             <span
               className={`w-1.5 h-1.5 rounded-full shrink-0 ${
                 isConnected
                   ? "bg-emerald-500 shadow-[0_0_6px_#10b981]"
                   : isChecking
-                  ? "bg-amber-400 animate-pulse shadow-[0_0_6px_#f59e0b]"
+                  ? "bg-amber-400 animate-pulse"
                   : "bg-rose-500 animate-pulse"
               }`}
             />
-            <span className="hidden sm:inline font-semibold">{connectionLabel}</span>
-            <span className="inline sm:hidden font-semibold">{mobileLabel}</span>
+            <span className="font-mono text-[10px] tracking-wide">{connectionLabel}</span>
           </div>
 
-          {/* Theme Toggle Button */}
-          <button
-            onClick={toggleTheme}
-            aria-label="Toggle Theme"
-            className="p-1.5 sm:p-2 rounded-lg border border-[var(--border-card)] text-slate-500 hover:text-[var(--text-heading)] hover:bg-black/5 dark:hover:bg-white/5 transition-all shrink-0"
-          >
-            {isDark ? <Sun className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-amber-400" /> : <Moon className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-slate-700" />}
-          </button>
+          {/* Theme & Language Controls Strip */}
+          <div className="flex items-center gap-1 pl-1">
+            {/* Theme Toggle Button */}
+            <button
+              onClick={toggleTheme}
+              aria-label="Toggle Theme"
+              className="p-1.5 rounded-md text-[var(--text-muted)] hover:text-[var(--text-heading)] hover:bg-[var(--bg-card-inner)] transition-colors shrink-0"
+            >
+              {isDark ? <Sun className="w-3.5 h-3.5 text-amber-400" /> : <Moon className="w-3.5 h-3.5 text-slate-600" />}
+            </button>
 
-          {/* Language Switcher */}
-          <div className="flex items-center rounded-lg bg-[var(--bg-card-inner)] border border-[var(--border-card)] p-0.5 shrink-0">
-            <button
-              onClick={() => setLanguage("EN")}
-              className={`px-2 sm:px-2.5 py-1 rounded-md text-[10px] sm:text-[11px] font-bold transition-all ${
-                language === "EN"
-                  ? "bg-slate-900 text-white dark:bg-white dark:text-slate-900 shadow-sm"
-                  : "text-slate-500 hover:text-[var(--text-heading)]"
-              }`}
-            >
-              EN
-            </button>
-            <button
-              onClick={() => setLanguage("TR")}
-              className={`px-2 sm:px-2.5 py-1 rounded-md text-[10px] sm:text-[11px] font-bold transition-all ${
-                language === "TR"
-                  ? "bg-slate-900 text-white dark:bg-white dark:text-slate-900 shadow-sm"
-                  : "text-slate-500 hover:text-[var(--text-heading)]"
-              }`}
-            >
-              TR
-            </button>
+            {/* Language Switcher */}
+            <div className="flex items-center gap-0.5 text-[10px] font-mono font-semibold text-[var(--text-muted)]">
+              <button
+                type="button"
+                onClick={() => setLanguage("EN")}
+                className={`px-1.5 py-0.5 rounded transition-all ${
+                  language === "EN"
+                    ? "text-[var(--text-heading)] font-bold bg-[var(--bg-card-inner)] border border-[var(--border-subtle)] shadow-xs"
+                    : "hover:text-[var(--text-heading)]"
+                }`}
+              >
+                EN
+              </button>
+              <span className="text-[var(--border-card)]">/</span>
+              <button
+                type="button"
+                onClick={() => setLanguage("TR")}
+                className={`px-1.5 py-0.5 rounded transition-all ${
+                  language === "TR"
+                    ? "text-[var(--text-heading)] font-bold bg-[var(--bg-card-inner)] border border-[var(--border-subtle)] shadow-xs"
+                    : "hover:text-[var(--text-heading)]"
+                }`}
+              >
+                TR
+              </button>
+            </div>
           </div>
 
-          {/* Launch Live Demo Button (In Landing Mode) */}
+          <div className="h-4 w-px bg-[var(--border-subtle)] hidden sm:block" />
+
+          {/* Launch Live Consortium Primary Action */}
           {mode === "landing" && (
             <button
               onClick={onLaunchDemo}
-              className="inline-flex items-center gap-1.5 sm:gap-2 px-3 sm:px-3.5 py-1.5 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white text-xs font-semibold rounded-lg shadow-sm hover:shadow transition-all shrink-0"
+              className="inline-flex items-center gap-1.5 px-3 sm:px-3.5 py-1.5 rounded-lg text-xs font-semibold bg-slate-900 hover:bg-slate-800 text-white dark:bg-emerald-600 dark:hover:bg-emerald-500 dark:text-white border border-slate-800 dark:border-emerald-500/40 shadow-xs hover:shadow transition-all shrink-0 active:scale-[0.98]"
             >
-              <ShieldCheck className="w-3.5 h-3.5" />
+              <ShieldCheck className="w-3.5 h-3.5 shrink-0" />
               <span className="hidden sm:inline">{t("nav_launch_demo")}</span>
               <span className="sm:hidden">{t("nav_demo_short")}</span>
-              <ArrowRight className="w-3.5 h-3.5" />
+              <ArrowRight className="w-3.5 h-3.5 shrink-0 opacity-80" />
             </button>
           )}
 
