@@ -500,128 +500,146 @@ async def stream_federated_training(
     state.peft_mode = peft_mode
 
     async def event_generator():
-        n_hospitals = len(active_dataloaders)
-        state.server = CentralServer(
-            device=state.device,
-            privacy_noise=privacy_noise,
-            defense_mode=activate_defense,
-            model_type=model_type,
-            peft_mode=actual_peft,
-            lora_r=8,
-            lora_alpha=16.0,
-            deep_layers_only=True,
-            secure_aggregation=secure_aggregation,
-            use_ckks=use_ckks,
-            img_size=state.image_size,
-        )
+        try:
+            # Immediate SSE keepalive ping to flush HTTP response headers and prevent proxy buffering stalls
+            yield ": ping\n\n"
+            await asyncio.sleep(0.01)
 
-        clients = []
-        for i in range(n_hospitals):
-            is_malicious = simulate_attack and i == 2
-            clients.append(
-                HospitalClient(
-                    client_id=i,
-                    dataloader=active_dataloaders[i],
+            def _init_fl():
+                srv = CentralServer(
                     device=state.device,
-                    learning_rate=learning_rate,
-                    local_epochs=local_epochs,
-                    malicious=is_malicious,
+                    privacy_noise=privacy_noise,
+                    defense_mode=activate_defense,
                     model_type=model_type,
                     peft_mode=actual_peft,
                     lora_r=8,
                     lora_alpha=16.0,
                     deep_layers_only=True,
+                    secure_aggregation=secure_aggregation,
+                    use_ckks=use_ckks,
                     img_size=state.image_size,
                 )
-            )
+                clts = [
+                    HospitalClient(
+                        client_id=i,
+                        dataloader=active_dataloaders[i],
+                        device=state.device,
+                        learning_rate=learning_rate,
+                        local_epochs=local_epochs,
+                        malicious=simulate_attack and i == 2,
+                        model_type=model_type,
+                        peft_mode=actual_peft,
+                        lora_r=8,
+                        lora_alpha=16.0,
+                        deep_layers_only=True,
+                        img_size=state.image_size,
+                    )
+                    for i in range(len(active_dataloaders))
+                ]
+                return srv, clts
 
-        test_images, test_labels = active_global_test_set
+            state.server, clients = await asyncio.to_thread(_init_fl)
+            test_images, test_labels = active_global_test_set
 
-        state.training_history = {
-            "loss": [],
-            "accuracy": [],
-            "round": [],
-            "precision": [],
-            "recall": [],
-            "f1_score": [],
-            "test_accuracy": [],
-            "test_loss": [],
-            "blocked_count": 0,
-        }
-
-        # Immediate SSE keepalive ping to flush HTTP response headers and prevent proxy buffering stalls
-        yield ": ping\n\n"
-
-        for round_num in range(1, num_rounds + 1):
-            metrics, client_metrics, test_metrics, sec_report = run_federated_round(
-                server=state.server,
-                clients=clients,
-                round_num=round_num,
-                total_rounds=num_rounds,
-                test_images=test_images,
-                test_labels=test_labels,
-                use_defense=activate_defense,
-                algorithm=algorithm,
-                loss_fn_name=loss_fn,
-                enable_prototypes=True,
-                proto_weight=0.1,
-                prox_mu=0.01 if algorithm.upper() in ("FEDPROX", "PROX") else 0.0,
-                feddyn_alpha=0.01 if algorithm.upper() == "FEDDYN" else 0.0,
-                secure_aggregation=secure_aggregation,
-                use_ckks=use_ckks,
-            )
-
-            t_loss = float(metrics["loss"])
-            t_acc = float(metrics["accuracy"] * 100.0)
-
-            val_acc = float(test_metrics.accuracy * 100.0) if test_metrics else t_acc
-            val_loss = float(test_metrics.loss) if test_metrics else t_loss
-            prec = float(test_metrics.precision * 100.0) if test_metrics else 0.0
-            rec = float(test_metrics.recall * 100.0) if test_metrics else 0.0
-            f1 = float(test_metrics.f1_score * 100.0) if test_metrics else 0.0
-
-            blocked_nodes = sec_report.clients_blocked if sec_report else []
-            threat_detected = len(blocked_nodes) > 0
-
-            state.training_history["round"].append(round_num)
-            state.training_history["loss"].append(val_loss)
-            state.training_history["accuracy"].append(val_acc)
-            state.training_history["test_accuracy"].append(val_acc)
-            state.training_history["test_loss"].append(val_loss)
-            state.training_history["f1_score"].append(f1)
-
-            data_payload = {
-                "round_num": round_num,
-                "total_rounds": num_rounds,
-                "train_loss": round(t_loss, 4),
-                "train_accuracy": round(t_acc, 2),
-                "test_loss": round(val_loss, 4),
-                "test_accuracy": round(val_acc, 2),
-                "precision": round(prec, 2),
-                "recall": round(rec, 2),
-                "f1_score": round(f1, 2),
-                "threat_detected": threat_detected,
-                "blocked_nodes": [n + 1 for n in blocked_nodes],
-                "status": "training" if round_num < num_rounds else "complete",
-                "model_type": model_type,
-                "peft_mode": peft_mode,
-                "privacy_epsilon": round(state.server.get_privacy_spent(), 4) if state.server else 0.0,
-                "uplink_bytes_per_client": int(metrics["uplink_bytes_per_client"]),
-                "full_model_bytes": int(metrics["full_model_bytes"]),
+            state.training_history = {
+                "loss": [],
+                "accuracy": [],
+                "round": [],
+                "precision": [],
+                "recall": [],
+                "f1_score": [],
+                "test_accuracy": [],
+                "test_loss": [],
+                "blocked_count": 0,
             }
 
-            if round_num >= num_rounds:
-                state.model_trained = True
-                if state.server is not None and state.reference_records:
-                    state.rag_matcher = build_rag_matcher(state.server)
+            for round_num in range(1, num_rounds + 1):
+                round_task = asyncio.create_task(
+                    asyncio.to_thread(
+                        run_federated_round,
+                        server=state.server,
+                        clients=clients,
+                        round_num=round_num,
+                        total_rounds=num_rounds,
+                        test_images=test_images,
+                        test_labels=test_labels,
+                        use_defense=activate_defense,
+                        algorithm=algorithm,
+                        loss_fn_name=loss_fn,
+                        enable_prototypes=True,
+                        proto_weight=0.1,
+                        prox_mu=0.01 if algorithm.upper() in ("FEDPROX", "PROX") else 0.0,
+                        feddyn_alpha=0.01 if algorithm.upper() == "FEDDYN" else 0.0,
+                        secure_aggregation=secure_aggregation,
+                        use_ckks=use_ckks,
+                    )
+                )
 
-            yield f"data: {json.dumps(data_payload)}\n\n"
-            await asyncio.sleep(0.05)
+                while not round_task.done():
+                    try:
+                        await asyncio.wait_for(asyncio.shield(round_task), timeout=1.0)
+                    except asyncio.TimeoutError:
+                        yield ": ping\n\n"
 
-        state.model_trained = True
-        if state.server is not None and state.reference_records and state.rag_matcher is None:
-            state.rag_matcher = build_rag_matcher(state.server)
-        state.save_to_disk()
+                metrics, client_metrics, test_metrics, sec_report = await round_task
+
+                t_loss = float(metrics["loss"])
+                t_acc = float(metrics["accuracy"] * 100.0)
+
+                val_acc = float(test_metrics.accuracy * 100.0) if test_metrics else t_acc
+                val_loss = float(test_metrics.loss) if test_metrics else t_loss
+                prec = float(test_metrics.precision * 100.0) if test_metrics else 0.0
+                rec = float(test_metrics.recall * 100.0) if test_metrics else 0.0
+                f1 = float(test_metrics.f1_score * 100.0) if test_metrics else 0.0
+
+                blocked_nodes = sec_report.clients_blocked if sec_report else []
+                threat_detected = len(blocked_nodes) > 0
+
+                state.training_history["round"].append(round_num)
+                state.training_history["loss"].append(val_loss)
+                state.training_history["accuracy"].append(val_acc)
+                state.training_history["test_accuracy"].append(val_acc)
+                state.training_history["test_loss"].append(val_loss)
+                state.training_history["f1_score"].append(f1)
+
+                data_payload = {
+                    "round_num": round_num,
+                    "total_rounds": num_rounds,
+                    "train_loss": round(t_loss, 4),
+                    "train_accuracy": round(t_acc, 2),
+                    "test_loss": round(val_loss, 4),
+                    "test_accuracy": round(val_acc, 2),
+                    "precision": round(prec, 2),
+                    "recall": round(rec, 2),
+                    "f1_score": round(f1, 2),
+                    "threat_detected": threat_detected,
+                    "blocked_nodes": [n + 1 for n in blocked_nodes],
+                    "status": "training" if round_num < num_rounds else "complete",
+                    "model_type": model_type,
+                    "peft_mode": peft_mode,
+                    "privacy_epsilon": round(state.server.get_privacy_spent(), 4) if state.server else 0.0,
+                    "uplink_bytes_per_client": int(metrics["uplink_bytes_per_client"]),
+                    "full_model_bytes": int(metrics["full_model_bytes"]),
+                }
+
+                if round_num >= num_rounds:
+                    state.model_trained = True
+                    if state.server is not None and state.reference_records:
+                        state.rag_matcher = await asyncio.to_thread(build_rag_matcher, state.server)
+
+                yield f"data: {json.dumps(data_payload)}\n\n"
+                await asyncio.sleep(0.05)
+
+            state.model_trained = True
+            if state.server is not None and state.reference_records and state.rag_matcher is None:
+                state.rag_matcher = await asyncio.to_thread(build_rag_matcher, state.server)
+            await asyncio.to_thread(state.save_to_disk)
+
+        except (asyncio.CancelledError, GeneratorExit):
+            logger.info("Federated training stream client disconnected cleanly.")
+        except Exception as exc:
+            logger.error("Error during streaming federated training: %s", exc, exc_info=True)
+            yield f"data: {json.dumps({'error': str(exc), 'status': 'failed'})}\n\n"
 
     return StreamingResponse(
         event_generator(),
