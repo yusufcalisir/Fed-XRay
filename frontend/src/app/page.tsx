@@ -4,6 +4,7 @@ import React, { useState, useEffect } from "react";
 import Navbar from "@/components/Navbar";
 import ConsortiumLaunchOverlay from "@/components/ConsortiumLaunchOverlay";
 import LungViewer3D from "@/components/LungViewer3D";
+import FederatedConsortiumTopology from "@/components/FederatedConsortiumTopology";
 import { useLanguage } from "@/context/LanguageContext";
 import {
   ShieldCheck,
@@ -51,6 +52,13 @@ export default function PresentationLandingPage() {
   const openLaunchModal = () => setIsLaunchModalOpen(true);
   const closeLaunchModal = () => setIsLaunchModalOpen(false);
 
+  const scrollToSection = (id: string) => {
+    const el = document.getElementById(id);
+    if (el) {
+      el.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+  };
+
   return (
     <div className="min-h-screen flex flex-col bg-[var(--bg-app)] text-[var(--text-main)] overflow-x-hidden selection:bg-emerald-500/20">
       <Navbar mode="landing" onLaunchDemo={openLaunchModal} />
@@ -86,6 +94,7 @@ export default function PresentationLandingPage() {
               {/* Primary Action Buttons */}
               <div className="flex flex-wrap items-center gap-3 sm:gap-4">
                 <button
+                  type="button"
                   onClick={openLaunchModal}
                   className="btn-primary text-xs sm:text-sm px-5 sm:px-6 py-3 rounded-xl shadow-lg hover:shadow-emerald-500/20"
                 >
@@ -94,13 +103,14 @@ export default function PresentationLandingPage() {
                   <ArrowRight className="w-4 h-4 ml-1" />
                 </button>
 
-                <a
-                  href="#results"
+                <button
+                  type="button"
+                  onClick={() => scrollToSection("results")}
                   className="inline-flex items-center gap-2 px-5 py-3 rounded-xl border border-[var(--border-card)] bg-[var(--bg-card)] hover:bg-[var(--bg-card-inner)] text-xs sm:text-sm font-semibold text-[var(--text-heading)] transition-all shadow-sm"
                 >
                   <span>{t("landing_results_title")}</span>
                   <ArrowRight className="w-4 h-4 text-slate-400" />
-                </a>
+                </button>
               </div>
 
               {/* Live Federation Node Connectivity Status */}
@@ -113,24 +123,10 @@ export default function PresentationLandingPage() {
             </div>
 
             <div className="relative">
-              <div className="lung-viewer relative h-[380px] sm:h-[460px] lg:h-[540px]">
-                <LungViewer3D className="absolute inset-0" mode="anatomy" labels={!isLaunchModalOpen} />
-                <div className="chip-float absolute left-4 top-5">
-                  <Cpu className="w-3.5 h-3.5 text-emerald-500 dark:text-emerald-300" />
-                  <span>{t("landing_hero_chip_peft")}</span>
-                </div>
-                <div className="chip-float absolute right-4 top-1/3" style={{ animationDelay: "-2s" }}>
-                  <Lock className="w-3.5 h-3.5 text-sky-500 dark:text-sky-300" />
-                  <span>{t("landing_hero_chip_he")}</span>
-                </div>
-                <div className="chip-float absolute left-5 bottom-12" style={{ animationDelay: "-4s" }}>
-                  <ShieldCheck className="w-3.5 h-3.5 text-violet-500 dark:text-violet-300" />
-                  <span>{t("landing_hero_chip_dp")}</span>
-                </div>
-                <div className="pointer-events-none absolute left-4 bottom-3 font-mono text-[10px] uppercase tracking-wider text-[var(--text-muted)] opacity-70">
-                  {t("landing_hero_viewer_caption")}
-                </div>
-              </div>
+              <FederatedConsortiumTopology
+                onLaunchDemo={openLaunchModal}
+                isModalOpen={isLaunchModalOpen}
+              />
             </div>
           </div>
 
@@ -270,68 +266,91 @@ export default function PresentationLandingPage() {
 
           {/* Tab 1: 3D lung saliency workspace (anatomical model, no patient sample) */}
           {activeTab === "xai" && (
-            <div className="card p-4 sm:p-6">
+            <div className="card p-4 sm:p-6 border border-[var(--border-card)] bg-[var(--bg-card)]">
               <div className="grid grid-cols-1 lg:grid-cols-5 gap-5 items-stretch">
-                <div className="lung-viewer relative lg:col-span-3 h-[380px] sm:h-[460px]">
-                  <LungViewer3D className="absolute inset-0" mode="anatomy" labels={!isLaunchModalOpen} />
-                  <div className="pointer-events-none absolute left-3 top-3 inline-flex items-center gap-1.5 rounded-full border border-white/10 bg-black/40 px-2.5 py-1 font-mono text-[10px] text-emerald-200 backdrop-blur">
-                    <Sparkles className="w-3 h-3" />
-                    {t("lung3d_locked_preview")}
+                <div className="relative lg:col-span-3 h-[380px] sm:h-[460px] rounded-2xl overflow-hidden border border-[var(--border-card)] bg-[var(--bg-card-inner)] shadow-sm">
+                  <LungViewer3D className="absolute inset-0" mode="anatomy" labels={false} />
+                  <div className="pointer-events-none absolute left-3 top-3 inline-flex items-center gap-1.5 rounded-full border border-[var(--border-card)] bg-[var(--bg-card)]/80 px-2.5 py-1 font-mono text-[10px] text-[var(--text-heading)] backdrop-blur shadow-sm">
+                    <Sparkles className="w-3 h-3 text-emerald-500" />
+                    <span>{t("lung3d_locked_preview")}</span>
                   </div>
                 </div>
-                <div className="lg:col-span-2 flex flex-col gap-4">
+                <div className="lg:col-span-2 flex flex-col justify-between gap-4">
                   <div>
-                    <h3 className="font-display text-lg sm:text-xl font-bold text-[var(--text-heading)]">{t("landing_xai3d_title")}</h3>
-                    <p className="mt-1 text-xs sm:text-sm text-[var(--text-muted)] leading-relaxed">{t("landing_xai3d_desc")}</p>
+                    <h3 className="font-display text-lg sm:text-xl font-bold text-[var(--text-heading)]">
+                      {t("landing_xai3d_title")}
+                    </h3>
+                    <p className="mt-1 text-xs sm:text-sm text-[var(--text-muted)] leading-relaxed">
+                      {t("landing_xai3d_desc")}
+                    </p>
                   </div>
-                  <ol className="space-y-3">
-                  <li className="flex gap-3">
-                    <span className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-emerald-500/10 text-emerald-500 border border-emerald-500/20">
-                      <Database className="w-3.5 h-3.5" />
-                    </span>
-                    <span>
-                      <span className="block text-xs font-bold text-[var(--text-heading)]">{t("landing_xai3d_s1_t")}</span>
-                      <span className="block text-[11px] text-[var(--text-muted)] leading-relaxed">{t("landing_xai3d_s1_d")}</span>
-                    </span>
-                  </li>
-                  <li className="flex gap-3">
-                    <span className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-emerald-500/10 text-emerald-500 border border-emerald-500/20">
-                      <Activity className="w-3.5 h-3.5" />
-                    </span>
-                    <span>
-                      <span className="block text-xs font-bold text-[var(--text-heading)]">{t("landing_xai3d_s2_t")}</span>
-                      <span className="block text-[11px] text-[var(--text-muted)] leading-relaxed">{t("landing_xai3d_s2_d")}</span>
-                    </span>
-                  </li>
-                  <li className="flex gap-3">
-                    <span className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-emerald-500/10 text-emerald-500 border border-emerald-500/20">
-                      <Layers className="w-3.5 h-3.5" />
-                    </span>
-                    <span>
-                      <span className="block text-xs font-bold text-[var(--text-heading)]">{t("landing_xai3d_s3_t")}</span>
-                      <span className="block text-[11px] text-[var(--text-muted)] leading-relaxed">{t("landing_xai3d_s3_d")}</span>
-                    </span>
-                  </li>
-                  <li className="flex gap-3">
-                    <span className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-emerald-500/10 text-emerald-500 border border-emerald-500/20">
-                      <CheckCircle2 className="w-3.5 h-3.5" />
-                    </span>
-                    <span>
-                      <span className="block text-xs font-bold text-[var(--text-heading)]">{t("landing_xai3d_s4_t")}</span>
-                      <span className="block text-[11px] text-[var(--text-muted)] leading-relaxed">{t("landing_xai3d_s4_d")}</span>
-                    </span>
-                  </li>
+
+                  <ol className="space-y-2.5">
+                    <li className="flex gap-3 p-2.5 rounded-xl bg-[var(--bg-card-inner)] border border-[var(--border-subtle)]">
+                      <span className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-emerald-500/10 text-emerald-500 border border-emerald-500/20">
+                        <Database className="w-3.5 h-3.5" />
+                      </span>
+                      <div className="flex-1">
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs font-bold text-[var(--text-heading)]">{t("landing_xai3d_s1_t")}</span>
+                          <span className="font-mono text-[9px] font-bold px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">ViT-L/16</span>
+                        </div>
+                        <span className="block text-[11px] text-[var(--text-muted)] leading-relaxed mt-0.5">{t("landing_xai3d_s1_d")}</span>
+                      </div>
+                    </li>
+
+                    <li className="flex gap-3 p-2.5 rounded-xl bg-[var(--bg-card-inner)] border border-[var(--border-subtle)]">
+                      <span className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-emerald-500/10 text-emerald-500 border border-emerald-500/20">
+                        <Activity className="w-3.5 h-3.5" />
+                      </span>
+                      <div className="flex-1">
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs font-bold text-[var(--text-heading)]">{t("landing_xai3d_s2_t")}</span>
+                          <span className="font-mono text-[9px] font-bold px-1.5 py-0.5 rounded bg-blue-500/10 text-blue-600 dark:text-blue-400">MHSA L-3</span>
+                        </div>
+                        <span className="block text-[11px] text-[var(--text-muted)] leading-relaxed mt-0.5">{t("landing_xai3d_s2_d")}</span>
+                      </div>
+                    </li>
+
+                    <li className="flex gap-3 p-2.5 rounded-xl bg-[var(--bg-card-inner)] border border-[var(--border-subtle)]">
+                      <span className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-emerald-500/10 text-emerald-500 border border-emerald-500/20">
+                        <Layers className="w-3.5 h-3.5" />
+                      </span>
+                      <div className="flex-1">
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs font-bold text-[var(--text-heading)]">{t("landing_xai3d_s3_t")}</span>
+                          <span className="font-mono text-[9px] font-bold px-1.5 py-0.5 rounded bg-teal-500/10 text-teal-600 dark:text-teal-400">Spatial Map</span>
+                        </div>
+                        <span className="block text-[11px] text-[var(--text-muted)] leading-relaxed mt-0.5">{t("landing_xai3d_s3_d")}</span>
+                      </div>
+                    </li>
+
+                    <li className="flex gap-3 p-2.5 rounded-xl bg-[var(--bg-card-inner)] border border-[var(--border-subtle)]">
+                      <span className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-emerald-500/10 text-emerald-500 border border-emerald-500/20">
+                        <CheckCircle2 className="w-3.5 h-3.5" />
+                      </span>
+                      <div className="flex-1">
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs font-bold text-[var(--text-heading)]">{t("landing_xai3d_s4_t")}</span>
+                          <span className="font-mono text-[9px] font-bold px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">CDSS Audit</span>
+                        </div>
+                        <span className="block text-[11px] text-[var(--text-muted)] leading-relaxed mt-0.5">{t("landing_xai3d_s4_d")}</span>
+                      </div>
+                    </li>
                   </ol>
+
                   <div className="card-inner p-3 text-[11px] leading-relaxed text-[var(--text-muted)] border-l-4 border-l-blue-500">
                     {t("landing_xai3d_note")}
                   </div>
+
                   <button
+                    type="button"
                     onClick={openLaunchModal}
-                    className="btn-primary mt-auto self-start"
+                    className="btn-primary self-start"
                   >
                     <Activity className="w-4 h-4" />
                     <span>{t("landing_xai3d_cta")}</span>
-                    <ArrowRight className="w-4 h-4" />
+                    <ArrowRight className="w-4 h-4 ml-1" />
                   </button>
                 </div>
               </div>
@@ -595,10 +614,15 @@ export default function PresentationLandingPage() {
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-            <div className="card p-4 sm:p-5 flex flex-col justify-between">
+            <div className="card p-4 sm:p-5 flex flex-col justify-between border border-[var(--border-card)] bg-[var(--bg-card)] hover:border-emerald-500/40 transition-all shadow-sm">
               <div>
-                <div className="w-9 h-9 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-500 mb-3">
-                  <Database className="w-4 h-4" />
+                <div className="flex items-center justify-between mb-3">
+                  <div className="w-9 h-9 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-500">
+                    <Database className="w-4 h-4" />
+                  </div>
+                  <span className="font-mono text-[9px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
+                    0 B EGRESS
+                  </span>
                 </div>
                 <h3 className="font-display text-sm font-bold text-[var(--text-heading)] mb-2">
                   {t("landing_pillar_1_title")}
@@ -607,15 +631,21 @@ export default function PresentationLandingPage() {
                   {t("landing_pillar_1_desc")}
                 </p>
               </div>
-              <div className="pt-3 mt-3 border-t border-[var(--border-subtle)] text-[10px] font-mono text-emerald-600 dark:text-emerald-400 font-semibold">
-                {t("landing_p1_tag")}
+              <div className="pt-3 mt-3 border-t border-[var(--border-subtle)] text-[10px] font-mono text-emerald-600 dark:text-emerald-400 font-semibold flex items-center justify-between">
+                <span>{t("landing_p1_tag")}</span>
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
               </div>
             </div>
 
-            <div className="card p-4 sm:p-5 flex flex-col justify-between">
+            <div className="card p-4 sm:p-5 flex flex-col justify-between border border-[var(--border-card)] bg-[var(--bg-card)] hover:border-blue-500/40 transition-all shadow-sm">
               <div>
-                <div className="w-9 h-9 rounded-xl bg-blue-500/10 border border-blue-500/20 flex items-center justify-center text-blue-500 mb-3">
-                  <ShieldCheck className="w-4 h-4" />
+                <div className="flex items-center justify-between mb-3">
+                  <div className="w-9 h-9 rounded-xl bg-blue-500/10 border border-blue-500/20 flex items-center justify-center text-blue-500">
+                    <ShieldCheck className="w-4 h-4" />
+                  </div>
+                  <span className="font-mono text-[9px] font-bold px-2 py-0.5 rounded-full bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20">
+                    ε ≤ 2.0 BOUND
+                  </span>
                 </div>
                 <h3 className="font-display text-sm font-bold text-[var(--text-heading)] mb-2">
                   {t("landing_pillar_2_title")}
@@ -624,15 +654,21 @@ export default function PresentationLandingPage() {
                   {t("landing_pillar_2_desc")}
                 </p>
               </div>
-              <div className="pt-3 mt-3 border-t border-[var(--border-subtle)] text-[10px] font-mono text-blue-600 dark:text-blue-400 font-semibold">
-                {t("landing_p2_tag")}
+              <div className="pt-3 mt-3 border-t border-[var(--border-subtle)] text-[10px] font-mono text-blue-600 dark:text-blue-400 font-semibold flex items-center justify-between">
+                <span>{t("landing_p2_tag")}</span>
+                <span className="w-1.5 h-1.5 rounded-full bg-blue-500" />
               </div>
             </div>
 
-            <div className="card p-4 sm:p-5 flex flex-col justify-between">
+            <div className="card p-4 sm:p-5 flex flex-col justify-between border border-[var(--border-card)] bg-[var(--bg-card)] hover:border-teal-500/40 transition-all shadow-sm">
               <div>
-                <div className="w-9 h-9 rounded-xl bg-teal-500/10 border border-teal-500/20 flex items-center justify-center text-teal-500 mb-3">
-                  <Lock className="w-4 h-4" />
+                <div className="flex items-center justify-between mb-3">
+                  <div className="w-9 h-9 rounded-xl bg-teal-500/10 border border-teal-500/20 flex items-center justify-center text-teal-500">
+                    <Lock className="w-4 h-4" />
+                  </div>
+                  <span className="font-mono text-[9px] font-bold px-2 py-0.5 rounded-full bg-teal-500/10 text-teal-600 dark:text-teal-400 border border-teal-500/20">
+                    CKKS 128-BIT
+                  </span>
                 </div>
                 <h3 className="font-display text-sm font-bold text-[var(--text-heading)] mb-2">
                   {t("landing_pillar_3_title")}
@@ -641,15 +677,21 @@ export default function PresentationLandingPage() {
                   {t("landing_pillar_3_desc")}
                 </p>
               </div>
-              <div className="pt-3 mt-3 border-t border-[var(--border-subtle)] text-[10px] font-mono text-teal-600 dark:text-teal-400 font-semibold">
-                {t("landing_p3_tag")}
+              <div className="pt-3 mt-3 border-t border-[var(--border-subtle)] text-[10px] font-mono text-teal-600 dark:text-teal-400 font-semibold flex items-center justify-between">
+                <span>{t("landing_p3_tag")}</span>
+                <span className="w-1.5 h-1.5 rounded-full bg-teal-500" />
               </div>
             </div>
 
-            <div className="card p-4 sm:p-5 flex flex-col justify-between">
+            <div className="card p-4 sm:p-5 flex flex-col justify-between border border-[var(--border-card)] bg-[var(--bg-card)] hover:border-amber-500/40 transition-all shadow-sm">
               <div>
-                <div className="w-9 h-9 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-500 mb-3">
-                  <AlertTriangle className="w-4 h-4" />
+                <div className="flex items-center justify-between mb-3">
+                  <div className="w-9 h-9 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-500">
+                    <AlertTriangle className="w-4 h-4" />
+                  </div>
+                  <span className="font-mono text-[9px] font-bold px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20">
+                    TRIMMED MEAN
+                  </span>
                 </div>
                 <h3 className="font-display text-sm font-bold text-[var(--text-heading)] mb-2">
                   {t("landing_pillar_4_title")}
@@ -658,8 +700,9 @@ export default function PresentationLandingPage() {
                   {t("landing_pillar_4_desc")}
                 </p>
               </div>
-              <div className="pt-3 mt-3 border-t border-[var(--border-subtle)] text-[10px] font-mono text-amber-600 dark:text-amber-400 font-semibold">
-                {t("landing_p4_tag")}
+              <div className="pt-3 mt-3 border-t border-[var(--border-subtle)] text-[10px] font-mono text-amber-600 dark:text-amber-400 font-semibold flex items-center justify-between">
+                <span>{t("landing_p4_tag")}</span>
+                <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
               </div>
             </div>
           </div>
@@ -680,10 +723,13 @@ export default function PresentationLandingPage() {
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 sm:gap-4">
-            <div className="card-inner p-3.5 sm:p-4 flex flex-col justify-between">
+            <div className="card-inner p-3.5 sm:p-4 flex flex-col justify-between border border-[var(--border-subtle)] hover:border-emerald-500/30 transition-all">
               <div>
-                <span className="text-[10px] font-mono font-bold text-emerald-500">{t("landing_arch_stage_label")} 01</span>
-                <h3 className="font-display text-xs sm:text-sm font-bold text-[var(--text-heading)] mt-1 mb-1.5">
+                <div className="flex items-center justify-between">
+                  <span className="text-[10px] font-mono font-bold text-emerald-500">{t("landing_arch_stage_label")} 01</span>
+                  <span className="font-mono text-[9px] px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-bold">ViT Backbone</span>
+                </div>
+                <h3 className="font-display text-xs sm:text-sm font-bold text-[var(--text-heading)] mt-1.5 mb-1.5">
                   {t("landing_arch_s1_title")}
                 </h3>
                 <p className="text-[11px] sm:text-xs text-[var(--text-muted)] leading-relaxed">
@@ -692,10 +738,13 @@ export default function PresentationLandingPage() {
               </div>
             </div>
 
-            <div className="card-inner p-3.5 sm:p-4 flex flex-col justify-between">
+            <div className="card-inner p-3.5 sm:p-4 flex flex-col justify-between border border-[var(--border-subtle)] hover:border-emerald-500/30 transition-all">
               <div>
-                <span className="text-[10px] font-mono font-bold text-emerald-500">{t("landing_arch_stage_label")} 02</span>
-                <h3 className="font-display text-xs sm:text-sm font-bold text-[var(--text-heading)] mt-1 mb-1.5">
+                <div className="flex items-center justify-between">
+                  <span className="text-[10px] font-mono font-bold text-emerald-500">{t("landing_arch_stage_label")} 02</span>
+                  <span className="font-mono text-[9px] px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-bold">FFA-LoRA</span>
+                </div>
+                <h3 className="font-display text-xs sm:text-sm font-bold text-[var(--text-heading)] mt-1.5 mb-1.5">
                   {t("landing_arch_s2_title")}
                 </h3>
                 <p className="text-[11px] sm:text-xs text-[var(--text-muted)] leading-relaxed">
@@ -704,10 +753,13 @@ export default function PresentationLandingPage() {
               </div>
             </div>
 
-            <div className="card-inner p-3.5 sm:p-4 flex flex-col justify-between">
+            <div className="card-inner p-3.5 sm:p-4 flex flex-col justify-between border border-[var(--border-subtle)] hover:border-teal-500/30 transition-all">
               <div>
-                <span className="text-[10px] font-mono font-bold text-teal-500">{t("landing_arch_stage_label")} 03</span>
-                <h3 className="font-display text-xs sm:text-sm font-bold text-[var(--text-heading)] mt-1 mb-1.5">
+                <div className="flex items-center justify-between">
+                  <span className="text-[10px] font-mono font-bold text-teal-500">{t("landing_arch_stage_label")} 03</span>
+                  <span className="font-mono text-[9px] px-1.5 py-0.5 rounded bg-teal-500/10 text-teal-600 dark:text-teal-400 font-bold">CKKS 128b</span>
+                </div>
+                <h3 className="font-display text-xs sm:text-sm font-bold text-[var(--text-heading)] mt-1.5 mb-1.5">
                   {t("landing_arch_s3_title")}
                 </h3>
                 <p className="text-[11px] sm:text-xs text-[var(--text-muted)] leading-relaxed">
@@ -716,10 +768,13 @@ export default function PresentationLandingPage() {
               </div>
             </div>
 
-            <div className="card-inner p-3.5 sm:p-4 flex flex-col justify-between">
+            <div className="card-inner p-3.5 sm:p-4 flex flex-col justify-between border border-[var(--border-subtle)] hover:border-blue-500/30 transition-all">
               <div>
-                <span className="text-[10px] font-mono font-bold text-blue-500">{t("landing_arch_stage_label")} 04</span>
-                <h3 className="font-display text-xs sm:text-sm font-bold text-[var(--text-heading)] mt-1 mb-1.5">
+                <div className="flex items-center justify-between">
+                  <span className="text-[10px] font-mono font-bold text-blue-500">{t("landing_arch_stage_label")} 04</span>
+                  <span className="font-mono text-[9px] px-1.5 py-0.5 rounded bg-blue-500/10 text-blue-600 dark:text-blue-400 font-bold">FedDyn Sync</span>
+                </div>
+                <h3 className="font-display text-xs sm:text-sm font-bold text-[var(--text-heading)] mt-1.5 mb-1.5">
                   {t("landing_arch_s4_title")}
                 </h3>
                 <p className="text-[11px] sm:text-xs text-[var(--text-muted)] leading-relaxed">
@@ -728,10 +783,13 @@ export default function PresentationLandingPage() {
               </div>
             </div>
 
-            <div className="card-inner p-3.5 sm:p-4 flex flex-col justify-between">
+            <div className="card-inner p-3.5 sm:p-4 flex flex-col justify-between border border-[var(--border-subtle)] hover:border-emerald-500/30 transition-all">
               <div>
-                <span className="text-[10px] font-mono font-bold text-emerald-500">{t("landing_arch_stage_label")} 05</span>
-                <h3 className="font-display text-xs sm:text-sm font-bold text-[var(--text-heading)] mt-1 mb-1.5">
+                <div className="flex items-center justify-between">
+                  <span className="text-[10px] font-mono font-bold text-emerald-500">{t("landing_arch_stage_label")} 05</span>
+                  <span className="font-mono text-[9px] px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-bold">DICOM CDSS</span>
+                </div>
+                <h3 className="font-display text-xs sm:text-sm font-bold text-[var(--text-heading)] mt-1.5 mb-1.5">
                   {t("landing_arch_s5_title")}
                 </h3>
                 <p className="text-[11px] sm:text-xs text-[var(--text-muted)] leading-relaxed">

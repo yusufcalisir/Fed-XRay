@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import { useLanguage } from "@/context/LanguageContext";
 import { DiagnosisResult } from "@/types";
-import { Stethoscope, Search, Activity, Lock, ArrowUp, Upload, Box } from "lucide-react";
+import { Stethoscope, Search, Activity, Lock, ArrowUp, Upload, Box, ShieldCheck } from "lucide-react";
 import LungViewer3D from "@/components/LungViewer3D";
 import type { LungViewMode } from "@/lib/scanTexture";
 
@@ -147,17 +147,63 @@ export default function DiagnosticStudio({
 
       {/* Locked State Container */}
       {isLocked ? (
-        <div className="card overflow-hidden">
+        <div className="card overflow-hidden border border-[var(--border-card)] bg-[var(--bg-card)]">
           <div className="grid grid-cols-1 md:grid-cols-2 items-stretch">
-            <div className="lung-viewer relative h-[380px] md:h-[460px] rounded-none md:rounded-r-none border-0">
-              <LungViewer3D className="absolute inset-0" mode="anatomy" showHint={false} labels={false} />
-              <div className="pointer-events-none absolute left-3 top-3 inline-flex items-center gap-1.5 rounded-full border border-white/10 bg-black/40 px-2.5 py-1 font-mono text-[10px] text-emerald-200 backdrop-blur">
-                <Box className="w-3 h-3" />
-                {t("lung3d_locked_preview")}
+            {/* Left: Cryptographic Consensus Enclave Status (Clean, Medical SaaS) */}
+            <div className="p-6 sm:p-8 flex flex-col justify-between bg-[var(--bg-card-inner)] border-b md:border-b-0 md:border-r border-[var(--border-subtle)]">
+              <div>
+                <div className="flex items-center justify-between mb-4">
+                  <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-mono font-bold bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20">
+                    <Lock className="w-3 h-3" />
+                    <span>Weights Locked · Standby</span>
+                  </span>
+                  <span className="font-mono text-[10px] text-[var(--text-muted)]">
+                    Round 0 / 5
+                  </span>
+                </div>
+
+                <div className="my-6 flex flex-col items-center justify-center text-center">
+                  <div className="relative mb-4">
+                    <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-amber-500/20 to-emerald-500/20 border border-amber-500/30 flex items-center justify-center shadow-lg">
+                      <ShieldCheck className="w-8 h-8 text-amber-500" />
+                    </div>
+                    <span className="absolute -bottom-1 -right-1 w-4 h-4 rounded-full bg-amber-500 border-2 border-[var(--bg-card)] flex items-center justify-center">
+                      <Lock className="w-2.5 h-2.5 text-white" />
+                    </span>
+                  </div>
+                  <h4 className="font-display text-sm font-bold text-[var(--text-heading)]">
+                    Federated Model Weights Awaiting Consensus
+                  </h4>
+                  <p className="text-[11px] text-[var(--text-muted)] max-w-xs mt-1 leading-relaxed">
+                    Diagnostic inference and Grad-CAM attention require global foundation model adapters distributed across consortium nodes.
+                  </p>
+                </div>
+
+                <div className="space-y-2 pt-2">
+                  <div className="flex items-center justify-between p-2 rounded-lg bg-[var(--bg-card)] border border-[var(--border-subtle)] text-[11px]">
+                    <span className="text-[var(--text-muted)]">Hospital Nodes Connected:</span>
+                    <span className="font-mono font-bold text-emerald-600 dark:text-emerald-400">4 / 4 Nodes Ready</span>
+                  </div>
+                  <div className="flex items-center justify-between p-2 rounded-lg bg-[var(--bg-card)] border border-[var(--border-subtle)] text-[11px]">
+                    <span className="text-[var(--text-muted)]">Cryptographic Standard:</span>
+                    <span className="font-mono font-bold text-sky-600 dark:text-sky-400">RLWE CKKS 128-Bit</span>
+                  </div>
+                  <div className="flex items-center justify-between p-2 rounded-lg bg-[var(--bg-card)] border border-[var(--border-subtle)] text-[11px]">
+                    <span className="text-[var(--text-muted)]">Differential Privacy Budget:</span>
+                    <span className="font-mono font-bold text-violet-600 dark:text-violet-400">ε ≤ 2.0, δ = 10^-5</span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="pt-4 border-t border-[var(--border-subtle)] text-[10px] font-mono text-[var(--text-muted)] flex items-center justify-between">
+                <span>Consortium Enclave Status:</span>
+                <span className="text-amber-600 dark:text-amber-400 font-bold">Synchronizing Parameters</span>
               </div>
             </div>
+
+            {/* Right: Step 3 Locked Action Panel */}
             <div className="flex flex-col items-start justify-center p-6 sm:p-8">
-              <div className="w-11 h-11 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center mb-3 text-amber-500">
+              <div className="w-11 h-11 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center mb-3 text-amber-500 shadow-sm">
                 <Lock className="w-5 h-5" />
               </div>
               <h3 className="font-display text-base sm:text-lg font-bold text-[var(--text-heading)] mb-1.5">
@@ -167,7 +213,7 @@ export default function DiagnosticStudio({
                 {t("lock_diag_desc")}
               </p>
               {onScrollToTraining && (
-                <button onClick={onScrollToTraining} className="btn-primary inline-flex items-center gap-2">
+                <button onClick={onScrollToTraining} className="btn-primary inline-flex items-center gap-2 shadow-md">
                   <ArrowUp className="w-4 h-4" />
                   <span>{t("lock_diag_btn")}</span>
                 </button>

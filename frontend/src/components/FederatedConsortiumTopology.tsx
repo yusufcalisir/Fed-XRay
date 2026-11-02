@@ -1,0 +1,438 @@
+"use client";
+
+import React, { useState } from "react";
+import {
+  ShieldCheck,
+  Lock,
+  Activity,
+  Server,
+  Cpu,
+  Layers,
+  Sparkles,
+  CheckCircle2,
+  AlertTriangle,
+  Network,
+  Zap,
+  ArrowRight,
+  TrendingDown,
+  FileCheck,
+} from "lucide-react";
+import { useLanguage } from "@/context/LanguageContext";
+
+interface HospitalNode {
+  id: string;
+  name: string;
+  location: string;
+  scanner: string;
+  scans: number;
+  skew: string;
+  adapter: string;
+  dpEpsilon: number;
+  status: "online" | "syncing";
+}
+
+const HOSPITAL_NODES: HospitalNode[] = [
+  {
+    id: "node-1",
+    name: "Charité - Universitätsmedizin Berlin",
+    location: "Berlin, DE",
+    scanner: "Siemens Somatom X.cite",
+    scans: 6240,
+    skew: "Squamous Cell & Adenocarcinoma",
+    adapter: "FFA-LoRA (r=16, α=32)",
+    dpEpsilon: 1.82,
+    status: "online",
+  },
+  {
+    id: "node-2",
+    name: "Massachusetts General Hospital",
+    location: "Boston, USA",
+    scanner: "GE Revolution Apex CT",
+    scans: 8110,
+    skew: "Nodules & Alveolar Infiltrates",
+    adapter: "FFA-LoRA (r=16, α=32)",
+    dpEpsilon: 1.75,
+    status: "online",
+  },
+  {
+    id: "node-3",
+    name: "Tokyo University Hospital",
+    location: "Tokyo, JP",
+    scanner: "Canon Aquilion ONE PRISM",
+    scans: 5490,
+    skew: "Early Ground-Glass Opacities",
+    adapter: "FFA-LoRA (r=16, α=32)",
+    dpEpsilon: 1.91,
+    status: "online",
+  },
+  {
+    id: "node-4",
+    name: "Guy's and St Thomas' NHS Trust",
+    location: "London, UK",
+    scanner: "Philips Ingenuity CT Core",
+    scans: 5491,
+    skew: "Consolidation & Effusion",
+    adapter: "FFA-LoRA (r=16, α=32)",
+    dpEpsilon: 1.88,
+    status: "online",
+  },
+];
+
+export interface FederatedConsortiumTopologyProps {
+  onLaunchDemo?: () => void;
+  isModalOpen?: boolean;
+}
+
+export default function FederatedConsortiumTopology({
+  onLaunchDemo,
+}: FederatedConsortiumTopologyProps) {
+  const { t } = useLanguage();
+  const [activeView, setActiveView] = useState<"topology" | "crypto" | "telemetry">("topology");
+  const [selectedNodeId, setSelectedNodeId] = useState<string>("node-1");
+
+  const selectedNode = HOSPITAL_NODES.find((n) => n.id === selectedNodeId) || HOSPITAL_NODES[0];
+
+  return (
+    <div className="card relative h-[480px] sm:h-[520px] lg:h-[550px] flex flex-col justify-between overflow-hidden p-4 sm:p-5 select-none border border-[var(--border-card)] bg-[var(--bg-card)] shadow-xl rounded-2xl">
+      {/* Top Console Navigation Bar */}
+      <div className="relative z-20 flex items-center justify-between gap-2 border-b border-[var(--border-subtle)] pb-3">
+        <div className="flex items-center gap-2">
+          <div className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse shadow-[0_0_8px_#10b981]" />
+          <span className="font-mono text-[11px] sm:text-xs font-bold uppercase tracking-wider text-[var(--text-heading)]">
+            Consortium Enclave Network
+          </span>
+          <span className="hidden sm:inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-mono font-semibold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
+            4/4 Enclaves Synced
+          </span>
+        </div>
+
+        {/* Console View Switcher */}
+        <div className="flex items-center p-0.5 rounded-lg bg-[var(--bg-card-inner)] border border-[var(--border-card)] text-[10px] sm:text-[11px] font-semibold">
+          <button
+            type="button"
+            onClick={() => setActiveView("topology")}
+            className={`px-2.5 py-1 rounded-md transition-all ${
+              activeView === "topology"
+                ? "bg-emerald-500 text-white shadow-sm"
+                : "text-[var(--text-muted)] hover:text-[var(--text-heading)]"
+            }`}
+          >
+            Topology Map
+          </button>
+          <button
+            type="button"
+            onClick={() => setActiveView("crypto")}
+            className={`px-2.5 py-1 rounded-md transition-all ${
+              activeView === "crypto"
+                ? "bg-emerald-500 text-white shadow-sm"
+                : "text-[var(--text-muted)] hover:text-[var(--text-heading)]"
+            }`}
+          >
+            Crypto Enclave
+          </button>
+          <button
+            type="button"
+            onClick={() => setActiveView("telemetry")}
+            className={`px-2.5 py-1 rounded-md transition-all ${
+              activeView === "telemetry"
+                ? "bg-emerald-500 text-white shadow-sm"
+                : "text-[var(--text-muted)] hover:text-[var(--text-heading)]"
+            }`}
+          >
+            Consensus Telemetry
+          </button>
+        </div>
+      </div>
+
+      {/* Main Interactive Stage */}
+      <div className="relative flex-1 w-full my-2 flex items-center justify-center overflow-hidden">
+        {/* VIEW 1: FEDERATED TOPOLOGY MAP */}
+        {activeView === "topology" && (
+          <div className="relative w-full h-full flex flex-col justify-between py-1">
+            {/* SVG Connecting Enclave Tunnels */}
+            <svg className="absolute inset-0 w-full h-full pointer-events-none" xmlns="http://www.w3.org/2000/svg">
+              <defs>
+                <linearGradient id="streamGrad1" x1="0%" y1="0%" x2="50%" y2="50%">
+                  <stop offset="0%" stopColor="#10b981" stopOpacity="0.5" />
+                  <stop offset="100%" stopColor="#06b6d4" stopOpacity="0.1" />
+                </linearGradient>
+                <linearGradient id="streamGrad2" x1="100%" y1="0%" x2="50%" y2="50%">
+                  <stop offset="0%" stopColor="#10b981" stopOpacity="0.5" />
+                  <stop offset="100%" stopColor="#06b6d4" stopOpacity="0.1" />
+                </linearGradient>
+                <linearGradient id="streamGrad3" x1="0%" y1="100%" x2="50%" y2="50%">
+                  <stop offset="0%" stopColor="#10b981" stopOpacity="0.5" />
+                  <stop offset="100%" stopColor="#06b6d4" stopOpacity="0.1" />
+                </linearGradient>
+                <linearGradient id="streamGrad4" x1="100%" y1="100%" x2="50%" y2="50%">
+                  <stop offset="0%" stopColor="#10b981" stopOpacity="0.5" />
+                  <stop offset="100%" stopColor="#06b6d4" stopOpacity="0.1" />
+                </linearGradient>
+              </defs>
+
+              {/* Connecting Tunnels */}
+              <line x1="22%" y1="20%" x2="50%" y2="50%" stroke="url(#streamGrad1)" strokeWidth="2" strokeDasharray="4 4" />
+              <line x1="78%" y1="20%" x2="50%" y2="50%" stroke="url(#streamGrad2)" strokeWidth="2" strokeDasharray="4 4" />
+              <line x1="22%" y1="80%" x2="50%" y2="50%" stroke="url(#streamGrad3)" strokeWidth="2" strokeDasharray="4 4" />
+              <line x1="78%" y1="80%" x2="50%" y2="50%" stroke="url(#streamGrad4)" strokeWidth="2" strokeDasharray="4 4" />
+
+              {/* Aggregation Center Glow Rings */}
+              <circle cx="50%" cy="50%" r="58" fill="none" stroke="#10b981" strokeWidth="1" strokeOpacity="0.2" />
+              <circle cx="50%" cy="50%" r="76" fill="none" stroke="#06b6d4" strokeWidth="1" strokeOpacity="0.12" strokeDasharray="6 6" />
+            </svg>
+
+            {/* Top Row: Nodes 1 & 2 */}
+            <div className="grid grid-cols-2 gap-3 z-10">
+              {HOSPITAL_NODES.slice(0, 2).map((node) => (
+                <button
+                  type="button"
+                  key={node.id}
+                  onClick={() => setSelectedNodeId(node.id)}
+                  className={`text-left p-2.5 sm:p-3 rounded-xl border transition-all ${
+                    selectedNodeId === node.id
+                      ? "bg-[var(--bg-card)] border-emerald-500 shadow-md ring-1 ring-emerald-500/30"
+                      : "bg-[var(--bg-card-inner)] hover:bg-[var(--bg-card)] border-[var(--border-subtle)]"
+                  }`}
+                >
+                  <div className="flex items-center justify-between mb-1">
+                    <span className="font-mono text-[10px] font-bold text-emerald-600 dark:text-emerald-400">
+                      {node.location}
+                    </span>
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+                  </div>
+                  <div className="font-display text-xs font-bold text-[var(--text-heading)] truncate">
+                    {node.name.split("-")[0].trim()}
+                  </div>
+                  <div className="text-[10px] font-mono text-[var(--text-muted)] truncate mt-0.5">
+                    {node.scanner.split(" ")[0]} • {node.scans.toLocaleString("en-US")} scans
+                  </div>
+                </button>
+              ))}
+            </div>
+
+            {/* Central Aggregation Ring */}
+            <div className="z-10 self-center text-center my-1 sm:my-2">
+              <div className="inline-flex flex-col items-center p-3 sm:p-3.5 rounded-2xl bg-[var(--bg-card)] border border-emerald-500/40 shadow-xl backdrop-blur-md">
+                <div className="flex items-center gap-1.5 text-emerald-600 dark:text-emerald-400 font-mono text-[10px] font-bold uppercase tracking-wider mb-1">
+                  <ShieldCheck className="w-3.5 h-3.5" />
+                  <span>CKKS 128-Bit Aggregator</span>
+                </div>
+                <div className="font-display text-xs sm:text-sm font-extrabold text-[var(--text-heading)]">
+                  Consortium Server Gateway
+                </div>
+                <div className="text-[10px] font-mono text-[var(--text-muted)] mt-0.5">
+                  FedOpt Momentum • Zero Plaintext Access
+                </div>
+              </div>
+            </div>
+
+            {/* Bottom Row: Nodes 3 & 4 */}
+            <div className="grid grid-cols-2 gap-3 z-10">
+              {HOSPITAL_NODES.slice(2, 4).map((node) => (
+                <button
+                  type="button"
+                  key={node.id}
+                  onClick={() => setSelectedNodeId(node.id)}
+                  className={`text-left p-2.5 sm:p-3 rounded-xl border transition-all ${
+                    selectedNodeId === node.id
+                      ? "bg-[var(--bg-card)] border-emerald-500 shadow-md ring-1 ring-emerald-500/30"
+                      : "bg-[var(--bg-card-inner)] hover:bg-[var(--bg-card)] border-[var(--border-subtle)]"
+                  }`}
+                >
+                  <div className="flex items-center justify-between mb-1">
+                    <span className="font-mono text-[10px] font-bold text-emerald-600 dark:text-emerald-400">
+                      {node.location}
+                    </span>
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+                  </div>
+                  <div className="font-display text-xs font-bold text-[var(--text-heading)] truncate">
+                    {node.name.split("-")[0].trim()}
+                  </div>
+                  <div className="text-[10px] font-mono text-[var(--text-muted)] truncate mt-0.5">
+                    {node.scanner.split(" ")[0]} • {node.scans.toLocaleString("en-US")} scans
+                  </div>
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* VIEW 2: CRYPTOGRAPHIC ENCLAVE & DP SIMULATOR */}
+        {activeView === "crypto" && (
+          <div className="w-full h-full flex flex-col justify-between p-3.5 rounded-xl bg-[var(--bg-card-inner)] border border-[var(--border-card)]">
+            <div>
+              <div className="flex items-center justify-between border-b border-[var(--border-subtle)] pb-2 mb-3">
+                <div className="flex items-center gap-2">
+                  <Lock className="w-4 h-4 text-sky-500" />
+                  <span className="font-display text-xs sm:text-sm font-bold text-[var(--text-heading)]">
+                    RLWE Leveled CKKS 128-Bit Ciphertext Encryption
+                  </span>
+                </div>
+                <span className="px-2 py-0.5 rounded text-[10px] font-mono bg-sky-500/10 text-sky-600 dark:text-sky-400 font-bold border border-sky-500/20">
+                  Option J Standard
+                </span>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 text-xs">
+                <div className="card p-2.5 border border-[var(--border-subtle)]">
+                  <div className="text-[10px] font-mono text-slate-500 uppercase font-semibold">Client Gradient</div>
+                  <div className="font-mono text-xs font-bold text-emerald-600 dark:text-emerald-400 mt-1">
+                    ΔW = Bk · A
+                  </div>
+                  <div className="text-[10px] text-[var(--text-muted)] mt-1">Rank-16 low-rank adapter matrix</div>
+                </div>
+
+                <div className="card p-2.5 border border-[var(--border-subtle)]">
+                  <div className="text-[10px] font-mono text-slate-500 uppercase font-semibold">Ciphertext State</div>
+                  <div className="font-mono text-xs font-bold text-sky-600 dark:text-sky-400 mt-1">
+                    (c0, c1) ∈ R_q^2
+                  </div>
+                  <div className="text-[10px] text-[var(--text-muted)] mt-1">Polynomial degree N=8192, 128-bit</div>
+                </div>
+
+                <div className="card p-2.5 border border-[var(--border-subtle)]">
+                  <div className="text-[10px] font-mono text-slate-500 uppercase font-semibold">DP Noise Injection</div>
+                  <div className="font-mono text-xs font-bold text-violet-600 dark:text-violet-400 mt-1">
+                    ε ≤ 2.0, δ = 10^-5
+                  </div>
+                  <div className="text-[10px] text-[var(--text-muted)] mt-1">Patient-level Rényi accountant</div>
+                </div>
+              </div>
+
+              <div className="mt-3 p-3 rounded-lg bg-[var(--bg-card)] border border-[var(--border-subtle)] text-[11px] leading-relaxed text-[var(--text-muted)]">
+                <strong className="text-[var(--text-heading)]">Mathematical Aggregation Invariant:</strong>
+                <span className="font-mono block mt-0.5 text-emerald-600 dark:text-emerald-400">
+                  {"W_global = (1/K) · Σ Enc(B_k) · A  ==>  Dec(Σ Enc(B_k)) · A"}
+                </span>
+                Raw patient radiographs, patient IDs, and unencrypted weights never exit hospital firewall perimeters.
+              </div>
+            </div>
+
+            <div className="flex items-center justify-between text-[11px] text-[var(--text-muted)] border-t border-[var(--border-subtle)] pt-2 mt-2">
+              <span>Byzantine Filtering: Active (Cosine Distance + Median Clipping)</span>
+              <span className="font-mono font-bold text-emerald-600 dark:text-emerald-400">100% In-Transit Security</span>
+            </div>
+          </div>
+        )}
+
+        {/* VIEW 3: CONSENSUS TELEMETRY & BYZANTINE DEFENSE */}
+        {activeView === "telemetry" && (
+          <div className="w-full h-full flex flex-col justify-between p-3.5 rounded-xl bg-[var(--bg-card-inner)] border border-[var(--border-card)]">
+            <div>
+              <div className="flex items-center justify-between border-b border-[var(--border-subtle)] pb-2 mb-3">
+                <div className="flex items-center gap-2">
+                  <Activity className="w-4 h-4 text-emerald-500" />
+                  <span className="font-display text-xs sm:text-sm font-bold text-[var(--text-heading)]">
+                    Consensus Telemetry & Robustness Stream
+                  </span>
+                </div>
+                <span className="px-2 py-0.5 rounded text-[10px] font-mono bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-bold border border-emerald-500/20">
+                  Round 5 / 5 Converged
+                </span>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 text-xs">
+                <div className="card p-2.5 border border-[var(--border-subtle)]">
+                  <div className="flex items-center gap-1.5 text-[10px] font-mono text-slate-500 uppercase font-semibold">
+                    <TrendingDown className="w-3 h-3 text-emerald-500" />
+                    <span>Payload / Round</span>
+                  </div>
+                  <div className="font-mono text-sm font-bold text-emerald-600 dark:text-emerald-400 mt-1">
+                    4.2 MB
+                  </div>
+                  <div className="text-[10px] text-emerald-600 dark:text-emerald-400 font-semibold mt-0.5">
+                    98.8% bandwidth savings vs 340 MB
+                  </div>
+                </div>
+
+                <div className="card p-2.5 border border-[var(--border-subtle)]">
+                  <div className="flex items-center gap-1.5 text-[10px] font-mono text-slate-500 uppercase font-semibold">
+                    <AlertTriangle className="w-3 h-3 text-amber-500" />
+                    <span>Poison Defense</span>
+                  </div>
+                  <div className="font-mono text-sm font-bold text-amber-600 dark:text-amber-400 mt-1">
+                    Trimmed-Mean
+                  </div>
+                  <div className="text-[10px] text-[var(--text-muted)] mt-0.5">
+                    Intercepted Node 3 synthetic drift
+                  </div>
+                </div>
+
+                <div className="card p-2.5 border border-[var(--border-subtle)]">
+                  <div className="flex items-center gap-1.5 text-[10px] font-mono text-slate-500 uppercase font-semibold">
+                    <FileCheck className="w-3 h-3 text-sky-500" />
+                    <span>Hold-Out AUC</span>
+                  </div>
+                  <div className="font-mono text-sm font-bold text-sky-600 dark:text-sky-400 mt-1">
+                    0.984
+                  </div>
+                  <div className="text-[10px] text-[var(--text-muted)] mt-0.5">
+                    Across 4 holdout cohorts
+                  </div>
+                </div>
+              </div>
+
+              <div className="mt-3 p-3 rounded-lg bg-[var(--bg-card)] border border-[var(--border-subtle)] text-[11px] leading-relaxed text-[var(--text-muted)]">
+                <div className="flex items-center justify-between mb-1.5">
+                  <strong className="text-[var(--text-heading)]">Federated Consensus Convergence Log:</strong>
+                  <span className="font-mono text-[10px] text-emerald-500 font-semibold">Global Loss: 0.286</span>
+                </div>
+                <div className="flex items-center gap-2 font-mono text-[10px]">
+                  <span className="px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-bold">R1: 72.5%</span>
+                  <span className="px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-bold">R2: 81.3%</span>
+                  <span className="px-2 py-0.5 rounded bg-amber-500/10 text-amber-600 dark:text-amber-400 font-bold">R3: 87.2% (Filtered)</span>
+                  <span className="px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-bold">R4: 91.6%</span>
+                  <span className="px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 font-extrabold">R5: 94.8%</span>
+                </div>
+              </div>
+            </div>
+
+            <div className="flex items-center justify-between text-[11px] text-[var(--text-muted)] border-t border-[var(--border-subtle)] pt-2 mt-2">
+              <span>Client Drift Optimization: FedDyn Dynamic Objective Alignment</span>
+              <span className="font-mono font-bold text-emerald-600 dark:text-emerald-400">Zero Model Divergence</span>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Bottom Node Inspector Bar */}
+      {activeView === "topology" && (
+        <div className="relative z-20 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 p-2.5 rounded-xl bg-[var(--bg-card-inner)] border border-[var(--border-subtle)] text-xs mt-1">
+          <div className="flex items-center gap-2">
+            <div className="w-7 h-7 rounded-lg bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-500 shrink-0">
+              <Server className="w-3.5 h-3.5" />
+            </div>
+            <div>
+              <div className="font-display font-bold text-[var(--text-heading)] text-[11px] sm:text-xs">
+                {selectedNode.name}
+              </div>
+              <div className="text-[10px] font-mono text-[var(--text-muted)]">
+                {selectedNode.scanner} • Skew: {selectedNode.skew}
+              </div>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-3 shrink-0 text-[10px] font-mono">
+            <div>
+              <span className="text-slate-400">DP Budget:</span>{" "}
+              <span className="font-bold text-emerald-600 dark:text-emerald-400">ε={selectedNode.dpEpsilon}</span>
+            </div>
+            <div>
+              <span className="text-slate-400">Adapter:</span>{" "}
+              <span className="font-bold text-sky-600 dark:text-sky-400">FFA-LoRA</span>
+            </div>
+            {onLaunchDemo && (
+              <button
+                type="button"
+                onClick={onLaunchDemo}
+                className="px-2.5 py-1 rounded-md bg-emerald-500 hover:bg-emerald-600 text-white font-bold transition-all shadow-sm"
+              >
+                Simulate
+              </button>
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}

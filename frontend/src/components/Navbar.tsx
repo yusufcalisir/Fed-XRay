@@ -54,6 +54,13 @@ export default function Navbar({ mode = "landing", onLaunchDemo }: NavbarProps) 
     ? t("engine_mobile_probing")
     : t("engine_mobile_offline");
 
+  const scrollTo = (id: string) => {
+    const el = document.getElementById(id);
+    if (el) {
+      el.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+  };
+
   return (
     <header className="sticky top-0 z-50 w-full h-14 bg-[var(--navbar-bg)] backdrop-blur-xl border-b border-[var(--navbar-border)] transition-colors">
       <div className="max-w-[1360px] mx-auto px-3 sm:px-5 h-full flex items-center justify-between gap-2">
@@ -85,21 +92,37 @@ export default function Navbar({ mode = "landing", onLaunchDemo }: NavbarProps) 
           )}
         </div>
 
-        {/* Center Navigation Links (Landing Mode Only) */}
+        {/* Center Navigation Controls (Landing Mode Only, Smooth Scroll Without Hash) */}
         {mode === "landing" && (
           <nav className="hidden lg:flex items-center gap-6 text-xs font-medium text-[var(--text-muted)]">
-            <a href="#results" className="hover:text-[var(--text-heading)] transition-colors">
+            <button
+              type="button"
+              onClick={() => scrollTo("results")}
+              className="hover:text-[var(--text-heading)] transition-colors focus:outline-none"
+            >
               {t("nav_results")}
-            </a>
-            <a href="#security" className="hover:text-[var(--text-heading)] transition-colors">
+            </button>
+            <button
+              type="button"
+              onClick={() => scrollTo("security")}
+              className="hover:text-[var(--text-heading)] transition-colors focus:outline-none"
+            >
               {t("nav_security")}
-            </a>
-            <a href="#architecture" className="hover:text-[var(--text-heading)] transition-colors">
+            </button>
+            <button
+              type="button"
+              onClick={() => scrollTo("architecture")}
+              className="hover:text-[var(--text-heading)] transition-colors focus:outline-none"
+            >
               {t("nav_architecture")}
-            </a>
-            <a href="#benchmarks" className="hover:text-[var(--text-heading)] transition-colors">
+            </button>
+            <button
+              type="button"
+              onClick={() => scrollTo("benchmarks")}
+              className="hover:text-[var(--text-heading)] transition-colors focus:outline-none"
+            >
               {t("nav_benchmarks")}
-            </a>
+            </button>
           </nav>
         )}
 

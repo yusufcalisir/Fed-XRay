@@ -17,7 +17,7 @@ export default function Hero({ numHospitals, totalRounds, totalSamples, isTraine
   const metrics = [
     { icon: Building2, label: t("kpi_hospitals"), value: String(numHospitals), tone: "from-emerald-500/20 to-emerald-500/0", color: "text-emerald-500 dark:text-emerald-400" },
     { icon: Repeat, label: t("kpi_rounds"), value: String(totalRounds), tone: "from-sky-500/20 to-sky-500/0", color: "text-sky-500 dark:text-sky-400" },
-    { icon: Users, label: t("kpi_samples"), value: totalSamples.toLocaleString(), tone: "from-amber-500/20 to-amber-500/0", color: "text-amber-500 dark:text-amber-400" },
+    { icon: Users, label: t("kpi_samples"), value: totalSamples.toLocaleString("en-US"), tone: "from-amber-500/20 to-amber-500/0", color: "text-amber-500 dark:text-amber-400" },
     { icon: Activity, label: t("kpi_status"), value: isTrained ? t("kpi_status_trained") : t("kpi_status_ready"), tone: isTrained ? "from-emerald-500/20 to-emerald-500/0" : "from-slate-400/15 to-slate-400/0", color: isTrained ? "text-emerald-500 dark:text-emerald-400" : "text-slate-400" },
   ];
 
