@@ -9,29 +9,42 @@ the central aggregator with:
 """
 
 from __future__ import annotations
-from typing import Dict, List, Optional, Tuple, Union
+from typing import Any, Callable, Dict, List, Optional, Tuple, Union
 import numpy as np
 import torch
+import logging
 import torch.nn as nn
 
 import flwr as fl
 from flwr.common import (
+    Code,
+    DisconnectRes,
     EvaluateIns,
     EvaluateRes,
     FitIns,
     FitRes,
+    GetParametersIns,
+    GetParametersRes,
+    GetPropertiesIns,
+    GetPropertiesRes,
     NDArrays,
     Parameters,
+    ReconnectIns,
     Scalar,
+    Status,
     ndarrays_to_parameters,
     parameters_to_ndarrays,
 )
 from flwr.server.client_proxy import ClientProxy
+from flwr.server.client_manager import SimpleClientManager
+from flwr.server.server_config import ServerConfig
 from flwr.server.strategy import Strategy
 
 from ..core.client import HospitalClient
 from ..core.server import CentralServer
 from ..models.peft import extract_peft_state_dict, load_peft_state_dict
+
+logger = logging.getLogger("fed_xray.flower_bridge")
 
 
 def state_dict_to_flower_parameters(
@@ -108,6 +121,13 @@ class FlowerHospitalClient(fl.client.NumPyClient):
         algorithm = str(config.get("algorithm", self.algorithm))
         loss_fn = str(config.get("loss_fn", self.loss_fn_name))
 
+        dp_enabled = bool(config.get("dp_enabled", self.hospital_client.dp_enabled))
+        dp_clipping_bound = float(config.get("dp_clipping_bound", self.hospital_client.dp_clipping_bound))
+        dp_noise_multiplier = float(config.get("dp_noise_multiplier", self.hospital_client.dp_noise_multiplier))
+        dp_mode = str(config.get("dp_mode", self.hospital_client.dp_mode))
+        num_consortium_clients = int(config.get("num_consortium_clients", 1))
+        proto_weight = float(config.get("proto_weight", self.proto_weight))
+
         # Reconstruct PyTorch state dict
         global_weights = flower_parameters_to_state_dict(
             parameters, self.param_keys, device=self.hospital_client.device
@@ -120,6 +140,12 @@ class FlowerHospitalClient(fl.client.NumPyClient):
             current_round=current_round,
             total_rounds=total_rounds,
             algorithm=algorithm,
+            dp_enabled=dp_enabled,
+            dp_clipping_bound=dp_clipping_bound,
+            dp_noise_multiplier=dp_noise_multiplier,
+            dp_mode=dp_mode,
+            num_consortium_clients=num_consortium_clients,
+            proto_weight=proto_weight,
         )
 
         arrays, _ = state_dict_to_flower_parameters(updated_weights)
@@ -131,6 +157,8 @@ class FlowerHospitalClient(fl.client.NumPyClient):
             "client_id": self.hospital_client.client_id,
             "samples_trained": metrics.samples_trained,
         }
+        if metrics.dp_clipped_norm is not None:
+            metrics_dict["dp_clipped_norm"] = float(metrics.dp_clipped_norm)
 
         return arrays, num_samples, metrics_dict
 
@@ -187,6 +215,9 @@ class FlowerFedXRayStrategy(Strategy):
         min_available_clients: int = 2,
         test_images: Optional[torch.Tensor] = None,
         test_labels: Optional[torch.Tensor] = None,
+        secure_aggregation: bool = False,
+        use_ckks: bool = False,
+        total_consortium_hospitals: Optional[int] = None,
     ) -> None:
         self.central_server = central_server
         self.total_rounds = total_rounds
@@ -197,6 +228,9 @@ class FlowerFedXRayStrategy(Strategy):
         self.min_available_clients = min_available_clients
         self.test_images = test_images
         self.test_labels = test_labels
+        self.secure_aggregation = secure_aggregation
+        self.use_ckks = use_ckks
+        self.total_consortium_hospitals = total_consortium_hospitals
 
         init_weights = self.central_server.get_global_weights()
         self.arrays, self.param_keys = state_dict_to_flower_parameters(init_weights)
@@ -217,11 +251,20 @@ class FlowerFedXRayStrategy(Strategy):
         )
         clients = client_manager.sample(num_clients=sample_size, min_num_clients=self.min_available_clients)
 
+        dp_active = (
+            self.central_server.privacy_noise > 0.0
+            and getattr(self.central_server, "dp_mode", "off") != "off"
+        )
         config: Dict[str, Scalar] = {
             "current_round": server_round,
             "total_rounds": self.total_rounds,
             "algorithm": self.algorithm,
             "loss_fn": self.loss_fn_name,
+            "dp_enabled": dp_active,
+            "dp_clipping_bound": float(getattr(self.central_server, "dp_clipping_bound", 1.0)),
+            "dp_noise_multiplier": float(self.central_server.privacy_noise),
+            "dp_mode": str(getattr(self.central_server, "dp_mode", "distributed")),
+            "num_consortium_clients": int(sample_size),
         }
         fit_ins = FitIns(parameters, config)
         return [(client, fit_ins) for client in clients]
@@ -250,6 +293,9 @@ class FlowerFedXRayStrategy(Strategy):
             cid = int(fit_res.metrics.get("client_id", idx))
             client_ids.append(cid)
 
+        total_hospitals = self.total_consortium_hospitals or len(results)
+        client_q = min(1.0, len(results) / max(1, total_hospitals))
+
         # Aggregate using CentralServer
         if self.central_server.defense_mode and self.test_images is not None and self.test_labels is not None:
             avg_weights, sec_report = self.central_server.validate_and_aggregate(
@@ -259,6 +305,9 @@ class FlowerFedXRayStrategy(Strategy):
                 test_images=self.test_images,
                 test_labels=self.test_labels,
                 algorithm=self.algorithm,
+                use_secagg=self.secure_aggregation,
+                use_ckks=self.use_ckks,
+                client_subsampling_q=client_q,
             )
             blocked_nodes = sec_report.clients_blocked
         else:
@@ -266,6 +315,8 @@ class FlowerFedXRayStrategy(Strategy):
                 client_weights=client_weights,
                 sample_counts=sample_counts,
                 algorithm=self.algorithm,
+                use_ckks=self.use_ckks,
+                client_subsampling_q=client_q,
             )
             blocked_nodes = []
 
@@ -275,6 +326,12 @@ class FlowerFedXRayStrategy(Strategy):
             "participating_clients": len(results),
             "blocked_clients_count": len(blocked_nodes),
             "privacy_epsilon": float(self.central_server.get_privacy_spent()),
+            "dp_active": (
+                self.central_server.privacy_noise > 0.0
+                and getattr(self.central_server, "dp_mode", "off") != "off"
+            ),
+            "uplink_bytes_per_client": int(self.central_server.last_uplink_bytes_per_client),
+            "full_model_bytes": int(self.central_server.last_full_model_bytes),
         }
 
         return ndarrays_to_parameters(self.arrays), metrics
@@ -339,3 +396,237 @@ class FlowerFedXRayStrategy(Strategy):
             "recall": float(metrics.recall),
             "f1_score": float(metrics.f1_score),
         }
+
+
+class InProcessClientProxy(ClientProxy):
+    """Flower ClientProxy executing operations directly on an in-memory FlowerHospitalClient.
+
+    Provides a zero-network, high-throughput, deterministic bridge conforming to Flower's
+    ClientProxy interface without requiring external gRPC ports or Ray dependencies.
+    """
+
+    def __init__(self, cid: str, client: FlowerHospitalClient) -> None:
+        super().__init__(cid)
+        self.client = client
+
+    def get_properties(
+        self,
+        ins: GetPropertiesIns,
+        timeout: Optional[float] = None,
+        group_id: Optional[int] = None,
+    ) -> GetPropertiesRes:
+        return GetPropertiesRes(
+            status=Status(code=Code.OK, message="Success"),
+            properties={},
+        )
+
+    def get_parameters(
+        self,
+        ins: GetParametersIns,
+        timeout: Optional[float] = None,
+        group_id: Optional[int] = None,
+    ) -> GetParametersRes:
+        ndarrays = self.client.get_parameters(ins.config)
+        return GetParametersRes(
+            status=Status(code=Code.OK, message="Success"),
+            parameters=ndarrays_to_parameters(ndarrays),
+        )
+
+    def fit(
+        self,
+        ins: FitIns,
+        timeout: Optional[float] = None,
+        group_id: Optional[int] = None,
+    ) -> FitRes:
+        ndarrays = parameters_to_ndarrays(ins.parameters)
+        updated_ndarrays, num_samples, metrics = self.client.fit(ndarrays, ins.config)
+        return FitRes(
+            status=Status(code=Code.OK, message="Success"),
+            parameters=ndarrays_to_parameters(updated_ndarrays),
+            num_examples=num_samples,
+            metrics=metrics,
+        )
+
+    def evaluate(
+        self,
+        ins: EvaluateIns,
+        timeout: Optional[float] = None,
+        group_id: Optional[int] = None,
+    ) -> EvaluateRes:
+        ndarrays = parameters_to_ndarrays(ins.parameters)
+        loss, num_samples, metrics = self.client.evaluate(ndarrays, ins.config)
+        return EvaluateRes(
+            status=Status(code=Code.OK, message="Success"),
+            loss=loss,
+            num_examples=num_samples,
+            metrics=metrics,
+        )
+
+    def reconnect(
+        self,
+        ins: ReconnectIns,
+        timeout: Optional[float] = None,
+        group_id: Optional[int] = None,
+    ) -> DisconnectRes:
+        return DisconnectRes(reason="normal")
+
+
+def run_flower_federated_orchestration(
+    server: CentralServer,
+    clients: List[HospitalClient],
+    num_rounds: int = 3,
+    algorithm: str = "FedAvg",
+    loss_fn_name: str = "CE",
+    secure_aggregation: bool = False,
+    use_ckks: bool = False,
+    test_images: Optional[torch.Tensor] = None,
+    test_labels: Optional[torch.Tensor] = None,
+    on_round_end: Optional[Callable[[int, Dict[str, Any]], None]] = None,
+) -> Dict[str, Any]:
+    """Execute end-to-end federated training rounds using Flower protocol and strategy.
+
+    Orchestrates the complete lifecycle:
+    1. Initializes FlowerFedXRayStrategy with the central server and parameters.
+    2. Registers connected HospitalClient instances via InProcessClientProxy.
+    3. Iterates over training rounds (configure_fit -> local fit -> aggregate_fit).
+    4. Evaluates globally and per-client after each aggregation.
+    5. Returns round-by-round trajectory and final model state.
+    """
+    logger.info(
+        "Initiating Flower federated orchestration across %d clients for %d rounds",
+        len(clients),
+        num_rounds,
+    )
+
+    strategy = FlowerFedXRayStrategy(
+        central_server=server,
+        total_rounds=num_rounds,
+        algorithm=algorithm,
+        loss_fn_name=loss_fn_name,
+        min_fit_clients=max(1, len(clients)),
+        min_available_clients=max(1, len(clients)),
+        test_images=test_images,
+        test_labels=test_labels,
+        secure_aggregation=secure_aggregation,
+        use_ckks=use_ckks,
+        total_consortium_hospitals=len(clients),
+    )
+
+    client_manager = SimpleClientManager()
+    proxies: List[InProcessClientProxy] = []
+    for c in clients:
+        flower_client = FlowerHospitalClient(
+            hospital_client=c,
+            algorithm=algorithm,
+            loss_fn_name=loss_fn_name,
+        )
+        proxy = InProcessClientProxy(cid=str(c.client_id), client=flower_client)
+        client_manager.register(proxy)
+        proxies.append(proxy)
+
+    parameters = strategy.initialize_parameters(client_manager)
+    round_history: List[Dict[str, Any]] = []
+
+    for rnd in range(1, num_rounds + 1):
+        fit_configurations = strategy.configure_fit(
+            server_round=rnd,
+            parameters=parameters,
+            client_manager=client_manager,
+        )
+
+        results: List[Tuple[ClientProxy, FitRes]] = []
+        for proxy, fit_ins in fit_configurations:
+            fit_res = proxy.fit(fit_ins)
+            results.append((proxy, fit_res))
+
+        aggregated_params, agg_metrics = strategy.aggregate_fit(
+            server_round=rnd,
+            results=results,
+            failures=[],
+        )
+        if aggregated_params is not None:
+            parameters = aggregated_params
+
+        round_record: Dict[str, Any] = {
+            "round": rnd,
+            "participating_clients": len(results),
+            "metrics": agg_metrics,
+        }
+
+        # Central evaluation if holdout set is present
+        eval_res = strategy.evaluate(server_round=rnd, parameters=parameters)
+        if eval_res is not None:
+            loss, eval_metrics = eval_res
+            round_record["eval_loss"] = loss
+            round_record["eval_metrics"] = eval_metrics
+
+        round_history.append(round_record)
+        if on_round_end:
+            on_round_end(rnd, round_record)
+
+    return {
+        "status": "completed",
+        "rounds_completed": num_rounds,
+        "round_history": round_history,
+        "final_metrics": round_history[-1] if round_history else {},
+        "privacy_epsilon": float(server.get_privacy_spent()),
+    }
+
+
+def start_flower_server(
+    central_server: CentralServer,
+    server_address: str = "0.0.0.0:8089",
+    num_rounds: int = 3,
+    algorithm: str = "FedAvg",
+    loss_fn_name: str = "CE",
+    min_fit_clients: int = 2,
+    min_available_clients: int = 2,
+    secure_aggregation: bool = False,
+    use_ckks: bool = False,
+    test_images: Optional[torch.Tensor] = None,
+    test_labels: Optional[torch.Tensor] = None,
+) -> None:
+    """Launch a Flower gRPC federated learning aggregation server."""
+    strategy = FlowerFedXRayStrategy(
+        central_server=central_server,
+        total_rounds=num_rounds,
+        algorithm=algorithm,
+        loss_fn_name=loss_fn_name,
+        min_fit_clients=min_fit_clients,
+        min_available_clients=min_available_clients,
+        secure_aggregation=secure_aggregation,
+        use_ckks=use_ckks,
+        test_images=test_images,
+        test_labels=test_labels,
+    )
+    config = ServerConfig(num_rounds=num_rounds)
+    logger.info("Starting Flower gRPC server on %s with %d rounds", server_address, num_rounds)
+    fl.server.start_server(
+        server_address=server_address,
+        config=config,
+        strategy=strategy,
+    )
+
+
+def start_flower_client(
+    hospital_client: HospitalClient,
+    server_address: str = "127.0.0.1:8089",
+    algorithm: str = "FedAvg",
+    loss_fn_name: str = "CE",
+) -> None:
+    """Connect a clinical hospital node to a Flower gRPC server."""
+    flower_client = FlowerHospitalClient(
+        hospital_client=hospital_client,
+        algorithm=algorithm,
+        loss_fn_name=loss_fn_name,
+    )
+    logger.info(
+        "Connecting HospitalClient %s to Flower gRPC server at %s",
+        hospital_client.client_id,
+        server_address,
+    )
+    fl.client.start_client(
+        server_address=server_address,
+        client=flower_client.to_client(),
+    )
+

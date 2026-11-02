@@ -95,6 +95,7 @@ wheels/
 *.safetensors
 checkpoints/
 saved_models/
+!src/fed_xray/models/precomputed_clinical_anchors.pt
 
 # ===== Jupyter Notebooks =====
 .ipynb_checkpoints/

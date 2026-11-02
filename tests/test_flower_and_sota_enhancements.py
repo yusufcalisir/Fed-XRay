@@ -14,7 +14,9 @@ from src.fed_xray.core.server import CentralServer
 from src.fed_xray.federation.flower_protocol_bridge import (
     FlowerFedXRayStrategy,
     FlowerHospitalClient,
+    InProcessClientProxy,
     flower_parameters_to_state_dict,
+    run_flower_federated_orchestration,
     state_dict_to_flower_parameters,
 )
 from src.fed_xray.models.peft import inject_lora_to_model
@@ -143,3 +145,148 @@ def test_flower_hospital_client_and_strategy_flow():
         min_available_clients=1,
     )
     assert len(strategy.arrays) > 0
+
+
+def test_flower_hospital_client_dp_parameter_propagation():
+    """Verify FlowerHospitalClient.fit propagates Differential Privacy parameters to HospitalClient."""
+    images = torch.randn(8, 1, 28, 28)
+    labels = torch.randint(0, 3, (8,))
+    loader = DataLoader(TensorDataset(images, labels), batch_size=4)
+
+    h_client = HospitalClient(
+        client_id=1,
+        dataloader=loader,
+        learning_rate=0.01,
+        local_epochs=1,
+        model_type="cnn",
+        dp_enabled=False,
+    )
+    flower_client = FlowerHospitalClient(h_client)
+    params = flower_client.get_parameters(config={})
+
+    # Fit with DP parameters forwarded via config dict
+    updated_params, num_samples, metrics = flower_client.fit(
+        parameters=params,
+        config={
+            "current_round": 1,
+            "total_rounds": 3,
+            "algorithm": "FedAvg",
+            "dp_enabled": True,
+            "dp_clipping_bound": 0.5,
+            "dp_noise_multiplier": 0.2,
+            "dp_mode": "distributed",
+            "num_consortium_clients": 3,
+        },
+    )
+    assert num_samples == 8
+    assert "loss" in metrics
+    assert "accuracy" in metrics
+    assert "dp_clipped_norm" in metrics
+    assert metrics["dp_clipped_norm"] > 0.0
+
+
+def test_flower_fedxray_strategy_aggregation_with_defense_and_privacy():
+    """Verify FlowerFedXRayStrategy.aggregate_fit validates updates through defense and reports DP."""
+    server = CentralServer(
+        model_type="cnn",
+        privacy_noise=0.3,
+        defense_mode=True,
+        dp_mode="distributed",
+        dp_clipping_bound=1.0,
+    )
+    test_img = torch.randn(6, 1, 28, 28)
+    test_lbl = torch.randint(0, 3, (6,))
+
+    strategy = FlowerFedXRayStrategy(
+        central_server=server,
+        total_rounds=3,
+        algorithm="FedAvg",
+        min_fit_clients=2,
+        min_available_clients=2,
+        test_images=test_img,
+        test_labels=test_lbl,
+        secure_aggregation=False,
+        use_ckks=False,
+        total_consortium_hospitals=2,
+    )
+
+    # Create 2 clients and run 1 fit to produce real FitRes objects
+    images = torch.randn(8, 1, 28, 28)
+    labels = torch.randint(0, 3, (8,))
+    loader = DataLoader(TensorDataset(images, labels), batch_size=4)
+
+    c0 = HospitalClient(client_id=0, dataloader=loader, model_type="cnn")
+    c1 = HospitalClient(client_id=1, dataloader=loader, model_type="cnn")
+    fc0 = FlowerHospitalClient(c0)
+    fc1 = FlowerHospitalClient(c1)
+
+    proxy0 = InProcessClientProxy("0", fc0)
+    proxy1 = InProcessClientProxy("1", fc1)
+
+    from flwr.common import FitIns, ndarrays_to_parameters
+    fit_ins = FitIns(ndarrays_to_parameters(strategy.arrays), {"current_round": 1, "algorithm": "FedAvg"})
+
+    res0 = proxy0.fit(fit_ins)
+    res1 = proxy1.fit(fit_ins)
+
+    agg_params, metrics = strategy.aggregate_fit(
+        server_round=1,
+        results=[(proxy0, res0), (proxy1, res1)],
+        failures=[],
+    )
+
+    assert agg_params is not None
+    assert metrics["participating_clients"] == 2
+    assert "blocked_clients_count" in metrics
+    assert metrics["dp_active"] is True
+    assert metrics["privacy_epsilon"] > 0.0
+    assert metrics["uplink_bytes_per_client"] > 0
+    assert metrics["full_model_bytes"] > 0
+
+
+def test_flower_in_process_orchestration_lifecycle():
+    """Verify end-to-end multi-round orchestration using InProcessClientProxy and FlowerFedXRayStrategy."""
+    torch.manual_seed(42)
+    server = CentralServer(
+        model_type="cnn",
+        privacy_noise=0.1,
+        dp_mode="distributed",
+    )
+
+    clients = [
+        HospitalClient(
+            client_id=i,
+            dataloader=DataLoader(
+                TensorDataset(torch.randn(8, 1, 28, 28), torch.randint(0, 3, (8,))),
+                batch_size=4,
+            ),
+            model_type="cnn",
+        )
+        for i in range(2)
+    ]
+
+    test_images = torch.randn(6, 1, 28, 28)
+    test_labels = torch.randint(0, 3, (6,))
+
+    rounds_recorded = []
+
+    def on_round(rnd, info):
+        rounds_recorded.append((rnd, info))
+
+    summary = run_flower_federated_orchestration(
+        server=server,
+        clients=clients,
+        num_rounds=2,
+        algorithm="FedAvg",
+        test_images=test_images,
+        test_labels=test_labels,
+        on_round_end=on_round,
+    )
+
+    assert summary["status"] == "completed"
+    assert summary["rounds_completed"] == 2
+    assert len(summary["round_history"]) == 2
+    assert len(rounds_recorded) == 2
+    assert summary["privacy_epsilon"] >= 0.0
+    assert "eval_metrics" in summary["round_history"][-1]
+

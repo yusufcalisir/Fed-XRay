@@ -37,6 +37,8 @@ from src.fed_xray.data.real_world import (
 from src.fed_xray.data.ingest_real_world import ensure_strategy_e_dataset
 from src.fed_xray.core.client import HospitalClient
 from src.fed_xray.core.server import CentralServer, run_federated_round
+from src.fed_xray.federation import run_flower_federated_orchestration
+import flwr as fl
 from src.fed_xray.cdss.xai import GradCAM, GradCAMUnavailableError, get_explanation_text
 from src.fed_xray.cdss.similarity import (
     FederatedRAGCaseMatcher,
@@ -879,6 +881,169 @@ async def get_training_status(from_round: int = Query(default=0)):
         "total_rounds": state.task_total_rounds,
         "error": state.task_error,
         "new_rounds": new_rounds,
+    }
+
+
+@app.post("/api/fl/flower-start")
+async def start_flower_training_background(
+    num_rounds: int = Query(default=3, ge=1, le=20),
+    local_epochs: int = Query(default=2, ge=1, le=5),
+    learning_rate: float = Query(default=0.0001),
+    privacy_noise: float = Query(default=0.01),
+    simulate_attack: bool = Query(default=False),
+    activate_defense: bool = Query(default=True),
+    algorithm: str = Query(default="FedAvg"),
+    loss_fn: str = Query(default="CE"),
+    model_type: str = Query(default="vit_tiny"),
+    peft_mode: str = Query(default="ffa_lora"),
+    secure_aggregation: bool = Query(default=False),
+    use_ckks: bool = Query(default=False),
+    pretrained: bool = Query(default=True),
+    dp_mode: str = Query(default="distributed"),
+    dp_clipping_bound: float = Query(default=1.0),
+):
+    """Launch federated training via Flower orchestration protocol as a background thread."""
+    require_cohort()
+    if state.task_running:
+        return {"status": "already_running", "current_round": state.task_current_round}
+
+    state.task_running = True
+    state.task_rounds = []
+    state.task_total_rounds = num_rounds
+    state.task_current_round = 0
+    state.task_complete = False
+    state.task_error = None
+
+    def run_flower_training():
+        try:
+            dataloaders, (test_images, test_labels) = require_cohort()
+
+            actual_peft = None if peft_mode.lower() in ("none", "false", "off") else peft_mode
+            state.model_type = model_type
+            state.peft_mode = peft_mode
+
+            srv = CentralServer(
+                device=state.device,
+                privacy_noise=privacy_noise,
+                defense_mode=activate_defense,
+                model_type=model_type,
+                peft_mode=actual_peft,
+                lora_r=8,
+                lora_alpha=16.0,
+                deep_layers_only=True,
+                secure_aggregation=secure_aggregation,
+                use_ckks=use_ckks,
+                img_size=state.image_size,
+                pretrained=pretrained,
+                dp_mode=dp_mode,
+                dp_clipping_bound=dp_clipping_bound,
+            )
+            state.server = srv
+
+            clients = [
+                HospitalClient(
+                    client_id=i,
+                    dataloader=dataloaders[i],
+                    device=state.device,
+                    learning_rate=learning_rate,
+                    local_epochs=local_epochs,
+                    malicious=simulate_attack and i == 2,
+                    model_type=model_type,
+                    peft_mode=actual_peft,
+                    lora_r=8,
+                    lora_alpha=16.0,
+                    deep_layers_only=True,
+                    img_size=state.image_size,
+                    pretrained=pretrained,
+                    dp_enabled=(privacy_noise > 0.0),
+                    dp_clipping_bound=dp_clipping_bound,
+                    dp_noise_multiplier=privacy_noise,
+                    dp_mode=dp_mode,
+                )
+                for i in range(len(dataloaders))
+            ]
+
+            def on_round_completed(round_num: int, round_info: Dict[str, Any]):
+                agg_metrics = round_info.get("metrics", {})
+                eval_metrics = round_info.get("eval_metrics", {})
+                val_loss = float(round_info.get("eval_loss", 0.0))
+                val_acc = float(eval_metrics.get("accuracy", 0.0) * 100.0)
+                prec = float(eval_metrics.get("precision", 0.0) * 100.0)
+                rec = float(eval_metrics.get("recall", 0.0) * 100.0)
+                f1 = float(eval_metrics.get("f1_score", 0.0) * 100.0)
+                blocked_count = int(agg_metrics.get("blocked_clients_count", 0))
+
+                round_data = {
+                    "round_num": round_num,
+                    "total_rounds": num_rounds,
+                    "train_loss": round(val_loss, 4),
+                    "train_accuracy": round(val_acc, 2),
+                    "test_loss": round(val_loss, 4),
+                    "test_accuracy": round(val_acc, 2),
+                    "precision": round(prec, 2),
+                    "recall": round(rec, 2),
+                    "f1_score": round(f1, 2),
+                    "threat_detected": blocked_count > 0,
+                    "blocked_nodes": [1] if blocked_count > 0 else [],
+                    "status": "training" if round_num < num_rounds else "complete",
+                    "model_type": model_type,
+                    "peft_mode": peft_mode,
+                    "privacy_epsilon": round(srv.get_privacy_spent(), 4),
+                    "privacy_report": srv.get_privacy_report(),
+                    "uplink_bytes_per_client": int(agg_metrics.get("uplink_bytes_per_client", srv.last_uplink_bytes_per_client)),
+                    "full_model_bytes": int(agg_metrics.get("full_model_bytes", srv.last_full_model_bytes)),
+                    "orchestrator": "flower",
+                }
+                state.task_rounds.append(round_data)
+                state.task_current_round = round_num
+
+            run_flower_federated_orchestration(
+                server=srv,
+                clients=clients,
+                num_rounds=num_rounds,
+                algorithm=algorithm,
+                loss_fn_name=loss_fn,
+                secure_aggregation=secure_aggregation,
+                use_ckks=use_ckks,
+                test_images=test_images,
+                test_labels=test_labels,
+                on_round_end=on_round_completed,
+            )
+
+            state.model_trained = True
+            state.rag_matcher = build_rag_matcher(srv)
+            state.task_complete = True
+            state.save_to_disk()
+
+        except Exception as e:
+            logger.error("Flower federated training failed: %s", e, exc_info=True)
+            state.task_error = str(e)
+            state.task_complete = True
+        finally:
+            state.task_running = False
+
+    t = threading.Thread(target=run_flower_training, daemon=True)
+    t.start()
+    return {"status": "started", "orchestrator": "flower", "total_rounds": num_rounds}
+
+
+@app.get("/api/fl/flower-info")
+async def get_flower_info():
+    """Report Flower gRPC bridge capabilities, version, and supported FL protocols."""
+    return {
+        "flower_version": getattr(fl, "__version__", "1.8.0"),
+        "bridge_available": True,
+        "supported_transports": ["in_process_proxy", "grpc"],
+        "supported_strategies": ["FlowerFedXRayStrategy"],
+        "supported_clients": ["FlowerHospitalClient", "InProcessClientProxy"],
+        "features": {
+            "peft_adaptation": True,
+            "byzantine_defense": True,
+            "patient_level_dp": True,
+            "renyi_accounting": True,
+            "secure_aggregation": True,
+            "ckks_homomorphic": True,
+        },
     }
 
 
