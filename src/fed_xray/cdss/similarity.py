@@ -78,26 +78,62 @@ class FederatedRAGCaseMatcher:
         return added_count
 
     def _build_case_bank(self, reference_records: Sequence[Any]) -> None:
-        """Embed every reference record with the encoder and index it."""
+        """Embed every reference record with the encoder and index it with batched inference."""
         if not reference_records:
             return
 
-        encoder = self.model
+        encoder: Any = self.model
+        if encoder is None:
+            return
         encoder.eval()
         params = list(encoder.parameters())
         device = params[0].device if params else torch.device("cpu")
 
-        for idx, rec in enumerate(reference_records):
-            image = rec.image_tensor.detach().cpu().numpy()[0]
-            img_tensor = torch.tensor(image, dtype=torch.float32).unsqueeze(0).unsqueeze(0).to(device)
-            embedding = extract_embedding(encoder, img_tensor)
+        # Collect record metadata and tensors for batched embedding extraction
+        batch_size = 32
+        tensor_list: List[torch.Tensor] = []
 
-            self.embeddings.append(embedding.astype(np.float32))
+        for rec in reference_records:
+            image = rec.image_tensor.detach().cpu().numpy()[0]
             self.labels.append(int(rec.label))
-            self.case_ids.append(f"{rec.patient_id}#{len(self.embeddings) - 1}")
+            self.case_ids.append(f"{rec.patient_id}#{len(self.case_ids)}")
             self.images.append(image)
             note = (getattr(rec, "clinical_notes", "") or "").strip()
             self.clinical_notes.append(note if note else "No clinical notes recorded for this case.")
+            tensor_list.append(torch.tensor(image, dtype=torch.float32).unsqueeze(0))
+
+        # Batched feature extraction under torch.no_grad() for sub-second execution
+        with torch.no_grad():
+            for start_idx in range(0, len(tensor_list), batch_size):
+                chunk = tensor_list[start_idx : start_idx + batch_size]
+                batch_tensor = torch.stack(chunk, dim=0).to(device)
+
+                if hasattr(encoder, "extract_features"):
+                    feats = encoder.extract_features(batch_tensor).cpu().numpy()
+                elif hasattr(encoder, "conv1") and hasattr(encoder, "fc1"):
+                    if batch_tensor.shape[-2:] != (28, 28):
+                        img_in = F.interpolate(batch_tensor, size=(28, 28), mode="bilinear", align_corners=False)
+                    else:
+                        img_in = batch_tensor
+                    x = encoder.conv1(img_in)
+                    x = F.relu(x)
+                    x = encoder.pool1(x)
+                    x = encoder.conv2(x)
+                    x = F.relu(x)
+                    x = encoder.pool2(x)
+                    x = x.view(x.size(0), -1)
+                    feats = F.relu(encoder.fc1(x)).cpu().numpy()
+                else:
+                    feats = encoder(batch_tensor).cpu().numpy()
+
+                for f in feats:
+                    emb = f.flatten()
+                    if len(emb) > 64:
+                        emb = emb[:64]
+                    elif len(emb) < 64:
+                        emb = np.pad(emb, (0, 64 - len(emb)))
+                    norm = float(np.linalg.norm(emb))
+                    self.embeddings.append(((emb / (norm + 1e-8)).astype(np.float32)))
 
         self.embeddings_matrix = np.array(self.embeddings, dtype=np.float32)
 

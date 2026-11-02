@@ -25,6 +25,7 @@ interface HospitalNode {
   location: string;
   scanner: string;
   scans: number;
+  modality: string;
   skew: string;
   adapter: string;
   dpEpsilon: number;
@@ -34,46 +35,50 @@ interface HospitalNode {
 const HOSPITAL_NODES: HospitalNode[] = [
   {
     id: "node-1",
-    name: "Charité - Universitätsmedizin Berlin",
-    location: "Berlin, DE",
-    scanner: "Siemens Somatom X.cite",
-    scans: 6240,
-    skew: "Squamous Cell & Adenocarcinoma",
+    name: "BCN-20000 Skin Cancer Hub",
+    location: "Barcelona, ES",
+    scanner: "Siemens Sensation Optical Dermatoscope",
+    scans: 54,
+    modality: "Dermoscopy",
+    skew: "Malignant Melanoma & Dysplastic Nevi",
     adapter: "FFA-LoRA (r=16, α=32)",
-    dpEpsilon: 1.82,
+    dpEpsilon: 1.42,
     status: "online",
   },
   {
     id: "node-2",
-    name: "Massachusetts General Hospital",
+    name: "Beth Israel Deaconess Medical Center",
     location: "Boston, USA",
-    scanner: "GE Revolution Apex CT",
-    scans: 8110,
-    skew: "Nodules & Alveolar Infiltrates",
+    scanner: "GE Revolution Digital Radiography (MIMIC-CXR)",
+    scans: 50,
+    modality: "Chest Radiography",
+    skew: "Bacterial Pneumonia & COVID-19",
     adapter: "FFA-LoRA (r=16, α=32)",
-    dpEpsilon: 1.75,
+    dpEpsilon: 1.38,
     status: "online",
   },
   {
     id: "node-3",
-    name: "Tokyo University Hospital",
-    location: "Tokyo, JP",
-    scanner: "Canon Aquilion ONE PRISM",
-    scans: 5490,
-    skew: "Early Ground-Glass Opacities",
+    name: "ViDIR Dermatopathology Institute",
+    location: "Vienna, AT",
+    scanner: "Canon PRISM High-Throughput Digital Pathology",
+    scans: 51,
+    modality: "Histopathology",
+    skew: "Invasive Squamous Cell Carcinomas",
     adapter: "FFA-LoRA (r=16, α=32)",
-    dpEpsilon: 1.91,
+    dpEpsilon: 1.55,
     status: "online",
   },
   {
     id: "node-4",
-    name: "Guy's and St Thomas' NHS Trust",
-    location: "London, UK",
-    scanner: "Philips Ingenuity CT Core",
-    scans: 5491,
-    skew: "Consolidation & Effusion",
+    name: "Queensland Oncology Screening Center",
+    location: "Brisbane, AU",
+    scanner: "Philips Digital Dermatoscope Core",
+    scans: 53,
+    modality: "Dermoscopy",
+    skew: "Compound Dysplastic Melanocytic Nevi",
     adapter: "FFA-LoRA (r=16, α=32)",
-    dpEpsilon: 1.88,
+    dpEpsilon: 1.48,
     status: "online",
   },
 ];
@@ -201,10 +206,10 @@ export default function FederatedConsortiumTopology({
                     <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
                   </div>
                   <div className="font-display text-xs font-bold text-[var(--text-heading)] truncate">
-                    {node.name.split("-")[0].trim()}
+                    {node.name}
                   </div>
                   <div className="text-[10px] font-mono text-[var(--text-muted)] truncate mt-0.5">
-                    {node.scanner.split(" ")[0]} • {node.scans.toLocaleString("en-US")} scans
+                    {node.modality} • {node.scans.toLocaleString("en-US")} studies
                   </div>
                 </button>
               ))}
@@ -246,10 +251,10 @@ export default function FederatedConsortiumTopology({
                     <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
                   </div>
                   <div className="font-display text-xs font-bold text-[var(--text-heading)] truncate">
-                    {node.name.split("-")[0].trim()}
+                    {node.name}
                   </div>
                   <div className="text-[10px] font-mono text-[var(--text-muted)] truncate mt-0.5">
-                    {node.scanner.split(" ")[0]} • {node.scans.toLocaleString("en-US")} scans
+                    {node.modality} • {node.scans.toLocaleString("en-US")} studies
                   </div>
                 </button>
               ))}

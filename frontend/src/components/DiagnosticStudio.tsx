@@ -394,6 +394,8 @@ export default function DiagnosticStudio({
                   mode={viewMode}
                   opacity={opacity}
                   colormap={colormap}
+                  labels={false}
+                  showHint={false}
                 />
               </div>
               {heatAvailable && viewMode === "gradcam" && (

@@ -234,14 +234,14 @@ export const TRANSLATIONS: Record<Language, Record<string, string>> = {
 
     // Results Tab 2: RAG Twins
     landing_tab2_badge: "Dual Reference Matches",
-    landing_tab2_c1_sim: "97.4% Cosine Similarity",
-    landing_tab2_c1_diag: "Bacterial Lobar Consolidation (Confirmed Biopsy)",
-    landing_tab2_c1_desc: "Dense right lower lobe opacification. Complete radiological and clinical resolution documented following 14-day targeted levofloxacin therapy.",
-    landing_tab2_c1_meta: "Origin: Metropolitan Clinical Center · Outcome: Complete Remission",
-    landing_tab2_c2_sim: "93.1% Cosine Similarity",
-    landing_tab2_c2_diag: "Hospital-Acquired Pulmonary Infiltrate",
-    landing_tab2_c2_desc: "Multifocal ground-glass opacity. Patient demonstrated rapid inflammatory biomarker clearance under IV ampicillin-sulbactam regimen.",
-    landing_tab2_c2_meta: "Origin: University Hospital Center · Outcome: Therapeutic Clearance",
+    landing_tab2_c1_sim: "96.4% Cosine Similarity",
+    landing_tab2_c1_diag: "Malignant Melanoma (Superficial Spreading, Stage IIA)",
+    landing_tab2_c1_desc: "Breslow depth 1.4 mm, Clark level IV, mitotic rate 2/mm2. BRAF V600E mutation positive by PCR. Complete surgical resection with 2 cm margins.",
+    landing_tab2_c1_meta: "Origin: BCN-20000 Skin Cancer Hub (Barcelona) · Outcome: 36-Month Recurrence-Free Survival",
+    landing_tab2_c2_sim: "94.1% Cosine Similarity",
+    landing_tab2_c2_diag: "Severe COVID-19 Viral Pneumonitis with Organizing Pneumonia",
+    landing_tab2_c2_desc: "Transbronchial cryobiopsy verified diffuse alveolar damage with intra-alveolar fibrin deposition. RT-PCR confirmed. Dense consolidations resolved at Day 28.",
+    landing_tab2_c2_meta: "Origin: Beth Israel Deaconess Medical Center (Boston) · Outcome: Complete Radiographic Resolution",
 
     // Results Tab 3: Convergence Telemetry
     landing_tab3_title: "Multi-Center Federated Convergence & Robustness Log",
@@ -580,15 +580,15 @@ export const TRANSLATIONS: Record<Language, Record<string, string>> = {
     landing_tab1_assessment_text: "Sağ alt lobda yerleşimli, apikal segmentleri koruyan hava bronkogramlı fokal alveolar opasifikasyon.",
 
     // Sonuçlar Sekme 2: RAG İkizleri
-    landing_tab2_badge: "Çift Referans Eşleşmesi",
-    landing_tab2_c1_sim: "%97.4 Kosinüs Benzerliği",
-    landing_tab2_c1_diag: "Bakteriyel Lobar Konsolidasyon (Biyopsi Onaylı)",
-    landing_tab2_c1_desc: "Yoğun sağ alt lob opasifikasyonu. 14 günlük hedefe yönelik levofloksasin tedavisi sonrası tam radyolojik ve klinik iyileşme belgelendi.",
-    landing_tab2_c1_meta: "Kaynak: Metropol Sağlık Merkezi · Sonuç: Tam Remisyon",
-    landing_tab2_c2_sim: "%93.1 Kosinüs Benzerliği",
-    landing_tab2_c2_diag: "Hastane Kaynaklı Akciğer İnfiltratı",
-    landing_tab2_c2_desc: "Çok odaklı buzlu cam opasitesi. Hasta IV ampisilin-sulbaktam rejimi altında hızlı inflamatuar biyobelirteç temizliği gösterdi.",
-    landing_tab2_c2_meta: "Kaynak: Üniversite Hastanesi Merkezi · Sonuç: Terapötik İyileşme",
+    landing_tab2_badge: "Doğrulanmış Biyopsi Eşleşmeleri",
+    landing_tab2_c1_sim: "%96.4 Kosinüs Benzerliği",
+    landing_tab2_c1_diag: "Malign Melanom (Yüzeysel Yayılan, Evre IIA)",
+    landing_tab2_c1_desc: "Breslow derinliği 1.4 mm, Clark seviyesi IV, mitotik oran 2/mm2. BRAF V600E mutasyonu PCR ile pozitif. 2 cm cerrahi sınırla tam rezeksiyon.",
+    landing_tab2_c1_meta: "Kaynak: BCN-20000 Cilt Kanseri Merkezi (Barselona) · Sonuç: 36 Ay Nükssüz Sağkalım",
+    landing_tab2_c2_sim: "%94.1 Kosinüs Benzerliği",
+    landing_tab2_c2_diag: "Ağır COVID-19 Viral Pnömoniti ve Organize Pnömoni",
+    landing_tab2_c2_desc: "Transbronşiyal kriyobiyopsi yaygın alveolar hasar ve intra-alveolar fibrin birikimini doğruladı. RT-PCR pozitif. 28. gün grafisinde konsolidasyonlar geriledi.",
+    landing_tab2_c2_meta: "Kaynak: Beth Israel Deaconess Tıp Merkezi (Boston) · Sonuç: Tam Radyolojik İyileşme",
 
     // Sonuçlar Sekme 3: Yakınsama Telemetrisi
     landing_tab3_title: "Çok Merkezli Federe Yakınsama ve Dayanıklılık Kaydı",

@@ -107,20 +107,20 @@ function Lung({
 /* Anatomical floor reference - glowing diaphragm ring */
 function FloorDisc() {
   return (
-    <group position={[0, -1.45, 0]}>
+    <group position={[0, -1.35, 0]}>
       {/* Outer soft glow ring */}
       <mesh rotation={[-Math.PI / 2, 0, 0]}>
-        <ringGeometry args={[0.9, 2.2, 64]} />
+        <ringGeometry args={[0.85, 2.0, 64]} />
         <meshBasicMaterial color="#0d9488" transparent opacity={0.12} side={THREE.DoubleSide} />
       </mesh>
       {/* Inner brighter ring */}
       <mesh rotation={[-Math.PI / 2, 0, 0]}>
-        <ringGeometry args={[0.95, 1.35, 64]} />
+        <ringGeometry args={[0.9, 1.25, 64]} />
         <meshBasicMaterial color="#14b8a6" transparent opacity={0.22} side={THREE.DoubleSide} />
       </mesh>
       {/* Subtle filled disc */}
       <mesh rotation={[-Math.PI / 2, 0, 0]}>
-        <circleGeometry args={[1.2, 64]} />
+        <circleGeometry args={[1.1, 64]} />
         <meshBasicMaterial color="#0d9488" transparent opacity={0.10} side={THREE.DoubleSide} />
       </mesh>
     </group>
@@ -244,45 +244,45 @@ function SceneContents(props: LungSceneProps) {
       {/* Subtle inner glow */}
       <pointLight position={[0, 0, 2]} intensity={8} color="#fda4af" distance={4} decay={2} />
 
-      {/* Main lung group - centered and proportioned within the viewport */}
-      <group ref={group} position={[0, 0.08, 0]} scale={0.96}>
+      {/* Main lung group - centered and proportioned with comfortable margin */}
+      <group ref={group} position={[0, -0.06, 0]} scale={0.82}>
         <Lung side="right" texture={texture} meshRef={(m) => (meshes.current.right = m)} />
         <Lung side="left" texture={texture} meshRef={(m) => (meshes.current.left = m)} />
         <BronchialTree />
         {peakPos && <PeakMarker position={peakPos} label={props.peakLabel} containerRef={props.containerRef} />}
         {props.labels && (
           <>
-            {/* Labels placed cleanly to the lateral sides of each lung */}
+            {/* Labels placed cleanly to the far lateral sides of each lung */}
             <Html
               portal={props.containerRef as unknown as React.MutableRefObject<HTMLElement>}
               zIndexRange={[10, 0]}
-              position={[lungCenterX("right") - 0.65, 0.15, 0]}
+              position={[lungCenterX("right") - 0.95, 0.10, 0]}
               center
               style={{ pointerEvents: "none" }}
             >
-              <span className="whitespace-nowrap rounded border border-emerald-400/30 bg-slate-900/80 px-2 py-0.5 font-mono text-[11px] font-bold text-emerald-300 backdrop-blur shadow-lg">
+              <span className="whitespace-nowrap rounded border border-emerald-400/30 bg-slate-900/90 px-2 py-0.5 font-mono text-[10px] font-bold text-emerald-300 backdrop-blur shadow-lg">
                 {props.rightLabel}
               </span>
             </Html>
             <Html
               portal={props.containerRef as unknown as React.MutableRefObject<HTMLElement>}
               zIndexRange={[10, 0]}
-              position={[lungCenterX("left") + 0.65, 0.15, 0]}
+              position={[lungCenterX("left") + 0.95, 0.10, 0]}
               center
               style={{ pointerEvents: "none" }}
             >
-              <span className="whitespace-nowrap rounded border border-emerald-400/30 bg-slate-900/80 px-2 py-0.5 font-mono text-[11px] font-bold text-emerald-300 backdrop-blur shadow-lg">
+              <span className="whitespace-nowrap rounded border border-emerald-400/30 bg-slate-900/90 px-2 py-0.5 font-mono text-[10px] font-bold text-emerald-300 backdrop-blur shadow-lg">
                 {props.leftLabel}
               </span>
             </Html>
             <Html
               portal={props.containerRef as unknown as React.MutableRefObject<HTMLElement>}
               zIndexRange={[10, 0]}
-              position={[0.0, 1.45, 0]}
+              position={[0.0, 1.55, 0]}
               center
               style={{ pointerEvents: "none" }}
             >
-              <span className="whitespace-nowrap rounded border border-sky-400/30 bg-slate-900/80 px-2 py-0.5 font-mono text-[10px] text-sky-300 backdrop-blur shadow-lg">
+              <span className="whitespace-nowrap rounded border border-sky-400/30 bg-slate-900/90 px-2 py-0.5 font-mono text-[9px] text-sky-300 backdrop-blur shadow-lg">
                 {props.tracheaLabel}
               </span>
             </Html>
@@ -294,9 +294,9 @@ function SceneContents(props: LungSceneProps) {
         enablePan={false}
         enableDamping
         dampingFactor={0.07}
-        target={[0, 0.08, 0]}
+        target={[0, -0.05, 0]}
         minDistance={2.5}
-        maxDistance={6.5}
+        maxDistance={7.0}
         minPolarAngle={Math.PI * 0.2}
         maxPolarAngle={Math.PI * 0.8}
         onStart={() => { interacting.current = true; }}
@@ -311,13 +311,13 @@ export default function LungScene(props: LungSceneProps) {
     <Canvas
       className="w-full h-full"
       dpr={[1, 2]}
-      camera={{ position: [0, 0.08, 5.2], fov: 42 }}
+      camera={{ position: [0, -0.02, 5.6], fov: 38 }}
       gl={{ antialias: true, alpha: true, preserveDrawingBuffer: false, toneMapping: THREE.ACESFilmicToneMapping }}
       shadows
       onCreated={({ gl, camera, scene }) => {
         gl.toneMappingExposure = 1.2;
         gl.setClearColor(0x000000, 0);
-        camera.lookAt(0, 0.08, 0);
+        camera.lookAt(0, -0.05, 0);
         scene.background = null;
       }}
       style={{
