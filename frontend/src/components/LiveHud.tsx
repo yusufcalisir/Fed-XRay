@@ -20,6 +20,24 @@ export default function LiveHud({
   peftMode = "ffa_lora",
 }: LiveHudProps) {
   const { t } = useLanguage();
+  const [attestationDigest, setAttestationDigest] = React.useState<string | null>(null);
+
+  React.useEffect(() => {
+    try {
+      if (typeof window !== "undefined") {
+        const raw = window.sessionStorage.getItem("fedxray_attestation");
+        if (raw) {
+          const parsed = JSON.parse(raw);
+          if (parsed?.attestation_digest) {
+            setAttestationDigest(parsed.attestation_digest);
+          }
+        }
+      }
+    } catch {
+      // Ignore session storage errors
+    }
+  }, []);
+
   const modelLabel = modelType
     ? `${modelType.toUpperCase()} (${peftMode ? peftMode.toUpperCase().replace("_", "-") : "Full"})`
     : t("live_hud_model");
@@ -40,6 +58,14 @@ export default function LiveHud({
         <ShieldCheck className="w-3.5 h-3.5 text-accent-500 dark:text-accent-400 shrink-0" />
         <span className="truncate" suppressHydrationWarning>{isDefenseActive ? t("live_hud_shield") : t("sec2_shield_off")}</span>
       </div>
+      {attestationDigest && (
+        <div className="flex items-center gap-1.5 sm:gap-2 text-emerald-600 dark:text-emerald-400 font-mono">
+          <ShieldCheck className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
+          <span className="truncate" title={attestationDigest} suppressHydrationWarning>
+            Attested ({attestationDigest.slice(0, 15)}...)
+          </span>
+        </div>
+      )}
       <div className="flex items-center gap-1.5 sm:gap-2">
         <CheckCircle2 className={`w-3.5 h-3.5 ${isTrained ? "text-accent-500" : "text-slate-400"} shrink-0`} />
         <span suppressHydrationWarning>{isTrained ? t("kpi_status_trained") : t("kpi_status_ready")}</span>

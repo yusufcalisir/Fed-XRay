@@ -117,3 +117,45 @@ export interface BackendSystemState {
   is_live: boolean;
   telemetry_source: "live_runtime" | "reference_benchmark";
 }
+
+export interface EnclaveNodeInfo {
+  node_id: string;
+  name: string;
+  location: string;
+  enclave_status: string;
+  peer_key_fingerprint: string;
+  scans_verified: number;
+  peft_subspace: string;
+  leakage_bytes: number;
+}
+
+export interface CryptographySuiteInfo {
+  homomorphic_encryption: string;
+  secagg_protocol: string;
+  key_exchange: string;
+  cipher_ring: string;
+}
+
+export interface EnclaveHandshakeResponse {
+  attestation_status: string;
+  attestation_digest: string;
+  timestamp: string;
+  server_enclave: {
+    status: string;
+    device: string;
+    cuda_available: boolean;
+    defense_mode: string;
+    foundation_model: string;
+    model_trained?: boolean;
+  };
+  nodes: EnclaveNodeInfo[];
+  cryptography: CryptographySuiteInfo;
+  privacy: {
+    dp_active?: boolean;
+    patient_level_dp?: boolean;
+    epsilon: number;
+    target_delta: number;
+    clipping_bound_C?: number;
+    mechanism?: string;
+  };
+}

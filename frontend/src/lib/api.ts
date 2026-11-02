@@ -1,8 +1,26 @@
-import { HospitalCohort, DiagnosisResult, RagCase, TelemetryRound, BackendSystemState } from "@/types";
+import {
+  HospitalCohort,
+  DiagnosisResult,
+  RagCase,
+  TelemetryRound,
+  BackendSystemState,
+  EnclaveHandshakeResponse,
+} from "@/types";
 
 const DIAG_TO_CLASS: Record<string, number> = {
   Normal: 0, Pneumonia: 1, COVID: 2, "COVID-19": 2,
 };
+
+export async function fetchEnclaveHandshake(
+  baseUrl: string = "http://127.0.0.1:8000"
+): Promise<EnclaveHandshakeResponse> {
+  const url = `${baseUrl.replace(/\/$/, "")}/api/fl/enclave-handshake`;
+  const res = await fetch(url, { cache: "no-store" });
+  if (!res.ok) {
+    throw new Error(`Enclave handshake failed with HTTP ${res.status}`);
+  }
+  return await res.json();
+}
 
 export async function fetchSystemState(baseUrl: string = "http://127.0.0.1:8000"): Promise<BackendSystemState> {
   const url = `${baseUrl.replace(/\/$/, "")}/api/state`;

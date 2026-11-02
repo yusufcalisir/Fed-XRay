@@ -15,6 +15,8 @@ import {
   RefreshCw,
 } from "lucide-react";
 import { useLanguage } from "@/context/LanguageContext";
+import { fetchEnclaveHandshake } from "@/lib/api";
+import { EnclaveHandshakeResponse } from "@/types";
 
 interface ConsortiumLaunchOverlayProps {
   isOpen: boolean;
@@ -27,6 +29,7 @@ export default function ConsortiumLaunchOverlay({
 }: ConsortiumLaunchOverlayProps) {
   const router = useRouter();
   const { t } = useLanguage();
+  const [attestationData, setAttestationData] = useState<EnclaveHandshakeResponse | null>(null);
   const [progress, setProgress] = useState(0);
   const [activeStage, setActiveStage] = useState(0);
   const [error, setError] = useState<string | null>(null);
@@ -57,10 +60,16 @@ export default function ConsortiumLaunchOverlay({
       setProgress(45);
       setActiveStage(1);
 
-      // Step 2: Decentralized Consortium Node State & Cohort Topology
-      const stateRes = await fetch(`${baseUrl}/api/state`, { cache: "no-store" });
-      if (!stateRes.ok) {
-        throw new Error(`Consortium node topology query failed (HTTP ${stateRes.status})`);
+      // Step 2: Cryptographic Consortium Enclave Handshake (X25519 ECDH + CKKS + Patient DP)
+      const handshake = await fetchEnclaveHandshake(baseUrl);
+      setAttestationData(handshake);
+
+      try {
+        if (typeof window !== "undefined") {
+          window.sessionStorage.setItem("fedxray_attestation", JSON.stringify(handshake));
+        }
+      } catch {
+        // Ignore session storage errors if restricted
       }
 
       await new Promise((r) => setTimeout(r, 300));
@@ -68,13 +77,8 @@ export default function ConsortiumLaunchOverlay({
       setActiveStage(2);
 
       // Step 3: Cryptographic Parameter & Patient-Level DP Handshake
-      const privRes = await fetch(`${baseUrl}/api/fl/privacy-status`, { cache: "no-store" });
-      if (!privRes.ok) {
-        throw new Error(`Cryptographic parameter verification failed (HTTP ${privRes.status})`);
-      }
-      const privData = await privRes.json();
-      const epsVal = typeof privData.epsilon === "number" ? privData.epsilon.toFixed(1) : "2.0";
-      const cVal = typeof privData.clipping_bound_C === "number" ? privData.clipping_bound_C : "0.5";
+      const epsVal = typeof handshake.privacy.epsilon === "number" ? handshake.privacy.epsilon.toFixed(1) : "2.0";
+      const cVal = typeof handshake.privacy.clipping_bound_C === "number" ? handshake.privacy.clipping_bound_C : "0.5";
       setPrivacySummary(`CKKS 128-Bit + Patient DP (eps <= ${epsVal}, C = ${cVal})`);
 
       await new Promise((r) => setTimeout(r, 280));
@@ -84,7 +88,7 @@ export default function ConsortiumLaunchOverlay({
 
       const timer = setTimeout(() => {
         router.push("/dashboard");
-      }, 400);
+      }, 450);
       return () => clearTimeout(timer);
     } catch (err: any) {
       console.error("Enclave handshake failed:", err);
@@ -133,6 +137,11 @@ export default function ConsortiumLaunchOverlay({
       icon: ShieldCheck,
     },
   ];
+
+  const node0 = attestationData?.nodes?.[0];
+  const node1 = attestationData?.nodes?.[1];
+  const node2 = attestationData?.nodes?.[2];
+  const node3 = attestationData?.nodes?.[3];
 
   return (
     <div className="fixed inset-0 z-[99999] flex items-center justify-center p-3 sm:p-5 bg-black/80 backdrop-blur-md transition-all">
@@ -235,10 +244,12 @@ export default function ConsortiumLaunchOverlay({
             <div className="w-6 h-6 rounded-lg bg-emerald-500/10 flex items-center justify-center text-emerald-500 shrink-0">
               <Building2 className={`w-3.5 h-3.5 ${activeStage === 0 ? "animate-pulse" : ""}`} />
             </div>
-            <div className="text-left">
-              <div className="font-mono text-[10px] font-bold text-[var(--text-heading)] leading-none">BCN-20000</div>
-              <div className="text-[9px] font-mono text-emerald-600 dark:text-emerald-400 font-semibold mt-0.5">
-                {activeStage === 0 ? "Local PEFT" : "Enc(Bk)"}
+            <div className="text-left min-w-0">
+              <div className="font-mono text-[10px] font-bold text-[var(--text-heading)] leading-none truncate max-w-[85px]">
+                {node0?.name ? node0.name.replace(" Skin Cancer Hub", "") : "BCN-20000"}
+              </div>
+              <div className="text-[8px] font-mono text-emerald-600 dark:text-emerald-400 font-semibold mt-0.5 truncate max-w-[85px]">
+                {node0?.peer_key_fingerprint ? node0.peer_key_fingerprint.replace("ecdh:x25519:", "pk:") : (activeStage === 0 ? "Local PEFT" : "Enc(Bk)")}
               </div>
             </div>
           </div>
@@ -251,10 +262,12 @@ export default function ConsortiumLaunchOverlay({
                 : "bg-[var(--bg-card)] border-[var(--border-subtle)]"
             }`}
           >
-            <div className="text-right">
-              <div className="font-mono text-[10px] font-bold text-[var(--text-heading)] leading-none">Beth Israel</div>
-              <div className="text-[9px] font-mono text-emerald-600 dark:text-emerald-400 font-semibold mt-0.5">
-                {activeStage === 0 ? "Local PEFT" : "Enc(Bk)"}
+            <div className="text-right min-w-0">
+              <div className="font-mono text-[10px] font-bold text-[var(--text-heading)] leading-none truncate max-w-[85px]">
+                {node1?.name ? node1.name.replace(" Medical Center", "") : "Beth Israel"}
+              </div>
+              <div className="text-[8px] font-mono text-emerald-600 dark:text-emerald-400 font-semibold mt-0.5 truncate max-w-[85px]">
+                {node1?.peer_key_fingerprint ? node1.peer_key_fingerprint.replace("ecdh:x25519:", "pk:") : (activeStage === 0 ? "Local PEFT" : "Enc(Bk)")}
               </div>
             </div>
             <div className="w-6 h-6 rounded-lg bg-emerald-500/10 flex items-center justify-center text-emerald-500 shrink-0">
@@ -282,8 +295,14 @@ export default function ConsortiumLaunchOverlay({
             <div className="font-display text-[11px] sm:text-xs font-extrabold text-[var(--text-heading)] leading-tight text-center">
               Consortium Server
             </div>
-            <div className="font-mono text-[9px] text-emerald-600 dark:text-emerald-400 font-bold mt-0.5">
-              {activeStage >= 2 ? "Consensus Deployed" : activeStage === 1 ? "CKKS 128-Bit Aggregation" : "Enclave Sync"}
+            <div className="font-mono text-[8px] sm:text-[9px] text-emerald-600 dark:text-emerald-400 font-bold mt-0.5 truncate max-w-[130px]">
+              {attestationData?.attestation_digest
+                ? attestationData.attestation_digest.slice(0, 16) + "..."
+                : activeStage >= 2
+                ? "Consensus Deployed"
+                : activeStage === 1
+                ? "CKKS 128-Bit Aggregation"
+                : "Enclave Sync"}
             </div>
           </div>
 
@@ -298,10 +317,12 @@ export default function ConsortiumLaunchOverlay({
             <div className="w-6 h-6 rounded-lg bg-emerald-500/10 flex items-center justify-center text-emerald-500 shrink-0">
               <Building2 className={`w-3.5 h-3.5 ${activeStage === 0 ? "animate-pulse" : ""}`} />
             </div>
-            <div className="text-left">
-              <div className="font-mono text-[10px] font-bold text-[var(--text-heading)] leading-none">ViDIR Pathology</div>
-              <div className="text-[9px] font-mono text-emerald-600 dark:text-emerald-400 font-semibold mt-0.5">
-                {activeStage === 0 ? "Local PEFT" : "Enc(Bk)"}
+            <div className="text-left min-w-0">
+              <div className="font-mono text-[10px] font-bold text-[var(--text-heading)] leading-none truncate max-w-[85px]">
+                {node2?.name ? node2.name.replace(" Institute", "") : "ViDIR Pathology"}
+              </div>
+              <div className="text-[8px] font-mono text-emerald-600 dark:text-emerald-400 font-semibold mt-0.5 truncate max-w-[85px]">
+                {node2?.peer_key_fingerprint ? node2.peer_key_fingerprint.replace("ecdh:x25519:", "pk:") : (activeStage === 0 ? "Local PEFT" : "Enc(Bk)")}
               </div>
             </div>
           </div>
@@ -314,10 +335,12 @@ export default function ConsortiumLaunchOverlay({
                 : "bg-[var(--bg-card)] border-[var(--border-subtle)]"
             }`}
           >
-            <div className="text-right">
-              <div className="font-mono text-[10px] font-bold text-[var(--text-heading)] leading-none">Queensland</div>
-              <div className="text-[9px] font-mono text-emerald-600 dark:text-emerald-400 font-semibold mt-0.5">
-                {activeStage === 0 ? "Local PEFT" : "Enc(Bk)"}
+            <div className="text-right min-w-0">
+              <div className="font-mono text-[10px] font-bold text-[var(--text-heading)] leading-none truncate max-w-[85px]">
+                {node3?.name ? node3.name.replace(" Screening Center", "") : "Queensland"}
+              </div>
+              <div className="text-[8px] font-mono text-emerald-600 dark:text-emerald-400 font-semibold mt-0.5 truncate max-w-[85px]">
+                {node3?.peer_key_fingerprint ? node3.peer_key_fingerprint.replace("ecdh:x25519:", "pk:") : (activeStage === 0 ? "Local PEFT" : "Enc(Bk)")}
               </div>
             </div>
             <div className="w-6 h-6 rounded-lg bg-emerald-500/10 flex items-center justify-center text-emerald-500 shrink-0">
@@ -381,6 +404,19 @@ export default function ConsortiumLaunchOverlay({
                 </div>
               </div>
             </div>
+          </div>
+        )}
+
+        {/* Verified Electronic Attestation Digest Badge */}
+        {attestationData?.attestation_digest && (
+          <div className="mb-3 px-2.5 py-1.5 rounded-lg bg-emerald-500/[0.08] border border-emerald-500/30 flex items-center justify-between text-[10px] font-mono">
+            <div className="flex items-center gap-1.5 text-emerald-600 dark:text-emerald-400 font-semibold truncate">
+              <ShieldCheck className="w-3.5 h-3.5 shrink-0 text-emerald-500" />
+              <span className="truncate">Attestation: {attestationData.attestation_digest}</span>
+            </div>
+            <span className="text-[9px] px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 font-bold shrink-0">
+              ATTESTED
+            </span>
           </div>
         )}
 

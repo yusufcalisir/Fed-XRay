@@ -1,7 +1,7 @@
 """Fed-XRay FastAPI Request & Response Schemas (Pydantic v2)."""
 
 from pydantic import BaseModel, Field
-from typing import List, Dict, Optional
+from typing import Any, Dict, List, Optional
 
 
 class CohortGenerateRequest(BaseModel):
@@ -119,3 +119,31 @@ class RagTwinCase(BaseModel):
 class RagSimilarResponse(BaseModel):
     query_class: int
     matched_cases: List[RagTwinCase]
+
+
+class EnclaveNodeInfo(BaseModel):
+    node_id: str
+    name: str
+    location: str
+    enclave_status: str
+    peer_key_fingerprint: str
+    scans_verified: int
+    peft_subspace: str
+    leakage_bytes: int = 0
+
+
+class CryptographySuiteInfo(BaseModel):
+    homomorphic_encryption: str
+    secagg_protocol: str
+    key_exchange: str
+    cipher_ring: str
+
+
+class EnclaveHandshakeResponse(BaseModel):
+    attestation_status: str
+    attestation_digest: str
+    timestamp: str
+    server_enclave: Dict[str, Any]
+    nodes: List[EnclaveNodeInfo]
+    cryptography: CryptographySuiteInfo
+    privacy: Dict[str, Any]
