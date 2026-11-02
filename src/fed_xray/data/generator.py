@@ -342,7 +342,7 @@ def create_global_test_set(
                 target_size=(image_size, image_size),
                 in_channels=in_channels,
             )
-            _, _, test_recs = ecosystem.partition_train_val_test_by_patient(records)
+            _, _, test_recs = ecosystem.leak_free_patient_split(records)
             if len(test_recs) > n_samples:
                 test_recs = test_recs[:n_samples]
             test_imgs = torch.stack([r.image_tensor for r in test_recs])
@@ -415,8 +415,8 @@ def create_hospital_dataloaders(
                 target_size=(image_size, image_size),
                 in_channels=in_channels,
             )
-            train_recs, _, _ = ecosystem.partition_train_val_test_by_patient(records)
-            client_partitions = ecosystem.partition_by_patient_and_scenario(
+            train_recs, _, _ = ecosystem.leak_free_patient_split(records)
+            client_partitions = ecosystem.partition_into_scenarios(
                 records=train_recs,
                 num_clients=n_hospitals,
                 scenario="A",

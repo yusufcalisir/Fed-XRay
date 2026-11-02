@@ -457,6 +457,23 @@ class StrategyEDatasetEcosystem:
 
         return train_records, val_records, test_records
 
+    @staticmethod
+    def partition_train_val_test_by_patient(
+        records: List[RealWorldPatientRecord],
+        train_ratio: float = 0.70,
+        val_ratio: float = 0.15,
+        test_ratio: float = 0.15,
+        seed: int = 42,
+    ) -> Tuple[List[RealWorldPatientRecord], List[RealWorldPatientRecord], List[RealWorldPatientRecord]]:
+        """Partitions records strictly by patient_id adhering to Strategy E patient isolation."""
+        return StrategyEDatasetEcosystem.leak_free_patient_split(
+            records=records,
+            train_ratio=train_ratio,
+            val_ratio=val_ratio,
+            test_ratio=test_ratio,
+            seed=seed,
+        )
+
     def partition_into_scenarios(
         self,
         records: List[RealWorldPatientRecord],
@@ -553,6 +570,21 @@ class StrategyEDatasetEcosystem:
                 client_partitions[k].append(records[k % len(records)])
 
         return client_partitions
+
+    def partition_by_patient_and_scenario(
+        self,
+        records: List[RealWorldPatientRecord],
+        num_clients: int = 4,
+        scenario: str = "A",
+        num_classes: int = 3,
+    ) -> List[List[RealWorldPatientRecord]]:
+        """Partitions records across clients according to Scenarios A through G."""
+        return self.partition_into_scenarios(
+            records=records,
+            num_clients=num_clients,
+            scenario=scenario,
+            num_classes=num_classes,
+        )
 
     @staticmethod
     def records_to_dataloader(
