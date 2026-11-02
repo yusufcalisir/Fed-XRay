@@ -18,7 +18,7 @@ Fed-XRay is an enterprise-grade Federated Learning (FL) and Clinical Decision Su
   <img src="https://img.shields.io/badge/Privacy-Option_J_(CKKS_+_DP)-indigo" alt="Privacy">
   <img src="https://img.shields.io/badge/PEFT-FFA--LoRA_%7C_FedSA--LoRA_%7C_FedAS--LoRA-purple" alt="PEFT">
   <img src="https://img.shields.io/badge/Localization-EN%20%7C%20TR-blue" alt="Bilingual">
-  <img src="https://img.shields.io/badge/Automated_Tests-112_Passed_100%25-brightgreen" alt="Tests">
+  <img src="https://img.shields.io/badge/Automated_Tests-240_Passed_(186_Backend_+_54_Frontend)-brightgreen" alt="Tests">
   <img src="https://img.shields.io/badge/License-MIT-yellow" alt="License">
 </p>
 
@@ -115,7 +115,9 @@ $$
 
 ### 5. Option J Dual-Layer Cryptographic & Differential Privacy Architecture
 
-- **Layer 1 (In-Transit / Aggregation Privacy):** Leveled CKKS Threshold Homomorphic Encryption (RLWE 128-bit) on FFA-LoRA updates ($ct_{\text{global}} = \sum w_k \odot ct_k$) and SecAgg+ zero-sum masking ($\sum s_k = 0$), ensuring zero plaintext visibility at the central coordinator.
+- **Layer 1 (In-Transit / Aggregation Privacy):** Leveled CKKS Threshold Homomorphic Encryption (RLWE 128-bit) on FFA-LoRA updates ($ct_{\text{global}} = \sum w_k \odot ct_k$) and decentralized SecAgg+ zero-sum masking ($\sum s_k = 0$), ensuring zero plaintext visibility at the central coordinator.
+- **Decentralized SecAgg+ Key Agreement:** Peer-to-peer X25519 Elliptic Curve Diffie-Hellman (ECDH) key exchange with HKDF-SHA256 pairwise zero-sum masking ($\sum_{j} s_{i,j} = 0$), eliminating trusted coordinator assumptions.
+- **Consortium Enclave Attestation (`/api/fl/enclave-handshake`):** Verifies active node ECDH public key fingerprints (`ecdh:x25519:...`), RLWE 128-bit CKKS HE parameters, and patient-level DP bounds, producing a canonical SHA-256 certificate digest (`sha256:...`) displayed live in the consortium HUD.
 - **Layer 2 (Output Model Privacy):** Strict Patient-Level Gaussian Differential Privacy with Rényi Differential Privacy (RDP) composition accounting, ensuring strict (&epsilon; &le; 2.0, &delta; &le; 10<sup>-5</sup>)-DP bounds:
 
 $$
@@ -130,11 +132,14 @@ $$
 \tilde{g} = \frac{1}{|\mathcal{B}_P|} \left(\sum_{i \in \mathcal{B}_P} \bar{g}_i + \mathcal{N}\left(0, \sigma^2 C_{\text{patient}}^2 I\right)\right)
 $$
 
+- **Option J Distributed Noise Perturbation:** Client-side $L_2$ clipping bound $C_{\text{patient}}$ paired with distributed server Gaussian noise addition scaled as $\sigma / \sqrt{K}$, preventing privacy leakage in transit under Homomorphic Encryption.
+
 ---
 
 ### 6. Strategy E Real-World Multi-Center Ingestion & Scenarios A-G
 
 - **Primary Benchmark Ecosystem:** ISIC 2019 (25,331 dermoscopy images across 3 natural hospital sites: BCN_20000 Barcelona, ViDIR Vienna, Univ. Queensland), NCT-CRC-HE-100K + CRC-VAL-7K (Colorectal histopathology hold-out), and MIMIC-CXR-JPG (v2.1.0).
+- **Multi-Resolution ViT-Compatible Generator:** Supports dynamic scaling ($224 \times 224$ standard) producing $14 \times 14 = 196$ patch tokens for Vision Transformers, while providing native Strategy E disk manifest loading (`data/manifests/strategy_e_manifest.csv`) with patient-level isolation.
 - **Strict Leak-Free Invariant:** Enforces patient-level cohort isolation grouped strictly by `patient_id`:
 
 $$
@@ -154,6 +159,8 @@ $$
 
 ### 7. Clinical Decision Support System (CDSS) & Evidence-Grounded Federated RAG
 
+- **Dynamic Latent Dimension HNSW Indexing:** Eliminates arbitrary 64-dim truncation; dynamically indexes full encoder representation dimensions (128-dim ViT-Tiny, 768-dim ViT-Base, 1024-dim UNI, 128-dim CNN) with strict query dimension guards.
+- **Biopsy-Confirmed Reference Digital Twins:** RAG case bank actively loads verified histological cases with pathological diagnoses, anatomical sites, and therapeutic outcomes (`PAT_ISIC_0000002`, `PAT_ISIC_0011535`).
 - **Explainable AI (Grad-CAM):** Multi-layer class activation mapping supporting CNNs and Vision Transformers.
 - **Evidence-Grounded Retrieval (Federated RAG):** Top-K digital twin matching with temperature-scaled outcome probability estimation:
 
@@ -166,59 +173,83 @@ $$
 
 ---
 
+### 8. Flower Protocol Federation Bridge (flwr)
+
+- **Official Protocol Bridge:** Implements `flwr.client.Client` and `flwr.client.NumPyClient` bridges in `src/fed_xray/federation/flower_protocol_bridge.py`.
+- **In-Process & Network Simulation:** Features `InProcessClientProxy` for high-throughput zero-IPC hospital client simulation alongside standard gRPC flower server/client orchestration.
+- **Dedicated CLI Runner & API:** Run multi-hospital federated training via `python scripts/run_flower_federation.py` or trigger via asynchronous FastAPI endpoints `POST /api/fl/flower-start` and `GET /api/fl/flower-info`.
+
+---
+
 ## Repository Structure
 
 ```text
 Fed-XRay/
 ├── api/                           # FastAPI Async Backend Application
-│   ├── main.py                    # REST, SSE Streaming & Resilient Polling Endpoints
+│   ├── main.py                    # REST, SSE Streaming, Enclave Handshake & Flower Routes
 │   └── schemas.py                 # Pydantic v2 Request & Response Models
 ├── frontend/                      # Decoupled Next.js 14 Clinical SaaS Web App
-│   ├── src/app/                   # App Router, Layout & Telemetry Dashboard
-│   ├── src/components/            # Responsive Clinical Cockpit Panels & Studio
-│   └── src/lib/                   # API Client (SSE/Polling Dual Mode) & Types
+│   ├── src/app/                   # App Router, Presentation Landing & Telemetry Dashboard
+│   ├── src/components/            # Clinical Cockpit Panels, SVG Enclave Topology & HUD
+│   ├── src/lib/                   # API Client (SSE/Polling Dual Mode), Types & i18n
+│   └── src/__tests__/             # Comprehensive Vitest Test Suite (54 Tests Passed)
+├── scripts/                       # CLI Orchestration & Automation Utilities
+│   └── run_flower_federation.py   # Official Flower Multi-Hospital Federation Runner
 ├── src/
 │   └── fed_xray/                  # Core Python Package
 │       ├── core/                  # Client, Server, Privacy, Prototypes, Losses
-│       │   ├── client.py          # HospitalClient (PEFT, FedDyn, SCAFFOLD, MOON)
-│       │   ├── server.py          # CentralServer (FedAdam, FedDyn, SecAgg, Byzantine)
-│       │   ├── privacy.py         # Option J: CKKS HE, SecAgg+, Rényi DP Accountant
+│       │   ├── client.py          # HospitalClient (PEFT, FedDyn, SCAFFOLD, MOON, Option J)
+│       │   ├── server.py          # CentralServer (FedAdam, FedDyn, SecAgg+, Byzantine)
+│       │   ├── privacy.py         # Option J: CKKS HE, SecAgg+ ECDH, Rényi DP Accountant
 │       │   ├── prototypes.py      # FedProto Dispersion-Weighted Synthesis
 │       │   ├── imbalance_losses.py # DAFL, Balanced Softmax, LDAM, Repel
 │       │   └── metrics.py         # Metric Trackers & Security Reports
+│       ├── federation/            # Distributed Framework Bridges
+│       │   └── flower_protocol_bridge.py # Flower (flwr) Client Proxy, Server & Strategy Bridge
 │       ├── models/                # ViT, Foundation Models, PEFT & CNN
-│       │   ├── vit.py             # Vision Transformer (MHSA, PatchEmbedding)
+│       │   ├── vit.py             # Vision Transformer (MHSA, PatchEmbedding, Pretrained Transfer)
 │       │   ├── peft.py            # LoRA, FFA-LoRA, FedSA-LoRA, FedAS-LoRA, HetLoRA, FedPerfix
-│       │   ├── foundation.py      # UNI, Swin UNETR, FedMedCLIP, FedCola, FedDAT
+│       │   ├── foundation.py      # UNI, Swin UNETR, FedMedCLIP, Bio_ClinicalBERT Anchors
 │       │   └── cnn.py             # XRayClassifier Baseline
 │       ├── data/                  # Strategy E Ingestion & Scenarios
-│       │   ├── real_world.py      # DiskMedicalDataset, Scenarios A-G, SHA-256 Deduplication, Leak-Free Split
-│       │   └── generator.py       # Multi-Hospital Simulation Generator
+│       │   ├── real_world.py      # DiskMedicalDataset, Scenarios A-G, SHA-256 Deduplication
+│       │   ├── ingest_real_world.py # Authentic ISIC Archive API v2 Downloader & Biopsy Cohort
+│       │   └── generator.py       # Multi-Resolution 224x224 ViT-Compatible Generator
 │       └── cdss/                  # Clinical Decision Support Systems
 │           ├── xai.py             # Grad-CAM Heatmaps & Overlays
-│           ├── similarity.py      # Federated RAG Digital Twin Search
+│           ├── similarity.py      # Dynamic Latent Dimension HNSW Digital Twin Retrieval
 │           ├── report.py          # Medical PDF Report Generator (fpdf2)
 │           ├── voice.py           # Speech Dictation Engine (Async gTTS + Disk Cache)
 │           └── i18n.py            # Academic Bilingual Localization (EN / TR)
 ├── benchmarks/                    # Multi-Algorithm Simulation & Empirical Benchmarks
 │   └── benchmark_foundation_peft.py # Master Foundation PEFT & Comparative Benchmark Suite
-├── tests/                         # Comprehensive Automated Test Suites (107 Tests Passed)
+├── tests/                         # Comprehensive Automated Test Suites (186 Pytest Tests Passed)
 │   ├── test_all.py                # Baseline Model, Data, XAI & Security Tests
 │   ├── test_api_endpoints.py      # FastAPI REST & Streaming Integration Tests
 │   ├── test_api_deep_suite.py     # Exhaustive Deep API, SSE Streaming & Polling Tests
-│   ├── test_robustness_and_adversarial.py # Byzantine Poisoning & NaN Guard Tests
-│   ├── test_numerical_stability_losses.py # Loss Boundaries & CKKS Scalability Tests
-│   ├── test_e2e_full_federated_pipeline.py # Full Lifecycle Ingestion->Training->RAG->PDF Test
+│   ├── test_api_schemas_contracts.py # Pydantic v2 Request/Response Contract Tests
 │   ├── test_asymmetric_foundation_peft.py # FedAS-LoRA, FlexLoRA SVD & Foundation Adapters
 │   ├── test_benchmarking_engine.py # Automated Foundation PEFT Benchmark Test
-│   ├── test_foundation_privacy.py # FedMedCLIP, CKKS HE, SecAgg+ & Rényi DP Accountant
-│   ├── test_prototypes.py         # FedProto & Imbalance Losses
-│   ├── test_real_world_data_scenarios.py # DiskMedicalDataset, Scenarios A-G & Federated RAG
-│   ├── test_vit_peft_optimizers.py # ViT, FFA-LoRA Zero Error & SOTA Optimizers
-│   ├── test_strategy_e_real_ingestion.py # Strategy E 224x224 Ingestion & Patient Isolation Tests
-│   ├── test_vit_tiny_ffa_lora.py  # ViT-Tiny FFA-LoRA Deep Attention Tests
+│   ├── test_cdss_report.py        # Medical PDF Report Generator & Integrity Tests
+│   ├── test_cdss_similarity.py    # Dynamic Latent Dimension HNSW Indexing Tests
+│   ├── test_cdss_voice.py         # Voice Assistant Dictation & Cache Tests
+│   ├── test_cdss_xai.py           # Grad-CAM Saliency & Heatmap Generation Tests
+│   ├── test_core_imbalance_losses.py # DAFL, Balanced Softmax, LDAM & Repel Loss Tests
 │   ├── test_crypto_privacy_optimizers.py # TenSEAL CKKS RLWE 128-bit & SecAgg+ Tests
-│   └── test_evidence_grounded_cdss.py # 224x224 Grad-CAM & Federated RAG Tests
+│   ├── test_e2e_full_federated_pipeline.py # Full Lifecycle Ingestion->Training->RAG->PDF Test
+│   ├── test_enclave_handshake.py  # Cryptographic Enclave Handshake & Node Fingerprint Tests
+│   ├── test_evidence_grounded_cdss.py # 224x224 Grad-CAM & Federated RAG Tests
+│   ├── test_flower_and_sota_enhancements.py # Flower Protocol Bridge & In-Process Client Proxy Tests
+│   ├── test_foundation_privacy.py # FedMedCLIP, CKKS HE, SecAgg+ & Rényi DP Accountant
+│   ├── test_generator_strategy_e.py # Multi-Resolution 224x224 Strategy E & ViT Patch Token Tests
+│   ├── test_numerical_stability_losses.py # Loss Boundaries & CKKS Scalability Tests
+│   ├── test_prototypes.py         # FedProto Dispersion-Weighted Synthesis & Imbalance Tests
+│   ├── test_real_world_data_scenarios.py # DiskMedicalDataset, Scenarios A-G & Federated RAG
+│   ├── test_robustness_and_adversarial.py # Byzantine Poisoning & NaN Guard Tests
+│   ├── test_state_persistence.py  # Federated Telemetry & State Save/Restore Roundtrip Tests
+│   ├── test_strategy_e_real_ingestion.py # Strategy E 224x224 Ingestion & Patient Isolation Tests
+│   ├── test_vit_peft_optimizers.py # ViT, FFA-LoRA Zero Error & SOTA Optimizers
+│   └── test_vit_tiny_ffa_lora.py  # ViT-Tiny FFA-LoRA Deep Attention Tests
 ├── research/                      # Canonical Scientific Research Anchors
 │   ├── federated_vision_transformers_for_oncology.md
 │   ├── federated_foundation_models_for_cancer.md
@@ -246,21 +277,31 @@ cd Fed-XRay
 pip install -r requirements.txt
 ```
 
-### 2. Run Automated Test Suite (107 Tests Passed)
+### 2. Run Automated Test Suites (240 Tests Passed)
 
 ```bash
-# Execute all 107 unit, integration, and E2E lifecycle tests
+# Execute all 186 Python unit, integration, and E2E lifecycle tests
 python -m pytest tests/
+
+# Execute all 54 Next.js frontend component and integration tests
+cd frontend && npm test -- --run && cd ..
 ```
 
-### 3. Run SOTA Foundation PEFT Benchmark
+### 3. Run Flower Protocol Federation
+
+```bash
+# Launch multi-hospital federated training via official Flower protocol runner
+python scripts/run_flower_federation.py
+```
+
+### 4. Run SOTA Foundation PEFT Benchmark
 
 ```bash
 # Execute master empirical benchmark across Scenarios A-G
 python -m benchmarks.benchmark_foundation_peft
 ```
 
-### 4. Launch Services
+### 5. Launch Services
 
 #### Launch FastAPI Async Backend:
 
