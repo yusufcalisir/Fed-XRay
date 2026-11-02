@@ -116,18 +116,18 @@ export default function PresentationLandingPage() {
               <div className="lung-viewer relative h-[380px] sm:h-[460px] lg:h-[540px]">
                 <LungViewer3D className="absolute inset-0" mode="anatomy" />
                 <div className="chip-float absolute left-4 top-5">
-                  <Cpu className="w-3.5 h-3.5 text-emerald-300" />
+                  <Cpu className="w-3.5 h-3.5 text-emerald-500 dark:text-emerald-300" />
                   <span>{t("landing_hero_chip_peft")}</span>
                 </div>
                 <div className="chip-float absolute right-4 top-1/3" style={{ animationDelay: "-2s" }}>
-                  <Lock className="w-3.5 h-3.5 text-sky-300" />
+                  <Lock className="w-3.5 h-3.5 text-sky-500 dark:text-sky-300" />
                   <span>{t("landing_hero_chip_he")}</span>
                 </div>
                 <div className="chip-float absolute left-5 bottom-12" style={{ animationDelay: "-4s" }}>
-                  <ShieldCheck className="w-3.5 h-3.5 text-violet-300" />
+                  <ShieldCheck className="w-3.5 h-3.5 text-violet-500 dark:text-violet-300" />
                   <span>{t("landing_hero_chip_dp")}</span>
                 </div>
-                <div className="pointer-events-none absolute left-4 bottom-3 font-mono text-[10px] uppercase tracking-wider text-white/45">
+                <div className="pointer-events-none absolute left-4 bottom-3 font-mono text-[10px] uppercase tracking-wider text-[var(--text-muted)] opacity-70">
                   {t("landing_hero_viewer_caption")}
                 </div>
               </div>

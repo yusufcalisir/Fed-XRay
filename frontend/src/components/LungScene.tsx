@@ -120,7 +120,7 @@ function FloorDisc() {
       {/* Subtle filled disc */}
       <mesh rotation={[-Math.PI / 2, 0, 0]}>
         <circleGeometry args={[1.2, 64]} />
-        <meshBasicMaterial color="#042f2e" transparent opacity={0.35} side={THREE.DoubleSide} />
+        <meshBasicMaterial color="#0d9488" transparent opacity={0.10} side={THREE.DoubleSide} />
       </mesh>
     </group>
   );
@@ -280,17 +280,18 @@ export default function LungScene(props: LungSceneProps) {
       className="w-full h-full"
       dpr={[1, 2]}
       camera={{ position: [0, 0.08, 5.2], fov: 42 }}
-      gl={{ antialias: true, alpha: false, preserveDrawingBuffer: false, toneMapping: THREE.ACESFilmicToneMapping }}
+      gl={{ antialias: true, alpha: true, preserveDrawingBuffer: false, toneMapping: THREE.ACESFilmicToneMapping }}
       shadows
       onCreated={({ gl, camera, scene }) => {
         gl.toneMappingExposure = 1.2;
+        gl.setClearColor(0x000000, 0);
         camera.lookAt(0, 0.08, 0);
         scene.background = null;
       }}
       style={{
         width: "100%",
         height: "100%",
-        background: "radial-gradient(ellipse at 50% 40%, #0f2236 0%, #070d14 100%)",
+        background: "transparent",
       }}
     >
       <SceneContents {...props} />

@@ -62,7 +62,7 @@ export default function LungViewer3D({
   return (
     <div
       className={`w-full h-full overflow-hidden rounded-xl ${className || "relative"}`}
-      style={{ background: "radial-gradient(ellipse at 50% 38%, #0f2236 0%, #060c13 100%)" }}
+      style={{ background: "var(--viewer-bg)" }}
       data-testid="lung-viewer-3d"
     >
       {webgl === null && message(t("lung3d_loading"))}
@@ -87,7 +87,7 @@ export default function LungViewer3D({
         </SceneBoundary>
       )}
       {webgl && showHint && (
-        <div className="pointer-events-none absolute bottom-2 right-3 font-mono text-[10px] text-white/50">{t("lung3d_hint")}</div>
+        <div className="pointer-events-none absolute bottom-2 right-3 font-mono text-[10px] text-[var(--text-muted)]">{t("lung3d_hint")}</div>
       )}
     </div>
   );
