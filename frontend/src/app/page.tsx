@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from "react";
 import Navbar from "@/components/Navbar";
 import ConsortiumLaunchOverlay from "@/components/ConsortiumLaunchOverlay";
+import LungViewer3D from "@/components/LungViewer3D";
 import { useLanguage } from "@/context/LanguageContext";
 import {
   ShieldCheck,
@@ -25,7 +26,6 @@ export default function PresentationLandingPage() {
   const { t } = useLanguage();
   const [isLaunchModalOpen, setIsLaunchModalOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<"xai" | "rag" | "convergence" | "report">("xai");
-  const [blendOpacity, setBlendOpacity] = useState<number>(0.65);
   const [backendStatus, setBackendStatus] = useState<"checking" | "online" | "standby">("checking");
 
   useEffect(() => {
@@ -63,50 +63,74 @@ export default function PresentationLandingPage() {
       <main className="flex-1 max-w-[1360px] w-full mx-auto px-3 sm:px-6 py-6 sm:py-10 space-y-12 sm:space-y-16">
 
         {/* 1. Hero Section */}
-        <section className="relative pt-4 sm:pt-8 pb-6">
-          <div className="max-w-4xl">
-            {/* Clinical Infrastructure Badge */}
-            <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-600 dark:text-emerald-400 text-xs font-semibold mb-4 sm:mb-6 shadow-sm">
-              <ShieldCheck className="w-4 h-4 shrink-0" />
-              <span>{t("landing_hero_badge")}</span>
+        <section className="relative pt-2 sm:pt-6 pb-6">
+          <div className="absolute inset-x-0 -top-10 h-[620px] -z-10 bg-grid pointer-events-none" />
+          <div className="grid grid-cols-1 lg:grid-cols-[1.02fr_0.98fr] gap-8 lg:gap-10 items-center">
+            <div className="max-w-2xl">
+              {/* Clinical Infrastructure Badge */}
+              <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-600 dark:text-emerald-400 text-xs font-semibold mb-4 sm:mb-6 shadow-sm">
+                <ShieldCheck className="w-4 h-4 shrink-0" />
+                <span>{t("landing_hero_badge")}</span>
+              </div>
+
+              {/* Main Institutional Headline */}
+              <h1 className="font-display text-3xl sm:text-4xl lg:text-[44px] xl:text-5xl font-extrabold tracking-tight text-[var(--text-heading)] leading-[1.12] mb-4 sm:mb-6">
+                {t("landing_hero_title")}
+              </h1>
+
+              {/* Subtitle Description */}
+              <p className="text-sm sm:text-base lg:text-lg text-[var(--text-muted)] leading-relaxed max-w-xl mb-6 sm:mb-8">
+                {t("landing_hero_desc")}
+              </p>
+
+              {/* Primary Action Buttons */}
+              <div className="flex flex-wrap items-center gap-3 sm:gap-4">
+                <button
+                  onClick={openLaunchModal}
+                  className="btn-primary text-xs sm:text-sm px-5 sm:px-6 py-3 rounded-xl shadow-lg hover:shadow-emerald-500/20"
+                >
+                  <Activity className="w-4 h-4" />
+                  <span>{t("landing_cta_launch")}</span>
+                  <ArrowRight className="w-4 h-4 ml-1" />
+                </button>
+
+                <a
+                  href="#results"
+                  className="inline-flex items-center gap-2 px-5 py-3 rounded-xl border border-[var(--border-card)] bg-[var(--bg-card)] hover:bg-[var(--bg-card-inner)] text-xs sm:text-sm font-semibold text-[var(--text-heading)] transition-all shadow-sm"
+                >
+                  <span>{t("landing_results_title")}</span>
+                  <ArrowRight className="w-4 h-4 text-slate-400" />
+                </a>
+              </div>
+
+              {/* Live Federation Node Connectivity Status */}
+              <div className="mt-4 flex items-center gap-2">
+                <span className={`w-2 h-2 rounded-full ${backendStatus === "online" ? "bg-emerald-500 animate-pulse" : "bg-slate-400"}`} />
+                <span className="font-mono text-[11px] text-[var(--text-muted)]">
+                  {backendStatus === "online" ? t("landing_backend_online") : t("landing_backend_standby")}
+                </span>
+              </div>
             </div>
 
-            {/* Main Institutional Headline */}
-            <h1 className="font-display text-2xl sm:text-4xl lg:text-5xl font-extrabold tracking-tight text-[var(--text-heading)] leading-[1.15] mb-4 sm:mb-6">
-              {t("landing_hero_title")}
-            </h1>
-
-            {/* Subtitle Description */}
-            <p className="text-sm sm:text-base lg:text-lg text-[var(--text-muted)] leading-relaxed max-w-3xl mb-6 sm:mb-8">
-              {t("landing_hero_desc")}
-            </p>
-
-            {/* Primary Action Buttons */}
-            <div className="flex flex-wrap items-center gap-3 sm:gap-4">
-              <button
-                onClick={openLaunchModal}
-                className="btn-primary text-xs sm:text-sm px-5 sm:px-6 py-3 rounded-xl shadow-lg hover:shadow-emerald-500/20"
-              >
-                <Activity className="w-4 h-4" />
-                <span>{t("landing_cta_launch")}</span>
-                <ArrowRight className="w-4 h-4 ml-1" />
-              </button>
-
-              <a
-                href="#results"
-                className="inline-flex items-center gap-2 px-5 py-3 rounded-xl border border-[var(--border-card)] bg-[var(--bg-card)] hover:bg-[var(--bg-card-inner)] text-xs sm:text-sm font-semibold text-[var(--text-heading)] transition-all shadow-sm"
-              >
-                <span>{t("landing_results_title")}</span>
-                <ArrowRight className="w-4 h-4 text-slate-400" />
-              </a>
-            </div>
-
-            {/* Live Federation Node Connectivity Status */}
-            <div className="mt-4 flex items-center gap-2">
-              <span className={`w-2 h-2 rounded-full ${backendStatus === "online" ? "bg-emerald-500 animate-pulse" : "bg-slate-400"}`} />
-              <span className="font-mono text-[11px] text-[var(--text-muted)]">
-                {backendStatus === "online" ? t("landing_backend_online") : t("landing_backend_standby")}
-              </span>
+            <div className="relative">
+              <div className="lung-viewer relative h-[380px] sm:h-[500px] lg:h-[560px]">
+                <LungViewer3D className="absolute inset-0" mode="anatomy" />
+                <div className="chip-float absolute left-4 top-5">
+                  <Cpu className="w-3.5 h-3.5 text-emerald-300" />
+                  <span>{t("landing_hero_chip_peft")}</span>
+                </div>
+                <div className="chip-float absolute right-4 top-1/3" style={{ animationDelay: "-2s" }}>
+                  <Lock className="w-3.5 h-3.5 text-sky-300" />
+                  <span>{t("landing_hero_chip_he")}</span>
+                </div>
+                <div className="chip-float absolute left-5 bottom-12" style={{ animationDelay: "-4s" }}>
+                  <ShieldCheck className="w-3.5 h-3.5 text-violet-300" />
+                  <span>{t("landing_hero_chip_dp")}</span>
+                </div>
+                <div className="pointer-events-none absolute left-4 bottom-3 font-mono text-[10px] uppercase tracking-wider text-white/45">
+                  {t("landing_hero_viewer_caption")}
+                </div>
+              </div>
             </div>
           </div>
 
@@ -244,133 +268,72 @@ export default function PresentationLandingPage() {
             </button>
           </div>
 
-          {/* Tab 1: Grad-CAM Saliency Display */}
+          {/* Tab 1: 3D lung saliency workspace (anatomical model, no patient sample) */}
           {activeTab === "xai" && (
-            <div className="card p-4 sm:p-6 space-y-5">
-              <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-3 pb-4 border-b border-[var(--border-subtle)]">
-                <div>
-                  <div className="flex items-center gap-2">
-                    <span className="px-2 py-0.5 rounded text-[10px] font-bold uppercase bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20">
-                      {t("landing_tab1_finding")}
+            <div className="card p-4 sm:p-6">
+              <div className="grid grid-cols-1 lg:grid-cols-5 gap-5 items-stretch">
+                <div className="lung-viewer relative lg:col-span-3 h-[380px] sm:h-[480px]">
+                  <LungViewer3D className="absolute inset-0" mode="anatomy" />
+                  <div className="pointer-events-none absolute left-3 top-3 inline-flex items-center gap-1.5 rounded-full border border-white/10 bg-black/40 px-2.5 py-1 font-mono text-[10px] text-emerald-200 backdrop-blur">
+                    <Sparkles className="w-3 h-3" />
+                    {t("lung3d_locked_preview")}
+                  </div>
+                </div>
+                <div className="lg:col-span-2 flex flex-col gap-4">
+                  <div>
+                    <h3 className="font-display text-lg sm:text-xl font-bold text-[var(--text-heading)]">{t("landing_xai3d_title")}</h3>
+                    <p className="mt-1 text-xs sm:text-sm text-[var(--text-muted)] leading-relaxed">{t("landing_xai3d_desc")}</p>
+                  </div>
+                  <ol className="space-y-3">
+                  <li className="flex gap-3">
+                    <span className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-emerald-500/10 text-emerald-500 border border-emerald-500/20">
+                      <Database className="w-3.5 h-3.5" />
                     </span>
-                    <span className="text-xs text-[var(--text-muted)]">{t("landing_tab1_patient_ref")}</span>
+                    <span>
+                      <span className="block text-xs font-bold text-[var(--text-heading)]">{t("landing_xai3d_s1_t")}</span>
+                      <span className="block text-[11px] text-[var(--text-muted)] leading-relaxed">{t("landing_xai3d_s1_d")}</span>
+                    </span>
+                  </li>
+                  <li className="flex gap-3">
+                    <span className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-emerald-500/10 text-emerald-500 border border-emerald-500/20">
+                      <Activity className="w-3.5 h-3.5" />
+                    </span>
+                    <span>
+                      <span className="block text-xs font-bold text-[var(--text-heading)]">{t("landing_xai3d_s2_t")}</span>
+                      <span className="block text-[11px] text-[var(--text-muted)] leading-relaxed">{t("landing_xai3d_s2_d")}</span>
+                    </span>
+                  </li>
+                  <li className="flex gap-3">
+                    <span className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-emerald-500/10 text-emerald-500 border border-emerald-500/20">
+                      <Layers className="w-3.5 h-3.5" />
+                    </span>
+                    <span>
+                      <span className="block text-xs font-bold text-[var(--text-heading)]">{t("landing_xai3d_s3_t")}</span>
+                      <span className="block text-[11px] text-[var(--text-muted)] leading-relaxed">{t("landing_xai3d_s3_d")}</span>
+                    </span>
+                  </li>
+                  <li className="flex gap-3">
+                    <span className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-emerald-500/10 text-emerald-500 border border-emerald-500/20">
+                      <CheckCircle2 className="w-3.5 h-3.5" />
+                    </span>
+                    <span>
+                      <span className="block text-xs font-bold text-[var(--text-heading)]">{t("landing_xai3d_s4_t")}</span>
+                      <span className="block text-[11px] text-[var(--text-muted)] leading-relaxed">{t("landing_xai3d_s4_d")}</span>
+                    </span>
+                  </li>
+                  </ol>
+                  <div className="card-inner p-3 text-[11px] leading-relaxed text-[var(--text-muted)] border-l-4 border-l-blue-500">
+                    {t("landing_xai3d_note")}
                   </div>
-                  <h3 className="font-display text-base sm:text-lg font-bold text-[var(--text-heading)] mt-1">
-                    {t("landing_tab1_headline")}
-                  </h3>
+                  <button
+                    onClick={openLaunchModal}
+                    className="btn-primary mt-auto self-start"
+                  >
+                    <Activity className="w-4 h-4" />
+                    <span>{t("landing_xai3d_cta")}</span>
+                    <ArrowRight className="w-4 h-4" />
+                  </button>
                 </div>
-
-                <div className="flex items-center gap-4 text-xs shrink-0">
-                  <div>
-                    <span className="text-[var(--text-muted)] mr-1.5">{t("landing_tab1_conf_label")}</span>
-                    <span className="font-mono font-bold text-emerald-600 dark:text-emerald-400">94.8%</span>
-                  </div>
-                  <div>
-                    <span className="text-[var(--text-muted)] mr-1.5">{t("landing_tab1_gt_label")}</span>
-                    <span className="font-semibold text-slate-800 dark:text-slate-200">{t("landing_tab1_gt_val")}</span>
-                  </div>
-                </div>
-              </div>
-
-              {/* Dual-Pane Visual Evidence */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {/* Left: Original Radiograph */}
-                <div className="card-inner p-3 sm:p-4 flex flex-col items-center">
-                  <div className="w-full flex items-center justify-between text-xs font-semibold text-[var(--text-muted)] mb-2">
-                    <span>{t("sec3_dual_pane_orig")}</span>
-                    <span className="text-[10px] font-mono text-blue-500 dark:text-blue-400">{t("landing_tab1_canvas_orig")}</span>
-                  </div>
-                  <div className="relative w-full aspect-square max-w-sm rounded-xl overflow-hidden bg-slate-900 border border-slate-700/50 flex items-center justify-center">
-                    {/* Simulated Authentic Medical Chest Scan Canvas */}
-                    <div className="w-full h-full bg-gradient-to-b from-slate-900 via-slate-800 to-slate-950 p-6 flex flex-col justify-between">
-                      <div className="flex justify-between text-[10px] font-mono text-slate-500">
-                        <span>R</span>
-                        <span>PA ERECT</span>
-                        <span>L</span>
-                      </div>
-                      <div className="flex justify-around items-center">
-                        <div className="w-24 h-40 rounded-full border border-slate-600/30 bg-slate-800/40" />
-                        <div className="w-12 h-44 bg-slate-700/50 rounded" />
-                        <div className="w-24 h-40 rounded-full border border-slate-600/30 bg-slate-800/40" />
-                      </div>
-                      <div className="text-center text-[10px] font-mono text-slate-500">
-                        Patient Ref: #P-8821 · {t("landing_tab1_canvas_spec")}
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Right: Grad-CAM Overlay */}
-                <div className="card-inner p-3 sm:p-4 flex flex-col items-center">
-                  <div className="w-full flex items-center justify-between text-xs font-semibold text-[var(--text-muted)] mb-2">
-                    <span>{t("sec3_dual_pane_xai")}</span>
-                    <span className="text-[10px] font-mono text-emerald-500">{t("landing_tab1_canvas_xai")}</span>
-                  </div>
-                  <div className="relative w-full aspect-square max-w-sm rounded-xl overflow-hidden bg-slate-900 border border-emerald-500/30 flex items-center justify-center">
-                    <div className="w-full h-full bg-gradient-to-b from-slate-900 via-slate-800 to-slate-950 p-6 flex flex-col justify-between relative">
-                      <div className="flex justify-between text-[10px] font-mono text-slate-500">
-                        <span>R</span>
-                        <span>GRAD-CAM HEATMAP</span>
-                        <span>L</span>
-                      </div>
-                      <div className="flex justify-around items-center">
-                        <div className="relative w-24 h-40 rounded-full border border-slate-600/30 bg-slate-800/40">
-                          {/* Saliency Hotspot */}
-                          <div
-                            className="absolute bottom-2 left-2 w-16 h-20 rounded-full bg-gradient-to-tr from-rose-500 via-amber-400 to-emerald-400 blur-sm pointer-events-none transition-opacity"
-                            style={{ opacity: blendOpacity }}
-                          />
-                        </div>
-                        <div className="w-12 h-44 bg-slate-700/50 rounded" />
-                        <div className="w-24 h-40 rounded-full border border-slate-600/30 bg-slate-800/40" />
-                      </div>
-                      <div className="text-center text-[10px] font-mono text-emerald-400 font-semibold">
-                        {t("landing_tab1_layer_info")}
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Heatmap Control & Interpretation */}
-              <div className="card-inner p-3.5 sm:p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-                <div className="flex items-center gap-3 w-full sm:w-auto">
-                  <Sliders className="w-4 h-4 text-emerald-500 shrink-0" />
-                  <span className="text-xs font-medium text-[var(--text-muted)]">{t("sec3_xai_opacity")}:</span>
-                  <input
-                    type="range"
-                    min="0.1"
-                    max="1.0"
-                    step="0.05"
-                    value={blendOpacity}
-                    onChange={(e) => setBlendOpacity(parseFloat(e.target.value))}
-                    className="w-32 h-1.5 accent-emerald-500 bg-slate-200 dark:bg-white/10 rounded-lg cursor-pointer"
-                  />
-                  <span className="text-xs font-mono font-bold text-emerald-600 dark:text-emerald-400">
-                    {Math.round(blendOpacity * 100)}%
-                  </span>
-                </div>
-
-                <div className="text-xs text-[var(--text-muted)] leading-relaxed">
-                  <strong className="text-[var(--text-heading)]">{t("landing_tab1_assessment_label")} </strong>
-                  {t("landing_tab1_assessment_text")}
-                </div>
-              </div>
-
-              {/* Tab 1 Interactive Action Footer */}
-              <div className="card-inner p-3 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 pt-3 border-t border-[var(--border-subtle)]">
-                <div className="text-xs text-[var(--text-muted)] flex items-center gap-1.5">
-                  <ShieldCheck className="w-3.5 h-3.5 text-emerald-500" />
-                  <span>{t("landing_showcase_spec_badge")}</span>
-                </div>
-                <button
-                  onClick={openLaunchModal}
-                  className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-emerald-600 dark:text-emerald-400 text-xs font-semibold hover:bg-emerald-500/20 transition-colors shrink-0"
-                >
-                  <Activity className="w-3.5 h-3.5" />
-                  <span>{t("landing_tab_action_cdss")}</span>
-                  <ArrowRight className="w-3.5 h-3.5" />
-                </button>
               </div>
             </div>
           )}

@@ -3,7 +3,9 @@
 import React, { useState, useEffect, useRef } from "react";
 import { useLanguage } from "@/context/LanguageContext";
 import { DiagnosisResult } from "@/types";
-import { Stethoscope, Search, Activity, Lock, ArrowUp, Upload } from "lucide-react";
+import { Stethoscope, Search, Activity, Lock, ArrowUp, Upload, Box } from "lucide-react";
+import LungViewer3D from "@/components/LungViewer3D";
+import type { LungViewMode } from "@/lib/scanTexture";
 
 interface DiagnosticStudioProps {
   diagnosis: DiagnosisResult | null;
@@ -26,6 +28,7 @@ export default function DiagnosticStudio({
   const [opacity, setOpacity] = useState(0.55);
   const [colormap, setColormap] = useState("Hot");
   const [targetClass, setTargetClass] = useState<number | undefined>(undefined);
+  const [viewMode, setViewMode] = useState<LungViewMode>("anatomy");
   const rawRef = useRef<HTMLCanvasElement | null>(null);
   const xaiRef = useRef<HTMLCanvasElement | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
@@ -41,6 +44,11 @@ export default function DiagnosticStudio({
     reader.readAsDataURL(file);
     e.target.value = "";
   };
+
+  useEffect(() => {
+    if (!diagnosis) return;
+    setViewMode(diagnosis.heatmap_available !== false && diagnosis.heatmap ? "gradcam" : "scan");
+  }, [diagnosis]);
 
   // Render raw X-Ray
   useEffect(() => {
@@ -99,6 +107,7 @@ export default function DiagnosticStudio({
   }, [diagnosis, opacity, colormap]);
 
   const classLabels = [t("sec1_normal"), t("sec1_pneumonia"), t("sec1_covid")];
+  const heatAvailable = !!diagnosis && diagnosis.heatmap_available !== false && !!diagnosis.heatmap;
 
   return (
     <section id="section-diagnosis" className="mb-5 sm:mb-6 scroll-mt-20">
@@ -138,25 +147,33 @@ export default function DiagnosticStudio({
 
       {/* Locked State Container */}
       {isLocked ? (
-        <div className="card p-8 sm:p-12 text-center relative overflow-hidden border-dashed border-2 border-[var(--border-card)]">
-          <div className="w-14 h-14 rounded-2xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center mx-auto mb-3.5 text-amber-500">
-            <Lock className="w-7 h-7" />
+        <div className="card overflow-hidden">
+          <div className="grid grid-cols-1 md:grid-cols-2 items-stretch">
+            <div className="lung-viewer relative h-[300px] md:h-[360px] rounded-none md:rounded-r-none border-0">
+              <LungViewer3D className="absolute inset-0" mode="anatomy" showHint={false} labels={false} />
+              <div className="pointer-events-none absolute left-3 top-3 inline-flex items-center gap-1.5 rounded-full border border-white/10 bg-black/40 px-2.5 py-1 font-mono text-[10px] text-emerald-200 backdrop-blur">
+                <Box className="w-3 h-3" />
+                {t("lung3d_locked_preview")}
+              </div>
+            </div>
+            <div className="flex flex-col items-start justify-center p-6 sm:p-8">
+              <div className="w-11 h-11 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center mb-3 text-amber-500">
+                <Lock className="w-5 h-5" />
+              </div>
+              <h3 className="font-display text-base sm:text-lg font-bold text-[var(--text-heading)] mb-1.5">
+                {t("lock_diag_title")}
+              </h3>
+              <p className="text-xs text-[var(--text-muted)] max-w-md mb-5 leading-relaxed">
+                {t("lock_diag_desc")}
+              </p>
+              {onScrollToTraining && (
+                <button onClick={onScrollToTraining} className="btn-primary inline-flex items-center gap-2">
+                  <ArrowUp className="w-4 h-4" />
+                  <span>{t("lock_diag_btn")}</span>
+                </button>
+              )}
+            </div>
           </div>
-          <h3 className="font-display text-base sm:text-lg font-bold text-[var(--text-heading)] mb-1.5">
-            {t("lock_diag_title")}
-          </h3>
-          <p className="text-xs text-[var(--text-muted)] max-w-lg mx-auto mb-5 leading-relaxed">
-            {t("lock_diag_desc")}
-          </p>
-          {onScrollToTraining && (
-            <button
-              onClick={onScrollToTraining}
-              className="btn-primary inline-flex items-center gap-2 mx-auto"
-            >
-              <ArrowUp className="w-4 h-4" />
-              <span>{t("lock_diag_btn")}</span>
-            </button>
-          )}
         </div>
       ) : (
         <>
@@ -274,89 +291,143 @@ export default function DiagnosticStudio({
             </div>
           </div>
 
-          {/* Equal 3-Column Diagnostic Grid */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-3.5 sm:gap-4 items-stretch">
-            {/* Original X-Ray */}
-            <div className="card p-3.5 sm:p-4 flex flex-col justify-between">
-              <div>
-                <div className="metric-label mb-2">{t("sec3_dual_pane_orig")}</div>
-                <div className="xray-frame aspect-square max-w-[280px] mx-auto w-full flex items-center justify-center">
-                  <canvas ref={rawRef} className="w-full h-full object-contain" />
+          {/* 3D comparison workspace + evidence column */}
+          <div className="grid grid-cols-1 xl:grid-cols-12 gap-3.5 sm:gap-4 items-stretch">
+            <div className="xl:col-span-7 card p-3 sm:p-4 flex flex-col gap-3">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <div className="flex items-center gap-2">
+                  <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-emerald-500/10 text-emerald-500 border border-emerald-500/20">
+                    <Box className="w-3.5 h-3.5" />
+                  </span>
+                  <span className="font-display text-sm font-bold text-[var(--text-heading)]">{t("lung3d_title")}</span>
+                </div>
+                <div className="flex items-center gap-1 rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-card-inner)] p-1">
+                  <button
+                    type="button"
+                    onClick={() => setViewMode("anatomy")}
+                    disabled={false}
+                    className={`px-3 py-1 rounded-md text-[11px] font-semibold transition-all disabled:opacity-40 ${
+                      viewMode === "anatomy"
+                        ? "bg-emerald-500 text-white shadow"
+                        : "text-[var(--text-muted)] hover:text-[var(--text-heading)]"
+                    }`}
+                  >
+                    {t("lung3d_mode_anatomy")}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setViewMode("scan")}
+                    disabled={false}
+                    className={`px-3 py-1 rounded-md text-[11px] font-semibold transition-all disabled:opacity-40 ${
+                      viewMode === "scan"
+                        ? "bg-emerald-500 text-white shadow"
+                        : "text-[var(--text-muted)] hover:text-[var(--text-heading)]"
+                    }`}
+                  >
+                    {t("lung3d_mode_scan")}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setViewMode("gradcam")}
+                    disabled={!heatAvailable}
+                    className={`px-3 py-1 rounded-md text-[11px] font-semibold transition-all disabled:opacity-40 ${
+                      viewMode === "gradcam"
+                        ? "bg-emerald-500 text-white shadow"
+                        : "text-[var(--text-muted)] hover:text-[var(--text-heading)]"
+                    }`}
+                  >
+                    {t("lung3d_mode_gradcam")}
+                  </button>
                 </div>
               </div>
-              <div className="text-[10px] sm:text-[11px] text-[var(--text-muted)] mt-3 py-2 text-center rounded-lg bg-[var(--bg-card-inner)] border border-[var(--border-subtle)]">
-                {t("sec3_ground_truth")}:{" "}
-                <span className="text-[var(--text-heading)] font-semibold">
-                  {diagnosis.true_class >= 0 && diagnosis.true_class < classLabels.length
-                    ? classLabels[diagnosis.true_class]
-                    : diagnosis.true_name}
-                </span>
+              <div className="lung-viewer relative h-[400px] sm:h-[520px]">
+                <LungViewer3D
+                  className="absolute inset-0"
+                  rawImage={diagnosis.raw_image}
+                  heatmap={heatAvailable ? diagnosis.heatmap : null}
+                  mode={viewMode}
+                  opacity={opacity}
+                  colormap={colormap}
+                />
               </div>
-            </div>
-
-            {/* Grad-CAM Overlay */}
-            <div className="card p-3.5 sm:p-4 flex flex-col justify-between">
-              <div>
-                <div className="metric-label mb-2">{t("sec3_dual_pane_xai")}</div>
-                {diagnosis.heatmap_available === false || !diagnosis.heatmap ? (
-                  <div className="xray-frame aspect-square max-w-[280px] mx-auto w-full flex flex-col items-center justify-center p-4 text-center bg-slate-900/40 rounded-xl border border-dashed border-slate-700">
-                    <div className="text-amber-400 text-xs font-semibold mb-1">{t("sec3_xai_unavailable")}</div>
-                    <div className="text-[10px] text-[var(--text-muted)]">
-                      {diagnosis.heatmap_error || t("sec3_xai_unavailable_desc")}
-                    </div>
-                  </div>
-                ) : (
-                  <div className="xray-frame aspect-square max-w-[280px] mx-auto w-full flex items-center justify-center">
-                    <canvas ref={xaiRef} className="w-full h-full object-contain" />
-                  </div>
-                )}
-              </div>
-              {diagnosis.heatmap_available !== false && diagnosis.heatmap && (
-                <div className="mt-3 space-y-2 p-2 rounded-lg bg-[var(--bg-card-inner)] border border-[var(--border-subtle)]">
-                  <div className="flex items-center justify-between text-[10px] sm:text-[11px]">
-                    <span className="text-[var(--text-muted)]">{t("sec3_xai_opacity")}</span>
-                    <span className="font-mono text-[var(--text-heading)] font-bold">{Math.round(opacity * 100)}%</span>
-                  </div>
-                  <input type="range" min="0.1" max="1.0" step="0.05" value={opacity} onChange={(e) => setOpacity(parseFloat(e.target.value))} className="w-full accent-accent-500 h-1.5" />
-                  <div className="flex items-center justify-between text-[10px] sm:text-[11px]">
-                    <span className="text-[var(--text-muted)]">{t("sec3_xai_colormap")}</span>
-                    <select value={colormap} onChange={(e) => setColormap(e.target.value)} className="bg-[var(--bg-app)] text-[var(--text-heading)] text-[10px] sm:text-[11px] font-semibold rounded-md px-2 py-0.5 border border-[var(--border-card)]">
+              {heatAvailable && viewMode === "gradcam" && (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-card-inner)] p-3">
+                  <label className="flex items-center gap-3 text-[11px] text-[var(--text-muted)]">
+                    <span className="shrink-0">{t("sec3_xai_opacity")}</span>
+                    <input type="range" min="0.1" max="1.0" step="0.05" value={opacity} onChange={(e) => setOpacity(parseFloat(e.target.value))} className="w-full accent-emerald-500 h-1.5" />
+                    <span className="font-mono font-bold text-[var(--text-heading)] w-9 text-right">{Math.round(opacity * 100)}%</span>
+                  </label>
+                  <label className="flex items-center justify-between gap-3 text-[11px] text-[var(--text-muted)]">
+                    <span>{t("sec3_xai_colormap")}</span>
+                    <select value={colormap} onChange={(e) => setColormap(e.target.value)} className="bg-[var(--bg-app)] text-[var(--text-heading)] text-[11px] font-semibold rounded-md px-2 py-1 border border-[var(--border-card)]">
                       <option value="Hot">Hot</option>
                       <option value="Jet">Jet</option>
                     </select>
-                  </div>
+                  </label>
                 </div>
               )}
+              <p className="text-[10px] leading-relaxed text-[var(--text-muted)]">{t("lung3d_note")}</p>
             </div>
 
-            {/* Probabilities & Clinical Findings */}
-            <div className="card p-3.5 sm:p-4 flex flex-col justify-between">
-              <div>
-                <div className="flex items-center gap-1.5 metric-label mb-2.5 sm:mb-3">
+            <div className="xl:col-span-5 flex flex-col gap-3.5 sm:gap-4">
+              <div className="card p-3.5 sm:p-4">
+                <div className="flex items-center gap-1.5 metric-label mb-3">
                   <Activity className="w-3.5 h-3.5 text-accent-500" />
                   <span>{t("sec3_results_header")}</span>
                 </div>
-                <div className="space-y-2.5">
+                <div className="space-y-3">
                   {classLabels.map((lbl, idx) => {
                     const rawVal = diagnosis.probabilities[idx] ?? 0;
                     const pct = Math.min(100, Math.max(0, Math.round(rawVal > 1.0 ? rawVal : rawVal * 100)));
                     return (
                       <div key={idx}>
-                        <div className="flex justify-between text-[11px] sm:text-xs mb-1">
+                        <div className="flex justify-between text-xs mb-1">
                           <span className="text-[var(--text-main)]">{lbl}</span>
                           <span className="font-mono font-bold text-[var(--text-heading)]">{pct}%</span>
                         </div>
-                        <div className="w-full h-1.5 rounded-full bg-slate-200 dark:bg-navy-800 overflow-hidden">
-                          <div className={`h-full rounded-full ${CLASS_COLORS_BAR[idx]} transition-all duration-300`} style={{ width: `${pct}%` }} />
+                        <div className="w-full h-2 rounded-full bg-slate-200 dark:bg-navy-800 overflow-hidden">
+                          <div className={`h-full rounded-full ${CLASS_COLORS_BAR[idx]} transition-all duration-500`} style={{ width: `${pct}%` }} />
                         </div>
                       </div>
                     );
                   })}
                 </div>
+                <div className="mt-4 pt-3 border-t border-[var(--border-subtle)] text-[11px] text-[var(--text-muted)] leading-relaxed">
+                  {diagnosis.findings}
+                </div>
+                <div className="mt-3 text-[11px] text-[var(--text-muted)] py-2 text-center rounded-lg bg-[var(--bg-card-inner)] border border-[var(--border-subtle)]">
+                  {t("sec3_ground_truth")}:{" "}
+                  <span className="text-[var(--text-heading)] font-semibold">
+                    {diagnosis.true_class >= 0 && diagnosis.true_class < classLabels.length
+                      ? classLabels[diagnosis.true_class]
+                      : diagnosis.true_name}
+                  </span>
+                </div>
               </div>
-              
-              <div className="mt-3.5 pt-3 border-t border-[var(--border-subtle)] text-[10px] sm:text-[11px] text-[var(--text-muted)] leading-relaxed">
-                {diagnosis.findings}
+
+              <div className="card p-3.5 sm:p-4">
+                <div className="metric-label mb-3">{t("lung3d_2d_title")}</div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <div className="text-[10px] font-semibold text-[var(--text-muted)] mb-1.5">{t("sec3_dual_pane_orig")}</div>
+                    <div className="xray-frame aspect-square w-full flex items-center justify-center">
+                      <canvas ref={rawRef} className="w-full h-full object-contain" />
+                    </div>
+                  </div>
+                  <div>
+                    <div className="text-[10px] font-semibold text-[var(--text-muted)] mb-1.5">{t("sec3_dual_pane_xai")}</div>
+                    {heatAvailable ? (
+                      <div className="xray-frame aspect-square w-full flex items-center justify-center">
+                        <canvas ref={xaiRef} className="w-full h-full object-contain" />
+                      </div>
+                    ) : (
+                      <div className="aspect-square w-full flex flex-col items-center justify-center p-3 text-center bg-slate-900/40 rounded-xl border border-dashed border-slate-700">
+                        <div className="text-amber-400 text-[11px] font-semibold mb-1">{t("sec3_xai_unavailable")}</div>
+                        <div className="text-[10px] text-[var(--text-muted)]">{diagnosis.heatmap_error || t("sec3_xai_unavailable_desc")}</div>
+                      </div>
+                    )}
+                  </div>
+                </div>
               </div>
             </div>
           </div>

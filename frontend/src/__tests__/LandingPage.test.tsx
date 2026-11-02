@@ -43,9 +43,10 @@ describe("PresentationLandingPage Component", () => {
   it("renders interactive results showcase tabs and switches between tabs", () => {
     renderLandingPage();
 
-    // Default Tab: Grad-CAM
-    expect(screen.getByText(/Bilateral Alveolar Consolidation/i)).toBeInTheDocument();
-    expect(screen.getByText("Confidence:")).toBeInTheDocument();
+    // Default Tab: 3D lung workspace (anatomical model, no fabricated patient sample)
+    expect(screen.getByText("From 2D saliency to a 3D lung view")).toBeInTheDocument();
+    expect(screen.getAllByTestId("lung-viewer-3d").length).toBeGreaterThan(0);
+    expect(screen.queryByText(/P-8821/)).not.toBeInTheDocument();
 
     // Switch to RAG Tab
     const ragTabBtn = screen.getByRole("button", { name: "Federated RAG Retrieval" });
@@ -69,15 +70,14 @@ describe("PresentationLandingPage Component", () => {
     expect(screen.getByText("Hands-Free Synthesized Clinical Dictation")).toBeInTheDocument();
   });
 
-  it("updates opacity slider in Grad-CAM tab", () => {
+  it("explains the 3D saliency pipeline with four steps and no static diagnosis", () => {
     renderLandingPage();
 
-    const slider = screen.getByRole("slider");
-    expect(slider).toBeInTheDocument();
-    expect(screen.getByText("65%")).toBeInTheDocument();
-
-    fireEvent.change(slider, { target: { value: "0.85" } });
-    expect(screen.getByText("85%")).toBeInTheDocument();
+    expect(screen.getByText("Frozen medical foundation encoder")).toBeInTheDocument();
+    expect(screen.getByText("Grad-CAM on layer L-3 attention")).toBeInTheDocument();
+    expect(screen.getByText("Projection onto the lung model")).toBeInTheDocument();
+    expect(screen.getByText("Clinician review")).toBeInTheDocument();
+    expect(screen.queryByRole("slider")).not.toBeInTheDocument();
   });
 
   it("renders 4 security governance pillars and Strategy E benchmark matrix", () => {
