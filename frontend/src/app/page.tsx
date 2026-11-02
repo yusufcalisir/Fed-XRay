@@ -18,10 +18,10 @@ import {
   Database,
   Cpu,
   Layers,
-  Sparkles,
-  Sliders,
   CheckCircle2,
   AlertTriangle,
+  Building2,
+  Eye,
 } from "lucide-react";
 
 export default function PresentationLandingPage() {
@@ -69,60 +69,59 @@ export default function PresentationLandingPage() {
         onClose={closeLaunchModal}
       />
 
-      <main className="flex-1 max-w-[1360px] w-full mx-auto px-3 sm:px-6 py-6 sm:py-10 space-y-12 sm:space-y-16">
+      <main className="flex-1 w-full">
 
-        {/* 1. Hero Section */}
-        <section className="relative pt-2 sm:pt-6 pb-6">
-          <div className="absolute inset-x-0 -top-10 h-[620px] -z-10 bg-grid pointer-events-none" />
-          <div className="grid grid-cols-1 lg:grid-cols-[1.02fr_0.98fr] gap-8 lg:gap-10 items-center">
-            <div className="max-w-2xl">
-              {/* Clinical Infrastructure Badge */}
-              <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-600 dark:text-emerald-400 text-xs font-semibold mb-4 sm:mb-6 shadow-sm">
-                <ShieldCheck className="w-4 h-4 shrink-0" />
+        {/* ================================================================
+            SECTION 1: HERO
+            Clean, product-focused. Problem + Solution in one view.
+            ================================================================ */}
+        <section className="max-w-[1200px] mx-auto px-4 sm:px-6 pt-10 sm:pt-16 pb-12 sm:pb-20">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-10 lg:gap-16 items-center">
+            {/* Left: Value Proposition */}
+            <div className="max-w-xl">
+              <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full border border-emerald-500/25 text-emerald-600 dark:text-emerald-400 text-[11px] font-semibold mb-5 bg-emerald-500/5">
+                <ShieldCheck className="w-3.5 h-3.5" />
                 <span>{t("landing_hero_badge")}</span>
               </div>
 
-              {/* Main Institutional Headline */}
-              <h1 className="font-display text-3xl sm:text-4xl lg:text-[44px] xl:text-5xl font-extrabold tracking-tight text-[var(--text-heading)] leading-[1.12] mb-4 sm:mb-6">
+              <h1 className="font-display text-3xl sm:text-4xl lg:text-[42px] font-extrabold tracking-tight text-[var(--text-heading)] leading-[1.15] mb-5">
                 {t("landing_hero_title")}
               </h1>
 
-              {/* Subtitle Description */}
-              <p className="text-sm sm:text-base lg:text-lg text-[var(--text-muted)] leading-relaxed max-w-xl mb-6 sm:mb-8">
+              <p className="text-[15px] sm:text-base text-[var(--text-muted)] leading-relaxed mb-8">
                 {t("landing_hero_desc")}
               </p>
 
-              {/* Primary Action Buttons */}
-              <div className="flex flex-wrap items-center gap-3 sm:gap-4">
+              <div className="flex flex-wrap items-center gap-3">
                 <button
                   type="button"
                   onClick={openLaunchModal}
-                  className="btn-primary text-xs sm:text-sm px-5 sm:px-6 py-3 rounded-xl shadow-lg hover:shadow-emerald-500/20"
+                  className="btn-primary text-sm px-6 py-3 rounded-xl"
                 >
                   <Activity className="w-4 h-4" />
                   <span>{t("landing_cta_launch")}</span>
-                  <ArrowRight className="w-4 h-4 ml-1" />
+                  <ArrowRight className="w-4 h-4" />
                 </button>
 
                 <button
                   type="button"
                   onClick={() => scrollToSection("results")}
-                  className="inline-flex items-center gap-2 px-5 py-3 rounded-xl border border-[var(--border-card)] bg-[var(--bg-card)] hover:bg-[var(--bg-card-inner)] text-xs sm:text-sm font-semibold text-[var(--text-heading)] transition-all shadow-sm"
+                  className="inline-flex items-center gap-2 px-5 py-3 rounded-xl border border-[var(--border-card)] text-sm font-semibold text-[var(--text-heading)] hover:bg-[var(--bg-card-inner)] transition-colors"
                 >
                   <span>{t("landing_results_title")}</span>
-                  <ArrowRight className="w-4 h-4 text-slate-400" />
+                  <ArrowRight className="w-4 h-4 text-[var(--text-muted)]" />
                 </button>
               </div>
 
-              {/* Live Federation Node Connectivity Status */}
               <div className="mt-4 flex items-center gap-2">
-                <span className={`w-2 h-2 rounded-full ${backendStatus === "online" ? "bg-emerald-500 animate-pulse" : "bg-slate-400"}`} />
+                <span className={`w-2 h-2 rounded-full ${backendStatus === "online" ? "bg-emerald-500" : "bg-zinc-400"}`} />
                 <span className="font-mono text-[11px] text-[var(--text-muted)]">
                   {backendStatus === "online" ? t("landing_backend_online") : t("landing_backend_standby")}
                 </span>
               </div>
             </div>
 
+            {/* Right: Consortium Topology (the interactive network map) */}
             <div className="relative">
               <FederatedConsortiumTopology
                 onLaunchDemo={openLaunchModal}
@@ -131,218 +130,150 @@ export default function PresentationLandingPage() {
             </div>
           </div>
 
-          {/* 5 Verifiable Institutional KPI Metrics */}
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2.5 sm:gap-4 mt-8 sm:mt-12 pt-6 sm:pt-8 border-t border-[var(--border-subtle)]">
-            <div className="card-inner p-3 sm:p-4">
-              <div className="flex items-center gap-2 text-emerald-500 mb-1">
-                <Server className="w-4 h-4 shrink-0" />
-                <span className="font-display text-lg sm:text-2xl font-extrabold text-[var(--text-heading)]">4</span>
+          {/* Key Metrics Strip */}
+          <div className="grid grid-cols-2 sm:grid-cols-5 gap-px mt-12 sm:mt-16 border border-[var(--border-card)] rounded-2xl overflow-hidden bg-[var(--border-card)]">
+            {[
+              { value: "4", label: t("landing_metric_nodes"), sub: t("landing_metric_nodes_sub"), icon: Server },
+              { value: "0 B", label: t("landing_metric_leakage"), sub: t("landing_metric_leakage_sub"), icon: Lock },
+              { value: "128-Bit", label: t("landing_metric_crypto"), sub: t("landing_metric_crypto_sub"), icon: Cpu },
+              { value: "98.4%", label: t("landing_metric_auc"), sub: t("landing_metric_auc_sub"), icon: Activity },
+              { value: "\u03B5 \u2264 2.0", label: t("landing_metric_dp"), sub: t("landing_metric_dp_sub"), icon: ShieldCheck },
+            ].map((m, i) => (
+              <div key={i} className="bg-[var(--bg-app)] p-4 sm:p-5 text-center sm:text-left">
+                <div className="font-display text-xl sm:text-2xl font-extrabold text-[var(--text-heading)] mb-0.5">{m.value}</div>
+                <div className="text-[11px] font-semibold text-[var(--text-heading)]">{m.label}</div>
+                <div className="text-[10px] text-[var(--text-muted)]">{m.sub}</div>
               </div>
-              <div className="text-[11px] sm:text-xs font-semibold text-[var(--text-heading)]">{t("landing_metric_nodes")}</div>
-              <div className="text-[10px] sm:text-[11px] text-[var(--text-muted)] mt-0.5">{t("landing_metric_nodes_sub")}</div>
+            ))}
+          </div>
+        </section>
+
+        {/* ================================================================
+            SECTION 2: HOW IT WORKS
+            3-step horizontal pipeline. Simple, clean, no cards.
+            ================================================================ */}
+        <section className="border-y border-[var(--border-card)] bg-[var(--bg-card-inner)]">
+          <div className="max-w-[1200px] mx-auto px-4 sm:px-6 py-12 sm:py-16">
+            <div className="text-center mb-10">
+              <div className="text-[11px] font-bold uppercase tracking-widest text-emerald-600 dark:text-emerald-400 mb-2">
+                {t("landing_how_badge")}
+              </div>
+              <h2 className="font-display text-2xl sm:text-3xl font-bold text-[var(--text-heading)]">
+                {t("landing_how_title")}
+              </h2>
             </div>
 
-            <div className="card-inner p-3 sm:p-4">
-              <div className="flex items-center gap-2 text-emerald-500 mb-1">
-                <Lock className="w-4 h-4 shrink-0" />
-                <span className="font-display text-lg sm:text-2xl font-extrabold text-[var(--text-heading)]">0 B</span>
-              </div>
-              <div className="text-[11px] sm:text-xs font-semibold text-[var(--text-heading)]">{t("landing_metric_leakage")}</div>
-              <div className="text-[10px] sm:text-[11px] text-[var(--text-muted)] mt-0.5">{t("landing_metric_leakage_sub")}</div>
-            </div>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-8 md:gap-4 relative">
+              {/* Connector lines (desktop only) */}
+              <div className="hidden md:block absolute top-8 left-[33.3%] right-[33.3%] h-px bg-[var(--border-card)]" />
 
-            <div className="card-inner p-3 sm:p-4">
-              <div className="flex items-center gap-2 text-teal-500 mb-1">
-                <Cpu className="w-4 h-4 shrink-0" />
-                <span className="font-display text-lg sm:text-2xl font-extrabold text-[var(--text-heading)]">128-Bit</span>
-              </div>
-              <div className="text-[11px] sm:text-xs font-semibold text-[var(--text-heading)]">{t("landing_metric_crypto")}</div>
-              <div className="text-[10px] sm:text-[11px] text-[var(--text-muted)] mt-0.5">{t("landing_metric_crypto_sub")}</div>
-            </div>
-
-            <div className="card-inner p-3 sm:p-4">
-              <div className="flex items-center gap-2 text-emerald-500 mb-1">
-                <Activity className="w-4 h-4 shrink-0" />
-                <span className="font-display text-lg sm:text-2xl font-extrabold text-[var(--text-heading)]">98.4%</span>
-              </div>
-              <div className="text-[11px] sm:text-xs font-semibold text-[var(--text-heading)]">{t("landing_metric_auc")}</div>
-              <div className="text-[10px] sm:text-[11px] text-[var(--text-muted)] mt-0.5">{t("landing_metric_auc_sub")}</div>
-            </div>
-
-            <div className="col-span-2 sm:col-span-1 card-inner p-3 sm:p-4">
-              <div className="flex items-center gap-2 text-blue-500 mb-1">
-                <ShieldCheck className="w-4 h-4 shrink-0" />
-                <span className="font-display text-lg sm:text-2xl font-extrabold text-[var(--text-heading)]">ε ≤ 2.0</span>
-              </div>
-              <div className="text-[11px] sm:text-xs font-semibold text-[var(--text-heading)]">{t("landing_metric_dp")}</div>
-              <div className="text-[10px] sm:text-[11px] text-[var(--text-muted)] mt-0.5">{t("landing_metric_dp_sub")}</div>
+              {[
+                { num: "01", icon: Building2, title: t("landing_how_s1_title"), desc: t("landing_how_s1_desc"), color: "emerald" },
+                { num: "02", icon: Lock, title: t("landing_how_s2_title"), desc: t("landing_how_s2_desc"), color: "blue" },
+                { num: "03", icon: Eye, title: t("landing_how_s3_title"), desc: t("landing_how_s3_desc"), color: "emerald" },
+              ].map((step, i) => (
+                <div key={i} className="text-center relative">
+                  <div className={`w-16 h-16 mx-auto rounded-2xl flex items-center justify-center mb-4 ${
+                    step.color === "emerald"
+                      ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20"
+                      : "bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20"
+                  }`}>
+                    <step.icon className="w-6 h-6" />
+                  </div>
+                  <div className="font-mono text-[10px] font-bold text-[var(--text-muted)] mb-1">STEP {step.num}</div>
+                  <h3 className="font-display text-base font-bold text-[var(--text-heading)] mb-2">{step.title}</h3>
+                  <p className="text-sm text-[var(--text-muted)] leading-relaxed max-w-xs mx-auto">{step.desc}</p>
+                </div>
+              ))}
             </div>
           </div>
         </section>
 
-        {/* 2. Interactive Clinical Results Showcase */}
-        <section id="results" className="scroll-mt-20">
-          <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-3 mb-4">
+        {/* ================================================================
+            SECTION 3: PLATFORM CAPABILITIES (Tab-based Showcase)
+            Show what the platform actually does with real UI previews.
+            ================================================================ */}
+        <section id="results" className="scroll-mt-20 max-w-[1200px] mx-auto px-4 sm:px-6 py-12 sm:py-16">
+          <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-3 mb-6">
             <div>
-              <div className="flex flex-wrap items-center gap-2 mb-1">
-                <span className="text-xs font-bold uppercase tracking-wider text-emerald-600 dark:text-emerald-400">
-                  {t("landing_sec_results_badge")}
-                </span>
-                <span className="px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20">
-                  {t("landing_showcase_spec_badge")}
-                </span>
+              <div className="text-[11px] font-bold uppercase tracking-widest text-emerald-600 dark:text-emerald-400 mb-1">
+                {t("landing_sec_results_badge")}
               </div>
-              <h2 className="font-display text-xl sm:text-2xl lg:text-3xl font-bold text-[var(--text-heading)]">
+              <h2 className="font-display text-2xl sm:text-3xl font-bold text-[var(--text-heading)]">
                 {t("landing_results_title")}
               </h2>
-              <p className="text-xs sm:text-sm text-[var(--text-muted)] mt-1 max-w-2xl">
+              <p className="text-sm text-[var(--text-muted)] mt-1 max-w-xl">
                 {t("landing_results_subtitle")}
               </p>
             </div>
 
-            {/* Interactive Tab Switcher */}
-            <div className="flex items-center p-1 rounded-xl bg-[var(--bg-card-inner)] border border-[var(--border-card)] shrink-0 self-start sm:self-auto overflow-x-auto">
-              <button
-                onClick={() => setActiveTab("xai")}
-                className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all whitespace-nowrap ${
-                  activeTab === "xai"
-                    ? "bg-slate-900 text-white dark:bg-white dark:text-slate-900 shadow-sm"
-                    : "text-[var(--text-muted)] hover:text-[var(--text-heading)]"
-                }`}
-              >
-                {t("landing_tab_xai")}
-              </button>
-              <button
-                onClick={() => setActiveTab("rag")}
-                className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all whitespace-nowrap ${
-                  activeTab === "rag"
-                    ? "bg-slate-900 text-white dark:bg-white dark:text-slate-900 shadow-sm"
-                    : "text-[var(--text-muted)] hover:text-[var(--text-heading)]"
-                }`}
-              >
-                {t("landing_tab_rag")}
-              </button>
-              <button
-                onClick={() => setActiveTab("convergence")}
-                className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all whitespace-nowrap ${
-                  activeTab === "convergence"
-                    ? "bg-slate-900 text-white dark:bg-white dark:text-slate-900 shadow-sm"
-                    : "text-[var(--text-muted)] hover:text-[var(--text-heading)]"
-                }`}
-              >
-                {t("landing_tab_convergence")}
-              </button>
-              <button
-                onClick={() => setActiveTab("report")}
-                className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all whitespace-nowrap ${
-                  activeTab === "report"
-                    ? "bg-slate-900 text-white dark:bg-white dark:text-slate-900 shadow-sm"
-                    : "text-[var(--text-muted)] hover:text-[var(--text-heading)]"
-                }`}
-              >
-                {t("landing_tab_report")}
-              </button>
+            {/* Tab Switcher */}
+            <div className="flex items-center gap-1 p-1 rounded-xl bg-[var(--bg-card-inner)] border border-[var(--border-card)] shrink-0 self-start sm:self-auto overflow-x-auto">
+              {(["xai", "rag", "convergence", "report"] as const).map((tab) => (
+                <button
+                  key={tab}
+                  onClick={() => setActiveTab(tab)}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all whitespace-nowrap ${
+                    activeTab === tab
+                      ? "bg-[var(--text-heading)] text-[var(--bg-app)] shadow-sm"
+                      : "text-[var(--text-muted)] hover:text-[var(--text-heading)]"
+                  }`}
+                >
+                  {tab === "xai" && t("landing_tab_xai")}
+                  {tab === "rag" && t("landing_tab_rag")}
+                  {tab === "convergence" && t("landing_tab_convergence")}
+                  {tab === "report" && t("landing_tab_report")}
+                </button>
+              ))}
             </div>
           </div>
 
-          {/* Protocol Specification Banner Card */}
-          <div className="card-inner p-3.5 sm:p-4 mb-6 border-l-4 border-l-blue-500 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-            <div className="space-y-0.5">
-              <div className="text-xs font-bold text-[var(--text-heading)] flex items-center gap-1.5">
-                <Sparkles className="w-3.5 h-3.5 text-blue-500" />
-                <span>{t("landing_showcase_spec_badge")}</span>
-              </div>
-              <p className="text-xs text-[var(--text-muted)] leading-relaxed max-w-3xl">
-                {t("landing_showcase_spec_desc")}
-              </p>
-            </div>
-            <button
-              onClick={openLaunchModal}
-              className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-lg bg-blue-500 text-white text-xs font-semibold hover:bg-blue-600 transition-colors shrink-0 shadow-sm"
-            >
-              <span>{t("landing_showcase_spec_btn")}</span>
-              <ArrowRight className="w-3.5 h-3.5" />
-            </button>
-          </div>
-
-          {/* Tab 1: 3D lung saliency workspace (anatomical model, no patient sample) */}
+          {/* Tab 1: 3D Explainable Diagnostics */}
           {activeTab === "xai" && (
-            <div className="card p-4 sm:p-6 border border-[var(--border-card)] bg-[var(--bg-card)]">
+            <div className="card p-4 sm:p-6">
               <div className="grid grid-cols-1 lg:grid-cols-5 gap-5 items-stretch">
-                <div className="relative lg:col-span-3 h-[380px] sm:h-[460px] rounded-2xl overflow-hidden border border-[var(--border-card)] bg-[var(--bg-card-inner)] shadow-sm">
+                <div className="relative lg:col-span-3 h-[380px] sm:h-[460px] rounded-xl overflow-hidden border border-[var(--border-card)] bg-[var(--bg-card-inner)]">
                   <LungViewer3D className="absolute inset-0" mode="anatomy" labels={false} />
-                  <div className="pointer-events-none absolute left-3 top-3 inline-flex items-center gap-1.5 rounded-full border border-[var(--border-card)] bg-[var(--bg-card)]/80 px-2.5 py-1 font-mono text-[10px] text-[var(--text-heading)] backdrop-blur shadow-sm">
-                    <Sparkles className="w-3 h-3 text-emerald-500" />
+                  <div className="pointer-events-none absolute left-3 top-3 inline-flex items-center gap-1.5 rounded-lg border border-[var(--border-card)] bg-[var(--bg-card)]/90 px-2.5 py-1 font-mono text-[10px] text-[var(--text-muted)] backdrop-blur">
+                    <Eye className="w-3 h-3 text-emerald-500" />
                     <span>{t("lung3d_locked_preview")}</span>
                   </div>
                 </div>
                 <div className="lg:col-span-2 flex flex-col justify-between gap-4">
                   <div>
-                    <h3 className="font-display text-lg sm:text-xl font-bold text-[var(--text-heading)]">
+                    <h3 className="font-display text-lg font-bold text-[var(--text-heading)]">
                       {t("landing_xai3d_title")}
                     </h3>
-                    <p className="mt-1 text-xs sm:text-sm text-[var(--text-muted)] leading-relaxed">
+                    <p className="mt-1 text-sm text-[var(--text-muted)] leading-relaxed">
                       {t("landing_xai3d_desc")}
                     </p>
                   </div>
 
-                  <ol className="space-y-2.5">
-                    <li className="flex gap-3 p-2.5 rounded-xl bg-[var(--bg-card-inner)] border border-[var(--border-subtle)]">
-                      <span className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-emerald-500/10 text-emerald-500 border border-emerald-500/20">
-                        <Database className="w-3.5 h-3.5" />
-                      </span>
-                      <div className="flex-1">
-                        <div className="flex items-center justify-between">
-                          <span className="text-xs font-bold text-[var(--text-heading)]">{t("landing_xai3d_s1_t")}</span>
-                          <span className="font-mono text-[9px] font-bold px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">ViT-L/16</span>
+                  <ol className="space-y-2">
+                    {[
+                      { icon: Database, title: t("landing_xai3d_s1_t"), desc: t("landing_xai3d_s1_d"), tag: "ViT-L/16" },
+                      { icon: Activity, title: t("landing_xai3d_s2_t"), desc: t("landing_xai3d_s2_d"), tag: "MHSA L-3" },
+                      { icon: Layers, title: t("landing_xai3d_s3_t"), desc: t("landing_xai3d_s3_d"), tag: "Spatial Map" },
+                      { icon: CheckCircle2, title: t("landing_xai3d_s4_t"), desc: t("landing_xai3d_s4_d"), tag: "CDSS Audit" },
+                    ].map((step, i) => (
+                      <li key={i} className="flex gap-3 p-2.5 rounded-xl bg-[var(--bg-card-inner)] border border-[var(--border-subtle)]">
+                        <span className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-emerald-500/10 text-emerald-500 border border-emerald-500/20">
+                          <step.icon className="w-3.5 h-3.5" />
+                        </span>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center justify-between gap-2">
+                            <span className="text-xs font-bold text-[var(--text-heading)] truncate">{step.title}</span>
+                            <span className="font-mono text-[9px] font-bold px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 shrink-0">{step.tag}</span>
+                          </div>
+                          <span className="block text-[11px] text-[var(--text-muted)] leading-relaxed mt-0.5">{step.desc}</span>
                         </div>
-                        <span className="block text-[11px] text-[var(--text-muted)] leading-relaxed mt-0.5">{t("landing_xai3d_s1_d")}</span>
-                      </div>
-                    </li>
-
-                    <li className="flex gap-3 p-2.5 rounded-xl bg-[var(--bg-card-inner)] border border-[var(--border-subtle)]">
-                      <span className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-emerald-500/10 text-emerald-500 border border-emerald-500/20">
-                        <Activity className="w-3.5 h-3.5" />
-                      </span>
-                      <div className="flex-1">
-                        <div className="flex items-center justify-between">
-                          <span className="text-xs font-bold text-[var(--text-heading)]">{t("landing_xai3d_s2_t")}</span>
-                          <span className="font-mono text-[9px] font-bold px-1.5 py-0.5 rounded bg-blue-500/10 text-blue-600 dark:text-blue-400">MHSA L-3</span>
-                        </div>
-                        <span className="block text-[11px] text-[var(--text-muted)] leading-relaxed mt-0.5">{t("landing_xai3d_s2_d")}</span>
-                      </div>
-                    </li>
-
-                    <li className="flex gap-3 p-2.5 rounded-xl bg-[var(--bg-card-inner)] border border-[var(--border-subtle)]">
-                      <span className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-emerald-500/10 text-emerald-500 border border-emerald-500/20">
-                        <Layers className="w-3.5 h-3.5" />
-                      </span>
-                      <div className="flex-1">
-                        <div className="flex items-center justify-between">
-                          <span className="text-xs font-bold text-[var(--text-heading)]">{t("landing_xai3d_s3_t")}</span>
-                          <span className="font-mono text-[9px] font-bold px-1.5 py-0.5 rounded bg-teal-500/10 text-teal-600 dark:text-teal-400">Spatial Map</span>
-                        </div>
-                        <span className="block text-[11px] text-[var(--text-muted)] leading-relaxed mt-0.5">{t("landing_xai3d_s3_d")}</span>
-                      </div>
-                    </li>
-
-                    <li className="flex gap-3 p-2.5 rounded-xl bg-[var(--bg-card-inner)] border border-[var(--border-subtle)]">
-                      <span className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-emerald-500/10 text-emerald-500 border border-emerald-500/20">
-                        <CheckCircle2 className="w-3.5 h-3.5" />
-                      </span>
-                      <div className="flex-1">
-                        <div className="flex items-center justify-between">
-                          <span className="text-xs font-bold text-[var(--text-heading)]">{t("landing_xai3d_s4_t")}</span>
-                          <span className="font-mono text-[9px] font-bold px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">CDSS Audit</span>
-                        </div>
-                        <span className="block text-[11px] text-[var(--text-muted)] leading-relaxed mt-0.5">{t("landing_xai3d_s4_d")}</span>
-                      </div>
-                    </li>
+                      </li>
+                    ))}
                   </ol>
 
-                  <div className="card-inner p-3 text-[11px] leading-relaxed text-[var(--text-muted)] border-l-4 border-l-blue-500">
+                  <p className="text-[11px] text-[var(--text-muted)] p-3 rounded-lg bg-[var(--bg-card-inner)] border border-[var(--border-subtle)]">
                     {t("landing_xai3d_note")}
-                  </div>
+                  </p>
 
                   <button
                     type="button"
@@ -351,7 +282,7 @@ export default function PresentationLandingPage() {
                   >
                     <Activity className="w-4 h-4" />
                     <span>{t("landing_xai3d_cta")}</span>
-                    <ArrowRight className="w-4 h-4 ml-1" />
+                    <ArrowRight className="w-4 h-4" />
                   </button>
                 </div>
               </div>
@@ -366,18 +297,11 @@ export default function PresentationLandingPage() {
                   <h3 className="font-display text-base font-bold text-[var(--text-heading)]">
                     {t("sec3_rag_title")}
                   </h3>
-                  <p className="text-xs text-[var(--text-muted)]">
-                    {t("sec3_rag_desc")}
-                  </p>
+                  <p className="text-xs text-[var(--text-muted)]">{t("sec3_rag_desc")}</p>
                 </div>
-                <div className="flex items-center gap-2">
-                  <span className="px-2.5 py-1 rounded-md text-[10px] font-mono font-bold bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20">
-                    {t("landing_tab2_spec_badge")}
-                  </span>
-                  <span className="px-2.5 py-1 rounded-md text-[10px] font-mono font-bold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
-                    {t("landing_tab2_badge")}
-                  </span>
-                </div>
+                <span className="px-2.5 py-1 rounded-md text-[10px] font-mono font-bold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
+                  {t("landing_tab2_badge")}
+                </span>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -388,78 +312,44 @@ export default function PresentationLandingPage() {
                       {t("landing_tab2_c1_sim")}
                     </span>
                   </div>
-                  <div className="text-xs font-semibold text-[var(--text-heading)]">
-                    {t("landing_tab2_c1_diag")}
-                  </div>
-                  <p className="text-xs text-[var(--text-muted)] leading-relaxed">
-                    {t("landing_tab2_c1_desc")}
-                  </p>
-                  <div className="text-[10px] font-mono text-slate-500 pt-1 border-t border-[var(--border-subtle)]">
+                  <div className="text-xs font-semibold text-[var(--text-heading)]">{t("landing_tab2_c1_diag")}</div>
+                  <p className="text-xs text-[var(--text-muted)] leading-relaxed">{t("landing_tab2_c1_desc")}</p>
+                  <div className="text-[10px] font-mono text-[var(--text-muted)] pt-1 border-t border-[var(--border-subtle)]">
                     {t("landing_tab2_c1_meta")}
                   </div>
                 </div>
 
-                <div className="card-inner p-4 space-y-2.5 border-l-4 border-l-teal-500">
+                <div className="card-inner p-4 space-y-2.5 border-l-4 border-l-blue-500">
                   <div className="flex items-center justify-between">
-                    <span className="font-mono text-xs font-bold text-teal-600 dark:text-teal-400">REF-ONCO-402</span>
-                    <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-teal-500/10 text-teal-600 dark:text-teal-400">
+                    <span className="font-mono text-xs font-bold text-blue-600 dark:text-blue-400">REF-ONCO-402</span>
+                    <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-blue-500/10 text-blue-600 dark:text-blue-400">
                       {t("landing_tab2_c2_sim")}
                     </span>
                   </div>
-                  <div className="text-xs font-semibold text-[var(--text-heading)]">
-                    {t("landing_tab2_c2_diag")}
-                  </div>
-                  <p className="text-xs text-[var(--text-muted)] leading-relaxed">
-                    {t("landing_tab2_c2_desc")}
-                  </p>
-                  <div className="text-[10px] font-mono text-slate-500 pt-1 border-t border-[var(--border-subtle)]">
+                  <div className="text-xs font-semibold text-[var(--text-heading)]">{t("landing_tab2_c2_diag")}</div>
+                  <p className="text-xs text-[var(--text-muted)] leading-relaxed">{t("landing_tab2_c2_desc")}</p>
+                  <div className="text-[10px] font-mono text-[var(--text-muted)] pt-1 border-t border-[var(--border-subtle)]">
                     {t("landing_tab2_c2_meta")}
                   </div>
                 </div>
               </div>
-
-              {/* Tab 2 Interactive Action Footer */}
-              <div className="card-inner p-3 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 pt-3 border-t border-[var(--border-subtle)]">
-                <div className="text-xs text-[var(--text-muted)] flex items-center gap-1.5">
-                  <Database className="w-3.5 h-3.5 text-teal-500" />
-                  <span>{t("landing_showcase_spec_badge")}</span>
-                </div>
-                <button
-                  onClick={openLaunchModal}
-                  className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-lg bg-teal-500/10 border border-teal-500/20 text-teal-600 dark:text-teal-400 text-xs font-semibold hover:bg-teal-500/20 transition-colors shrink-0"
-                >
-                  <Database className="w-3.5 h-3.5" />
-                  <span>{t("landing_tab_action_cdss")}</span>
-                  <ArrowRight className="w-3.5 h-3.5" />
-                </button>
-              </div>
             </div>
           )}
 
-          {/* Tab 3: Convergence Telemetry */}
+          {/* Tab 3: Training Monitor */}
           {activeTab === "convergence" && (
             <div className="card p-4 sm:p-6 space-y-4">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 border-b border-[var(--border-subtle)]">
                 <div>
-                  <h3 className="font-display text-base font-bold text-[var(--text-heading)]">
-                    {t("landing_tab3_title")}
-                  </h3>
-                  <p className="text-xs text-[var(--text-muted)]">
-                    {t("landing_tab3_desc")}
-                  </p>
+                  <h3 className="font-display text-base font-bold text-[var(--text-heading)]">{t("landing_tab3_title")}</h3>
+                  <p className="text-xs text-[var(--text-muted)]">{t("landing_tab3_desc")}</p>
                 </div>
                 <div className="flex items-center gap-2">
-                  <span className="px-2.5 py-1 rounded-md text-[10px] font-mono font-bold bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20">
-                    {t("landing_tab3_spec_badge")}
-                  </span>
                   <span className="w-2 h-2 rounded-full bg-emerald-500" />
-                  <span className="text-xs font-semibold text-emerald-600 dark:text-emerald-400">
-                    {t("landing_tab3_status")}
-                  </span>
+                  <span className="text-xs font-semibold text-emerald-600 dark:text-emerald-400">{t("landing_tab3_status")}</span>
                 </div>
               </div>
 
-              {/* Convergence Table */}
               <div className="overflow-x-auto">
                 <table className="w-full min-w-[620px] text-xs text-left">
                   <thead>
@@ -527,290 +417,143 @@ export default function PresentationLandingPage() {
                 </table>
               </div>
 
-              <div className="card-inner p-3 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-xs text-[var(--text-muted)]">
-                <div>
-                  <span>{t("landing_tab3_comm_summary")} · </span>
-                  <span className="font-semibold text-emerald-600 dark:text-emerald-400">{t("landing_tab3_savings")}</span>
-                </div>
-                <button
-                  onClick={openLaunchModal}
-                  className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-blue-500/10 border border-blue-500/20 text-blue-600 dark:text-blue-400 text-xs font-semibold hover:bg-blue-500/20 transition-colors shrink-0"
-                >
-                  <Server className="w-3.5 h-3.5" />
-                  <span>{t("landing_tab_action_train")}</span>
-                  <ArrowRight className="w-3.5 h-3.5" />
-                </button>
+              <div className="text-xs text-[var(--text-muted)] pt-2">
+                {t("landing_tab3_comm_summary")} · <span className="font-semibold text-emerald-600 dark:text-emerald-400">{t("landing_tab3_savings")}</span>
               </div>
             </div>
           )}
 
-          {/* Tab 4: Official Report & Audio Preview */}
+          {/* Tab 4: Reporting */}
           {activeTab === "report" && (
-            <div className="card p-4 sm:p-6 space-y-4">
+            <div className="card p-4 sm:p-6">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {/* PDF Report Preview Card */}
-                <div className="card-inner p-4 space-y-3">
+                <div className="card-inner p-5 space-y-3">
                   <div className="flex items-center gap-2 text-emerald-500">
                     <FileText className="w-4 h-4" />
                     <span className="text-xs font-bold uppercase tracking-wider">{t("sec3_report_title")}</span>
                   </div>
-                  <h4 className="text-sm font-bold text-[var(--text-heading)]">
-                    {t("landing_tab4_pdf_title")}
-                  </h4>
-                  <p className="text-xs text-[var(--text-muted)] leading-relaxed">
-                    {t("landing_tab4_pdf_desc")}
-                  </p>
-                  <div className="pt-2">
-                    <button
-                      onClick={openLaunchModal}
-                      className="inline-flex items-center gap-2 px-3.5 py-2 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-emerald-600 dark:text-emerald-400 text-xs font-semibold hover:bg-emerald-500/20 transition-colors"
-                    >
-                      <FileText className="w-3.5 h-3.5" />
-                      <span>{t("landing_tab4_pdf_btn")}</span>
-                      <ArrowRight className="w-3.5 h-3.5" />
-                    </button>
-                  </div>
+                  <h4 className="text-sm font-bold text-[var(--text-heading)]">{t("landing_tab4_pdf_title")}</h4>
+                  <p className="text-xs text-[var(--text-muted)] leading-relaxed">{t("landing_tab4_pdf_desc")}</p>
+                  <button
+                    onClick={openLaunchModal}
+                    className="inline-flex items-center gap-2 px-3.5 py-2 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-emerald-600 dark:text-emerald-400 text-xs font-semibold hover:bg-emerald-500/20 transition-colors"
+                  >
+                    <FileText className="w-3.5 h-3.5" />
+                    <span>{t("landing_tab4_pdf_btn")}</span>
+                    <ArrowRight className="w-3.5 h-3.5" />
+                  </button>
                 </div>
 
-                {/* Voice Dictation Card */}
-                <div className="card-inner p-4 space-y-3">
+                <div className="card-inner p-5 space-y-3">
                   <div className="flex items-center gap-2 text-blue-500">
                     <Volume2 className="w-4 h-4" />
                     <span className="text-xs font-bold uppercase tracking-wider">{t("sec3_voice_title")}</span>
                   </div>
-                  <h4 className="text-sm font-bold text-[var(--text-heading)]">
-                    {t("landing_tab4_voice_title")}
-                  </h4>
-                  <p className="text-xs text-[var(--text-muted)] leading-relaxed">
-                    {t("landing_tab4_voice_desc")}
-                  </p>
-                  <div className="pt-2">
-                    <button
-                      onClick={openLaunchModal}
-                      className="inline-flex items-center gap-2 px-3.5 py-2 rounded-lg bg-blue-500/10 border border-blue-500/20 text-blue-600 dark:text-blue-400 text-xs font-semibold hover:bg-blue-500/20 transition-colors"
-                    >
-                      <Volume2 className="w-3.5 h-3.5" />
-                      <span>{t("landing_tab4_voice_btn")}</span>
-                      <ArrowRight className="w-3.5 h-3.5" />
-                    </button>
-                  </div>
+                  <h4 className="text-sm font-bold text-[var(--text-heading)]">{t("landing_tab4_voice_title")}</h4>
+                  <p className="text-xs text-[var(--text-muted)] leading-relaxed">{t("landing_tab4_voice_desc")}</p>
+                  <button
+                    onClick={openLaunchModal}
+                    className="inline-flex items-center gap-2 px-3.5 py-2 rounded-lg bg-blue-500/10 border border-blue-500/20 text-blue-600 dark:text-blue-400 text-xs font-semibold hover:bg-blue-500/20 transition-colors"
+                  >
+                    <Volume2 className="w-3.5 h-3.5" />
+                    <span>{t("landing_tab4_voice_btn")}</span>
+                    <ArrowRight className="w-3.5 h-3.5" />
+                  </button>
                 </div>
               </div>
             </div>
           )}
         </section>
 
-        {/* 3. Four Security & Governance Pillars */}
-        <section id="security" className="scroll-mt-20">
-          <div className="mb-6">
-            <div className="text-xs font-bold uppercase tracking-wider text-emerald-600 dark:text-emerald-400 mb-1">
-              {t("landing_sec_security_badge")}
-            </div>
-            <h2 className="font-display text-xl sm:text-2xl lg:text-3xl font-bold text-[var(--text-heading)]">
-              {t("landing_security_title")}
-            </h2>
-            <p className="text-xs sm:text-sm text-[var(--text-muted)] mt-1 max-w-2xl">
-              {t("landing_security_subtitle")}
-            </p>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-            <div className="card p-4 sm:p-5 flex flex-col justify-between border border-[var(--border-card)] bg-[var(--bg-card)] hover:border-emerald-500/40 transition-all shadow-sm">
-              <div>
-                <div className="flex items-center justify-between mb-3">
-                  <div className="w-9 h-9 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-500">
-                    <Database className="w-4 h-4" />
-                  </div>
-                  <span className="font-mono text-[9px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
-                    0 B EGRESS
-                  </span>
-                </div>
-                <h3 className="font-display text-sm font-bold text-[var(--text-heading)] mb-2">
-                  {t("landing_pillar_1_title")}
-                </h3>
-                <p className="text-xs text-[var(--text-muted)] leading-relaxed">
-                  {t("landing_pillar_1_desc")}
-                </p>
+        {/* ================================================================
+            SECTION 4: SECURITY (Compact, icon-based, not verbose cards)
+            ================================================================ */}
+        <section id="security" className="scroll-mt-20 border-y border-[var(--border-card)] bg-[var(--bg-card-inner)]">
+          <div className="max-w-[1200px] mx-auto px-4 sm:px-6 py-12 sm:py-16">
+            <div className="text-center mb-10">
+              <div className="text-[11px] font-bold uppercase tracking-widest text-emerald-600 dark:text-emerald-400 mb-1">
+                {t("landing_sec_security_badge")}
               </div>
-              <div className="pt-3 mt-3 border-t border-[var(--border-subtle)] text-[10px] font-mono text-emerald-600 dark:text-emerald-400 font-semibold flex items-center justify-between">
-                <span>{t("landing_p1_tag")}</span>
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
-              </div>
+              <h2 className="font-display text-2xl sm:text-3xl font-bold text-[var(--text-heading)]">
+                {t("landing_security_title")}
+              </h2>
+              <p className="text-sm text-[var(--text-muted)] mt-2 max-w-lg mx-auto">
+                {t("landing_security_subtitle")}
+              </p>
             </div>
 
-            <div className="card p-4 sm:p-5 flex flex-col justify-between border border-[var(--border-card)] bg-[var(--bg-card)] hover:border-blue-500/40 transition-all shadow-sm">
-              <div>
-                <div className="flex items-center justify-between mb-3">
-                  <div className="w-9 h-9 rounded-xl bg-blue-500/10 border border-blue-500/20 flex items-center justify-center text-blue-500">
-                    <ShieldCheck className="w-4 h-4" />
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+              {[
+                { icon: Database, title: t("landing_pillar_1_title"), desc: t("landing_pillar_1_desc"), tag: t("landing_p1_tag"), accent: "emerald" },
+                { icon: ShieldCheck, title: t("landing_pillar_2_title"), desc: t("landing_pillar_2_desc"), tag: t("landing_p2_tag"), accent: "blue" },
+                { icon: Lock, title: t("landing_pillar_3_title"), desc: t("landing_pillar_3_desc"), tag: t("landing_p3_tag"), accent: "emerald" },
+                { icon: AlertTriangle, title: t("landing_pillar_4_title"), desc: t("landing_pillar_4_desc"), tag: t("landing_p4_tag"), accent: "amber" },
+              ].map((pillar, i) => (
+                <div key={i} className="bg-[var(--bg-app)] rounded-xl p-5 border border-[var(--border-card)]">
+                  <div className={`w-10 h-10 rounded-xl flex items-center justify-center mb-3 ${
+                    pillar.accent === "emerald" ? "bg-emerald-500/10 text-emerald-500" :
+                    pillar.accent === "blue" ? "bg-blue-500/10 text-blue-500" :
+                    "bg-amber-500/10 text-amber-500"
+                  }`}>
+                    <pillar.icon className="w-5 h-5" />
                   </div>
-                  <span className="font-mono text-[9px] font-bold px-2 py-0.5 rounded-full bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20">
-                    ε ≤ 2.0 BOUND
-                  </span>
+                  <h3 className="text-sm font-bold text-[var(--text-heading)] mb-1.5">{pillar.title}</h3>
+                  <p className="text-xs text-[var(--text-muted)] leading-relaxed mb-3">{pillar.desc}</p>
+                  <div className="text-[10px] font-mono font-semibold text-[var(--text-muted)]">{pillar.tag}</div>
                 </div>
-                <h3 className="font-display text-sm font-bold text-[var(--text-heading)] mb-2">
-                  {t("landing_pillar_2_title")}
-                </h3>
-                <p className="text-xs text-[var(--text-muted)] leading-relaxed">
-                  {t("landing_pillar_2_desc")}
-                </p>
-              </div>
-              <div className="pt-3 mt-3 border-t border-[var(--border-subtle)] text-[10px] font-mono text-blue-600 dark:text-blue-400 font-semibold flex items-center justify-between">
-                <span>{t("landing_p2_tag")}</span>
-                <span className="w-1.5 h-1.5 rounded-full bg-blue-500" />
-              </div>
-            </div>
-
-            <div className="card p-4 sm:p-5 flex flex-col justify-between border border-[var(--border-card)] bg-[var(--bg-card)] hover:border-teal-500/40 transition-all shadow-sm">
-              <div>
-                <div className="flex items-center justify-between mb-3">
-                  <div className="w-9 h-9 rounded-xl bg-teal-500/10 border border-teal-500/20 flex items-center justify-center text-teal-500">
-                    <Lock className="w-4 h-4" />
-                  </div>
-                  <span className="font-mono text-[9px] font-bold px-2 py-0.5 rounded-full bg-teal-500/10 text-teal-600 dark:text-teal-400 border border-teal-500/20">
-                    CKKS 128-BIT
-                  </span>
-                </div>
-                <h3 className="font-display text-sm font-bold text-[var(--text-heading)] mb-2">
-                  {t("landing_pillar_3_title")}
-                </h3>
-                <p className="text-xs text-[var(--text-muted)] leading-relaxed">
-                  {t("landing_pillar_3_desc")}
-                </p>
-              </div>
-              <div className="pt-3 mt-3 border-t border-[var(--border-subtle)] text-[10px] font-mono text-teal-600 dark:text-teal-400 font-semibold flex items-center justify-between">
-                <span>{t("landing_p3_tag")}</span>
-                <span className="w-1.5 h-1.5 rounded-full bg-teal-500" />
-              </div>
-            </div>
-
-            <div className="card p-4 sm:p-5 flex flex-col justify-between border border-[var(--border-card)] bg-[var(--bg-card)] hover:border-amber-500/40 transition-all shadow-sm">
-              <div>
-                <div className="flex items-center justify-between mb-3">
-                  <div className="w-9 h-9 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-500">
-                    <AlertTriangle className="w-4 h-4" />
-                  </div>
-                  <span className="font-mono text-[9px] font-bold px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20">
-                    TRIMMED MEAN
-                  </span>
-                </div>
-                <h3 className="font-display text-sm font-bold text-[var(--text-heading)] mb-2">
-                  {t("landing_pillar_4_title")}
-                </h3>
-                <p className="text-xs text-[var(--text-muted)] leading-relaxed">
-                  {t("landing_pillar_4_desc")}
-                </p>
-              </div>
-              <div className="pt-3 mt-3 border-t border-[var(--border-subtle)] text-[10px] font-mono text-amber-600 dark:text-amber-400 font-semibold flex items-center justify-between">
-                <span>{t("landing_p4_tag")}</span>
-                <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
-              </div>
+              ))}
             </div>
           </div>
         </section>
 
-        {/* 4. Consortium Architecture Pipeline */}
-        <section id="architecture" className="scroll-mt-20">
+        {/* ================================================================
+            SECTION 5: ARCHITECTURE PIPELINE (Compact horizontal flow)
+            ================================================================ */}
+        <section id="architecture" className="scroll-mt-20 max-w-[1200px] mx-auto px-4 sm:px-6 py-12 sm:py-16">
           <div className="mb-6">
-            <div className="text-xs font-bold uppercase tracking-wider text-emerald-600 dark:text-emerald-400 mb-1">
+            <div className="text-[11px] font-bold uppercase tracking-widest text-emerald-600 dark:text-emerald-400 mb-1">
               {t("landing_sec_arch_badge")}
             </div>
-            <h2 className="font-display text-xl sm:text-2xl lg:text-3xl font-bold text-[var(--text-heading)]">
+            <h2 className="font-display text-2xl sm:text-3xl font-bold text-[var(--text-heading)]">
               {t("landing_arch_title")}
             </h2>
-            <p className="text-xs sm:text-sm text-[var(--text-muted)] mt-1 max-w-2xl">
+            <p className="text-sm text-[var(--text-muted)] mt-1 max-w-xl">
               {t("landing_arch_subtitle")}
             </p>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 sm:gap-4">
-            <div className="card-inner p-3.5 sm:p-4 flex flex-col justify-between border border-[var(--border-subtle)] hover:border-emerald-500/30 transition-all">
-              <div>
-                <div className="flex items-center justify-between">
-                  <span className="text-[10px] font-mono font-bold text-emerald-500">{t("landing_arch_stage_label")} 01</span>
-                  <span className="font-mono text-[9px] px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-bold">ViT Backbone</span>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
+            {[
+              { num: "01", title: t("landing_arch_s1_title"), desc: t("landing_arch_s1_desc"), tag: "ViT Backbone" },
+              { num: "02", title: t("landing_arch_s2_title"), desc: t("landing_arch_s2_desc"), tag: "FFA-LoRA" },
+              { num: "03", title: t("landing_arch_s3_title"), desc: t("landing_arch_s3_desc"), tag: "CKKS 128b" },
+              { num: "04", title: t("landing_arch_s4_title"), desc: t("landing_arch_s4_desc"), tag: "FedDyn" },
+              { num: "05", title: t("landing_arch_s5_title"), desc: t("landing_arch_s5_desc"), tag: "CDSS" },
+            ].map((stage, i) => (
+              <div key={i} className="card-inner p-4 flex flex-col">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-[10px] font-mono font-bold text-emerald-500">{t("landing_arch_stage_label")} {stage.num}</span>
+                  <span className="font-mono text-[9px] px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-bold">{stage.tag}</span>
                 </div>
-                <h3 className="font-display text-xs sm:text-sm font-bold text-[var(--text-heading)] mt-1.5 mb-1.5">
-                  {t("landing_arch_s1_title")}
-                </h3>
-                <p className="text-[11px] sm:text-xs text-[var(--text-muted)] leading-relaxed">
-                  {t("landing_arch_s1_desc")}
-                </p>
+                <h3 className="text-xs font-bold text-[var(--text-heading)] mb-1">{stage.title}</h3>
+                <p className="text-[11px] text-[var(--text-muted)] leading-relaxed">{stage.desc}</p>
               </div>
-            </div>
-
-            <div className="card-inner p-3.5 sm:p-4 flex flex-col justify-between border border-[var(--border-subtle)] hover:border-emerald-500/30 transition-all">
-              <div>
-                <div className="flex items-center justify-between">
-                  <span className="text-[10px] font-mono font-bold text-emerald-500">{t("landing_arch_stage_label")} 02</span>
-                  <span className="font-mono text-[9px] px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-bold">FFA-LoRA</span>
-                </div>
-                <h3 className="font-display text-xs sm:text-sm font-bold text-[var(--text-heading)] mt-1.5 mb-1.5">
-                  {t("landing_arch_s2_title")}
-                </h3>
-                <p className="text-[11px] sm:text-xs text-[var(--text-muted)] leading-relaxed">
-                  {t("landing_arch_s2_desc")}
-                </p>
-              </div>
-            </div>
-
-            <div className="card-inner p-3.5 sm:p-4 flex flex-col justify-between border border-[var(--border-subtle)] hover:border-teal-500/30 transition-all">
-              <div>
-                <div className="flex items-center justify-between">
-                  <span className="text-[10px] font-mono font-bold text-teal-500">{t("landing_arch_stage_label")} 03</span>
-                  <span className="font-mono text-[9px] px-1.5 py-0.5 rounded bg-teal-500/10 text-teal-600 dark:text-teal-400 font-bold">CKKS 128b</span>
-                </div>
-                <h3 className="font-display text-xs sm:text-sm font-bold text-[var(--text-heading)] mt-1.5 mb-1.5">
-                  {t("landing_arch_s3_title")}
-                </h3>
-                <p className="text-[11px] sm:text-xs text-[var(--text-muted)] leading-relaxed">
-                  {t("landing_arch_s3_desc")}
-                </p>
-              </div>
-            </div>
-
-            <div className="card-inner p-3.5 sm:p-4 flex flex-col justify-between border border-[var(--border-subtle)] hover:border-blue-500/30 transition-all">
-              <div>
-                <div className="flex items-center justify-between">
-                  <span className="text-[10px] font-mono font-bold text-blue-500">{t("landing_arch_stage_label")} 04</span>
-                  <span className="font-mono text-[9px] px-1.5 py-0.5 rounded bg-blue-500/10 text-blue-600 dark:text-blue-400 font-bold">FedDyn Sync</span>
-                </div>
-                <h3 className="font-display text-xs sm:text-sm font-bold text-[var(--text-heading)] mt-1.5 mb-1.5">
-                  {t("landing_arch_s4_title")}
-                </h3>
-                <p className="text-[11px] sm:text-xs text-[var(--text-muted)] leading-relaxed">
-                  {t("landing_arch_s4_desc")}
-                </p>
-              </div>
-            </div>
-
-            <div className="card-inner p-3.5 sm:p-4 flex flex-col justify-between border border-[var(--border-subtle)] hover:border-emerald-500/30 transition-all">
-              <div>
-                <div className="flex items-center justify-between">
-                  <span className="text-[10px] font-mono font-bold text-emerald-500">{t("landing_arch_stage_label")} 05</span>
-                  <span className="font-mono text-[9px] px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-bold">DICOM CDSS</span>
-                </div>
-                <h3 className="font-display text-xs sm:text-sm font-bold text-[var(--text-heading)] mt-1.5 mb-1.5">
-                  {t("landing_arch_s5_title")}
-                </h3>
-                <p className="text-[11px] sm:text-xs text-[var(--text-muted)] leading-relaxed">
-                  {t("landing_arch_s5_desc")}
-                </p>
-              </div>
-            </div>
+            ))}
           </div>
         </section>
 
-        {/* 5. Empirical Strategy E Benchmark Matrix */}
-        <section id="benchmarks" className="scroll-mt-20">
+        {/* ================================================================
+            SECTION 6: BENCHMARK TABLE (Clean, data-dense)
+            ================================================================ */}
+        <section id="benchmarks" className="scroll-mt-20 max-w-[1200px] mx-auto px-4 sm:px-6 pb-12 sm:pb-16">
           <div className="mb-6">
-            <div className="text-xs font-bold uppercase tracking-wider text-emerald-600 dark:text-emerald-400 mb-1">
+            <div className="text-[11px] font-bold uppercase tracking-widest text-emerald-600 dark:text-emerald-400 mb-1">
               {t("landing_sec_bench_badge")}
             </div>
-            <h2 className="font-display text-xl sm:text-2xl lg:text-3xl font-bold text-[var(--text-heading)]">
+            <h2 className="font-display text-2xl sm:text-3xl font-bold text-[var(--text-heading)]">
               {t("landing_bench_title")}
             </h2>
-            <p className="text-xs sm:text-sm text-[var(--text-muted)] mt-1 max-w-2xl">
+            <p className="text-sm text-[var(--text-muted)] mt-1 max-w-xl">
               {t("landing_bench_subtitle")}
             </p>
           </div>
@@ -829,37 +572,35 @@ export default function PresentationLandingPage() {
               </thead>
               <tbody className="divide-y divide-[var(--border-subtle)] font-mono">
                 <tr className="bg-emerald-500/[0.05] font-semibold">
-                  <td className="py-3 px-3 font-bold text-emerald-600 dark:text-emerald-400 font-sans">
-                    Fed-XRay (FFA-LoRA + FedDyn)
-                  </td>
+                  <td className="py-3 px-3 font-bold text-emerald-600 dark:text-emerald-400 font-sans">Fed-XRay (FFA-LoRA + FedDyn)</td>
                   <td className="py-3 px-3 text-emerald-600 dark:text-emerald-400 font-bold">0.984</td>
                   <td className="py-3 px-3">4.2 MB / round</td>
-                  <td className="py-3 px-3 text-emerald-500 font-sans">Patient DP (ε ≤ 2.0) + CKKS</td>
+                  <td className="py-3 px-3 text-emerald-500 font-sans">Patient DP + CKKS</td>
                   <td className="py-3 px-3 text-emerald-500 font-sans">{t("bench_val_trimmed_active")}</td>
                   <td className="py-3 px-3 text-emerald-600 dark:text-emerald-400 font-sans">{t("bench_val_high_aligned")}</td>
                 </tr>
                 <tr>
                   <td className="py-2.5 px-3 font-sans text-[var(--text-heading)]">{t("bench_row_centralized")}</td>
                   <td className="py-2.5 px-3">0.987</td>
-                  <td className="py-2.5 px-3 text-slate-500 font-sans">{t("bench_val_na_centralized")}</td>
+                  <td className="py-2.5 px-3 text-[var(--text-muted)] font-sans">{t("bench_val_na_centralized")}</td>
                   <td className="py-2.5 px-3 text-rose-500 font-sans">{t("bench_val_leakage_full")}</td>
-                  <td className="py-2.5 px-3 text-slate-500 font-sans">N/A</td>
+                  <td className="py-2.5 px-3 text-[var(--text-muted)] font-sans">N/A</td>
                   <td className="py-2.5 px-3 font-sans">{t("bench_val_optimal")}</td>
                 </tr>
                 <tr>
                   <td className="py-2.5 px-3 font-sans text-[var(--text-heading)]">{t("bench_row_fedavg")}</td>
                   <td className="py-2.5 px-3">0.912</td>
                   <td className="py-2.5 px-3 text-rose-500">340 MB / round</td>
-                  <td className="py-2.5 px-3 text-slate-500 font-sans">{t("bench_val_plaintext")}</td>
+                  <td className="py-2.5 px-3 text-[var(--text-muted)] font-sans">{t("bench_val_plaintext")}</td>
                   <td className="py-2.5 px-3 text-rose-500 font-sans">{t("bench_val_vulnerable")}</td>
                   <td className="py-2.5 px-3 font-sans">{t("bench_val_drift")}</td>
                 </tr>
                 <tr>
                   <td className="py-2.5 px-3 font-sans text-[var(--text-heading)]">{t("bench_row_standalone")}</td>
                   <td className="py-2.5 px-3">0.824</td>
-                  <td className="py-2.5 px-3 text-slate-500 font-sans">{t("bench_val_isolated")}</td>
+                  <td className="py-2.5 px-3 text-[var(--text-muted)] font-sans">{t("bench_val_isolated")}</td>
                   <td className="py-2.5 px-3 text-emerald-500 font-sans">{t("bench_val_no_transfer")}</td>
-                  <td className="py-2.5 px-3 text-slate-500 font-sans">N/A</td>
+                  <td className="py-2.5 px-3 text-[var(--text-muted)] font-sans">N/A</td>
                   <td className="py-2.5 px-3 text-rose-500 font-sans">{t("bench_val_overfitting")}</td>
                 </tr>
               </tbody>
@@ -867,54 +608,40 @@ export default function PresentationLandingPage() {
           </div>
         </section>
 
-        {/* 6. Consortium Launch Banner */}
-        <section className="card p-6 sm:p-8 bg-gradient-to-r from-emerald-950/30 via-slate-900/40 to-teal-950/30 border-emerald-500/20 text-center">
-          <div className="max-w-2xl mx-auto space-y-4">
-            <div className="w-10 h-10 rounded-xl bg-slate-900 text-white dark:bg-white/[0.08] border border-slate-700/50 dark:border-white/[0.12] mx-auto flex items-center justify-center shadow-xs">
-              <FedXRayLogo size={24} />
-            </div>
-            <h2 className="font-display text-xl sm:text-2xl font-bold text-[var(--text-heading)]">
+        {/* ================================================================
+            SECTION 7: FINAL CTA
+            ================================================================ */}
+        <section className="border-t border-[var(--border-card)] bg-[var(--bg-card-inner)]">
+          <div className="max-w-[1200px] mx-auto px-4 sm:px-6 py-14 sm:py-20 text-center">
+            <h2 className="font-display text-2xl sm:text-3xl font-bold text-[var(--text-heading)] mb-3">
               {t("landing_banner_title")}
             </h2>
-            <p className="text-xs sm:text-sm text-[var(--text-muted)] leading-relaxed">
+            <p className="text-sm text-[var(--text-muted)] max-w-lg mx-auto mb-6">
               {t("landing_banner_desc")}
             </p>
-            <div className="pt-2">
-              <button
-                onClick={openLaunchModal}
-                className="btn-primary text-xs sm:text-sm px-6 py-3 rounded-xl shadow-lg hover:shadow-emerald-500/25"
-              >
-                <ShieldCheck className="w-4 h-4" />
-                <span>{t("landing_banner_btn")}</span>
-                <ArrowRight className="w-4 h-4 ml-1" />
-              </button>
-            </div>
+            <button
+              onClick={openLaunchModal}
+              className="btn-primary text-sm px-8 py-3.5 rounded-xl"
+            >
+              <ShieldCheck className="w-4 h-4" />
+              <span>{t("landing_banner_btn")}</span>
+              <ArrowRight className="w-4 h-4" />
+            </button>
           </div>
         </section>
       </main>
 
       {/* Footer */}
-      <footer className="border-t border-[var(--navbar-border)] py-8 px-4 text-[var(--text-muted)] select-none">
-        <div className="max-w-[1360px] mx-auto flex flex-col sm:flex-row items-center justify-between gap-4">
+      <footer className="border-t border-[var(--border-card)] py-6 px-4 text-[var(--text-muted)] select-none">
+        <div className="max-w-[1200px] mx-auto flex flex-col sm:flex-row items-center justify-between gap-4">
           <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-lg bg-slate-900 text-white dark:bg-white/[0.08] border border-slate-700/50 dark:border-white/[0.12] flex items-center justify-center shadow-xs shrink-0">
-              <FedXRayLogo size={20} />
-            </div>
-            <div className="flex flex-col text-left">
-              <span className="font-display font-extrabold text-xs text-[var(--text-heading)] tracking-tight">
-                Fed<span className="text-emerald-500 font-semibold">-</span>XRay Consortium
-              </span>
-              <span className="text-[10px] text-[var(--text-muted)] font-mono">
-                Strategy E Medical AI · 4 Distributed Hospital Enclaves
-              </span>
-            </div>
+            <FedXRayLogo size={20} />
+            <span className="font-display font-bold text-xs text-[var(--text-heading)] tracking-tight">
+              Fed<span className="text-emerald-500">-</span>XRay
+            </span>
           </div>
-
-          <div className="text-center sm:text-right text-[10px] sm:text-[11px] text-[var(--text-muted)] leading-relaxed">
-            <div>{t("footer_text")}</div>
-            <div className="font-mono text-[9px] text-slate-400 dark:text-slate-500 mt-0.5">
-              RLWE Leveled CKKS 128-Bit · Patient-Level Gaussian DP (ε ≤ 2.0)
-            </div>
+          <div className="text-[11px] text-[var(--text-muted)]">
+            {t("footer_text")}
           </div>
         </div>
       </footer>
