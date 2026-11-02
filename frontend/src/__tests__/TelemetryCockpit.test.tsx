@@ -91,7 +91,7 @@ describe("TelemetryCockpit Component", () => {
 
     fireEvent.click(startBtn);
     expect(onStartMock).toHaveBeenCalledWith({
-      modelType: "vit_base",
+      modelType: "vit_tiny",
       algorithm: "FedDyn",
       simulateAttack: true,
     });

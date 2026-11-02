@@ -319,6 +319,11 @@ export default function LungScene(props: LungSceneProps) {
         gl.setClearColor(0x000000, 0);
         camera.lookAt(0, -0.05, 0);
         scene.background = null;
+        if (gl.domElement) {
+          gl.domElement.addEventListener("webglcontextlost", (event: Event) => {
+            event.preventDefault();
+          }, false);
+        }
       }}
       style={{
         width: "100%",

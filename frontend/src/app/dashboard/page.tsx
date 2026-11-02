@@ -33,7 +33,7 @@ export default function DashboardPage() {
   const [currentRound, setCurrentRound] = useState(0);
   const [history, setHistory] = useState<TelemetryRound[]>([]);
   const [isTrained, setIsTrained] = useState(false);
-  const [activeModel, setActiveModel] = useState<string>("vit_base");
+  const [activeModel, setActiveModel] = useState<string>("vit_tiny");
   const [activePeft, setActivePeft] = useState<string>("ffa_lora");
 
   const [diagnosis, setDiagnosis] = useState<DiagnosisResult | null>(null);
@@ -102,7 +102,7 @@ export default function DashboardPage() {
     }
     abortControllerRef.current = new AbortController();
 
-    const selectedModel = config?.modelType || "vit_base";
+    const selectedModel = config?.modelType || "vit_tiny";
     const selectedAlgorithm = config?.algorithm || "FedDyn";
     const selectedAttack = config?.simulateAttack ?? false;
     setActiveModel(selectedModel);

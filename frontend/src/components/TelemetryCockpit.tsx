@@ -44,7 +44,7 @@ export default function TelemetryCockpit({
   onUnlock,
 }: TelemetryCockpitProps) {
   const { t } = useLanguage();
-  const [modelType, setModelType] = useState<string>("vit_base");
+  const [modelType, setModelType] = useState<string>("vit_tiny");
   const [algorithm, setAlgorithm] = useState<string>("FedDyn");
   const [simulateAttack, setSimulateAttack] = useState<boolean>(false);
 
