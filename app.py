@@ -103,14 +103,17 @@ st.markdown("""
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600&display=swap');
 
     :root {
-        --font-main: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
-        --font-display: 'Outfit', -apple-system, BlinkMacSystemFont, sans-serif;
+        --font-main: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        --font-display: 'Outfit', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
         --font-mono: 'JetBrains Mono', monospace;
         --brand-blue: #2563EB;
         --brand-cyan: #0EA5E9;
+        --brand-indigo: #6366F1;
         --status-emerald: #10B981;
         --status-amber: #F59E0B;
         --status-crimson: #EF4444;
+        --card-border-light: rgba(226, 232, 240, 0.9);
+        --card-border-dark: rgba(255, 255, 255, 0.08);
     }
 
     /* Global Typography & Font Family Enforcement */
@@ -122,47 +125,109 @@ st.markdown("""
         letter-spacing: -0.02em;
     }
 
-    /* Top-Right Language Switcher Dock */
-    .top-lang-dock {
-        position: fixed;
-        top: 0.85rem;
-        right: 1.5rem;
-        z-index: 999999;
-        background: rgba(255, 255, 255, 0.88);
-        backdrop-filter: blur(16px);
-        -webkit-backdrop-filter: blur(16px);
-        padding: 0.35rem 0.65rem;
-        border-radius: 9999px;
-        border: 1px solid rgba(226, 232, 240, 0.8);
-        box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.08), 0 4px 6px -2px rgba(0, 0, 0, 0.04);
+    /* Top Navigation Header Bar */
+    .top-nav-bar {
         display: flex;
         align-items: center;
-        gap: 0.5rem;
+        justify-content: space-between;
+        padding: 0.75rem 1.25rem;
+        background: var(--secondary-background-color, #1E293B);
+        border: 1px solid var(--card-border-dark);
+        border-radius: 16px;
+        margin-bottom: 1.5rem;
+        backdrop-filter: blur(12px);
+        -webkit-backdrop-filter: blur(12px);
+        box-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.15);
+    }
+
+    .top-nav-brand {
+        display: flex;
+        align-items: center;
+        gap: 0.85rem;
+    }
+
+    .brand-logo-ring {
+        width: 36px;
+        height: 36px;
+        border-radius: 10px;
+        background: linear-gradient(135deg, rgba(37, 99, 235, 0.2) 0%, rgba(14, 165, 233, 0.2) 100%);
+        border: 1px solid rgba(14, 165, 233, 0.4);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .brand-title {
+        font-size: 1.1rem;
+        font-weight: 800;
+        font-family: var(--font-display);
+        letter-spacing: -0.01em;
+        line-height: 1.2;
+    }
+
+    .brand-version {
+        font-size: 0.65rem;
+        font-weight: 700;
+        padding: 2px 6px;
+        border-radius: 6px;
+        background: rgba(37, 99, 235, 0.15);
+        color: #60A5FA;
+        border: 1px solid rgba(37, 99, 235, 0.3);
+        margin-left: 0.35rem;
+        vertical-align: middle;
+    }
+
+    .brand-sub {
+        font-size: 0.78rem;
+        color: #94A3B8;
+        font-weight: 400;
+    }
+
+    /* Segmented Language Radio Buttons */
+    div[data-testid="stRadio"] > div {
+        display: flex !important;
+        flex-direction: row !important;
+        align-items: center !important;
+        gap: 0.25rem !important;
+        background: rgba(0, 0, 0, 0.25) !important;
+        padding: 4px !important;
+        border-radius: 10px !important;
+        border: 1px solid rgba(255, 255, 255, 0.08) !important;
+    }
+
+    div[data-testid="stRadio"] label {
+        padding: 4px 12px !important;
+        border-radius: 8px !important;
+        font-size: 0.8rem !important;
+        font-weight: 600 !important;
+        cursor: pointer !important;
+        margin: 0 !important;
     }
 
     /* Modern Hero Container */
     .hero-container {
         position: relative;
         text-align: center;
-        padding: 3.5rem 1.5rem 3rem 1.5rem;
-        background: linear-gradient(180deg, rgba(255,255,255,0.95) 0%, rgba(248,250,252,0.9) 100%);
+        padding: 2.75rem 1.5rem 2.25rem 1.5rem;
+        background: var(--secondary-background-color, #1E293B);
         backdrop-filter: blur(16px);
-        border-radius: 24px;
-        margin-bottom: 2rem;
-        border: 1px solid rgba(226, 232, 240, 0.9);
-        box-shadow: 0 20px 30px -10px rgba(0, 0, 0, 0.06);
+        -webkit-backdrop-filter: blur(16px);
+        border-radius: 20px;
+        margin-bottom: 1.75rem;
+        border: 1px solid var(--card-border-dark);
+        box-shadow: 0 10px 30px -5px rgba(0, 0, 0, 0.2);
         overflow: hidden;
     }
 
     .hero-container::before {
         content: '';
         position: absolute;
-        top: -40%;
+        top: -50%;
         left: 50%;
         transform: translateX(-50%);
         width: 140%;
         height: 140%;
-        background: radial-gradient(circle, rgba(37, 99, 235, 0.07) 0%, rgba(14, 165, 233, 0.03) 40%, transparent 70%);
+        background: radial-gradient(circle, rgba(37, 99, 235, 0.12) 0%, rgba(14, 165, 233, 0.04) 40%, transparent 70%);
         pointer-events: none;
     }
 
@@ -170,22 +235,23 @@ st.markdown("""
         display: inline-flex;
         align-items: center;
         gap: 0.5rem;
-        background: linear-gradient(135deg, rgba(37,99,235,0.08) 0%, rgba(14,165,233,0.08) 100%);
-        color: #1E40AF !important;
-        border: 1px solid rgba(37,99,235,0.2);
+        background: linear-gradient(135deg, rgba(37, 99, 235, 0.12) 0%, rgba(14, 165, 233, 0.12) 100%);
+        color: #38BDF8 !important;
+        border: 1px solid rgba(56, 189, 248, 0.3);
         padding: 0.35rem 1rem;
         border-radius: 9999px;
-        font-size: 0.82rem;
+        font-size: 0.8rem;
         font-weight: 600;
         margin-bottom: 1rem;
-        letter-spacing: 0.02em;
+        letter-spacing: 0.03em;
+        text-transform: uppercase;
     }
 
     .hero-title {
-        font-size: clamp(2.2rem, 4.5vw, 3.6rem) !important;
+        font-size: clamp(2rem, 4vw, 3.2rem) !important;
         font-weight: 900 !important;
         letter-spacing: -0.03em !important;
-        background: linear-gradient(135deg, #0F172A 0%, #1E3A8A 50%, #2563EB 100%);
+        background: linear-gradient(135deg, #F8FAFC 0%, #93C5FD 50%, #60A5FA 100%);
         -webkit-background-clip: text;
         -webkit-text-fill-color: transparent;
         margin-bottom: 0.75rem !important;
@@ -193,9 +259,9 @@ st.markdown("""
     }
 
     .hero-subtitle {
-        font-size: clamp(1rem, 2vw, 1.25rem) !important;
-        color: #475569 !important;
-        max-width: 720px;
+        font-size: clamp(0.95rem, 1.8vw, 1.15rem) !important;
+        color: #94A3B8 !important;
+        max-width: 740px;
         margin: 0 auto !important;
         line-height: 1.6 !important;
         font-weight: 400;
@@ -207,13 +273,12 @@ st.markdown("""
         flex-wrap: wrap;
         align-items: center;
         justify-content: space-between;
-        background: #0F172A;
-        color: white;
-        padding: 0.85rem 1.5rem;
-        border-radius: 16px;
-        margin-bottom: 2rem;
-        box-shadow: 0 10px 15px -3px rgba(15, 23, 42, 0.2);
-        border: 1px solid rgba(255,255,255,0.1);
+        background: var(--secondary-background-color, #1E293B);
+        padding: 0.85rem 1.25rem;
+        border-radius: 14px;
+        margin-bottom: 1.75rem;
+        border: 1px solid var(--card-border-dark);
+        box-shadow: 0 4px 15px -3px rgba(0, 0, 0, 0.15);
         gap: 1rem;
     }
 
@@ -221,8 +286,13 @@ st.markdown("""
         display: flex;
         align-items: center;
         gap: 0.5rem;
-        font-size: 0.85rem;
+        font-size: 0.82rem;
         font-weight: 500;
+        color: #CBD5E1;
+    }
+
+    .hud-item strong {
+        color: #F8FAFC;
     }
 
     .hud-pulse-dot {
@@ -244,157 +314,199 @@ st.markdown("""
     .metrics-grid {
         display: grid;
         grid-template-columns: repeat(4, 1fr);
-        gap: 1.25rem;
+        gap: 1rem;
         margin-bottom: 2rem;
     }
 
     .metric-card {
-        background: white;
-        padding: 1.5rem;
-        border-radius: 18px;
-        border: 1px solid #E2E8F0;
-        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
+        background: var(--secondary-background-color, #1E293B);
+        padding: 1.25rem 1.5rem;
+        border-radius: 16px;
+        border: 1px solid var(--card-border-dark);
+        box-shadow: 0 4px 12px -2px rgba(0, 0, 0, 0.12);
         display: flex;
         flex-direction: column;
         justify-content: space-between;
-        transition: transform 0.2s ease, box-shadow 0.2s ease;
+        transition: transform 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
     }
 
     .metric-card:hover {
-        transform: translateY(-3px);
-        box-shadow: 0 12px 20px -5px rgba(0, 0, 0, 0.08);
+        transform: translateY(-2px);
+        border-color: rgba(56, 189, 248, 0.4);
+        box-shadow: 0 8px 20px -4px rgba(0, 0, 0, 0.2);
     }
 
     .metric-card h3 {
-        font-size: 0.85rem !important;
+        font-size: 0.78rem !important;
         font-weight: 600 !important;
-        color: #64748B !important;
+        color: #94A3B8 !important;
         margin: 0 !important;
         text-transform: uppercase;
-        letter-spacing: 0.05em;
+        letter-spacing: 0.06em;
     }
 
     .metric-card .value {
-        font-size: 2.2rem !important;
+        font-size: 2rem !important;
         font-weight: 800 !important;
-        color: #0F172A !important;
         font-family: var(--font-display) !important;
-        margin-top: 0.75rem;
+        margin-top: 0.5rem;
         line-height: 1;
+        color: #F8FAFC;
+    }
+
+    .metric-card .caption {
+        font-size: 0.75rem;
+        color: #64748B;
+        margin-top: 0.4rem;
+        font-weight: 500;
     }
 
     /* Modern Section Headers */
     .modern-section-header {
         display: flex;
         align-items: center;
-        gap: 0.75rem;
-        background: linear-gradient(135deg, #0F172A 0%, #1E3A8A 100%);
-        color: white !important;
-        padding: 1.1rem 1.5rem;
-        border-radius: 16px;
-        margin: 2.5rem 0 1.5rem 0;
-        box-shadow: 0 8px 16px -4px rgba(15, 23, 42, 0.15);
+        gap: 0.85rem;
+        padding: 1rem 1.25rem;
+        background: var(--secondary-background-color, #1E293B);
+        border: 1px solid var(--card-border-dark);
+        border-radius: 14px;
+        margin: 2.5rem 0 1.25rem 0;
+        box-shadow: 0 4px 15px -3px rgba(0, 0, 0, 0.15);
+    }
+
+    .section-badge-num {
+        width: 32px;
+        height: 32px;
+        border-radius: 8px;
+        background: linear-gradient(135deg, rgba(37, 99, 235, 0.25) 0%, rgba(14, 165, 233, 0.25) 100%);
+        border: 1px solid rgba(56, 189, 248, 0.35);
+        color: #38BDF8;
+        font-weight: 800;
+        font-family: var(--font-display);
+        font-size: 0.9rem;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
     }
 
     .modern-section-header h2 {
-        color: white !important;
-        font-size: 1.25rem !important;
+        font-size: 1.15rem !important;
         font-weight: 700 !important;
         margin: 0 !important;
+        color: #F8FAFC !important;
     }
 
     .modern-section-header p {
-        color: rgba(255,255,255,0.75) !important;
-        font-size: 0.85rem !important;
-        margin: 0 !important;
+        color: #94A3B8 !important;
+        font-size: 0.8rem !important;
+        margin: 0.15rem 0 0 0 !important;
     }
 
     /* Surface Cards & Containers */
     .glass-panel {
-        background: white;
-        border: 1px solid #E2E8F0;
-        border-radius: 20px;
-        padding: 1.5rem;
-        box-shadow: 0 4px 6px -1px rgba(0,0,0,0.04);
-        margin-bottom: 1.5rem;
+        background: var(--secondary-background-color, #1E293B);
+        border: 1px solid var(--card-border-dark);
+        border-radius: 16px;
+        padding: 1.25rem;
+        box-shadow: 0 4px 12px -2px rgba(0, 0, 0, 0.1);
+        margin-bottom: 1.25rem;
     }
 
     .hospital-card {
-        background: white;
-        border: 1px solid #E2E8F0;
-        border-radius: 16px;
-        padding: 1.25rem;
+        background: var(--secondary-background-color, #1E293B);
+        border: 1px solid var(--card-border-dark);
+        border-radius: 14px;
+        padding: 1.1rem;
         margin-bottom: 1rem;
     }
 
     /* Saliency & Radiological Inspector */
     .xray-frame {
-        border-radius: 14px;
+        border-radius: 12px;
         overflow: hidden;
-        border: 1px solid #E2E8F0;
-        box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);
+        border: 1px solid var(--card-border-dark);
+        box-shadow: 0 4px 12px -2px rgba(0, 0, 0, 0.2);
         background: #000;
     }
 
     /* Diagnostic Outcome Cards */
     .diag-banner {
-        padding: 1.25rem;
+        padding: 1.25rem 1.5rem;
         border-radius: 16px;
-        margin: 1rem 0;
+        margin: 1.25rem 0;
         display: flex;
         align-items: center;
         justify-content: space-between;
+        backdrop-filter: blur(12px);
+        -webkit-backdrop-filter: blur(12px);
     }
 
     .diag-normal {
-        background: rgba(16, 185, 129, 0.1);
-        border: 1px solid rgba(16, 185, 129, 0.3);
-        color: #065F46;
+        background: rgba(16, 185, 129, 0.12);
+        border: 1px solid rgba(16, 185, 129, 0.35);
+        color: #34D399;
     }
 
     .diag-pneumonia {
-        background: rgba(245, 158, 11, 0.1);
-        border: 1px solid rgba(245, 158, 11, 0.3);
-        color: #92400E;
+        background: rgba(245, 158, 11, 0.12);
+        border: 1px solid rgba(245, 158, 11, 0.35);
+        color: #FBBF24;
     }
 
     .diag-covid {
-        background: rgba(239, 68, 68, 0.1);
-        border: 1px solid rgba(239, 68, 68, 0.3);
-        color: #991B1B;
+        background: rgba(239, 68, 68, 0.12);
+        border: 1px solid rgba(239, 68, 68, 0.35);
+        color: #F87171;
     }
 
     /* Action Buttons Custom Styling */
     .stButton > button {
-        background: linear-gradient(135deg, #1E3A8A 0%, #2563EB 100%) !important;
+        background: linear-gradient(135deg, #2563EB 0%, #1D4ED8 100%) !important;
         color: white !important;
-        border: none !important;
-        border-radius: 12px !important;
-        padding: 0.65rem 1.75rem !important;
+        border: 1px solid rgba(255, 255, 255, 0.12) !important;
+        border-radius: 10px !important;
+        padding: 0.6rem 1.5rem !important;
         font-weight: 600 !important;
-        font-size: 0.95rem !important;
+        font-size: 0.9rem !important;
         letter-spacing: 0.01em !important;
         transition: all 0.2s ease !important;
-        box-shadow: 0 4px 10px rgba(37, 99, 235, 0.25) !important;
+        box-shadow: 0 4px 14px rgba(37, 99, 235, 0.3) !important;
         width: 100% !important;
     }
 
     .stButton > button:hover {
-        transform: translateY(-2px) !important;
-        box-shadow: 0 8px 18px rgba(37, 99, 235, 0.35) !important;
+        transform: translateY(-1px) !important;
+        box-shadow: 0 6px 18px rgba(37, 99, 235, 0.45) !important;
+        border-color: rgba(255, 255, 255, 0.25) !important;
     }
 
     .stButton > button:active {
         transform: translateY(1px) !important;
     }
 
+    /* Streamlit Download Button */
+    .stDownloadButton > button {
+        background: linear-gradient(135deg, #059669 0%, #047857 100%) !important;
+        color: white !important;
+        border: 1px solid rgba(255, 255, 255, 0.12) !important;
+        border-radius: 10px !important;
+        padding: 0.6rem 1.5rem !important;
+        font-weight: 600 !important;
+        font-size: 0.9rem !important;
+        transition: all 0.2s ease !important;
+        box-shadow: 0 4px 14px rgba(5, 150, 105, 0.3) !important;
+        width: 100% !important;
+    }
+
+    .stDownloadButton > button:hover {
+        transform: translateY(-1px) !important;
+        box-shadow: 0 6px 18px rgba(5, 150, 105, 0.45) !important;
+    }
+
     /* Sidebar Aesthetics */
     [data-testid="stSidebar"] {
-        background: linear-gradient(180deg, #0B1120 0%, #0F172A 100%) !important;
-        border-right: 1px solid rgba(255,255,255,0.08) !important;
-    }
-    [data-testid="stSidebar"] * {
-        color: #F8FAFC !important;
+        border-right: 1px solid var(--card-border-dark) !important;
     }
 
     [data-testid="stSidebar"] .stSlider label, [data-testid="stSidebar"] .stCheckbox label {
@@ -402,15 +514,23 @@ st.markdown("""
         font-weight: 500 !important;
     }
 
+    /* Streamlit Tabs Navigation */
+    button[data-baseweb="tab"] {
+        border-radius: 8px !important;
+        padding: 8px 16px !important;
+        font-weight: 600 !important;
+        font-size: 0.85rem !important;
+    }
+
     /* Responsive Viewport Rules */
     @media (max-width: 767px) {
-        .top-lang-dock { top: 0.5rem; right: 0.5rem; transform: scale(0.9); }
-        .hero-container { padding: 2.25rem 1rem !important; margin-bottom: 1.5rem !important; }
-        .hero-title { font-size: 2rem !important; }
-        .hero-subtitle { font-size: 0.9rem !important; }
+        .top-nav-bar { flex-direction: column; align-items: flex-start; gap: 0.75rem; }
+        .hero-container { padding: 2rem 1rem !important; margin-bottom: 1.25rem !important; }
+        .hero-title { font-size: 1.8rem !important; }
+        .hero-subtitle { font-size: 0.88rem !important; }
         .metrics-grid { grid-template-columns: repeat(2, 1fr) !important; gap: 0.75rem !important; }
         .metric-card { padding: 1rem !important; }
-        .metric-card .value { font-size: 1.6rem !important; }
+        .metric-card .value { font-size: 1.5rem !important; }
         .live-hud { flex-direction: column; align-items: flex-start; gap: 0.5rem; }
     }
 
@@ -419,7 +539,7 @@ st.markdown("""
     }
 
     @media (min-width: 1440px) {
-        .block-container { max-width: 1440px !important; margin: 0 auto !important; }
+        .block-container { max-width: 1400px !important; margin: 0 auto !important; }
     }
 
     /* Clean Streamlit Watermarks */
@@ -429,19 +549,34 @@ st.markdown("""
 
 
 # ============================================================================
-# TOP-RIGHT BILINGUAL LANGUAGE SWITCHER (EN / TR)
+# TOP NAVIGATION BRAND BAR & BILINGUAL LANGUAGE SWITCHER (EN / TR)
 # ============================================================================
 
-col_hud_left, col_lang_right = st.columns([5, 1])
+col_brand_nav, col_lang_nav = st.columns([4, 1.2])
 
-with col_lang_right:
-    # Segmented pill switcher
+with col_brand_nav:
+    st.markdown("""
+    <div class="top-nav-brand">
+        <div class="brand-logo-ring">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#0EA5E9" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>
+            </svg>
+        </div>
+        <div>
+            <div class="brand-title">FED-XRAY <span class="brand-version">v2.4 PRO</span></div>
+            <div class="brand-sub">Federated Oncology Consortium: Confidential Clinical AI Network</div>
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
+
+with col_lang_nav:
     selected_lang = st.radio(
         label="Language",
         options=["EN", "TR"],
         index=0 if st.session_state.app_lang == "EN" else 1,
         horizontal=True,
-        label_visibility="collapsed"
+        label_visibility="collapsed",
+        key="app_language_selector"
     )
     if selected_lang != st.session_state.app_lang:
         st.session_state.app_lang = selected_lang
@@ -456,15 +591,19 @@ lang = st.session_state.app_lang
 
 with st.sidebar:
     st.markdown(f"""
-    <div style="text-align: center; padding: 1rem 0 1.5rem 0;">
-        <div style="font-size: 2.2rem; margin-bottom: 0.25rem;">🫁</div>
-        <h2 style="font-size: 1.4rem; font-weight: 800; margin: 0; color: white !important;">{get_text('app_title', lang)}</h2>
-        <p style="font-size: 0.78rem; color: #94A3B8 !important; margin: 0.25rem 0 0 0;">{get_text('sidebar_tagline', lang)}</p>
+    <div style="text-align: center; padding: 0.75rem 0 1.25rem 0;">
+        <div style="display: inline-flex; align-items: center; justify-content: center; width: 48px; height: 48px; border-radius: 12px; background: rgba(37,99,235,0.15); border: 1px solid rgba(56,189,248,0.3); margin-bottom: 0.5rem;">
+            <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#38BDF8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"/>
+            </svg>
+        </div>
+        <h2 style="font-size: 1.25rem; font-weight: 800; margin: 0; color: #F8FAFC !important;">{get_text('app_title', lang)}</h2>
+        <p style="font-size: 0.75rem; color: #94A3B8 !important; margin: 0.2rem 0 0 0;">{get_text('sidebar_tagline', lang)}</p>
     </div>
     """, unsafe_allow_html=True)
 
     # Section 1: Hospital Network Topology
-    st.markdown(f"#### 🏥 {get_text('sidebar_network_sec', lang)}")
+    st.markdown(f"#### {get_text('sidebar_network_sec', lang)}")
     n_hospitals = st.slider(
         get_text("sidebar_num_hospitals", lang),
         min_value=2,
@@ -485,7 +624,7 @@ with st.sidebar:
     st.markdown("---")
 
     # Section 2: Federated Optimization
-    st.markdown(f"#### 🔄 {get_text('sidebar_training_sec', lang)}")
+    st.markdown(f"#### {get_text('sidebar_training_sec', lang)}")
     n_rounds = st.slider(
         get_text("sidebar_rounds", lang),
         min_value=1,
@@ -514,7 +653,7 @@ with st.sidebar:
     st.markdown("---")
 
     # Section 3: Byzantine Adversarial Shield
-    st.markdown(f"#### 🛡️ {get_text('sidebar_security_sec', lang)}")
+    st.markdown(f"#### {get_text('sidebar_security_sec', lang)}")
     simulate_attack = st.checkbox(
         get_text("sidebar_attack_sim", lang),
         value=False,
@@ -530,7 +669,7 @@ with st.sidebar:
     if simulate_attack:
         st.markdown(f"""
         <div style="background: rgba(239,68,68,0.15); border: 1px solid #EF4444; padding: 0.6rem; border-radius: 10px; font-size: 0.8rem; color: #FCA5A5 !important;">
-            ⚠️ <strong>{get_text('sec2_shield_alert', lang)} 3</strong>
+            <strong>{get_text('sec2_shield_alert', lang)} 3</strong>
         </div>
         """, unsafe_allow_html=True)
 
@@ -543,7 +682,7 @@ with st.sidebar:
 st.markdown(f"""
 <div class="hero-container">
     <div class="hero-badge">
-        <span>✨</span> {get_text('app_badge', lang)}
+        <span>STRATEGY E BENCHMARK</span> &bull; <span>PATIENT-LEVEL DP</span> &bull; <span>CKKS HOMOMORPHIC</span>
     </div>
     <h1 class="hero-title">{get_text('hero_title', lang)}</h1>
     <p class="hero-subtitle">{get_text('hero_subtitle', lang)}</p>
@@ -557,16 +696,16 @@ st.markdown(f"""
 <div class="live-hud">
     <div class="hud-item">
         <div class="hud-pulse-dot"></div>
-        <span>{get_text('live_hud_active', lang)}: {n_hospitals} / {n_hospitals} {get_text('kpi_hospitals', lang)}</span>
+        <span>{get_text('live_hud_active', lang)}: <strong>{n_hospitals} / {n_hospitals} {get_text('kpi_hospitals', lang)} Online</strong></span>
     </div>
     <div class="hud-item">
-        <span>🧠 {get_text('live_hud_model', lang)}</span>
+        <span>Backbone: <strong>{get_text('live_hud_model', lang)}</strong></span>
     </div>
     <div class="hud-item">
-        <span>🛡️ {get_text('live_hud_shield', lang) if activate_defense else get_text('sec2_shield_off', lang)}</span>
+        <span>Shield: <strong>{get_text('live_hud_shield', lang) if activate_defense else get_text('sec2_shield_off', lang)}</strong></span>
     </div>
     <div class="hud-item">
-        <span>📊 {get_text('kpi_status', lang)}: <strong>{status_kpi_text}</strong></span>
+        <span>State: <strong>{status_kpi_text}</strong></span>
     </div>
 </div>
 """, unsafe_allow_html=True)
@@ -577,20 +716,24 @@ total_cohort_samples = n_hospitals * samples_per_hospital
 st.markdown(f"""
 <div class="metrics-grid">
     <div class="metric-card">
-        <h3>🏥 {get_text('kpi_hospitals', lang)}</h3>
+        <h3>{get_text('kpi_hospitals', lang)}</h3>
         <div class="value">{n_hospitals}</div>
+        <div class="caption">Disjoint Patient Sites</div>
     </div>
     <div class="metric-card">
-        <h3>🔄 {get_text('kpi_rounds', lang)}</h3>
+        <h3>{get_text('kpi_rounds', lang)}</h3>
         <div class="value">{n_rounds}</div>
+        <div class="caption">Weight Sync Cycles</div>
     </div>
     <div class="metric-card">
-        <h3>📊 {get_text('kpi_samples', lang)}</h3>
+        <h3>{get_text('kpi_samples', lang)}</h3>
         <div class="value">{total_cohort_samples:,}</div>
+        <div class="caption">224x224 Patient Scans</div>
     </div>
     <div class="metric-card">
-        <h3>📡 {get_text('kpi_status', lang)}</h3>
-        <div class="value" style="font-size: 1.4rem; color: {'#10B981' if st.session_state.model_trained else '#2563EB'} !important;">{status_kpi_text}</div>
+        <h3>{get_text('kpi_status', lang)}</h3>
+        <div class="value" style="font-size: 1.35rem; color: {'#10B981' if st.session_state.model_trained else '#38BDF8'} !important;">{status_kpi_text}</div>
+        <div class="caption">{'Weights Synchronized' if st.session_state.model_trained else 'Ready to Execute'}</div>
     </div>
 </div>
 """, unsafe_allow_html=True)
@@ -602,13 +745,14 @@ st.markdown(f"""
 
 st.markdown(f"""
 <div class="modern-section-header">
-    <div style="font-size: 1.8rem;">📊</div>
+    <div class="section-badge-num">01</div>
     <div>
         <h2>{get_text('sec1_title', lang)}</h2>
         <p>{get_text('sec1_subtitle', lang)}</p>
     </div>
 </div>
 """, unsafe_allow_html=True)
+
 
 col_source, col_scenario = st.columns([1.2, 1])
 
@@ -642,7 +786,7 @@ with col_scenario:
 col_gen_btn, col_gen_info = st.columns([1, 2])
 
 with col_gen_btn:
-    btn_generate = st.button(f"🔬 {get_text('sec1_btn_generate', lang)}", key="btn_gen_cohorts")
+    btn_generate = st.button(f"{get_text('sec1_btn_generate', lang)}", key="btn_gen_cohorts")
 
 with col_gen_info:
     if getattr(st.session_state, "data_source", None):
@@ -774,7 +918,7 @@ if st.session_state.hospital_data_generated and st.session_state.hospital_sample
     ]
 
     hospital_tabs = st.tabs([
-        f"🏥 {get_text('sec1_hospital_prefix', lang)} {i+1}"
+        f"{get_text('sec1_hospital_prefix', lang)} {i+1}"
         for i in range(min(n_hospitals, len(st.session_state.hospital_samples)))
     ])
 
@@ -788,8 +932,8 @@ if st.session_state.hospital_data_generated and st.session_state.hospital_sample
 
             st.markdown(f"""
             <div class="hospital-card">
-                <strong style="font-size: 1.1rem; color: #0F172A;">{inst_name}</strong><br>
-                <span style="font-size: 0.85rem; color: #64748B;">Node ID: <code>client_node_{h_idx+1}</code> | Total Cohort: <strong>{samples_per_hospital} Scans</strong></span>
+                <strong style="font-size: 1.05rem; color: #F8FAFC;">{inst_name}</strong><br>
+                <span style="font-size: 0.82rem; color: #94A3B8;">Node ID: <code>client_node_{h_idx+1}</code> | Total Cohort: <strong style="color: #F8FAFC;">{samples_per_hospital} Scans</strong></span>
             </div>
             """, unsafe_allow_html=True)
 
@@ -807,7 +951,7 @@ if st.session_state.hospital_data_generated and st.session_state.hospital_sample
                 fig_pie = go.Figure(data=[go.Pie(
                     labels=class_labels,
                     values=[dist[0], dist[1], dist[2]],
-                    marker=dict(colors=palette, line=dict(color='white', width=2)),
+                    marker=dict(colors=palette, line=dict(color='rgba(15, 23, 42, 0.8)', width=2)),
                     hole=0.62,
                     textinfo='percent',
                     textfont=dict(size=14, color='white', family="Inter"),
@@ -815,11 +959,25 @@ if st.session_state.hospital_data_generated and st.session_state.hospital_sample
                 )])
 
                 fig_pie.update_layout(
-                    annotations=[dict(text=f"{samples_per_hospital}<br>SCANS", x=0.5, y=0.5, font_size=15, showarrow=False, font_family="Outfit", font_color="#0F172A")],
+                    annotations=[dict(
+                        text=f"{samples_per_hospital}<br>SCANS",
+                        x=0.5, y=0.5,
+                        font_size=14,
+                        showarrow=False,
+                        font_family="Outfit",
+                        font_color="#F8FAFC"
+                    )],
                     height=280,
                     margin=dict(l=10, r=10, t=10, b=10),
                     showlegend=True,
-                    legend=dict(orientation="h", yanchor="bottom", y=-0.25, xanchor="center", x=0.5),
+                    legend=dict(
+                        orientation="h",
+                        yanchor="bottom",
+                        y=-0.25,
+                        xanchor="center",
+                        x=0.5,
+                        font=dict(color="#94A3B8", family="Inter", size=11)
+                    ),
                     paper_bgcolor='rgba(0,0,0,0)',
                     plot_bgcolor='rgba(0,0,0,0)',
                 )
@@ -859,7 +1017,7 @@ if st.session_state.hospital_data_generated and st.session_state.hospital_sample
 
 st.markdown(f"""
 <div class="modern-section-header">
-    <div style="font-size: 1.8rem;">🚀</div>
+    <div class="section-badge-num">02</div>
     <div>
         <h2>{get_text('sec2_title', lang)}</h2>
         <p>{get_text('sec2_subtitle', lang)}</p>
@@ -871,21 +1029,21 @@ col_train_btn, col_train_economics = st.columns([1, 2])
 
 with col_train_btn:
     btn_start_fl = st.button(
-        f"⚡ {get_text('sec2_btn_start', lang)}",
+        f"{get_text('sec2_btn_start', lang)}",
         key="btn_start_fl_rounds",
         disabled=not st.session_state.hospital_data_generated
     )
     if not st.session_state.hospital_data_generated:
-        st.info(f"💡 {get_text('sec1_btn_generate', lang)} first.")
+        st.info(f"{get_text('sec1_btn_generate', lang)} first.")
 
 with col_train_economics:
     st.markdown(f"""
     <div class="hospital-card" style="margin-bottom: 0;">
-        <strong style="color: #0F172A; font-size: 0.95rem;">📦 {get_text('sec2_economics_title', lang)}</strong>
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 0.5rem;">
-            <span style="font-size: 0.8rem; color: #64748B;">{get_text('sec2_economics_full', lang)}</span>
+        <strong style="color: #F8FAFC; font-size: 0.95rem;">{get_text('sec2_economics_title', lang)}</strong>
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 0.5rem; flex-wrap: wrap; gap: 0.5rem;">
+            <span style="font-size: 0.8rem; color: #94A3B8;">{get_text('sec2_economics_full', lang)}</span>
             <span style="font-size: 0.8rem; color: #10B981; font-weight: 700;">{get_text('sec2_economics_peft', lang)}</span>
-            <span style="background: rgba(16,185,129,0.15); color: #065F46; padding: 2px 8px; border-radius: 6px; font-weight: 700; font-size: 0.75rem;">
+            <span style="background: rgba(16,185,129,0.15); color: #34D399; border: 1px solid rgba(16,185,129,0.3); padding: 2px 8px; border-radius: 6px; font-weight: 700; font-size: 0.75rem;">
                 {get_text('sec2_economics_savings', lang)}
             </span>
         </div>
@@ -972,14 +1130,16 @@ if btn_start_fl and st.session_state.hospital_data_generated:
                     marker=dict(size=7)
                 ))
                 fig_loss.update_layout(
-                    title=f"📉 {get_text('sec2_loss', lang)}",
+                    title=f"{get_text('sec2_loss', lang)}",
                     xaxis_title=get_text('sec2_round', lang),
                     yaxis_title="Loss",
                     height=260,
                     margin=dict(l=30, r=20, t=40, b=30),
                     paper_bgcolor='rgba(0,0,0,0)',
                     plot_bgcolor='rgba(0,0,0,0)',
-                    font=dict(family="Inter", color='#0F172A')
+                    font=dict(family="Inter", color='#94A3B8'),
+                    xaxis=dict(gridcolor='rgba(148, 163, 184, 0.15)'),
+                    yaxis=dict(gridcolor='rgba(148, 163, 184, 0.15)')
                 )
                 st.plotly_chart(fig_loss, use_container_width=True)
 
@@ -994,7 +1154,7 @@ if btn_start_fl and st.session_state.hospital_data_generated:
                     marker=dict(size=7)
                 ))
                 fig_acc.update_layout(
-                    title=f"📈 {get_text('sec2_acc', lang)} (%)",
+                    title=f"{get_text('sec2_acc', lang)} (%)",
                     xaxis_title=get_text('sec2_round', lang),
                     yaxis_title="Accuracy %",
                     yaxis_range=[0, 100],
@@ -1002,7 +1162,9 @@ if btn_start_fl and st.session_state.hospital_data_generated:
                     margin=dict(l=30, r=20, t=40, b=30),
                     paper_bgcolor='rgba(0,0,0,0)',
                     plot_bgcolor='rgba(0,0,0,0)',
-                    font=dict(family="Inter", color='#0F172A')
+                    font=dict(family="Inter", color='#94A3B8'),
+                    xaxis=dict(gridcolor='rgba(148, 163, 184, 0.15)'),
+                    yaxis=dict(gridcolor='rgba(148, 163, 184, 0.15)')
                 )
                 st.plotly_chart(fig_acc, use_container_width=True)
 
@@ -1010,14 +1172,14 @@ if btn_start_fl and st.session_state.hospital_data_generated:
         with shield_placeholder.container():
             if security_report and security_report.clients_blocked:
                 st.markdown(f"""
-                <div style="background: #FEE2E2; border: 1px solid #EF4444; padding: 0.75rem 1rem; border-radius: 12px; color: #991B1B; font-size: 0.9rem;">
-                    🚨 <strong>{get_text('sec2_shield_alert', lang)}:</strong> {[c+1 for c in security_report.clients_blocked]}
+                <div style="background: rgba(239,68,68,0.15); border: 1px solid #EF4444; padding: 0.75rem 1rem; border-radius: 12px; color: #FCA5A5; font-size: 0.9rem;">
+                    <strong>{get_text('sec2_shield_alert', lang)}:</strong> {[c+1 for c in security_report.clients_blocked]}
                 </div>
                 """, unsafe_allow_html=True)
             else:
                 st.markdown(f"""
-                <div style="background: #D1FAE5; border: 1px solid #10B981; padding: 0.75rem 1rem; border-radius: 12px; color: #065F46; font-size: 0.9rem;">
-                    ✅ <strong>{get_text('sec2_shield_secure', lang)}</strong>
+                <div style="background: rgba(16,185,129,0.15); border: 1px solid #10B981; padding: 0.75rem 1rem; border-radius: 12px; color: #34D399; font-size: 0.9rem;">
+                    <strong>{get_text('sec2_shield_secure', lang)}</strong>
                 </div>
                 """, unsafe_allow_html=True)
 
@@ -1040,7 +1202,16 @@ elif st.session_state.training_history['round']:
                 mode='lines+markers',
                 line=dict(color='#EF4444', width=3)
             ))
-            fig_loss.update_layout(title=f"📉 {get_text('sec2_loss', lang)}", height=260, margin=dict(l=30, r=20, t=40, b=30), paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', font=dict(family="Inter"))
+            fig_loss.update_layout(
+                title=f"{get_text('sec2_loss', lang)}",
+                height=260,
+                margin=dict(l=30, r=20, t=40, b=30),
+                paper_bgcolor='rgba(0,0,0,0)',
+                plot_bgcolor='rgba(0,0,0,0)',
+                font=dict(family="Inter", color='#94A3B8'),
+                xaxis=dict(gridcolor='rgba(148, 163, 184, 0.15)'),
+                yaxis=dict(gridcolor='rgba(148, 163, 184, 0.15)')
+            )
             st.plotly_chart(fig_loss, use_container_width=True)
         with col_t2:
             fig_acc = go.Figure()
@@ -1050,7 +1221,17 @@ elif st.session_state.training_history['round']:
                 mode='lines+markers',
                 line=dict(color='#10B981', width=3)
             ))
-            fig_acc.update_layout(title=f"📈 {get_text('sec2_acc', lang)} (%)", height=260, margin=dict(l=30, r=20, t=40, b=30), yaxis_range=[0, 100], paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', font=dict(family="Inter"))
+            fig_acc.update_layout(
+                title=f"{get_text('sec2_acc', lang)} (%)",
+                height=260,
+                margin=dict(l=30, r=20, t=40, b=30),
+                yaxis_range=[0, 100],
+                paper_bgcolor='rgba(0,0,0,0)',
+                plot_bgcolor='rgba(0,0,0,0)',
+                font=dict(family="Inter", color='#94A3B8'),
+                xaxis=dict(gridcolor='rgba(148, 163, 184, 0.15)'),
+                yaxis=dict(gridcolor='rgba(148, 163, 184, 0.15)')
+            )
             st.plotly_chart(fig_acc, use_container_width=True)
 
 
@@ -1060,7 +1241,7 @@ elif st.session_state.training_history['round']:
 
 st.markdown(f"""
 <div class="modern-section-header">
-    <div style="font-size: 1.8rem;">🩺</div>
+    <div class="section-badge-num">03</div>
     <div>
         <h2>{get_text('sec3_title', lang)}</h2>
         <p>{get_text('sec3_subtitle', lang)}</p>
@@ -1072,12 +1253,12 @@ col_scan_act, col_scan_opt = st.columns([1, 2])
 
 with col_scan_act:
     btn_scan_patient = st.button(
-        f"🔍 {get_text('sec3_btn_run_diag', lang)}",
+        f"{get_text('sec3_btn_run_diag', lang)}",
         key="btn_scan_patient_inference",
         disabled=not st.session_state.model_trained
     )
     if not st.session_state.model_trained:
-        st.warning(f"⚠️ {get_text('sec2_btn_start', lang)} first.")
+        st.warning(f"{get_text('sec2_btn_start', lang)} first.")
 
 with col_scan_opt:
     col_alpha, col_cmap = st.columns(2)
@@ -1199,21 +1380,21 @@ if hasattr(st.session_state, 'scan_image') and st.session_state.model_trained:
     col_pane_raw, col_pane_xai, col_pane_conf = st.columns([1, 1, 1.2])
 
     with col_pane_raw:
-        st.markdown(f"**📷 {get_text('sec3_dual_pane_orig', lang)}**")
+        st.markdown(f"**{get_text('sec3_dual_pane_orig', lang)}**")
         fig_r = go.Figure(data=go.Heatmap(z=st.session_state.scan_image, colorscale='gray', showscale=False))
         fig_r.update_layout(height=260, margin=dict(l=5, r=5, t=5, b=5), xaxis=dict(showticklabels=False), yaxis=dict(showticklabels=False, scaleanchor='x'))
         st.plotly_chart(fig_r, use_container_width=True)
         st.caption(f"Ground Truth: **{class_names_local[st.session_state.scan_true_label]}**")
 
     with col_pane_xai:
-        st.markdown(f"**🔬 {get_text('sec3_dual_pane_xai', lang)}**")
+        st.markdown(f"**{get_text('sec3_dual_pane_xai', lang)}**")
         fig_x = go.Figure(data=go.Image(z=(create_overlay(st.session_state.scan_image, st.session_state.scan_heatmap, alpha=st.session_state.xai_opacity) * 255).astype(np.uint8)))
         fig_x.update_layout(height=260, margin=dict(l=5, r=5, t=5, b=5), xaxis=dict(showticklabels=False), yaxis=dict(showticklabels=False))
         st.plotly_chart(fig_x, use_container_width=True)
         st.caption(f"Grad-CAM Attention Overlay ({st.session_state.xai_colormap} Palette)")
 
     with col_pane_conf:
-        st.markdown(f"**📊 {get_text('sec3_results_header', lang)}**")
+        st.markdown(f"**{get_text('sec3_results_header', lang)}**")
         probs = st.session_state.scan_probs
         fig_b = go.Figure(data=go.Bar(
             x=probs * 100,
@@ -1227,11 +1408,11 @@ if hasattr(st.session_state, 'scan_image') and st.session_state.model_trained:
         fig_b.update_layout(
             height=260,
             margin=dict(l=70, r=20, t=10, b=20),
-            xaxis=dict(showgrid=False, range=[0, 100]),
-            yaxis=dict(showgrid=False),
+            xaxis=dict(showgrid=True, gridcolor='rgba(148, 163, 184, 0.15)', range=[0, 100]),
+            yaxis=dict(showgrid=False, tickfont=dict(color="#F8FAFC")),
             paper_bgcolor='rgba(0,0,0,0)',
             plot_bgcolor='rgba(0,0,0,0)',
-            font=dict(family="Inter")
+            font=dict(family="Inter", color="#94A3B8")
         )
         st.plotly_chart(fig_b, use_container_width=True)
 
@@ -1241,7 +1422,7 @@ if hasattr(st.session_state, 'scan_image') and st.session_state.model_trained:
     col_cbr, col_cdss_media = st.columns([1.2, 1])
 
     with col_cbr:
-        st.markdown(f"### 🧬 {get_text('sec3_rag_title', lang)}")
+        st.markdown(f"### {get_text('sec3_rag_title', lang)}")
         st.caption(get_text('sec3_rag_desc', lang))
 
         model_emb = create_model()
@@ -1264,7 +1445,7 @@ if hasattr(st.session_state, 'scan_image') and st.session_state.model_trained:
                 if lang == "tr"
                 else "No reference clinical cohort indexed. Reference case bank requires cohort ingestion."
             )
-            st.info(f"ℹ️ {empty_rag_msg}")
+            st.info(f"{empty_rag_msg}")
         else:
             for case in matched_cases:
                 c_label = class_names_local[case['label']]
@@ -1272,11 +1453,11 @@ if hasattr(st.session_state, 'scan_image') and st.session_state.model_trained:
                 st.markdown(f"""
                 <div class="glass-panel" style="padding: 1rem; margin-bottom: 0.75rem; display: flex; justify-content: space-between; align-items: center;">
                     <div>
-                        <strong style="color: #0F172A; font-size: 0.95rem;">{case['case_id']}</strong><br>
-                        <span style="font-size: 0.82rem; color: #64748B;">Diagnosis: <strong>{c_label}</strong></span>
+                        <strong style="color: #F8FAFC; font-size: 0.95rem;">{case['case_id']}</strong><br>
+                        <span style="font-size: 0.82rem; color: #94A3B8;">Diagnosis: <strong style="color: #F8FAFC;">{c_label}</strong></span>
                     </div>
                     <div>
-                        <span style="background: rgba(37,99,235,0.1); color: #1E40AF; padding: 4px 10px; border-radius: 9999px; font-weight: 700; font-size: 0.8rem;">
+                        <span style="background: rgba(56,189,248,0.15); color: #38BDF8; border: 1px solid rgba(56,189,248,0.3); padding: 4px 10px; border-radius: 9999px; font-weight: 700; font-size: 0.8rem;">
                             {c_sim:.1f}% {get_text('sec3_rag_sim', lang)}
                         </span>
                     </div>
@@ -1284,13 +1465,13 @@ if hasattr(st.session_state, 'scan_image') and st.session_state.model_trained:
                 """, unsafe_allow_html=True)
 
     with col_cdss_media:
-        st.markdown(f"### 🎙️ {get_text('sec3_voice_title', lang)}")
+        st.markdown(f"### {get_text('sec3_voice_title', lang)}")
         voice_diag_name = LABEL_NAMES.get(pred_idx, "Normal")
         audio_bytes = get_or_create_audio(voice_diag_name, conf_val)
         if audio_bytes:
             st.audio(audio_bytes, format="audio/mp3")
 
-        st.markdown(f"### 📋 {get_text('sec3_report_title', lang)}")
+        st.markdown(f"### {get_text('sec3_report_title', lang)}")
         pat_id = f"PAT-{int(time.time()) % 100000}"
         report_name = f"FedXRay_{voice_diag_name}_{pat_id}.pdf"
 
@@ -1311,7 +1492,7 @@ if hasattr(st.session_state, 'scan_image') and st.session_state.model_trained:
                 similar_cases=st.session_state.get('similar_cases', None)
             )
             st.download_button(
-                label=f"📥 {get_text('sec3_btn_download_pdf', lang)}",
+                label=f"{get_text('sec3_btn_download_pdf', lang)}",
                 data=pdf_bytes,
                 file_name=report_name,
                 mime="application/pdf",
