@@ -64,3 +64,56 @@ export interface RagCase {
   site_id?: string;
   provenance?: string;
 }
+
+export interface HospitalNodeTelemetry {
+  id: string;
+  name: string;
+  location: string;
+  scanner: string;
+  scans: number;
+  modalityKey: string;
+  skewKey: string;
+  adapter: string;
+  dpEpsilon: number;
+  status: "online" | "syncing";
+}
+
+export interface BackendSystemState {
+  model_trained: boolean;
+  hospitals_loaded: number;
+  has_test_set: boolean;
+  history_rounds: number;
+  model_type: string;
+  peft_mode: string;
+  persisted_on_disk: boolean;
+  data_source: string;
+  privacy: {
+    dp_active: boolean;
+    dp_mode: string;
+    epsilon: number;
+    target_delta: number;
+    target_bound: string;
+  };
+  hospitals: HospitalNodeTelemetry[];
+  rounds: {
+    round_num: number;
+    train_loss: number;
+    train_accuracy: number;
+    f1_score: number;
+    bandwidth: string;
+    threat_detected: boolean;
+    status: string;
+  }[];
+  reference_cases: {
+    case_id: string;
+    diagnosis: string;
+    similarity: number;
+    clinical_notes: string;
+    site_id?: string;
+    biopsy_confirmed?: boolean;
+    anatomical_site?: string;
+    provenance?: string;
+  }[];
+  is_live: boolean;
+  telemetry_source: "live_runtime" | "reference_benchmark";
+}

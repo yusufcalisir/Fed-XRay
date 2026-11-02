@@ -1,8 +1,19 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
-import { ShieldCheck, Lock, Activity, Server, ArrowRight, X, Building2, CheckCircle2 } from "lucide-react";
+import {
+  ShieldCheck,
+  Lock,
+  Activity,
+  Server,
+  ArrowRight,
+  X,
+  Building2,
+  CheckCircle2,
+  AlertTriangle,
+  RefreshCw,
+} from "lucide-react";
 import { useLanguage } from "@/context/LanguageContext";
 
 interface ConsortiumLaunchOverlayProps {
@@ -18,33 +29,81 @@ export default function ConsortiumLaunchOverlay({
   const { t } = useLanguage();
   const [progress, setProgress] = useState(0);
   const [activeStage, setActiveStage] = useState(0);
+  const [error, setError] = useState<string | null>(null);
+  const [isVerifying, setIsVerifying] = useState(false);
+  const [privacySummary, setPrivacySummary] = useState<string | null>(null);
+
+  const runHandshake = useCallback(async () => {
+    if (!isOpen) return;
+    setError(null);
+    setIsVerifying(true);
+    setProgress(15);
+    setActiveStage(0);
+
+    const baseUrl = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000";
+
+    try {
+      // Step 1: Central Server Enclave Health Attestation
+      const healthRes = await fetch(`${baseUrl}/api/health`, { cache: "no-store" });
+      if (!healthRes.ok) {
+        throw new Error(`Enclave health check failed (HTTP ${healthRes.status})`);
+      }
+      const healthData = await healthRes.json();
+      if (healthData.status !== "healthy") {
+        throw new Error(`Aggregator reported unhealthy state: ${healthData.status}`);
+      }
+
+      await new Promise((r) => setTimeout(r, 260));
+      setProgress(45);
+      setActiveStage(1);
+
+      // Step 2: Decentralized Consortium Node State & Cohort Topology
+      const stateRes = await fetch(`${baseUrl}/api/state`, { cache: "no-store" });
+      if (!stateRes.ok) {
+        throw new Error(`Consortium node topology query failed (HTTP ${stateRes.status})`);
+      }
+
+      await new Promise((r) => setTimeout(r, 300));
+      setProgress(75);
+      setActiveStage(2);
+
+      // Step 3: Cryptographic Parameter & Patient-Level DP Handshake
+      const privRes = await fetch(`${baseUrl}/api/fl/privacy-status`, { cache: "no-store" });
+      if (!privRes.ok) {
+        throw new Error(`Cryptographic parameter verification failed (HTTP ${privRes.status})`);
+      }
+      const privData = await privRes.json();
+      const epsVal = typeof privData.epsilon === "number" ? privData.epsilon.toFixed(1) : "2.0";
+      const cVal = typeof privData.clipping_bound_C === "number" ? privData.clipping_bound_C : "0.5";
+      setPrivacySummary(`CKKS 128-Bit + Patient DP (eps <= ${epsVal}, C = ${cVal})`);
+
+      await new Promise((r) => setTimeout(r, 280));
+      setProgress(100);
+      setActiveStage(3);
+      setIsVerifying(false);
+
+      const timer = setTimeout(() => {
+        router.push("/dashboard");
+      }, 400);
+      return () => clearTimeout(timer);
+    } catch (err: any) {
+      console.error("Enclave handshake failed:", err);
+      setIsVerifying(false);
+      setError(err?.message || "Failed to establish secure enclave handshake with backend aggregator.");
+    }
+  }, [isOpen, router]);
 
   useEffect(() => {
     if (!isOpen) {
       setProgress(0);
       setActiveStage(0);
+      setError(null);
+      setIsVerifying(false);
       return;
     }
 
-    const interval = setInterval(() => {
-      setProgress((prev) => {
-        if (prev >= 100) {
-          clearInterval(interval);
-          setTimeout(() => {
-            router.push("/dashboard");
-          }, 250);
-          return 100;
-        }
-        const next = prev + 5;
-        if (next >= 25 && next < 55) setActiveStage(1);
-        else if (next >= 55 && next < 85) setActiveStage(2);
-        else if (next >= 85) setActiveStage(3);
-        return next;
-      });
-    }, 80);
-
-    return () => clearInterval(interval);
-  }, [isOpen, router]);
+    runHandshake();
+  }, [isOpen, runHandshake]);
 
   if (!isOpen) return null;
 
@@ -292,11 +351,44 @@ export default function ConsortiumLaunchOverlay({
           </div>
         </div>
 
+        {/* Error Alert if Enclave Verification Fails (Honest Failure Notification) */}
+        {error && (
+          <div className="mb-3.5 p-3 rounded-xl bg-rose-500/10 border border-rose-500/30 text-left">
+            <div className="flex items-start gap-2.5">
+              <AlertTriangle className="w-4 h-4 text-rose-500 shrink-0 mt-0.5" />
+              <div className="flex-1">
+                <div className="text-xs font-bold text-rose-600 dark:text-rose-400">
+                  Enclave Verification Handshake Failed
+                </div>
+                <div className="text-[11px] text-[var(--text-muted)] mt-0.5 leading-relaxed">
+                  {error}
+                </div>
+                <div className="flex items-center gap-2 mt-2.5">
+                  <button
+                    onClick={() => runHandshake()}
+                    disabled={isVerifying}
+                    className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[11px] font-semibold bg-rose-500 text-white hover:bg-rose-600 transition-colors disabled:opacity-50"
+                  >
+                    <RefreshCw className={`w-3 h-3 ${isVerifying ? "animate-spin" : ""}`} />
+                    <span>Retry Handshake</span>
+                  </button>
+                  <button
+                    onClick={handleSkip}
+                    className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-[11px] font-semibold text-slate-500 hover:text-slate-800 dark:hover:text-slate-200 transition-colors"
+                  >
+                    <span>Proceed in Offline Mode</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Compact 4-Step Handshake Milestones (Clean grid instead of tall walls of text) */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5 mb-4">
           {steps.map((step, idx) => {
             const isCompleted = activeStage > idx || progress === 100;
-            const isCurrent = activeStage === idx && progress < 100;
+            const isCurrent = activeStage === idx && progress < 100 && !error;
 
             return (
               <div
@@ -338,8 +430,8 @@ export default function ConsortiumLaunchOverlay({
 
         {/* Footer Actions */}
         <div className="flex flex-wrap items-center justify-between gap-2 pt-2.5 border-t border-[var(--border-subtle)]">
-          <span className="text-[10px] sm:text-[11px] text-[var(--text-muted)]">
-            {t("launch_modal_footer_nodes")}
+          <span className="text-[10px] sm:text-[11px] text-[var(--text-muted)] font-mono">
+            {privacySummary || t("launch_modal_footer_nodes")}
           </span>
           <button
             onClick={handleSkip}

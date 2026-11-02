@@ -12,7 +12,7 @@ import {
 } from "lucide-react";
 import { useLanguage } from "@/context/LanguageContext";
 
-interface HospitalNode {
+export interface HospitalNode {
   id: string;
   name: string;
   location: string;
@@ -31,10 +31,10 @@ const HOSPITAL_NODES: HospitalNode[] = [
     name: "BCN-20000 Skin Cancer Hub",
     location: "Barcelona, ES",
     scanner: "Siemens Sensation Optical Dermatoscope",
-    scans: 54,
+    scans: 40,
     modalityKey: "topo_mod_dermo",
     skewKey: "topo_skew_melanoma",
-    adapter: "FFA-LoRA (r=16, α=32)",
+    adapter: "FFA-LoRA (r=8, alpha=16)",
     dpEpsilon: 1.42,
     status: "online",
   },
@@ -43,10 +43,10 @@ const HOSPITAL_NODES: HospitalNode[] = [
     name: "Beth Israel Deaconess Medical Center",
     location: "Boston, USA",
     scanner: "GE Revolution Digital Radiography (MIMIC-CXR)",
-    scans: 50,
+    scans: 40,
     modalityKey: "topo_mod_xray",
     skewKey: "topo_skew_pneumonia",
-    adapter: "FFA-LoRA (r=16, α=32)",
+    adapter: "FFA-LoRA (r=8, alpha=16)",
     dpEpsilon: 1.38,
     status: "online",
   },
@@ -55,10 +55,10 @@ const HOSPITAL_NODES: HospitalNode[] = [
     name: "ViDIR Dermatopathology Institute",
     location: "Vienna, AT",
     scanner: "Canon PRISM High-Throughput Digital Pathology",
-    scans: 51,
+    scans: 40,
     modalityKey: "topo_mod_histo",
     skewKey: "topo_skew_carcinoma",
-    adapter: "FFA-LoRA (r=16, α=32)",
+    adapter: "FFA-LoRA (r=8, alpha=16)",
     dpEpsilon: 1.55,
     status: "online",
   },
@@ -67,10 +67,10 @@ const HOSPITAL_NODES: HospitalNode[] = [
     name: "Queensland Oncology Screening Center",
     location: "Brisbane, AU",
     scanner: "Philips Digital Dermatoscope Core",
-    scans: 53,
+    scans: 40,
     modalityKey: "topo_mod_dermo",
     skewKey: "topo_skew_nevi",
-    adapter: "FFA-LoRA (r=16, α=32)",
+    adapter: "FFA-LoRA (r=8, alpha=16)",
     dpEpsilon: 1.48,
     status: "online",
   },
@@ -79,16 +79,33 @@ const HOSPITAL_NODES: HospitalNode[] = [
 export interface FederatedConsortiumTopologyProps {
   onLaunchDemo?: () => void;
   isModalOpen?: boolean;
+  hospitals?: HospitalNode[];
+  activeEpsilon?: number;
+  telemetryRounds?: {
+    round_num: number;
+    train_loss: number;
+    train_accuracy: number;
+    f1_score: number;
+    bandwidth: string;
+    threat_detected: boolean;
+    status: string;
+  }[];
+  isLive?: boolean;
 }
 
 export default function FederatedConsortiumTopology({
   onLaunchDemo,
+  hospitals,
+  activeEpsilon,
+  telemetryRounds,
+  isLive = false,
 }: FederatedConsortiumTopologyProps) {
   const { t } = useLanguage();
   const [activeView, setActiveView] = useState<"topology" | "crypto" | "telemetry">("topology");
   const [selectedNodeId, setSelectedNodeId] = useState<string>("node-1");
 
-  const selectedNode = HOSPITAL_NODES.find((n) => n.id === selectedNodeId) || HOSPITAL_NODES[0];
+  const nodeList = hospitals && hospitals.length > 0 ? hospitals : HOSPITAL_NODES;
+  const selectedNode = nodeList.find((n) => n.id === selectedNodeId) || nodeList[0];
 
   return (
     <div className="card relative h-[480px] sm:h-[520px] lg:h-[550px] flex flex-col justify-between overflow-hidden p-4 sm:p-5 select-none border border-[var(--border-card)] bg-[var(--bg-card)] shadow-xl rounded-2xl">
@@ -178,7 +195,7 @@ export default function FederatedConsortiumTopology({
 
             {/* Top Row: Nodes 1 & 2 */}
             <div className="grid grid-cols-2 gap-3 z-10">
-              {HOSPITAL_NODES.slice(0, 2).map((node) => (
+              {nodeList.slice(0, 2).map((node) => (
                 <button
                   type="button"
                   key={node.id}
@@ -223,7 +240,7 @@ export default function FederatedConsortiumTopology({
 
             {/* Bottom Row: Nodes 3 & 4 */}
             <div className="grid grid-cols-2 gap-3 z-10">
-              {HOSPITAL_NODES.slice(2, 4).map((node) => (
+              {nodeList.slice(2, 4).map((node) => (
                 <button
                   type="button"
                   key={node.id}
@@ -370,28 +387,57 @@ export default function FederatedConsortiumTopology({
                 <div className="card p-2.5 border border-[var(--border-subtle)]">
                   <div className="flex items-center gap-1.5 text-[10px] font-mono text-slate-500 uppercase font-semibold">
                     <FileCheck className="w-3 h-3 text-sky-500" />
-                    <span>{t("topo_telem_auc_title")}</span>
+                    <span>{telemetryRounds && telemetryRounds.length > 0 ? "Accuracy" : t("topo_telem_auc_title")}</span>
                   </div>
                   <div className="font-mono text-sm font-bold text-sky-600 dark:text-sky-400 mt-1">
-                    0.984
+                    {telemetryRounds && telemetryRounds.length > 0
+                      ? `${telemetryRounds[telemetryRounds.length - 1].train_accuracy}%`
+                      : "0.984"}
                   </div>
                   <div className="text-[10px] text-[var(--text-muted)] mt-0.5">
-                    {t("topo_telem_auc_desc")}
+                    {telemetryRounds && telemetryRounds.length > 0
+                      ? `Live Round ${telemetryRounds.length} Validation`
+                      : t("topo_telem_auc_desc")}
                   </div>
                 </div>
               </div>
 
               <div className="mt-3 p-3 rounded-lg bg-[var(--bg-card)] border border-[var(--border-subtle)] text-[11px] leading-relaxed text-[var(--text-muted)]">
                 <div className="flex items-center justify-between mb-1.5">
-                  <strong className="text-[var(--text-heading)]">{t("topo_telem_log_title")}</strong>
-                  <span className="font-mono text-[10px] text-emerald-500 font-semibold">{t("topo_telem_loss")}</span>
+                  <strong className="text-[var(--text-heading)]">
+                    {telemetryRounds && telemetryRounds.length > 0
+                      ? "Live Round Trajectory"
+                      : t("topo_telem_log_title")}
+                  </strong>
+                  <span className="font-mono text-[10px] text-emerald-500 font-semibold">
+                    {telemetryRounds && telemetryRounds.length > 0
+                      ? `Loss: ${telemetryRounds[telemetryRounds.length - 1].train_loss}`
+                      : t("topo_telem_loss")}
+                  </span>
                 </div>
-                <div className="flex items-center gap-2 font-mono text-[10px]">
-                  <span className="px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-bold">R1: 72.5%</span>
-                  <span className="px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-bold">R2: 81.3%</span>
-                  <span className="px-2 py-0.5 rounded bg-amber-500/10 text-amber-600 dark:text-amber-400 font-bold">R3: 87.2% ({t("topo_telem_filtered")})</span>
-                  <span className="px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-bold">R4: 91.6%</span>
-                  <span className="px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 font-extrabold">R5: 94.8%</span>
+                <div className="flex flex-wrap items-center gap-1.5 font-mono text-[10px]">
+                  {telemetryRounds && telemetryRounds.length > 0 ? (
+                    telemetryRounds.map((rd) => (
+                      <span
+                        key={rd.round_num}
+                        className={`px-2 py-0.5 rounded font-bold ${
+                          rd.threat_detected
+                            ? "bg-amber-500/10 text-amber-600 dark:text-amber-400"
+                            : "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
+                        }`}
+                      >
+                        R{rd.round_num}: {rd.train_accuracy}%
+                      </span>
+                    ))
+                  ) : (
+                    <>
+                      <span className="px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-bold">R1: 72.5%</span>
+                      <span className="px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-bold">R2: 81.3%</span>
+                      <span className="px-2 py-0.5 rounded bg-amber-500/10 text-amber-600 dark:text-amber-400 font-bold">R3: 87.2% ({t("topo_telem_filtered")})</span>
+                      <span className="px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-bold">R4: 91.6%</span>
+                      <span className="px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 font-extrabold">R5: 94.8%</span>
+                    </>
+                  )}
                 </div>
               </div>
             </div>

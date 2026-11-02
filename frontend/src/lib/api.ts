@@ -1,8 +1,17 @@
-import { HospitalCohort, DiagnosisResult, RagCase, TelemetryRound } from "@/types";
+import { HospitalCohort, DiagnosisResult, RagCase, TelemetryRound, BackendSystemState } from "@/types";
 
 const DIAG_TO_CLASS: Record<string, number> = {
   Normal: 0, Pneumonia: 1, COVID: 2, "COVID-19": 2,
 };
+
+export async function fetchSystemState(baseUrl: string = "http://127.0.0.1:8000"): Promise<BackendSystemState> {
+  const url = `${baseUrl.replace(/\/$/, "")}/api/state`;
+  const res = await fetch(url);
+  if (!res.ok) {
+    throw new Error(`Failed to fetch system state (HTTP ${res.status})`);
+  }
+  return await res.json();
+}
 
 export async function fetchHospitalCohorts(baseUrl: string, numHospitals: number = 4, samplesPerHospital: number = 200) {
   const url = `${baseUrl.replace(/\/$/, "")}/api/cohorts/generate`;

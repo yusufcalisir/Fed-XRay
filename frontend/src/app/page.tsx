@@ -24,16 +24,26 @@ import {
   Eye,
 } from "lucide-react";
 
+import { BackendSystemState } from "@/types";
+import { fetchSystemState } from "@/lib/api";
+
 export default function PresentationLandingPage() {
   const { t } = useLanguage();
   const [isLaunchModalOpen, setIsLaunchModalOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<"xai" | "rag" | "convergence" | "report">("xai");
   const [backendStatus, setBackendStatus] = useState<"checking" | "online" | "standby">("checking");
+  const [systemState, setSystemState] = useState<BackendSystemState | null>(null);
 
   useEffect(() => {
     let isMounted = true;
     const checkBackend = async () => {
       try {
+        const stateData = await fetchSystemState("http://127.0.0.1:8000").catch(() => null);
+        if (stateData && isMounted) {
+          setSystemState(stateData);
+          setBackendStatus("online");
+          return;
+        }
         const res = await fetch("/api/health").catch(() => fetch("http://127.0.0.1:8000/api/health"));
         if (res && res.ok && isMounted) {
           setBackendStatus("online");
@@ -126,25 +136,93 @@ export default function PresentationLandingPage() {
               <FederatedConsortiumTopology
                 onLaunchDemo={openLaunchModal}
                 isModalOpen={isLaunchModalOpen}
+                hospitals={systemState?.hospitals}
+                activeEpsilon={systemState?.privacy?.epsilon}
+                telemetryRounds={systemState?.rounds}
+                isLive={Boolean(systemState?.is_live)}
               />
             </div>
           </div>
 
           {/* Key Metrics Strip */}
-          <div className="grid grid-cols-2 sm:grid-cols-5 gap-px mt-12 sm:mt-16 border border-[var(--border-card)] rounded-2xl overflow-hidden bg-[var(--border-card)]">
-            {[
-              { value: "4", label: t("landing_metric_nodes"), sub: t("landing_metric_nodes_sub"), icon: Server },
-              { value: "0 B", label: t("landing_metric_leakage"), sub: t("landing_metric_leakage_sub"), icon: Lock },
-              { value: "128-Bit", label: t("landing_metric_crypto"), sub: t("landing_metric_crypto_sub"), icon: Cpu },
-              { value: "98.4%", label: t("landing_metric_auc"), sub: t("landing_metric_auc_sub"), icon: Activity },
-              { value: "\u03B5 \u2264 2.0", label: t("landing_metric_dp"), sub: t("landing_metric_dp_sub"), icon: ShieldCheck },
-            ].map((m, i) => (
-              <div key={i} className="bg-[var(--bg-app)] p-4 sm:p-5 text-center sm:text-left">
-                <div className="font-display text-xl sm:text-2xl font-extrabold text-[var(--text-heading)] mb-0.5">{m.value}</div>
-                <div className="text-[11px] font-semibold text-[var(--text-heading)]">{m.label}</div>
-                <div className="text-[10px] text-[var(--text-muted)]">{m.sub}</div>
+          <div className="mt-12 sm:mt-16">
+            <div className="flex items-center justify-between mb-2.5 px-1">
+              <div className="flex items-center gap-2">
+                <span
+                  className={`w-2 h-2 rounded-full ${
+                    systemState?.is_live && systemState?.rounds && systemState.rounds.length > 0
+                      ? "bg-emerald-500 animate-pulse shadow-[0_0_8px_#10b981]"
+                      : "bg-sky-500"
+                  }`}
+                />
+                <span className="font-mono text-[11px] font-bold uppercase tracking-wider text-[var(--text-heading)]">
+                  {systemState?.is_live && systemState?.rounds && systemState.rounds.length > 0
+                    ? `Live Consortium Telemetry (Active Session · ${systemState.history_rounds} Rounds · ${systemState.model_type.toUpperCase()})`
+                    : "Strategy E Reference Benchmark Target (Option J Baseline)"}
+                </span>
               </div>
-            ))}
+              <span className="text-[10px] font-mono text-[var(--text-muted)] hidden sm:inline">
+                {systemState?.is_live && systemState?.rounds && systemState.rounds.length > 0
+                  ? "Real-time state synced from FastAPI runtime"
+                  : "Pre-training baseline · Launch cockpit for live execution"}
+              </span>
+            </div>
+
+            <div className="grid grid-cols-2 sm:grid-cols-5 gap-px border border-[var(--border-card)] rounded-2xl overflow-hidden bg-[var(--border-card)]">
+              {[
+                {
+                  value: systemState?.hospitals?.length ? String(systemState.hospitals.length) : "4",
+                  label: t("landing_metric_nodes"),
+                  sub: systemState?.is_live ? "Connected Clinical Cohorts" : t("landing_metric_nodes_sub"),
+                  icon: Server,
+                },
+                {
+                  value: "0 B",
+                  label: t("landing_metric_leakage"),
+                  sub: t("landing_metric_leakage_sub"),
+                  icon: Lock,
+                },
+                {
+                  value: "128-Bit",
+                  label: t("landing_metric_crypto"),
+                  sub: t("landing_metric_crypto_sub"),
+                  icon: Cpu,
+                },
+                {
+                  value:
+                    systemState?.is_live && systemState?.rounds && systemState.rounds.length > 0
+                      ? `${systemState.rounds[systemState.rounds.length - 1].train_accuracy}%`
+                      : "98.4%",
+                  label:
+                    systemState?.is_live && systemState?.rounds && systemState.rounds.length > 0
+                      ? "Validation Accuracy"
+                      : t("landing_metric_auc"),
+                  sub:
+                    systemState?.is_live && systemState?.rounds && systemState.rounds.length > 0
+                      ? `Round ${systemState.rounds.length} (${systemState.peft_mode ? systemState.peft_mode.toUpperCase() : "Full"})`
+                      : t("landing_metric_auc_sub"),
+                  icon: Activity,
+                },
+                {
+                  value:
+                    systemState?.privacy?.epsilon && systemState.privacy.epsilon > 0
+                      ? `\u03B5 = ${systemState.privacy.epsilon.toFixed(2)}`
+                      : "\u03B5 \u2264 2.0",
+                  label: t("landing_metric_dp"),
+                  sub:
+                    systemState?.privacy?.epsilon && systemState.privacy.epsilon > 0
+                      ? "Rényi DP Accountant Budget"
+                      : t("landing_metric_dp_sub"),
+                  icon: ShieldCheck,
+                },
+              ].map((m, i) => (
+                <div key={i} className="bg-[var(--bg-app)] p-4 sm:p-5 text-center sm:text-left">
+                  <div className="font-display text-xl sm:text-2xl font-extrabold text-[var(--text-heading)] mb-0.5">{m.value}</div>
+                  <div className="text-[11px] font-semibold text-[var(--text-heading)]">{m.label}</div>
+                  <div className="text-[10px] text-[var(--text-muted)]">{m.sub}</div>
+                </div>
+              ))}
+            </div>
           </div>
         </section>
 
@@ -300,38 +378,78 @@ export default function PresentationLandingPage() {
                   <p className="text-xs text-[var(--text-muted)]">{t("sec3_rag_desc")}</p>
                 </div>
                 <span className="px-2.5 py-1 rounded-md text-[10px] font-mono font-bold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
-                  {t("landing_tab2_badge")}
+                  {systemState?.reference_cases?.length
+                    ? `Live Biopsy Bank (${systemState.reference_cases.length} Verified Cases)`
+                    : t("landing_tab2_badge")}
                 </span>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="card-inner p-4 space-y-2.5 border-l-4 border-l-emerald-500">
-                  <div className="flex items-center justify-between">
-                    <span className="font-mono text-xs font-bold text-emerald-600 dark:text-emerald-400">REF-ONCO-401</span>
-                    <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
-                      {t("landing_tab2_c1_sim")}
-                    </span>
+                {(systemState?.reference_cases?.length
+                  ? systemState.reference_cases.slice(0, 2)
+                  : [
+                      {
+                        case_id: "REF-ONCO-401",
+                        diagnosis: t("landing_tab2_c1_diag"),
+                        similarity: 96.4,
+                        clinical_notes: t("landing_tab2_c1_desc"),
+                        site_id: t("landing_tab2_c1_meta"),
+                        biopsy_confirmed: true,
+                        anatomical_site: "Thorax / Left Lobe",
+                      },
+                      {
+                        case_id: "REF-ONCO-402",
+                        diagnosis: t("landing_tab2_c2_diag"),
+                        similarity: 92.1,
+                        clinical_notes: t("landing_tab2_c2_desc"),
+                        site_id: t("landing_tab2_c2_meta"),
+                        biopsy_confirmed: true,
+                        anatomical_site: "Right Lower Lobe",
+                      },
+                    ]
+                ).map((c, idx) => (
+                  <div
+                    key={c.case_id}
+                    className={`card-inner p-4 space-y-2.5 border-l-4 ${
+                      idx === 0 ? "border-l-emerald-500" : "border-l-blue-500"
+                    }`}
+                  >
+                    <div className="flex items-center justify-between">
+                      <span
+                        className={`font-mono text-xs font-bold ${
+                          idx === 0
+                            ? "text-emerald-600 dark:text-emerald-400"
+                            : "text-blue-600 dark:text-blue-400"
+                        }`}
+                      >
+                        {c.case_id}
+                      </span>
+                      <span
+                        className={`px-2 py-0.5 rounded text-[10px] font-bold ${
+                          idx === 0
+                            ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
+                            : "bg-blue-500/10 text-blue-600 dark:text-blue-400"
+                        }`}
+                      >
+                        {c.similarity}% Match
+                      </span>
+                    </div>
+                    <div className="text-xs font-semibold text-[var(--text-heading)]">
+                      {c.diagnosis}
+                    </div>
+                    <p className="text-xs text-[var(--text-muted)] leading-relaxed line-clamp-3">
+                      {c.clinical_notes}
+                    </p>
+                    <div className="text-[10px] font-mono text-[var(--text-muted)] pt-1 border-t border-[var(--border-subtle)] flex items-center justify-between">
+                      <span className="truncate">{c.site_id || "ISIC Multi-Center Bank"}</span>
+                      {c.biopsy_confirmed && (
+                        <span className="text-emerald-600 dark:text-emerald-400 font-semibold shrink-0 ml-1">
+                          Biopsy Confirmed: Yes
+                        </span>
+                      )}
+                    </div>
                   </div>
-                  <div className="text-xs font-semibold text-[var(--text-heading)]">{t("landing_tab2_c1_diag")}</div>
-                  <p className="text-xs text-[var(--text-muted)] leading-relaxed">{t("landing_tab2_c1_desc")}</p>
-                  <div className="text-[10px] font-mono text-[var(--text-muted)] pt-1 border-t border-[var(--border-subtle)]">
-                    {t("landing_tab2_c1_meta")}
-                  </div>
-                </div>
-
-                <div className="card-inner p-4 space-y-2.5 border-l-4 border-l-blue-500">
-                  <div className="flex items-center justify-between">
-                    <span className="font-mono text-xs font-bold text-blue-600 dark:text-blue-400">REF-ONCO-402</span>
-                    <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-blue-500/10 text-blue-600 dark:text-blue-400">
-                      {t("landing_tab2_c2_sim")}
-                    </span>
-                  </div>
-                  <div className="text-xs font-semibold text-[var(--text-heading)]">{t("landing_tab2_c2_diag")}</div>
-                  <p className="text-xs text-[var(--text-muted)] leading-relaxed">{t("landing_tab2_c2_desc")}</p>
-                  <div className="text-[10px] font-mono text-[var(--text-muted)] pt-1 border-t border-[var(--border-subtle)]">
-                    {t("landing_tab2_c2_meta")}
-                  </div>
-                </div>
+                ))}
               </div>
             </div>
           )}
@@ -341,12 +459,30 @@ export default function PresentationLandingPage() {
             <div className="card p-4 sm:p-6 space-y-4">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 border-b border-[var(--border-subtle)]">
                 <div>
-                  <h3 className="font-display text-base font-bold text-[var(--text-heading)]">{t("landing_tab3_title")}</h3>
-                  <p className="text-xs text-[var(--text-muted)]">{t("landing_tab3_desc")}</p>
+                  <h3 className="font-display text-base font-bold text-[var(--text-heading)]">
+                    {systemState?.is_live && systemState?.rounds && systemState.rounds.length > 0
+                      ? `Live Runtime Telemetry (${systemState.history_rounds} Rounds · ${systemState.model_type.toUpperCase()})`
+                      : t("landing_tab3_title")}
+                  </h3>
+                  <p className="text-xs text-[var(--text-muted)]">
+                    {systemState?.is_live && systemState?.rounds && systemState.rounds.length > 0
+                      ? `Trained on ${systemState.data_source} with ${systemState.peft_mode ? systemState.peft_mode.toUpperCase() : "full consensus"} adapters.`
+                      : t("landing_tab3_desc")}
+                  </p>
                 </div>
                 <div className="flex items-center gap-2">
-                  <span className="w-2 h-2 rounded-full bg-emerald-500" />
-                  <span className="text-xs font-semibold text-emerald-600 dark:text-emerald-400">{t("landing_tab3_status")}</span>
+                  <span
+                    className={`w-2 h-2 rounded-full ${
+                      systemState?.is_live && systemState?.rounds && systemState.rounds.length > 0
+                        ? "bg-emerald-500 animate-pulse"
+                        : "bg-sky-500"
+                    }`}
+                  />
+                  <span className="text-xs font-semibold text-emerald-600 dark:text-emerald-400">
+                    {systemState?.is_live && systemState?.rounds && systemState.rounds.length > 0
+                      ? "Runtime Synchronized"
+                      : "Reference Benchmark Target"}
+                  </span>
                 </div>
               </div>
 
@@ -363,62 +499,94 @@ export default function PresentationLandingPage() {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-[var(--border-subtle)] font-mono">
-                    <tr>
-                      <td className="py-2 px-3 font-bold text-[var(--text-heading)]">{t("landing_tab3_col_round")} 1</td>
-                      <td className="py-2 px-3">0.852</td>
-                      <td className="py-2 px-3 text-emerald-600 dark:text-emerald-400">72.5%</td>
-                      <td className="py-2 px-3">0.718</td>
-                      <td className="py-2 px-3">4.2 MB</td>
-                      <td className="py-2 px-3 text-emerald-500 flex items-center gap-1 font-sans">
-                        <CheckCircle2 className="w-3.5 h-3.5" /> {t("landing_tab3_verified")}
-                      </td>
-                    </tr>
-                    <tr>
-                      <td className="py-2 px-3 font-bold text-[var(--text-heading)]">{t("landing_tab3_col_round")} 2</td>
-                      <td className="py-2 px-3">0.614</td>
-                      <td className="py-2 px-3 text-emerald-600 dark:text-emerald-400">81.3%</td>
-                      <td className="py-2 px-3">0.809</td>
-                      <td className="py-2 px-3">4.2 MB</td>
-                      <td className="py-2 px-3 text-emerald-500 flex items-center gap-1 font-sans">
-                        <CheckCircle2 className="w-3.5 h-3.5" /> {t("landing_tab3_verified")}
-                      </td>
-                    </tr>
-                    <tr className="bg-amber-500/[0.04]">
-                      <td className="py-2 px-3 font-bold text-[var(--text-heading)]">{t("landing_tab3_col_round")} 3</td>
-                      <td className="py-2 px-3">0.491</td>
-                      <td className="py-2 px-3 text-emerald-600 dark:text-emerald-400">87.2%</td>
-                      <td className="py-2 px-3">0.868</td>
-                      <td className="py-2 px-3">4.2 MB</td>
-                      <td className="py-2 px-3 text-amber-500 flex items-center gap-1 font-sans font-semibold">
-                        <AlertTriangle className="w-3.5 h-3.5" /> {t("landing_tab3_intercepted")}
-                      </td>
-                    </tr>
-                    <tr>
-                      <td className="py-2 px-3 font-bold text-[var(--text-heading)]">{t("landing_tab3_col_round")} 4</td>
-                      <td className="py-2 px-3">0.378</td>
-                      <td className="py-2 px-3 text-emerald-600 dark:text-emerald-400">91.6%</td>
-                      <td className="py-2 px-3">0.914</td>
-                      <td className="py-2 px-3">4.2 MB</td>
-                      <td className="py-2 px-3 text-emerald-500 flex items-center gap-1 font-sans">
-                        <CheckCircle2 className="w-3.5 h-3.5" /> {t("landing_tab3_filtered")}
-                      </td>
-                    </tr>
-                    <tr className="bg-emerald-500/[0.04]">
-                      <td className="py-2 px-3 font-bold text-emerald-600 dark:text-emerald-400">{t("landing_tab3_col_round")} 5 (Final)</td>
-                      <td className="py-2 px-3 font-bold">0.286</td>
-                      <td className="py-2 px-3 font-bold text-emerald-600 dark:text-emerald-400">94.8%</td>
-                      <td className="py-2 px-3 font-bold">0.947</td>
-                      <td className="py-2 px-3 font-bold">4.2 MB</td>
-                      <td className="py-2 px-3 text-emerald-500 flex items-center gap-1 font-sans font-bold">
-                        <CheckCircle2 className="w-3.5 h-3.5" /> {t("landing_tab3_deployed")}
-                      </td>
-                    </tr>
+                    {systemState?.rounds && systemState.rounds.length > 0 ? (
+                      systemState.rounds.map((rd) => (
+                        <tr
+                          key={rd.round_num}
+                          className={rd.threat_detected ? "bg-amber-500/[0.04]" : ""}
+                        >
+                          <td className="py-2 px-3 font-bold text-[var(--text-heading)]">
+                            {t("landing_tab3_col_round")} {rd.round_num}
+                          </td>
+                          <td className="py-2 px-3">{rd.train_loss.toFixed(3)}</td>
+                          <td className="py-2 px-3 text-emerald-600 dark:text-emerald-400">
+                            {rd.train_accuracy}%
+                          </td>
+                          <td className="py-2 px-3">{rd.f1_score.toFixed(3)}</td>
+                          <td className="py-2 px-3">{rd.bandwidth}</td>
+                          <td className="py-2 px-3 text-emerald-500 flex items-center gap-1 font-sans">
+                            <CheckCircle2 className="w-3.5 h-3.5" />{" "}
+                            {rd.status === "completed" ? t("landing_tab3_verified") : rd.status}
+                          </td>
+                        </tr>
+                      ))
+                    ) : (
+                      <>
+                        <tr>
+                          <td className="py-2 px-3 font-bold text-[var(--text-heading)]">{t("landing_tab3_col_round")} 1</td>
+                          <td className="py-2 px-3">0.852</td>
+                          <td className="py-2 px-3 text-emerald-600 dark:text-emerald-400">72.5%</td>
+                          <td className="py-2 px-3">0.718</td>
+                          <td className="py-2 px-3">4.2 MB</td>
+                          <td className="py-2 px-3 text-emerald-500 flex items-center gap-1 font-sans">
+                            <CheckCircle2 className="w-3.5 h-3.5" /> {t("landing_tab3_verified")}
+                          </td>
+                        </tr>
+                        <tr>
+                          <td className="py-2 px-3 font-bold text-[var(--text-heading)]">{t("landing_tab3_col_round")} 2</td>
+                          <td className="py-2 px-3">0.614</td>
+                          <td className="py-2 px-3 text-emerald-600 dark:text-emerald-400">81.3%</td>
+                          <td className="py-2 px-3">0.809</td>
+                          <td className="py-2 px-3">4.2 MB</td>
+                          <td className="py-2 px-3 text-emerald-500 flex items-center gap-1 font-sans">
+                            <CheckCircle2 className="w-3.5 h-3.5" /> {t("landing_tab3_verified")}
+                          </td>
+                        </tr>
+                        <tr className="bg-amber-500/[0.04]">
+                          <td className="py-2 px-3 font-bold text-[var(--text-heading)]">{t("landing_tab3_col_round")} 3</td>
+                          <td className="py-2 px-3">0.491</td>
+                          <td className="py-2 px-3 text-emerald-600 dark:text-emerald-400">87.2%</td>
+                          <td className="py-2 px-3">0.868</td>
+                          <td className="py-2 px-3">4.2 MB</td>
+                          <td className="py-2 px-3 text-amber-500 flex items-center gap-1 font-sans font-semibold">
+                            <AlertTriangle className="w-3.5 h-3.5" /> {t("landing_tab3_intercepted")}
+                          </td>
+                        </tr>
+                        <tr>
+                          <td className="py-2 px-3 font-bold text-[var(--text-heading)]">{t("landing_tab3_col_round")} 4</td>
+                          <td className="py-2 px-3">0.378</td>
+                          <td className="py-2 px-3 text-emerald-600 dark:text-emerald-400">91.6%</td>
+                          <td className="py-2 px-3">0.914</td>
+                          <td className="py-2 px-3">4.2 MB</td>
+                          <td className="py-2 px-3 text-emerald-500 flex items-center gap-1 font-sans">
+                            <CheckCircle2 className="w-3.5 h-3.5" /> {t("landing_tab3_filtered")}
+                          </td>
+                        </tr>
+                        <tr className="bg-emerald-500/[0.04]">
+                          <td className="py-2 px-3 font-bold text-emerald-600 dark:text-emerald-400">{t("landing_tab3_col_round")} 5 (Final)</td>
+                          <td className="py-2 px-3 font-bold">0.286</td>
+                          <td className="py-2 px-3 font-bold text-emerald-600 dark:text-emerald-400">94.8%</td>
+                          <td className="py-2 px-3 font-bold">0.947</td>
+                          <td className="py-2 px-3 font-bold">4.2 MB</td>
+                          <td className="py-2 px-3 text-emerald-500 flex items-center gap-1 font-sans font-bold">
+                            <CheckCircle2 className="w-3.5 h-3.5" /> {t("landing_tab3_deployed")}
+                          </td>
+                        </tr>
+                      </>
+                    )}
                   </tbody>
                 </table>
               </div>
 
               <div className="text-xs text-[var(--text-muted)] pt-2">
-                {t("landing_tab3_comm_summary")} · <span className="font-semibold text-emerald-600 dark:text-emerald-400">{t("landing_tab3_savings")}</span>
+                {systemState?.is_live && systemState?.rounds && systemState.rounds.length > 0
+                  ? `Active Session: ${systemState.rounds.length} rounds synchronized from server checkpoint.`
+                  : `${t("landing_tab3_comm_summary")} - `}
+                {!systemState?.is_live && (
+                  <span className="font-semibold text-emerald-600 dark:text-emerald-400">
+                    {t("landing_tab3_savings")}
+                  </span>
+                )}
               </div>
             </div>
           )}
