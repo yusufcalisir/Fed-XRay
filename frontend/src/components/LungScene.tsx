@@ -3,7 +3,7 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import * as THREE from "three";
 import { Canvas, useFrame } from "@react-three/fiber";
-import { OrbitControls, Html } from "@react-three/drei";
+import { OrbitControls, Html, Environment } from "@react-three/drei";
 import {
   BOTH_LUNGS_WINDOW,
   buildBronchialTree,
@@ -69,32 +69,46 @@ function Lung({
   const geometry = useMemo(() => buildLungGeometry(side, BOTH_LUNGS_WINDOW), [side]);
   useEffect(() => () => geometry.dispose(), [geometry]);
   return (
-    <mesh ref={meshRef} geometry={geometry}>
+    <mesh ref={meshRef} geometry={geometry} castShadow receiveShadow>
       {texture ? (
         <meshPhysicalMaterial
           map={texture}
           emissiveMap={texture}
           emissive="#ffffff"
-          emissiveIntensity={0.55}
-          roughness={0.5}
+          emissiveIntensity={0.45}
+          roughness={0.38}
           metalness={0.0}
-          clearcoat={0.35}
-          clearcoatRoughness={0.4}
+          clearcoat={0.6}
+          clearcoatRoughness={0.2}
+          transmission={0.05}
+          thickness={0.4}
         />
       ) : (
         <meshPhysicalMaterial
-          color="#e9a1ab"
-          roughness={0.42}
+          color="#d4707e"
+          roughness={0.28}
           metalness={0.0}
-          sheen={1}
-          sheenColor={new THREE.Color("#ffd1d8")}
-          sheenRoughness={0.4}
-          clearcoat={0.55}
-          clearcoatRoughness={0.28}
-          emissive="#5a1f2b"
-          emissiveIntensity={0.25}
+          sheen={1.2}
+          sheenColor={new THREE.Color("#ffb8c2")}
+          sheenRoughness={0.3}
+          clearcoat={0.8}
+          clearcoatRoughness={0.15}
+          emissive="#8b1a2e"
+          emissiveIntensity={0.18}
+          transmission={0.06}
+          thickness={0.5}
         />
       )}
+    </mesh>
+  );
+}
+
+/* Subtle glowing floor disc for depth perception */
+function FloorDisc() {
+  return (
+    <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -1.55, 0]}>
+      <circleGeometry args={[1.6, 64]} />
+      <meshBasicMaterial color="#0d9488" transparent opacity={0.07} />
     </mesh>
   );
 }
@@ -154,8 +168,8 @@ function SceneContents(props: LungSceneProps) {
 
   useFrame(({ clock }) => {
     if (group.current && props.sway && !interacting.current) {
-      group.current.rotation.y = Math.sin(clock.elapsedTime * 0.45) * 0.5;
-      group.current.rotation.x = Math.sin(clock.elapsedTime * 0.3) * 0.06;
+      group.current.rotation.y = Math.sin(clock.elapsedTime * 0.38) * 0.35;
+      group.current.rotation.x = Math.sin(clock.elapsedTime * 0.26) * 0.04;
     }
   });
 
@@ -188,47 +202,59 @@ function SceneContents(props: LungSceneProps) {
 
   return (
     <>
-      <ambientLight intensity={0.55} />
-      <hemisphereLight args={["#bcd9ff", "#2a1520", 0.7]} />
-      <directionalLight position={[3, 4, 5]} intensity={2.1} color="#fff4ec" />
-      <directionalLight position={[-4, 1, 3]} intensity={0.9} color="#7dd3fc" />
-      <pointLight position={[0, -2.5, -3]} intensity={18} color="#10b981" />
-      <group ref={group} scale={1.05}>
+      {/* Rich multi-source lighting for convincing anatomy */}
+      <ambientLight intensity={0.7} />
+      <hemisphereLight args={["#c8e8ff", "#1a0a12", 0.9]} />
+      {/* Key light: warm top-front */}
+      <directionalLight position={[2.5, 5, 6]} intensity={3.2} color="#fff3e8" castShadow
+        shadow-mapSize={[1024, 1024]} shadow-camera-near={0.5} shadow-camera-far={20} />
+      {/* Fill light: cool left */}
+      <directionalLight position={[-5, 2, 3]} intensity={1.4} color="#a5d8ff" />
+      {/* Rim light: back right for depth */}
+      <directionalLight position={[4, -1, -4]} intensity={0.8} color="#ff9eaf" />
+      {/* Bottom bounce: teal glow from below */}
+      <pointLight position={[0, -3, 1.5]} intensity={28} color="#0d9488" distance={6} decay={2} />
+      {/* Subtle inner glow */}
+      <pointLight position={[0, 0, 2]} intensity={8} color="#fda4af" distance={4} decay={2} />
+
+      {/* Main lung group, slightly lowered so it centres in the viewport */}
+      <group ref={group} position={[0, -0.18, 0]} scale={1.18}>
         <Lung side="right" texture={texture} meshRef={(m) => (meshes.current.right = m)} />
         <Lung side="left" texture={texture} meshRef={(m) => (meshes.current.left = m)} />
         <BronchialTree />
         {peakPos && <PeakMarker position={peakPos} label={props.peakLabel} />}
         {props.labels && (
           <>
-            <Html position={[lungCenterX("right"), -1.62, 0]} center style={{ pointerEvents: "none" }}>
-              <span className="rounded border border-white/10 bg-black/50 px-1.5 py-0.5 font-mono text-[10px] font-bold text-emerald-200 backdrop-blur">
+            {/* Labels pushed below and outside the lung body */}
+            <Html position={[lungCenterX("right"), -1.9, 0]} center style={{ pointerEvents: "none" }}>
+              <span className="rounded border border-emerald-400/30 bg-slate-900/80 px-2 py-0.5 font-mono text-[11px] font-bold text-emerald-300 backdrop-blur shadow-lg">
                 {props.rightLabel}
               </span>
             </Html>
-            <Html position={[lungCenterX("left"), -1.62, 0]} center style={{ pointerEvents: "none" }}>
-              <span className="rounded border border-white/10 bg-black/50 px-1.5 py-0.5 font-mono text-[10px] font-bold text-emerald-200 backdrop-blur">
+            <Html position={[lungCenterX("left"), -1.9, 0]} center style={{ pointerEvents: "none" }}>
+              <span className="rounded border border-emerald-400/30 bg-slate-900/80 px-2 py-0.5 font-mono text-[11px] font-bold text-emerald-300 backdrop-blur shadow-lg">
                 {props.leftLabel}
               </span>
             </Html>
-            <Html position={[0.0, 1.8, 0]} center style={{ pointerEvents: "none" }}>
-              <span className="rounded border border-white/10 bg-black/50 px-1.5 py-0.5 font-mono text-[10px] text-sky-200 backdrop-blur">
+            <Html position={[0.0, 2.05, 0]} center style={{ pointerEvents: "none" }}>
+              <span className="rounded border border-sky-400/30 bg-slate-900/80 px-2 py-0.5 font-mono text-[10px] text-sky-300 backdrop-blur shadow-lg">
                 {props.tracheaLabel}
               </span>
             </Html>
           </>
         )}
       </group>
+      <FloorDisc />
       <OrbitControls
         enablePan={false}
         enableDamping
-        dampingFactor={0.08}
-        minDistance={3.4}
-        maxDistance={8}
-        minPolarAngle={Math.PI * 0.25}
-        maxPolarAngle={Math.PI * 0.75}
-        onStart={() => {
-          interacting.current = true;
-        }}
+        dampingFactor={0.07}
+        minDistance={2.8}
+        maxDistance={7}
+        minPolarAngle={Math.PI * 0.2}
+        maxPolarAngle={Math.PI * 0.8}
+        onStart={() => { interacting.current = true; }}
+        onEnd={() => { interacting.current = false; }}
       />
     </>
   );
@@ -238,12 +264,15 @@ export default function LungScene(props: LungSceneProps) {
   return (
     <Canvas
       dpr={[1, 2]}
-      camera={{ position: [0, 0.05, 5.8], fov: 34 }}
-      gl={{ antialias: true, alpha: true, preserveDrawingBuffer: false }}
-      onCreated={({ gl }) => {
-        gl.toneMapping = THREE.ACESFilmicToneMapping;
-        gl.toneMappingExposure = 1.05;
+      camera={{ position: [0, 0.12, 4.2], fov: 46 }}
+      gl={{ antialias: true, alpha: false, preserveDrawingBuffer: false, toneMapping: THREE.ACESFilmicToneMapping }}
+      shadows
+      onCreated={({ gl, scene }) => {
+        gl.toneMappingExposure = 1.2;
+        /* Radial gradient background: deep navy center -> near-black edge */
+        scene.background = null;
       }}
+      style={{ background: "radial-gradient(ellipse at 50% 40%, #0f2236 0%, #070d14 100%)" }}
     >
       <SceneContents {...props} />
     </Canvas>

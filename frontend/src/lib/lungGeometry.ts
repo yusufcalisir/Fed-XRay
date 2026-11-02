@@ -3,7 +3,7 @@ import * as THREE from "three";
 export type LungSide = "right" | "left";
 
 /** Lateral offset of each lung from the mediastinal midline (scene units). */
-export const LUNG_OFFSET_X = 0.74;
+export const LUNG_OFFSET_X = 0.82;
 
 /** Radiographic convention: patient right is drawn on the viewer's left. */
 export function lungCenterX(side: LungSide): number {
@@ -38,9 +38,9 @@ export function buildLungGeometry(
   const uv = geo.attributes.uv as THREE.BufferAttribute;
 
   const medial = side === "right" ? 1 : -1; // local +x points toward the mediastinum for the right lung
-  const sizeX = side === "left" ? 0.56 : 0.64;
-  const sizeY = side === "left" ? 1.16 : 1.22;
-  const sizeZ = 0.54;
+  const sizeX = side === "left" ? 0.62 : 0.70;
+  const sizeY = side === "left" ? 1.28 : 1.34;
+  const sizeZ = 0.60;
   const cx = lungCenterX(side);
 
   for (let i = 0; i < pos.count; i++) {
@@ -111,10 +111,10 @@ export function buildLungGeometry(
 
 /** Window spanning both lungs, used for consistent planar texture projection. */
 export const BOTH_LUNGS_WINDOW: ProjectionWindow = {
-  minX: -LUNG_OFFSET_X - 0.7,
-  maxX: LUNG_OFFSET_X + 0.7,
-  minY: -1.35,
-  maxY: 1.35,
+  minX: -LUNG_OFFSET_X - 0.78,
+  maxX: LUNG_OFFSET_X + 0.78,
+  minY: -1.45,
+  maxY: 1.45,
 };
 
 function mulberry32(seed: number): () => number {
@@ -140,9 +140,9 @@ export function buildBronchialTree(seed = 7): BronchialSegment[] {
   const segments: BronchialSegment[] = [];
 
   segments.push({
-    start: new THREE.Vector3(0, 1.62, 0.02),
-    end: new THREE.Vector3(0, 0.62, 0),
-    radius: 0.085,
+    start: new THREE.Vector3(0, 1.85, 0.02),
+    end: new THREE.Vector3(0, 0.72, 0),
+    radius: 0.092,
   });
 
   const grow = (origin: THREE.Vector3, dir: THREE.Vector3, length: number, radius: number, depth: number) => {
