@@ -340,6 +340,9 @@ export const TRANSLATIONS: Record<Language, Record<string, string>> = {
     launch_modal_handshake: "Federated Handshake",
     launch_modal_footer_nodes: "4 Nodes: Patient DP ε ≤ 2.0",
     launch_modal_skip: "Enter Immediately",
+    launch_fl_phase1: "Phase 1: Local PEFT Training (Data Stays in Hospital)",
+    launch_fl_phase2: "Phase 2: CKKS 128-Bit Encrypted Gradient Aggregation",
+    launch_fl_phase3: "Phase 3: Global Consensus Broadcast & Synchronization",
 
     // Landing Banner
     landing_banner_title: "Ready to see it in action?",
@@ -744,6 +747,9 @@ export const TRANSLATIONS: Record<Language, Record<string, string>> = {
     launch_modal_handshake: "Federe Kriptografik El Sıkışma",
     launch_modal_footer_nodes: "4 Düğüm: Hasta Düzeyinde DP ε ≤ 2.0",
     launch_modal_skip: "Hemen Giriş Yap",
+    launch_fl_phase1: "Aşama 1: Yerel LoRA Eğitimi (Veri Hastanede Kalır)",
+    launch_fl_phase2: "Aşama 2: CKKS 128-Bit Şifreli Gradyan Toplama",
+    launch_fl_phase3: "Aşama 3: Global Konsensüs Dağıtımı ve Senkronizasyon",
 
     // Tanıtım Sonu Şeridi
     landing_banner_title: "Dağıtık klinik zekayı yönetmeye hazır mısınız?",
