@@ -6,14 +6,7 @@ import {
   Lock,
   Activity,
   Server,
-  Cpu,
-  Layers,
-  Sparkles,
-  CheckCircle2,
   AlertTriangle,
-  Network,
-  Zap,
-  ArrowRight,
   TrendingDown,
   FileCheck,
 } from "lucide-react";
@@ -25,8 +18,8 @@ interface HospitalNode {
   location: string;
   scanner: string;
   scans: number;
-  modality: string;
-  skew: string;
+  modalityKey: string;
+  skewKey: string;
   adapter: string;
   dpEpsilon: number;
   status: "online" | "syncing";
@@ -39,8 +32,8 @@ const HOSPITAL_NODES: HospitalNode[] = [
     location: "Barcelona, ES",
     scanner: "Siemens Sensation Optical Dermatoscope",
     scans: 54,
-    modality: "Dermoscopy",
-    skew: "Malignant Melanoma & Dysplastic Nevi",
+    modalityKey: "topo_mod_dermo",
+    skewKey: "topo_skew_melanoma",
     adapter: "FFA-LoRA (r=16, α=32)",
     dpEpsilon: 1.42,
     status: "online",
@@ -51,8 +44,8 @@ const HOSPITAL_NODES: HospitalNode[] = [
     location: "Boston, USA",
     scanner: "GE Revolution Digital Radiography (MIMIC-CXR)",
     scans: 50,
-    modality: "Chest Radiography",
-    skew: "Bacterial Pneumonia & COVID-19",
+    modalityKey: "topo_mod_xray",
+    skewKey: "topo_skew_pneumonia",
     adapter: "FFA-LoRA (r=16, α=32)",
     dpEpsilon: 1.38,
     status: "online",
@@ -63,8 +56,8 @@ const HOSPITAL_NODES: HospitalNode[] = [
     location: "Vienna, AT",
     scanner: "Canon PRISM High-Throughput Digital Pathology",
     scans: 51,
-    modality: "Histopathology",
-    skew: "Invasive Squamous Cell Carcinomas",
+    modalityKey: "topo_mod_histo",
+    skewKey: "topo_skew_carcinoma",
     adapter: "FFA-LoRA (r=16, α=32)",
     dpEpsilon: 1.55,
     status: "online",
@@ -75,8 +68,8 @@ const HOSPITAL_NODES: HospitalNode[] = [
     location: "Brisbane, AU",
     scanner: "Philips Digital Dermatoscope Core",
     scans: 53,
-    modality: "Dermoscopy",
-    skew: "Compound Dysplastic Melanocytic Nevi",
+    modalityKey: "topo_mod_dermo",
+    skewKey: "topo_skew_nevi",
     adapter: "FFA-LoRA (r=16, α=32)",
     dpEpsilon: 1.48,
     status: "online",
@@ -104,10 +97,10 @@ export default function FederatedConsortiumTopology({
         <div className="flex items-center gap-2">
           <div className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse shadow-[0_0_8px_#10b981]" />
           <span className="font-mono text-[11px] sm:text-xs font-bold uppercase tracking-wider text-[var(--text-heading)]">
-            Consortium Enclave Network
+            {t("topo_badge_title")}
           </span>
           <span className="hidden sm:inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-mono font-semibold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
-            4/4 Enclaves Synced
+            {t("topo_badge_synced")}
           </span>
         </div>
 
@@ -122,7 +115,7 @@ export default function FederatedConsortiumTopology({
                 : "text-[var(--text-muted)] hover:text-[var(--text-heading)]"
             }`}
           >
-            Topology Map
+            {t("topo_tab_map")}
           </button>
           <button
             type="button"
@@ -133,7 +126,7 @@ export default function FederatedConsortiumTopology({
                 : "text-[var(--text-muted)] hover:text-[var(--text-heading)]"
             }`}
           >
-            Crypto Enclave
+            {t("topo_tab_crypto")}
           </button>
           <button
             type="button"
@@ -144,7 +137,7 @@ export default function FederatedConsortiumTopology({
                 : "text-[var(--text-muted)] hover:text-[var(--text-heading)]"
             }`}
           >
-            Consensus Telemetry
+            {t("topo_tab_telemetry")}
           </button>
         </div>
       </div>
@@ -209,7 +202,7 @@ export default function FederatedConsortiumTopology({
                     {node.name}
                   </div>
                   <div className="text-[10px] font-mono text-[var(--text-muted)] truncate mt-0.5">
-                    {node.modality} • {node.scans.toLocaleString("en-US")} studies
+                    {t(node.modalityKey)} · {node.scans.toLocaleString("en-US")} {t("topo_studies")}
                   </div>
                 </button>
               ))}
@@ -220,13 +213,13 @@ export default function FederatedConsortiumTopology({
               <div className="inline-flex flex-col items-center p-3 sm:p-3.5 rounded-2xl bg-[var(--bg-card)] border border-emerald-500/40 shadow-xl backdrop-blur-md">
                 <div className="flex items-center gap-1.5 text-emerald-600 dark:text-emerald-400 font-mono text-[10px] font-bold uppercase tracking-wider mb-1">
                   <ShieldCheck className="w-3.5 h-3.5" />
-                  <span>CKKS 128-Bit Aggregator</span>
+                  <span>{t("topo_aggregator_badge")}</span>
                 </div>
                 <div className="font-display text-xs sm:text-sm font-extrabold text-[var(--text-heading)]">
-                  Consortium Server Gateway
+                  {t("topo_aggregator_title")}
                 </div>
                 <div className="text-[10px] font-mono text-[var(--text-muted)] mt-0.5">
-                  FedOpt Momentum • Zero Plaintext Access
+                  {t("topo_aggregator_sub")}
                 </div>
               </div>
             </div>
@@ -254,7 +247,7 @@ export default function FederatedConsortiumTopology({
                     {node.name}
                   </div>
                   <div className="text-[10px] font-mono text-[var(--text-muted)] truncate mt-0.5">
-                    {node.modality} • {node.scans.toLocaleString("en-US")} studies
+                    {t(node.modalityKey)} · {node.scans.toLocaleString("en-US")} {t("topo_studies")}
                   </div>
                 </button>
               ))}
@@ -270,52 +263,66 @@ export default function FederatedConsortiumTopology({
                 <div className="flex items-center gap-2">
                   <Lock className="w-4 h-4 text-sky-500" />
                   <span className="font-display text-xs sm:text-sm font-bold text-[var(--text-heading)]">
-                    RLWE Leveled CKKS 128-Bit Ciphertext Encryption
+                    {t("topo_crypto_title")}
                   </span>
                 </div>
                 <span className="px-2 py-0.5 rounded text-[10px] font-mono bg-sky-500/10 text-sky-600 dark:text-sky-400 font-bold border border-sky-500/20">
-                  Option J Standard
+                  {t("topo_crypto_std")}
                 </span>
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 text-xs">
                 <div className="card p-2.5 border border-[var(--border-subtle)]">
-                  <div className="text-[10px] font-mono text-slate-500 uppercase font-semibold">Client Gradient</div>
+                  <div className="text-[10px] font-mono text-slate-500 uppercase font-semibold">
+                    {t("topo_crypto_grad_title")}
+                  </div>
                   <div className="font-mono text-xs font-bold text-emerald-600 dark:text-emerald-400 mt-1">
                     ΔW = Bk · A
                   </div>
-                  <div className="text-[10px] text-[var(--text-muted)] mt-1">Rank-16 low-rank adapter matrix</div>
+                  <div className="text-[10px] text-[var(--text-muted)] mt-1">
+                    {t("topo_crypto_grad_desc")}
+                  </div>
                 </div>
 
                 <div className="card p-2.5 border border-[var(--border-subtle)]">
-                  <div className="text-[10px] font-mono text-slate-500 uppercase font-semibold">Ciphertext State</div>
+                  <div className="text-[10px] font-mono text-slate-500 uppercase font-semibold">
+                    {t("topo_crypto_state_title")}
+                  </div>
                   <div className="font-mono text-xs font-bold text-sky-600 dark:text-sky-400 mt-1">
                     (c0, c1) ∈ R_q^2
                   </div>
-                  <div className="text-[10px] text-[var(--text-muted)] mt-1">Polynomial degree N=8192, 128-bit</div>
+                  <div className="text-[10px] text-[var(--text-muted)] mt-1">
+                    {t("topo_crypto_state_desc")}
+                  </div>
                 </div>
 
                 <div className="card p-2.5 border border-[var(--border-subtle)]">
-                  <div className="text-[10px] font-mono text-slate-500 uppercase font-semibold">DP Noise Injection</div>
+                  <div className="text-[10px] font-mono text-slate-500 uppercase font-semibold">
+                    {t("topo_crypto_dp_title")}
+                  </div>
                   <div className="font-mono text-xs font-bold text-violet-600 dark:text-violet-400 mt-1">
                     ε ≤ 2.0, δ = 10^-5
                   </div>
-                  <div className="text-[10px] text-[var(--text-muted)] mt-1">Patient-level Rényi accountant</div>
+                  <div className="text-[10px] text-[var(--text-muted)] mt-1">
+                    {t("topo_crypto_dp_desc")}
+                  </div>
                 </div>
               </div>
 
               <div className="mt-3 p-3 rounded-lg bg-[var(--bg-card)] border border-[var(--border-subtle)] text-[11px] leading-relaxed text-[var(--text-muted)]">
-                <strong className="text-[var(--text-heading)]">Mathematical Aggregation Invariant:</strong>
+                <strong className="text-[var(--text-heading)]">{t("topo_crypto_math_title")}</strong>
                 <span className="font-mono block mt-0.5 text-emerald-600 dark:text-emerald-400">
                   {"W_global = (1/K) · Σ Enc(B_k) · A  ==>  Dec(Σ Enc(B_k)) · A"}
                 </span>
-                Raw patient radiographs, patient IDs, and unencrypted weights never exit hospital firewall perimeters.
+                {t("topo_crypto_math_desc")}
               </div>
             </div>
 
             <div className="flex items-center justify-between text-[11px] text-[var(--text-muted)] border-t border-[var(--border-subtle)] pt-2 mt-2">
-              <span>Byzantine Filtering: Active (Cosine Distance + Median Clipping)</span>
-              <span className="font-mono font-bold text-emerald-600 dark:text-emerald-400">100% In-Transit Security</span>
+              <span>{t("topo_crypto_byzantine")}</span>
+              <span className="font-mono font-bold text-emerald-600 dark:text-emerald-400">
+                {t("topo_crypto_transit")}
+              </span>
             </div>
           </div>
         )}
@@ -328,11 +335,11 @@ export default function FederatedConsortiumTopology({
                 <div className="flex items-center gap-2">
                   <Activity className="w-4 h-4 text-emerald-500" />
                   <span className="font-display text-xs sm:text-sm font-bold text-[var(--text-heading)]">
-                    Consensus Telemetry & Robustness Stream
+                    {t("topo_telem_title")}
                   </span>
                 </div>
                 <span className="px-2 py-0.5 rounded text-[10px] font-mono bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-bold border border-emerald-500/20">
-                  Round 5 / 5 Converged
+                  {t("topo_telem_converged")}
                 </span>
               </div>
 
@@ -340,52 +347,52 @@ export default function FederatedConsortiumTopology({
                 <div className="card p-2.5 border border-[var(--border-subtle)]">
                   <div className="flex items-center gap-1.5 text-[10px] font-mono text-slate-500 uppercase font-semibold">
                     <TrendingDown className="w-3 h-3 text-emerald-500" />
-                    <span>Payload / Round</span>
+                    <span>{t("topo_telem_payload_title")}</span>
                   </div>
                   <div className="font-mono text-sm font-bold text-emerald-600 dark:text-emerald-400 mt-1">
                     4.2 MB
                   </div>
                   <div className="text-[10px] text-emerald-600 dark:text-emerald-400 font-semibold mt-0.5">
-                    98.8% bandwidth savings vs 340 MB
+                    {t("topo_telem_payload_desc")}
                   </div>
                 </div>
 
                 <div className="card p-2.5 border border-[var(--border-subtle)]">
                   <div className="flex items-center gap-1.5 text-[10px] font-mono text-slate-500 uppercase font-semibold">
                     <AlertTriangle className="w-3 h-3 text-amber-500" />
-                    <span>Poison Defense</span>
+                    <span>{t("topo_telem_defense_title")}</span>
                   </div>
                   <div className="font-mono text-sm font-bold text-amber-600 dark:text-amber-400 mt-1">
                     Trimmed-Mean
                   </div>
                   <div className="text-[10px] text-[var(--text-muted)] mt-0.5">
-                    Intercepted Node 3 synthetic drift
+                    {t("topo_telem_defense_desc")}
                   </div>
                 </div>
 
                 <div className="card p-2.5 border border-[var(--border-subtle)]">
                   <div className="flex items-center gap-1.5 text-[10px] font-mono text-slate-500 uppercase font-semibold">
                     <FileCheck className="w-3 h-3 text-sky-500" />
-                    <span>Hold-Out AUC</span>
+                    <span>{t("topo_telem_auc_title")}</span>
                   </div>
                   <div className="font-mono text-sm font-bold text-sky-600 dark:text-sky-400 mt-1">
                     0.984
                   </div>
                   <div className="text-[10px] text-[var(--text-muted)] mt-0.5">
-                    Across 4 holdout cohorts
+                    {t("topo_telem_auc_desc")}
                   </div>
                 </div>
               </div>
 
               <div className="mt-3 p-3 rounded-lg bg-[var(--bg-card)] border border-[var(--border-subtle)] text-[11px] leading-relaxed text-[var(--text-muted)]">
                 <div className="flex items-center justify-between mb-1.5">
-                  <strong className="text-[var(--text-heading)]">Federated Consensus Convergence Log:</strong>
-                  <span className="font-mono text-[10px] text-emerald-500 font-semibold">Global Loss: 0.286</span>
+                  <strong className="text-[var(--text-heading)]">{t("topo_telem_log_title")}</strong>
+                  <span className="font-mono text-[10px] text-emerald-500 font-semibold">{t("topo_telem_loss")}</span>
                 </div>
                 <div className="flex items-center gap-2 font-mono text-[10px]">
                   <span className="px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-bold">R1: 72.5%</span>
                   <span className="px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-bold">R2: 81.3%</span>
-                  <span className="px-2 py-0.5 rounded bg-amber-500/10 text-amber-600 dark:text-amber-400 font-bold">R3: 87.2% (Filtered)</span>
+                  <span className="px-2 py-0.5 rounded bg-amber-500/10 text-amber-600 dark:text-amber-400 font-bold">R3: 87.2% ({t("topo_telem_filtered")})</span>
                   <span className="px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-bold">R4: 91.6%</span>
                   <span className="px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 font-extrabold">R5: 94.8%</span>
                 </div>
@@ -393,8 +400,10 @@ export default function FederatedConsortiumTopology({
             </div>
 
             <div className="flex items-center justify-between text-[11px] text-[var(--text-muted)] border-t border-[var(--border-subtle)] pt-2 mt-2">
-              <span>Client Drift Optimization: FedDyn Dynamic Objective Alignment</span>
-              <span className="font-mono font-bold text-emerald-600 dark:text-emerald-400">Zero Model Divergence</span>
+              <span>{t("topo_telem_drift")}</span>
+              <span className="font-mono font-bold text-emerald-600 dark:text-emerald-400">
+                {t("topo_telem_divergence")}
+              </span>
             </div>
           </div>
         )}
@@ -412,18 +421,18 @@ export default function FederatedConsortiumTopology({
                 {selectedNode.name}
               </div>
               <div className="text-[10px] font-mono text-[var(--text-muted)]">
-                {selectedNode.scanner} • Skew: {selectedNode.skew}
+                {selectedNode.scanner} · {t("topo_skew_label")} {t(selectedNode.skewKey)}
               </div>
             </div>
           </div>
 
           <div className="flex items-center gap-3 shrink-0 text-[10px] font-mono">
             <div>
-              <span className="text-slate-400">DP Budget:</span>{" "}
+              <span className="text-slate-400">{t("topo_dp_budget")}</span>{" "}
               <span className="font-bold text-emerald-600 dark:text-emerald-400">ε={selectedNode.dpEpsilon}</span>
             </div>
             <div>
-              <span className="text-slate-400">Adapter:</span>{" "}
+              <span className="text-slate-400">{t("topo_adapter")}</span>{" "}
               <span className="font-bold text-sky-600 dark:text-sky-400">FFA-LoRA</span>
             </div>
             {onLaunchDemo && (
@@ -432,7 +441,7 @@ export default function FederatedConsortiumTopology({
                 onClick={onLaunchDemo}
                 className="px-2.5 py-1 rounded-md bg-emerald-500 hover:bg-emerald-600 text-white font-bold transition-all shadow-sm"
               >
-                Simulate
+                {t("topo_simulate")}
               </button>
             )}
           </div>
