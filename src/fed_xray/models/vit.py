@@ -9,7 +9,7 @@ Provides isotropic Vision Transformer backbones with:
 
 from __future__ import annotations
 import math
-from typing import Optional, Tuple
+from typing import Any, Optional, Tuple
 import torch
 import torch.nn as nn
 
@@ -289,7 +289,8 @@ def load_pretrained_vit_b_weights(model: VisionTransformer) -> bool:
             model.pos_embed.data.copy_(state["encoder.pos_embedding"])
 
         # 3. Transformer Encoder Blocks (12 layers)
-        for i, blk in enumerate(model.blocks):
+        for i, raw_blk in enumerate(model.blocks):
+            blk: Any = raw_blk
             prefix = f"encoder.layers.encoder_layer_{i}"
             # LayerNorm 1
             if f"{prefix}.ln_1.weight" in state:

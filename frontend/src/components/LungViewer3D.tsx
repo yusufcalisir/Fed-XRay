@@ -61,7 +61,7 @@ export default function LungViewer3D({
 
   return (
     <div
-      className={`relative overflow-hidden rounded-xl ${className}`}
+      className={`w-full h-full overflow-hidden rounded-xl ${className || "relative"}`}
       style={{ background: "radial-gradient(ellipse at 50% 38%, #0f2236 0%, #060c13 100%)" }}
       data-testid="lung-viewer-3d"
     >

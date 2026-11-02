@@ -38,9 +38,9 @@ export function buildLungGeometry(
   const uv = geo.attributes.uv as THREE.BufferAttribute;
 
   const medial = side === "right" ? 1 : -1; // local +x points toward the mediastinum for the right lung
-  const sizeX = side === "left" ? 0.62 : 0.70;
-  const sizeY = side === "left" ? 1.28 : 1.34;
-  const sizeZ = 0.60;
+  const sizeX = side === "left" ? 0.66 : 0.74;
+  const sizeY = side === "left" ? 1.36 : 1.42;
+  const sizeZ = 0.64;
   const cx = lungCenterX(side);
 
   for (let i = 0; i < pos.count; i++) {
@@ -140,8 +140,8 @@ export function buildBronchialTree(seed = 7): BronchialSegment[] {
   const segments: BronchialSegment[] = [];
 
   segments.push({
-    start: new THREE.Vector3(0, 1.85, 0.02),
-    end: new THREE.Vector3(0, 0.72, 0),
+    start: new THREE.Vector3(0, 1.42, 0.02),
+    end: new THREE.Vector3(0, 0.60, 0),
     radius: 0.092,
   });
 

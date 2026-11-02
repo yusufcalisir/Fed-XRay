@@ -149,7 +149,7 @@ export default function DiagnosticStudio({
       {isLocked ? (
         <div className="card overflow-hidden">
           <div className="grid grid-cols-1 md:grid-cols-2 items-stretch">
-            <div className="lung-viewer relative h-[300px] md:h-[360px] rounded-none md:rounded-r-none border-0">
+            <div className="lung-viewer relative h-[380px] md:h-[460px] rounded-none md:rounded-r-none border-0">
               <LungViewer3D className="absolute inset-0" mode="anatomy" showHint={false} labels={false} />
               <div className="pointer-events-none absolute left-3 top-3 inline-flex items-center gap-1.5 rounded-full border border-white/10 bg-black/40 px-2.5 py-1 font-mono text-[10px] text-emerald-200 backdrop-blur">
                 <Box className="w-3 h-3" />
