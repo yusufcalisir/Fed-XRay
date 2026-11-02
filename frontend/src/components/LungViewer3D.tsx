@@ -1,6 +1,6 @@
 "use client";
 
-import React, { Component, ReactNode, Suspense, useEffect, useState } from "react";
+import React, { Component, ReactNode, Suspense, useEffect, useRef, useState } from "react";
 import { useLanguage } from "@/context/LanguageContext";
 import type { LungViewMode } from "@/lib/scanTexture";
 
@@ -50,6 +50,7 @@ export default function LungViewer3D({
 }: LungViewer3DProps) {
   const { t } = useLanguage();
   const [webgl, setWebgl] = useState<boolean | null>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     setWebgl(detectWebGL());
@@ -61,7 +62,8 @@ export default function LungViewer3D({
 
   return (
     <div
-      className={`w-full h-full overflow-hidden rounded-xl ${className || "relative"}`}
+      ref={containerRef}
+      className={`relative isolate w-full h-full overflow-hidden rounded-xl ${className || ""}`}
       style={{ background: "var(--viewer-bg)" }}
       data-testid="lung-viewer-3d"
     >
@@ -71,6 +73,7 @@ export default function LungViewer3D({
         <SceneBoundary fallback={message(t("lung3d_webgl_error"))}>
           <Suspense fallback={message(t("lung3d_loading"))}>
             <LungScene
+              containerRef={containerRef}
               rawImage={rawImage}
               heatmap={heatmap}
               mode={mode}

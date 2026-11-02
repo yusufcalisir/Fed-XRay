@@ -114,6 +114,10 @@ body {
 }
 
 .lung-viewer {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  z-index: 0;
   background: var(--viewer-bg);
   border: 1px solid var(--viewer-border);
   border-radius: 22px;

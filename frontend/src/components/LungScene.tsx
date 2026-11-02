@@ -14,6 +14,7 @@ import {
 import { composeScanPixels, findSaliencyPeak, LungViewMode } from "@/lib/scanTexture";
 
 export interface LungSceneProps {
+  containerRef?: React.RefObject<HTMLDivElement>;
   rawImage?: number[][] | null;
   heatmap?: number[][] | null;
   mode: LungViewMode;
@@ -146,7 +147,15 @@ function BronchialTree() {
   );
 }
 
-function PeakMarker({ position, label }: { position: THREE.Vector3; label: string }) {
+function PeakMarker({
+  position,
+  label,
+  containerRef,
+}: {
+  position: THREE.Vector3;
+  label: string;
+  containerRef?: React.RefObject<HTMLDivElement>;
+}) {
   const ring = useRef<THREE.Mesh>(null);
   useFrame(({ clock }) => {
     if (!ring.current) return;
@@ -163,7 +172,12 @@ function PeakMarker({ position, label }: { position: THREE.Vector3; label: strin
         <torusGeometry args={[0.1, 0.008, 12, 48]} />
         <meshBasicMaterial color="#fde047" transparent opacity={0.9} />
       </mesh>
-      <Html position={[0.18, 0.12, 0.05]} style={{ pointerEvents: "none" }}>
+      <Html
+        portal={containerRef as unknown as React.MutableRefObject<HTMLElement>}
+        zIndexRange={[10, 0]}
+        position={[0.18, 0.12, 0.05]}
+        style={{ pointerEvents: "none" }}
+      >
         <div className="whitespace-nowrap rounded-md border border-amber-300/40 bg-black/70 px-2 py-1 font-mono text-[10px] font-semibold text-amber-200 backdrop-blur">
           {label}
         </div>
@@ -230,26 +244,44 @@ function SceneContents(props: LungSceneProps) {
       {/* Subtle inner glow */}
       <pointLight position={[0, 0, 2]} intensity={8} color="#fda4af" distance={4} decay={2} />
 
-      {/* Main lung group - centered in the viewport */}
-      <group ref={group} position={[0, -0.05, 0]} scale={1.08}>
+      {/* Main lung group - centered and proportioned within the viewport */}
+      <group ref={group} position={[0, 0.08, 0]} scale={0.96}>
         <Lung side="right" texture={texture} meshRef={(m) => (meshes.current.right = m)} />
         <Lung side="left" texture={texture} meshRef={(m) => (meshes.current.left = m)} />
         <BronchialTree />
-        {peakPos && <PeakMarker position={peakPos} label={props.peakLabel} />}
+        {peakPos && <PeakMarker position={peakPos} label={props.peakLabel} containerRef={props.containerRef} />}
         {props.labels && (
           <>
             {/* Labels placed cleanly to the lateral sides of each lung */}
-            <Html position={[lungCenterX("right") - 0.65, 0.15, 0]} center style={{ pointerEvents: "none" }}>
+            <Html
+              portal={props.containerRef as unknown as React.MutableRefObject<HTMLElement>}
+              zIndexRange={[10, 0]}
+              position={[lungCenterX("right") - 0.65, 0.15, 0]}
+              center
+              style={{ pointerEvents: "none" }}
+            >
               <span className="whitespace-nowrap rounded border border-emerald-400/30 bg-slate-900/80 px-2 py-0.5 font-mono text-[11px] font-bold text-emerald-300 backdrop-blur shadow-lg">
                 {props.rightLabel}
               </span>
             </Html>
-            <Html position={[lungCenterX("left") + 0.65, 0.15, 0]} center style={{ pointerEvents: "none" }}>
+            <Html
+              portal={props.containerRef as unknown as React.MutableRefObject<HTMLElement>}
+              zIndexRange={[10, 0]}
+              position={[lungCenterX("left") + 0.65, 0.15, 0]}
+              center
+              style={{ pointerEvents: "none" }}
+            >
               <span className="whitespace-nowrap rounded border border-emerald-400/30 bg-slate-900/80 px-2 py-0.5 font-mono text-[11px] font-bold text-emerald-300 backdrop-blur shadow-lg">
                 {props.leftLabel}
               </span>
             </Html>
-            <Html position={[0.0, 1.45, 0]} center style={{ pointerEvents: "none" }}>
+            <Html
+              portal={props.containerRef as unknown as React.MutableRefObject<HTMLElement>}
+              zIndexRange={[10, 0]}
+              position={[0.0, 1.45, 0]}
+              center
+              style={{ pointerEvents: "none" }}
+            >
               <span className="whitespace-nowrap rounded border border-sky-400/30 bg-slate-900/80 px-2 py-0.5 font-mono text-[10px] text-sky-300 backdrop-blur shadow-lg">
                 {props.tracheaLabel}
               </span>

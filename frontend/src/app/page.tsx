@@ -114,7 +114,7 @@ export default function PresentationLandingPage() {
 
             <div className="relative">
               <div className="lung-viewer relative h-[380px] sm:h-[460px] lg:h-[540px]">
-                <LungViewer3D className="absolute inset-0" mode="anatomy" />
+                <LungViewer3D className="absolute inset-0" mode="anatomy" labels={!isLaunchModalOpen} />
                 <div className="chip-float absolute left-4 top-5">
                   <Cpu className="w-3.5 h-3.5 text-emerald-500 dark:text-emerald-300" />
                   <span>{t("landing_hero_chip_peft")}</span>
@@ -273,7 +273,7 @@ export default function PresentationLandingPage() {
             <div className="card p-4 sm:p-6">
               <div className="grid grid-cols-1 lg:grid-cols-5 gap-5 items-stretch">
                 <div className="lung-viewer relative lg:col-span-3 h-[380px] sm:h-[460px]">
-                  <LungViewer3D className="absolute inset-0" mode="anatomy" />
+                  <LungViewer3D className="absolute inset-0" mode="anatomy" labels={!isLaunchModalOpen} />
                   <div className="pointer-events-none absolute left-3 top-3 inline-flex items-center gap-1.5 rounded-full border border-white/10 bg-black/40 px-2.5 py-1 font-mono text-[10px] text-emerald-200 backdrop-blur">
                     <Sparkles className="w-3 h-3" />
                     {t("lung3d_locked_preview")}
