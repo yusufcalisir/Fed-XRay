@@ -11,6 +11,7 @@ import DiagnosticStudio from "@/components/DiagnosticStudio";
 import RagDigitalTwins from "@/components/RagDigitalTwins";
 import VoiceAssistant from "@/components/VoiceAssistant";
 import ReportDownload from "@/components/ReportDownload";
+import FedXRayLogo from "@/components/FedXRayLogo";
 import { HospitalCohort, TelemetryRound, DiagnosisResult, RagCase } from "@/types";
 import { fetchHospitalCohorts, fetchClinicalDiagnosis, fetchRagTwins, streamFederatedTraining } from "@/lib/api";
 import { useLanguage } from "@/context/LanguageContext";
@@ -274,8 +275,26 @@ export default function DashboardPage() {
         )}
       </main>
 
-      <footer className="border-t border-[var(--navbar-border)] py-4 sm:py-5 text-center text-[10px] sm:text-[11px] text-[var(--text-muted)] px-3">
-        {t("footer_text")}
+      <footer className="border-t border-[var(--navbar-border)] py-6 px-4 text-[var(--text-muted)] select-none">
+        <div className="max-w-[1360px] mx-auto flex flex-col sm:flex-row items-center justify-between gap-4">
+          <div className="flex items-center gap-3">
+            <div className="w-7 h-7 rounded-lg bg-slate-900 text-white dark:bg-white/[0.08] border border-slate-700/50 dark:border-white/[0.12] flex items-center justify-center shadow-xs shrink-0">
+              <FedXRayLogo size={18} />
+            </div>
+            <div className="flex flex-col text-left">
+              <span className="font-display font-extrabold text-xs text-[var(--text-heading)] tracking-tight">
+                Fed<span className="text-emerald-500 font-semibold">-</span>XRay Consortium Enclave
+              </span>
+              <span className="text-[10px] text-[var(--text-muted)] font-mono">
+                Strategy E Medical AI · Multi-Center Clinical Execution Engine
+              </span>
+            </div>
+          </div>
+
+          <div className="text-center sm:text-right text-[10px] sm:text-[11px] text-[var(--text-muted)] leading-relaxed">
+            <div>{t("footer_text")}</div>
+          </div>
+        </div>
       </footer>
     </div>
   );

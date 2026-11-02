@@ -4,7 +4,8 @@ import React, { useEffect, useState } from "react";
 import Link from "next/link";
 import { useLanguage } from "@/context/LanguageContext";
 import { useApi } from "@/context/ApiContext";
-import { Sun, Moon, Activity, ArrowLeft, ArrowRight, ShieldCheck } from "lucide-react";
+import { Sun, Moon, ArrowLeft, ArrowRight, ShieldCheck } from "lucide-react";
+import FedXRayLogo from "@/components/FedXRayLogo";
 
 interface NavbarProps {
   mode?: "landing" | "dashboard";
@@ -68,8 +69,8 @@ export default function Navbar({ mode = "landing", onLaunchDemo }: NavbarProps) 
         {/* Brand / Logo */}
         <div className="flex items-center gap-2 sm:gap-3 shrink-0">
           <Link href="/" className="flex items-center gap-2 sm:gap-3 group">
-            <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-slate-900 text-white dark:bg-white/[0.08] dark:text-accent-400 border border-slate-700/50 dark:border-white/[0.12] flex items-center justify-center shadow-sm shrink-0 group-hover:border-emerald-500/40 transition-colors">
-              <Activity className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-emerald-400" />
+            <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-slate-900 text-white dark:bg-white/[0.08] border border-slate-700/50 dark:border-white/[0.12] flex items-center justify-center shadow-xs shrink-0 group-hover:border-emerald-500/40 transition-colors">
+              <FedXRayLogo size={20} />
             </div>
             <div className="flex items-baseline gap-1.5 sm:gap-2">
               <span className="font-display font-extrabold text-[15px] sm:text-[16px] tracking-tight text-[var(--text-heading)] whitespace-nowrap">

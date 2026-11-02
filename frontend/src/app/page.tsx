@@ -5,6 +5,7 @@ import Navbar from "@/components/Navbar";
 import ConsortiumLaunchOverlay from "@/components/ConsortiumLaunchOverlay";
 import LungViewer3D from "@/components/LungViewer3D";
 import FederatedConsortiumTopology from "@/components/FederatedConsortiumTopology";
+import FedXRayLogo from "@/components/FedXRayLogo";
 import { useLanguage } from "@/context/LanguageContext";
 import {
   ShieldCheck,
@@ -869,8 +870,8 @@ export default function PresentationLandingPage() {
         {/* 6. Consortium Launch Banner */}
         <section className="card p-6 sm:p-8 bg-gradient-to-r from-emerald-950/30 via-slate-900/40 to-teal-950/30 border-emerald-500/20 text-center">
           <div className="max-w-2xl mx-auto space-y-4">
-            <div className="w-10 h-10 rounded-xl bg-emerald-500/10 border border-emerald-500/20 mx-auto flex items-center justify-center text-emerald-500">
-              <Activity className="w-5 h-5 animate-pulse" />
+            <div className="w-10 h-10 rounded-xl bg-slate-900 text-white dark:bg-white/[0.08] border border-slate-700/50 dark:border-white/[0.12] mx-auto flex items-center justify-center shadow-xs">
+              <FedXRayLogo size={24} />
             </div>
             <h2 className="font-display text-xl sm:text-2xl font-bold text-[var(--text-heading)]">
               {t("landing_banner_title")}
@@ -893,8 +894,29 @@ export default function PresentationLandingPage() {
       </main>
 
       {/* Footer */}
-      <footer className="border-t border-[var(--navbar-border)] py-6 text-center text-[10px] sm:text-[11px] text-[var(--text-muted)] px-3">
-        {t("footer_text")}
+      <footer className="border-t border-[var(--navbar-border)] py-8 px-4 text-[var(--text-muted)] select-none">
+        <div className="max-w-[1360px] mx-auto flex flex-col sm:flex-row items-center justify-between gap-4">
+          <div className="flex items-center gap-3">
+            <div className="w-8 h-8 rounded-lg bg-slate-900 text-white dark:bg-white/[0.08] border border-slate-700/50 dark:border-white/[0.12] flex items-center justify-center shadow-xs shrink-0">
+              <FedXRayLogo size={20} />
+            </div>
+            <div className="flex flex-col text-left">
+              <span className="font-display font-extrabold text-xs text-[var(--text-heading)] tracking-tight">
+                Fed<span className="text-emerald-500 font-semibold">-</span>XRay Consortium
+              </span>
+              <span className="text-[10px] text-[var(--text-muted)] font-mono">
+                Strategy E Medical AI · 4 Distributed Hospital Enclaves
+              </span>
+            </div>
+          </div>
+
+          <div className="text-center sm:text-right text-[10px] sm:text-[11px] text-[var(--text-muted)] leading-relaxed">
+            <div>{t("footer_text")}</div>
+            <div className="font-mono text-[9px] text-slate-400 dark:text-slate-500 mt-0.5">
+              RLWE Leveled CKKS 128-Bit · Patient-Level Gaussian DP (ε ≤ 2.0)
+            </div>
+          </div>
+        </div>
       </footer>
     </div>
   );
