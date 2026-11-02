@@ -13,8 +13,10 @@ import {
   CheckCircle2,
   AlertTriangle,
   RefreshCw,
+  Link2,
 } from "lucide-react";
 import { useLanguage } from "@/context/LanguageContext";
+import { useApi } from "@/context/ApiContext";
 import { fetchEnclaveHandshake } from "@/lib/api";
 import { EnclaveHandshakeResponse } from "@/types";
 
@@ -29,30 +31,51 @@ export default function ConsortiumLaunchOverlay({
 }: ConsortiumLaunchOverlayProps) {
   const router = useRouter();
   const { t } = useLanguage();
+  const { apiUrl, setApiUrl, autoDiscoverApi } = useApi();
   const [attestationData, setAttestationData] = useState<EnclaveHandshakeResponse | null>(null);
   const [progress, setProgress] = useState(0);
   const [activeStage, setActiveStage] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const [isVerifying, setIsVerifying] = useState(false);
   const [privacySummary, setPrivacySummary] = useState<string | null>(null);
+  const [showUrlEditor, setShowUrlEditor] = useState(false);
+  const [customUrlInput, setCustomUrlInput] = useState("");
 
-  const runHandshake = useCallback(async () => {
+  const runHandshake = useCallback(async (manualUrl?: string) => {
     if (!isOpen) return;
     setError(null);
     setIsVerifying(true);
     setProgress(15);
     setActiveStage(0);
 
-    const baseUrl = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000";
+    let effectiveBase = (manualUrl || apiUrl || process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000")
+      .trim()
+      .replace(/\/+$/, "");
 
     try {
       // Step 1: Central Server Enclave Health Attestation
-      const healthRes = await fetch(`${baseUrl}/api/health`, { cache: "no-store" });
-      if (!healthRes.ok) {
-        throw new Error(`Enclave health check failed (HTTP ${healthRes.status})`);
+      let healthRes: Response | null = null;
+      try {
+        healthRes = await fetch(`${effectiveBase}/api/health`, { cache: "no-store" });
+      } catch (netErr) {
+        // If the configured endpoint failed (e.g. expired cloudflare tunnel ERR_NAME_NOT_RESOLVED),
+        // attempt auto-discovery across candidate ports (http://127.0.0.1:8000, http://localhost:8000)
+        console.warn(`Health check failed on ${effectiveBase}. Running auto-discovery...`);
+        const discovered = await autoDiscoverApi();
+        if (discovered && discovered.trim().replace(/\/+$/, "") !== effectiveBase) {
+          effectiveBase = discovered.trim().replace(/\/+$/, "");
+          setApiUrl(effectiveBase);
+          healthRes = await fetch(`${effectiveBase}/api/health`, { cache: "no-store" });
+        } else {
+          throw netErr;
+        }
+      }
+
+      if (!healthRes || !healthRes.ok) {
+        throw new Error(`Enclave health check failed (HTTP ${healthRes?.status || "unavailable"})`);
       }
       const healthData = await healthRes.json();
-      if (healthData.status !== "healthy") {
+      if (healthData.status !== "healthy" && healthData.status !== "ok") {
         throw new Error(`Aggregator reported unhealthy state: ${healthData.status}`);
       }
 
@@ -61,7 +84,7 @@ export default function ConsortiumLaunchOverlay({
       setActiveStage(1);
 
       // Step 2: Cryptographic Consortium Enclave Handshake (X25519 ECDH + CKKS + Patient DP)
-      const handshake = await fetchEnclaveHandshake(baseUrl);
+      const handshake = await fetchEnclaveHandshake(effectiveBase);
       setAttestationData(handshake);
 
       try {
@@ -93,9 +116,12 @@ export default function ConsortiumLaunchOverlay({
     } catch (err: any) {
       console.error("Enclave handshake failed:", err);
       setIsVerifying(false);
-      setError(err?.message || "Failed to establish secure enclave handshake with backend aggregator.");
+      setError(
+        err?.message ||
+        `Failed to establish secure enclave handshake with backend at ${effectiveBase}. Ensure local FastAPI backend is active or switch to localhost (127.0.0.1:8000).`
+      );
     }
-  }, [isOpen, router]);
+  }, [isOpen, apiUrl, autoDiscoverApi, setApiUrl, router]);
 
   useEffect(() => {
     if (!isOpen) {
@@ -383,10 +409,12 @@ export default function ConsortiumLaunchOverlay({
                 <div className="text-xs font-bold text-rose-600 dark:text-rose-400">
                   Enclave Verification Handshake Failed
                 </div>
-                <div className="text-[11px] text-[var(--text-muted)] mt-0.5 leading-relaxed">
+                <div className="text-[11px] text-[var(--text-muted)] mt-0.5 leading-relaxed font-mono">
                   {error}
                 </div>
-                <div className="flex items-center gap-2 mt-2.5">
+
+                {/* Quick Action Buttons */}
+                <div className="flex flex-wrap items-center gap-1.5 mt-2.5">
                   <button
                     onClick={() => runHandshake()}
                     disabled={isVerifying}
@@ -395,13 +423,58 @@ export default function ConsortiumLaunchOverlay({
                     <RefreshCw className={`w-3 h-3 ${isVerifying ? "animate-spin" : ""}`} />
                     <span>Retry Handshake</span>
                   </button>
+
+                  <button
+                    onClick={() => {
+                      setApiUrl("http://127.0.0.1:8000");
+                      runHandshake("http://127.0.0.1:8000");
+                    }}
+                    disabled={isVerifying}
+                    className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-[11px] font-semibold bg-emerald-600 text-white hover:bg-emerald-700 transition-colors disabled:opacity-50"
+                  >
+                    <span>Connect Localhost (8000)</span>
+                  </button>
+
+                  <button
+                    onClick={() => setShowUrlEditor(!showUrlEditor)}
+                    className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-[11px] font-semibold bg-slate-700/50 hover:bg-slate-700 text-slate-200 transition-colors"
+                  >
+                    <Link2 className="w-3 h-3" />
+                    <span>Change API URL</span>
+                  </button>
+
                   <button
                     onClick={handleSkip}
-                    className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-[11px] font-semibold text-slate-500 hover:text-slate-800 dark:hover:text-slate-200 transition-colors"
+                    className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-[11px] font-semibold text-slate-400 hover:text-slate-200 transition-colors"
                   >
                     <span>Proceed in Offline Mode</span>
                   </button>
                 </div>
+
+                {/* Optional Custom Server URL Input */}
+                {showUrlEditor && (
+                  <div className="mt-2.5 pt-2 border-t border-rose-500/20 flex items-center gap-1.5">
+                    <input
+                      type="text"
+                      placeholder="e.g. http://127.0.0.1:8000 or https://tunnel.trycloudflare.com"
+                      value={customUrlInput}
+                      onChange={(e) => setCustomUrlInput(e.target.value)}
+                      className="flex-1 px-2 py-1 rounded-md bg-black/40 border border-rose-500/30 text-[11px] font-mono text-white placeholder:text-slate-500 focus:outline-hidden focus:border-emerald-500"
+                    />
+                    <button
+                      onClick={() => {
+                        if (customUrlInput.trim()) {
+                          const clean = customUrlInput.trim().replace(/\/+$/, "");
+                          setApiUrl(clean);
+                          runHandshake(clean);
+                        }
+                      }}
+                      className="px-2.5 py-1 rounded-md bg-emerald-600 text-white text-[11px] font-semibold hover:bg-emerald-700 transition-colors"
+                    >
+                      Connect
+                    </button>
+                  </div>
+                )}
               </div>
             </div>
           </div>

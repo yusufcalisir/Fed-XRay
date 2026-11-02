@@ -7,6 +7,7 @@ import LungViewer3D from "@/components/LungViewer3D";
 import FederatedConsortiumTopology from "@/components/FederatedConsortiumTopology";
 import FedXRayLogo from "@/components/FedXRayLogo";
 import { useLanguage } from "@/context/LanguageContext";
+import { useApi } from "@/context/ApiContext";
 import {
   ShieldCheck,
   Lock,
@@ -29,6 +30,7 @@ import { fetchSystemState } from "@/lib/api";
 
 export default function PresentationLandingPage() {
   const { t } = useLanguage();
+  const { apiUrl, isConnected } = useApi();
   const [isLaunchModalOpen, setIsLaunchModalOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<"xai" | "rag" | "convergence" | "report">("xai");
   const [backendStatus, setBackendStatus] = useState<"checking" | "online" | "standby">("checking");
@@ -38,27 +40,28 @@ export default function PresentationLandingPage() {
     let isMounted = true;
     const checkBackend = async () => {
       try {
-        const stateData = await fetchSystemState("http://127.0.0.1:8000").catch(() => null);
+        const target = (apiUrl || "http://127.0.0.1:8000").replace(/\/+$/, "");
+        const stateData = await fetchSystemState(target).catch(() => null);
         if (stateData && isMounted) {
           setSystemState(stateData);
           setBackendStatus("online");
           return;
         }
-        const res = await fetch("/api/health").catch(() => fetch("http://127.0.0.1:8000/api/health"));
+        const res = await fetch(`${target}/api/health`, { cache: "no-store" }).catch(() => null);
         if (res && res.ok && isMounted) {
           setBackendStatus("online");
         } else if (isMounted) {
-          setBackendStatus("standby");
+          setBackendStatus(isConnected ? "online" : "standby");
         }
       } catch {
-        if (isMounted) setBackendStatus("standby");
+        if (isMounted) setBackendStatus(isConnected ? "online" : "standby");
       }
     };
     checkBackend();
     return () => {
       isMounted = false;
     };
-  }, []);
+  }, [apiUrl, isConnected]);
 
   const openLaunchModal = () => setIsLaunchModalOpen(true);
   const closeLaunchModal = () => setIsLaunchModalOpen(false);

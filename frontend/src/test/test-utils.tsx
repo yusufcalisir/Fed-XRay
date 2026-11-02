@@ -1,6 +1,7 @@
 import React from "react";
 import { render, RenderOptions } from "@testing-library/react";
 import { LanguageProvider } from "@/context/LanguageContext";
+import { ApiProvider } from "@/context/ApiContext";
 
 interface WrapperProps {
   children: React.ReactNode;
@@ -8,9 +9,11 @@ interface WrapperProps {
 
 export function AllTheProviders({ children }: WrapperProps) {
   return (
-    <LanguageProvider>
-      {children}
-    </LanguageProvider>
+    <ApiProvider>
+      <LanguageProvider>
+        {children}
+      </LanguageProvider>
+    </ApiProvider>
   );
 }
 

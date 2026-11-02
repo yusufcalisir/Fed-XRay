@@ -250,10 +250,20 @@ export function ApiProvider({ children }: { children: React.ReactNode }) {
   );
 }
 
-export function useApi() {
+export function useApi(): ApiContextType {
   const context = useContext(ApiContext);
   if (!context) {
-    throw new Error("useApi must be used within an ApiProvider");
+    // Provide safe resilient default fallback if rendered outside ApiProvider (e.g. standalone tests)
+    return {
+      apiUrl: process.env.NEXT_PUBLIC_API_URL?.trim().replace(/\/$/, "") || "http://127.0.0.1:8000",
+      setApiUrl: () => {},
+      isConnected: false,
+      isChecking: false,
+      checkConnection: async () => false,
+      autoDiscoverApi: async () => null,
+      lastError: null,
+      reconnectAttempts: 0,
+    };
   }
   return context;
 }
