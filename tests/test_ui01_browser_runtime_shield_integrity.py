@@ -81,3 +81,4 @@ def test_frontend_vitest_shield_test_suite_presence():
     shield_code = shield_test.read_text(encoding="utf-8")
     assert "does NOT flag genuine Fed-XRay application and API errors" in shield_code
     assert "intercepts and throttles console.error noise" in shield_code
+

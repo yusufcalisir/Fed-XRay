@@ -11,7 +11,7 @@ interface RagDigitalTwinsProps {
 
 export default function RagDigitalTwins({ twins }: RagDigitalTwinsProps) {
   const { t } = useLanguage();
-  if (!twins || twins.length === 0) return null;
+  if (!twins || !Array.isArray(twins) || twins.length === 0) return null;
 
   return (
     <div className="card p-3.5 sm:p-5 mb-3.5 sm:mb-4">

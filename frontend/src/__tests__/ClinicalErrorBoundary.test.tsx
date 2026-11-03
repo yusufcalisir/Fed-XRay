@@ -52,3 +52,4 @@ describe("ClinicalErrorBoundary Component", () => {
     consoleSpy.mockRestore();
   });
 });
+

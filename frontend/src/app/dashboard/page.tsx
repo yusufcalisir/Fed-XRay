@@ -17,6 +17,7 @@ import { fetchHospitalCohorts, fetchClinicalDiagnosis, fetchRagTwins, streamFede
 import { useLanguage } from "@/context/LanguageContext";
 import { useApi } from "@/context/ApiContext";
 import { AlertCircle } from "lucide-react";
+import ClinicalErrorBoundary from "@/components/ClinicalErrorBoundary";
 
 export default function DashboardPage() {
   const { t, language } = useLanguage();
@@ -242,7 +243,7 @@ export default function DashboardPage() {
         <Hero
           numHospitals={hospitals.length}
           totalRounds={totalRounds}
-          totalSamples={hospitals.reduce((acc, h) => acc + h.num_samples, 0)}
+          totalSamples={(hospitals || []).reduce((acc, h) => acc + (h?.num_samples || 0), 0)}
           isTrained={hospitals.length > 0 && isTrained}
         />
 
@@ -264,50 +265,58 @@ export default function DashboardPage() {
         />
 
         {/* Step 1: Ingestion */}
-        <HospitalStudio
-          hospitals={hospitals}
-          onGenerate={handleGenerateCohorts}
-          isLoading={isCohortLoading}
-        />
+        <ClinicalErrorBoundary language={language}>
+          <HospitalStudio
+            hospitals={hospitals}
+            onGenerate={handleGenerateCohorts}
+            isLoading={isCohortLoading}
+          />
+        </ClinicalErrorBoundary>
 
         {/* Step 2: Training */}
-        <TelemetryCockpit
-          history={history}
-          onStartTraining={handleStartTraining}
-          isTraining={isTraining}
-          currentRound={currentRound}
-          totalRounds={totalRounds}
-          isLocked={hospitals.length === 0}
-          onUnlock={() => {
-            scrollToSection("section-ingestion");
-            handleGenerateCohorts();
-          }}
-        />
+        <ClinicalErrorBoundary language={language}>
+          <TelemetryCockpit
+            history={history}
+            onStartTraining={handleStartTraining}
+            isTraining={isTraining}
+            currentRound={currentRound}
+            totalRounds={totalRounds}
+            isLocked={hospitals.length === 0}
+            onUnlock={() => {
+              scrollToSection("section-ingestion");
+              handleGenerateCohorts();
+            }}
+          />
+        </ClinicalErrorBoundary>
 
         {/* Step 3: Diagnostic Inference & Grad-CAM */}
-        <DiagnosticStudio
-          diagnosis={diagnosis}
-          onDiagnose={handleRunDiagnosis}
-          isLoading={isDiagLoading}
-          isLocked={!isTrained}
-          onScrollToTraining={() => scrollToSection("section-training")}
-        />
+        <ClinicalErrorBoundary language={language}>
+          <DiagnosticStudio
+            diagnosis={diagnosis}
+            onDiagnose={handleRunDiagnosis}
+            isLoading={isDiagLoading}
+            isLocked={!isTrained}
+            onScrollToTraining={() => scrollToSection("section-training")}
+          />
+        </ClinicalErrorBoundary>
 
         {/* Step 4: Digital Twins & Reports */}
         {diagnosis && (
-          <div id="section-cdss" className="scroll-mt-20">
-            <RagDigitalTwins twins={ragTwins} />
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5 sm:gap-4 mb-5 sm:mb-6">
-              <VoiceAssistant diagnosisName={fullDiagName} confidence={diagConf} />
-              <ReportDownload
-                diagnosisName={fullDiagName}
-                confidence={diagConf}
-                patientId={diagnosis.patient_id}
-                predictedClass={diagnosis.predicted_class}
-                findings={diagnosis.findings}
-              />
+          <ClinicalErrorBoundary language={language}>
+            <div id="section-cdss" className="scroll-mt-20">
+              <RagDigitalTwins twins={ragTwins} />
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5 sm:gap-4 mb-5 sm:mb-6">
+                <VoiceAssistant diagnosisName={fullDiagName} confidence={diagConf} />
+                <ReportDownload
+                  diagnosisName={fullDiagName}
+                  confidence={diagConf}
+                  patientId={diagnosis.patient_id}
+                  predictedClass={diagnosis.predicted_class}
+                  findings={diagnosis.findings}
+                />
+              </div>
             </div>
-          </div>
+          </ClinicalErrorBoundary>
         )}
       </main>
 

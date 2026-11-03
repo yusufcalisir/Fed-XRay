@@ -6,7 +6,7 @@ import { ShieldAlert, RefreshCw, RotateCcw } from "lucide-react";
 interface Props {
   children: ReactNode;
   fallback?: ReactNode;
-  language?: "tr" | "en";
+  language?: "EN" | "TR" | "en" | "tr";
 }
 
 interface State {
@@ -50,7 +50,7 @@ export class ClinicalErrorBoundary extends Component<Props, State> {
         return this.props.fallback;
       }
 
-      const isTr = this.props.language === "tr";
+      const isTr = this.props.language?.toUpperCase() === "TR";
 
       return (
         <div className="min-h-[400px] w-full flex items-center justify-center p-6 bg-slate-900/60 backdrop-blur-md rounded-2xl border border-red-500/20 text-slate-100 shadow-2xl my-6">
@@ -110,3 +110,4 @@ export class ClinicalErrorBoundary extends Component<Props, State> {
 }
 
 export default ClinicalErrorBoundary;
+

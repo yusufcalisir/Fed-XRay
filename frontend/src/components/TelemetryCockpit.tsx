@@ -48,7 +48,8 @@ export default function TelemetryCockpit({
   const [algorithm, setAlgorithm] = useState<string>("FedDyn");
   const [simulateAttack, setSimulateAttack] = useState<boolean>(false);
 
-  const latestRound = history[history.length - 1];
+  const safeHistory = Array.isArray(history) ? history : [];
+  const latestRound = safeHistory.length > 0 ? safeHistory[safeHistory.length - 1] : undefined;
   const fullBytes = latestRound?.full_model_bytes ?? 0;
   const uplinkBytes = latestRound?.uplink_bytes_per_client ?? 0;
   const reductionPct = fullBytes > 0 ? (1 - uplinkBytes / fullBytes) * 100 : null;
@@ -198,9 +199,9 @@ export default function TelemetryCockpit({
                 <span className="text-xs font-bold text-[var(--text-heading)]">{t("sec2_convergence_title")}</span>
               </div>
               <div className="h-48 sm:h-56 w-full flex-1 min-h-[190px]">
-                {history.length > 0 ? (
+                {safeHistory.length > 0 ? (
                   <ResponsiveContainer width="100%" height="100%">
-                    <LineChart data={history} margin={{ top: 5, right: 10, left: -15, bottom: 0 }}>
+                    <LineChart data={safeHistory} margin={{ top: 5, right: 10, left: -15, bottom: 0 }}>
                       <CartesianGrid strokeDasharray="3 3" stroke="rgba(148, 163, 184, 0.2)" />
                       <XAxis dataKey="round_num" stroke="#64748b" tick={{ fontSize: 10 }} />
                       <YAxis yAxisId="acc" domain={[0, 100]} stroke="#64748b" tick={{ fontSize: 10 }} />

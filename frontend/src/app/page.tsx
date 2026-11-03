@@ -27,9 +27,10 @@ import {
 
 import { BackendSystemState } from "@/types";
 import { fetchSystemState } from "@/lib/api";
+import ClinicalErrorBoundary from "@/components/ClinicalErrorBoundary";
 
 export default function PresentationLandingPage() {
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
   const { apiUrl, isConnected } = useApi();
   const [isLaunchModalOpen, setIsLaunchModalOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<"xai" | "rag" | "convergence" | "report">("xai");
@@ -310,8 +311,10 @@ export default function PresentationLandingPage() {
             </div>
           </div>
 
-          {/* Tab 1: 3D Explainable Diagnostics */}
-          {activeTab === "xai" && (
+          {/* Tab Content Enclosed in Clinical Error Boundary */}
+          <ClinicalErrorBoundary language={language}>
+            {/* Tab 1: 3D Explainable Diagnostics */}
+            {activeTab === "xai" && (
             <div className="card p-4 sm:p-6">
               <div className="grid grid-cols-1 lg:grid-cols-5 gap-5 items-stretch">
                 <div className="relative lg:col-span-3 h-[380px] sm:h-[460px] rounded-xl overflow-hidden border border-[var(--border-card)] bg-[var(--bg-card-inner)]">
@@ -635,6 +638,7 @@ export default function PresentationLandingPage() {
               </div>
             </div>
           )}
+          </ClinicalErrorBoundary>
         </section>
 
         {/* ================================================================
