@@ -108,24 +108,24 @@ export default function FederatedConsortiumTopology({
   const selectedNode = nodeList.find((n) => n.id === selectedNodeId) || nodeList[0];
 
   return (
-    <div className="card relative h-[480px] sm:h-[520px] lg:h-[550px] flex flex-col justify-between overflow-hidden p-4 sm:p-5 select-none border border-[var(--border-card)] bg-[var(--bg-card)] shadow-xl rounded-2xl">
+    <div className="card relative min-h-[520px] sm:min-h-[530px] lg:h-[560px] flex flex-col justify-between overflow-hidden p-3.5 sm:p-5 select-none border border-[var(--border-card)] bg-[var(--bg-card)] shadow-xl rounded-2xl">
       {/* Top Console Navigation Bar */}
-      <div className="relative z-20 flex items-center justify-between gap-2 border-b border-[var(--border-subtle)] pb-2.5">
+      <div className="relative z-20 flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-[var(--border-subtle)] pb-2.5">
         <div className="flex items-center gap-2 min-w-0">
           <div className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse shadow-[0_0_8px_#10b981] shrink-0" />
-          <span className="font-mono text-[11px] sm:text-xs font-bold uppercase tracking-wider text-[var(--text-heading)] whitespace-nowrap">
+          <span className="font-mono text-[11px] sm:text-xs font-bold uppercase tracking-wider text-[var(--text-heading)]">
             {t("topo_badge_title")}
           </span>
         </div>
 
         {/* Console View Switcher */}
-        <div className="flex items-center p-0.5 rounded-lg bg-[var(--bg-card-inner)] border border-[var(--border-card)] text-[10px] sm:text-[11px] font-semibold shrink-0">
+        <div className="grid grid-cols-3 sm:flex items-center p-0.5 rounded-lg bg-[var(--bg-card-inner)] border border-[var(--border-card)] text-[10px] sm:text-[11px] font-semibold w-full sm:w-auto">
           <button
             type="button"
             onClick={() => setActiveView("topology")}
-            className={`px-2 sm:px-2.5 py-1 rounded-md transition-all whitespace-nowrap ${
+            className={`px-2 sm:px-2.5 py-1 text-center rounded-md transition-all whitespace-nowrap ${
               activeView === "topology"
-                ? "bg-emerald-500 text-white shadow-sm"
+                ? "bg-emerald-500 text-white shadow-sm font-bold"
                 : "text-[var(--text-muted)] hover:text-[var(--text-heading)]"
             }`}
           >
@@ -134,9 +134,9 @@ export default function FederatedConsortiumTopology({
           <button
             type="button"
             onClick={() => setActiveView("crypto")}
-            className={`px-2 sm:px-2.5 py-1 rounded-md transition-all whitespace-nowrap ${
+            className={`px-2 sm:px-2.5 py-1 text-center rounded-md transition-all whitespace-nowrap ${
               activeView === "crypto"
-                ? "bg-emerald-500 text-white shadow-sm"
+                ? "bg-emerald-500 text-white shadow-sm font-bold"
                 : "text-[var(--text-muted)] hover:text-[var(--text-heading)]"
             }`}
           >
@@ -145,9 +145,9 @@ export default function FederatedConsortiumTopology({
           <button
             type="button"
             onClick={() => setActiveView("telemetry")}
-            className={`px-2 sm:px-2.5 py-1 rounded-md transition-all whitespace-nowrap ${
+            className={`px-2 sm:px-2.5 py-1 text-center rounded-md transition-all whitespace-nowrap ${
               activeView === "telemetry"
-                ? "bg-emerald-500 text-white shadow-sm"
+                ? "bg-emerald-500 text-white shadow-sm font-bold"
                 : "text-[var(--text-muted)] hover:text-[var(--text-heading)]"
             }`}
           >
@@ -194,23 +194,23 @@ export default function FederatedConsortiumTopology({
             </svg>
 
             {/* Top Row: Nodes 1 & 2 */}
-            <div className="grid grid-cols-2 gap-3 z-10">
+            <div className="grid grid-cols-2 gap-2 sm:gap-3 z-10">
               {nodeList.slice(0, 2).map((node) => (
                 <button
                   type="button"
                   key={node.id}
                   onClick={() => setSelectedNodeId(node.id)}
-                  className={`text-left p-2.5 sm:p-3 rounded-xl border transition-all ${
+                  className={`text-left p-2 sm:p-2.5 lg:p-3 rounded-xl border transition-all ${
                     selectedNodeId === node.id
                       ? "bg-[var(--bg-card)] border-emerald-500 shadow-md ring-1 ring-emerald-500/30"
                       : "bg-[var(--bg-card-inner)] hover:bg-[var(--bg-card)] border-[var(--border-subtle)]"
                   }`}
                 >
                   <div className="flex items-center justify-between mb-1">
-                    <span className="font-mono text-[10px] font-bold text-emerald-600 dark:text-emerald-400">
+                    <span className="font-mono text-[10px] font-bold text-emerald-600 dark:text-emerald-400 truncate pr-1">
                       {node.location}
                     </span>
-                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 shrink-0" />
                   </div>
                   <div className="font-display text-xs font-bold text-[var(--text-heading)] truncate">
                     {node.name}
@@ -223,9 +223,9 @@ export default function FederatedConsortiumTopology({
             </div>
 
             {/* Central Aggregation Ring */}
-            <div className="z-10 self-center text-center my-1 sm:my-2">
-              <div className="inline-flex flex-col items-center p-3 sm:p-3.5 rounded-2xl bg-[var(--bg-card)] border border-emerald-500/40 shadow-xl backdrop-blur-md">
-                <div className="flex items-center gap-1.5 text-emerald-600 dark:text-emerald-400 font-mono text-[10px] font-bold uppercase tracking-wider mb-1">
+            <div className="z-10 self-center text-center my-1">
+              <div className="inline-flex flex-col items-center p-2.5 sm:p-3.5 rounded-2xl bg-[var(--bg-card)] border border-emerald-500/40 shadow-xl backdrop-blur-md">
+                <div className="flex items-center gap-1.5 text-emerald-600 dark:text-emerald-400 font-mono text-[10px] font-bold uppercase tracking-wider mb-0.5">
                   <ShieldCheck className="w-3.5 h-3.5" />
                   <span>{t("topo_aggregator_badge")}</span>
                 </div>
@@ -239,23 +239,23 @@ export default function FederatedConsortiumTopology({
             </div>
 
             {/* Bottom Row: Nodes 3 & 4 */}
-            <div className="grid grid-cols-2 gap-3 z-10">
+            <div className="grid grid-cols-2 gap-2 sm:gap-3 z-10">
               {nodeList.slice(2, 4).map((node) => (
                 <button
                   type="button"
                   key={node.id}
                   onClick={() => setSelectedNodeId(node.id)}
-                  className={`text-left p-2.5 sm:p-3 rounded-xl border transition-all ${
+                  className={`text-left p-2 sm:p-2.5 lg:p-3 rounded-xl border transition-all ${
                     selectedNodeId === node.id
                       ? "bg-[var(--bg-card)] border-emerald-500 shadow-md ring-1 ring-emerald-500/30"
                       : "bg-[var(--bg-card-inner)] hover:bg-[var(--bg-card)] border-[var(--border-subtle)]"
                   }`}
                 >
                   <div className="flex items-center justify-between mb-1">
-                    <span className="font-mono text-[10px] font-bold text-emerald-600 dark:text-emerald-400">
+                    <span className="font-mono text-[10px] font-bold text-emerald-600 dark:text-emerald-400 truncate pr-1">
                       {node.location}
                     </span>
-                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 shrink-0" />
                   </div>
                   <div className="font-display text-xs font-bold text-[var(--text-heading)] truncate">
                     {node.name}
@@ -461,12 +461,14 @@ export default function FederatedConsortiumTopology({
               <div className="w-6 h-6 rounded-lg bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-500 shrink-0">
                 <Server className="w-3.5 h-3.5" />
               </div>
-              <span className="font-display font-bold text-[var(--text-heading)] text-xs truncate">
-                {selectedNode.name}
-              </span>
-              <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 shrink-0">
-                {selectedNode.location}
-              </span>
+              <div className="min-w-0 flex items-center gap-1.5 flex-wrap">
+                <span className="font-display font-bold text-[var(--text-heading)] text-xs truncate max-w-[170px] sm:max-w-none">
+                  {selectedNode.name}
+                </span>
+                <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 shrink-0">
+                  {selectedNode.location}
+                </span>
+              </div>
             </div>
 
             {/* Right: DP Budget & Simulate */}
@@ -487,12 +489,14 @@ export default function FederatedConsortiumTopology({
             </div>
           </div>
 
-          {/* Subline: Scanner · Skew */}
-          <div className="text-[10px] font-mono text-[var(--text-muted)] truncate mt-1 pt-1 border-t border-[var(--border-subtle)] flex items-center gap-1.5">
-            <span className="truncate">{selectedNode.scanner}</span>
-            <span className="text-slate-400 shrink-0">·</span>
-            <span className="text-amber-600 dark:text-amber-400 font-semibold shrink-0">
-              {t("topo_skew_label")} {t(selectedNode.skewKey)}
+          {/* Subline: Scanner & Skew Details */}
+          <div className="mt-1.5 pt-1.5 border-t border-[var(--border-subtle)] flex flex-col sm:flex-row sm:items-center justify-between gap-1 text-[10px] font-mono">
+            <span className="text-[var(--text-muted)] truncate">
+              {selectedNode.scanner}
+            </span>
+            <span className="inline-flex items-center gap-1 text-amber-600 dark:text-amber-400 font-semibold shrink-0 bg-amber-500/10 px-2 py-0.5 rounded border border-amber-500/20 w-fit">
+              <span>{t("topo_skew_label")}</span>
+              <span>{t(selectedNode.skewKey)}</span>
             </span>
           </div>
         </div>
