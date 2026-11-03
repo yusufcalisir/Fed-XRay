@@ -2,14 +2,33 @@
 
 import React, { useEffect, useRef } from "react";
 
+export interface Hospital3DNode {
+  id: string;
+  name: string;
+  location: string;
+  cityCode: string;
+  modality: string;
+  dpEpsilon: number;
+  scans: number;
+  wx: number; // 3D isometric world X (-1 to 1)
+  wy: number; // 3D isometric world Y (-1 to 1)
+  themeColor: string;
+  glowColor: string;
+}
+
 interface Consortium3DCanvasProps {
   isSimulatingRound?: boolean;
   selectedNodeId?: string;
   mouseTilt?: { x: number; y: number };
+  onSelectNode?: (nodeId: string) => void;
   onSimulationComplete?: () => void;
+  onUpdateProjectedPositions?: (
+    nodes: { id: string; x: number; y: number; topY: number }[],
+    server: { x: number; y: number; topY: number }
+  ) => void;
 }
 
-interface Particle {
+interface CipherPacket {
   tunnelIndex: number;
   progress: number;
   speed: number;
@@ -17,21 +36,79 @@ interface Particle {
   size: number;
 }
 
-const TUNNEL_LABELS = [
+const DEFAULT_NODES: Hospital3DNode[] = [
+  {
+    id: "node-1",
+    name: "BCN-20000 Skin Cancer Hub",
+    location: "Barcelona, ES",
+    cityCode: "BCN",
+    modality: "Dermoscopy",
+    dpEpsilon: 1.42,
+    scans: 40,
+    wx: -0.62,
+    wy: -0.48,
+    themeColor: "#10b981",
+    glowColor: "rgba(16, 185, 129, 0.45)",
+  },
+  {
+    id: "node-3",
+    name: "ViDIR Dermatopathology Institute",
+    location: "Vienna, AT",
+    cityCode: "VIE",
+    modality: "Histopathology",
+    dpEpsilon: 1.55,
+    scans: 40,
+    wx: 0.62,
+    wy: -0.48,
+    themeColor: "#06b6d4",
+    glowColor: "rgba(6, 182, 212, 0.45)",
+  },
+  {
+    id: "node-4",
+    name: "Queensland Oncology Center",
+    location: "Brisbane, AU",
+    cityCode: "BNE",
+    modality: "Dermoscopy",
+    dpEpsilon: 1.48,
+    scans: 40,
+    wx: -0.62,
+    wy: 0.48,
+    themeColor: "#10b981",
+    glowColor: "rgba(16, 185, 129, 0.45)",
+  },
+  {
+    id: "node-2",
+    name: "Beth Israel Deaconess Medical Center",
+    location: "Boston, USA",
+    cityCode: "BOS",
+    modality: "Chest Radiography",
+    dpEpsilon: 1.38,
+    scans: 40,
+    wx: 0.62,
+    wy: 0.48,
+    themeColor: "#38bdf8",
+    glowColor: "rgba(56, 189, 248, 0.45)",
+  },
+];
+
+const PACKET_LABELS = [
   ["Enc(B_1)", "[c0, c1]", "RLWE 128b", "eps=1.42"],
-  ["Enc(B_2)", "CKKS-Poly", "Zero-Plain", "eps=1.38"],
-  ["Enc(B_3)", "[c0, c1]", "FFA-LoRA", "eps=1.55"],
-  ["Enc(B_4)", "SecAgg+", "RLWE 128b", "eps=1.48"],
+  ["Enc(B_3)", "CKKS-Poly", "Zero-Plain", "eps=1.55"],
+  ["Enc(B_4)", "[c0, c1]", "FFA-LoRA", "eps=1.48"],
+  ["Enc(B_2)", "SecAgg+", "RLWE 128b", "eps=1.38"],
 ];
 
 export default function Consortium3DCanvas({
   isSimulatingRound = false,
   selectedNodeId = "node-1",
   mouseTilt = { x: 0, y: 0 },
+  onSelectNode,
   onSimulationComplete,
+  onUpdateProjectedPositions,
 }: Consortium3DCanvasProps) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const animFrameRef = useRef<number | null>(null);
+  const hoveredNodeRef = useRef<string | null>(null);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -44,7 +121,7 @@ export default function Consortium3DCanvas({
       typeof ctx.beginPath !== "function" ||
       typeof ctx.clearRect !== "function"
     ) {
-      return; // Graceful fallback in headless / test environments
+      return; // Safe guard for headless test environments
     }
 
     let width = 0;
@@ -53,7 +130,6 @@ export default function Consortium3DCanvas({
     let shockwaveRadius = 0;
     let isShockwaveActive = false;
 
-    // Responsive canvas resizing
     const handleResize = () => {
       const rect = canvas.parentElement?.getBoundingClientRect();
       if (!rect) return;
@@ -68,262 +144,481 @@ export default function Consortium3DCanvas({
     handleResize();
     window.addEventListener("resize", handleResize);
 
-    // Initialize flowing ciphertext particles
-    const particles: Particle[] = [];
+    // Initialize 3D Ciphertext flow packets
+    const packets: CipherPacket[] = [];
     for (let t = 0; t < 4; t++) {
       for (let p = 0; p < 4; p++) {
-        particles.push({
+        packets.push({
           tunnelIndex: t,
-          progress: (p * 0.25 + t * 0.08) % 1,
-          speed: 0.004 + Math.random() * 0.0015,
-          label: TUNNEL_LABELS[t][p % TUNNEL_LABELS[t].length],
+          progress: (p * 0.25 + t * 0.1) % 1,
+          speed: 0.0035 + Math.random() * 0.0015,
+          label: PACKET_LABELS[t][p % PACKET_LABELS[t].length],
           size: 3.5 + (p % 2),
         });
       }
     }
 
-    // Trigger shockwave on simulation round
     if (isSimulatingRound) {
       shockwaveRadius = 15;
       isShockwaveActive = true;
     }
 
+    // -------------------------------------------------------------
+    // 3D Projection Mathematics with Isometric Tilt
+    // -------------------------------------------------------------
+    const project = (
+      wx: number,
+      wy: number,
+      wz: number,
+      scaleVal: number,
+      pitchVal: number,
+      yawVal: number
+    ) => {
+      const cx = width / 2;
+      const cy = height / 2 + 10;
+
+      // Yaw rotation (horizontal azimuth)
+      const cosY = Math.cos(yawVal);
+      const sinY = Math.sin(yawVal);
+      const rx = wx * cosY - wy * sinY;
+      const ry = wx * sinY + wy * cosY;
+
+      // Pitch rotation (elevation angle)
+      const cosP = Math.cos(pitchVal);
+      const sinP = Math.sin(pitchVal);
+
+      const screenX = cx + rx * scaleVal;
+      const screenY = cy + ry * scaleVal * sinP - wz * cosP;
+      const depth = ry * cosP + wz * sinP;
+
+      return { x: screenX, y: screenY, depth };
+    };
+
+    // Helper: Draw 3D Isometric Extruded Box
+    const draw3DBox = (
+      bx: number,
+      by: number,
+      bz: number,
+      bw: number,
+      bd: number,
+      bh: number,
+      scaleVal: number,
+      pitchVal: number,
+      yawVal: number,
+      style: {
+        topFill: string;
+        leftFill: string;
+        rightFill: string;
+        stroke: string;
+        lineWidth?: number;
+      }
+    ) => {
+      // 8 Vertices
+      const p0 = project(bx - bw / 2, by - bd / 2, bz, scaleVal, pitchVal, yawVal);
+      const p1 = project(bx + bw / 2, by - bd / 2, bz, scaleVal, pitchVal, yawVal);
+      const p2 = project(bx + bw / 2, by + bd / 2, bz, scaleVal, pitchVal, yawVal);
+      const p3 = project(bx - bw / 2, by + bd / 2, bz, scaleVal, pitchVal, yawVal);
+
+      const p4 = project(bx - bw / 2, by - bd / 2, bz + bh, scaleVal, pitchVal, yawVal);
+      const p5 = project(bx + bw / 2, by - bd / 2, bz + bh, scaleVal, pitchVal, yawVal);
+      const p6 = project(bx + bw / 2, by + bd / 2, bz + bh, scaleVal, pitchVal, yawVal);
+      const p7 = project(bx - bw / 2, by + bd / 2, bz + bh, scaleVal, pitchVal, yawVal);
+
+      ctx.save();
+      ctx.lineWidth = style.lineWidth || 1;
+      ctx.strokeStyle = style.stroke;
+
+      // Left Wall Face
+      ctx.beginPath();
+      ctx.moveTo(p3.x, p3.y);
+      ctx.lineTo(p2.x, p2.y);
+      ctx.lineTo(p6.x, p6.y);
+      ctx.lineTo(p7.x, p7.y);
+      ctx.closePath();
+      ctx.fillStyle = style.leftFill;
+      ctx.fill();
+      ctx.stroke();
+
+      // Right Wall Face
+      ctx.beginPath();
+      ctx.moveTo(p1.x, p1.y);
+      ctx.lineTo(p2.x, p2.y);
+      ctx.lineTo(p6.x, p6.y);
+      ctx.lineTo(p5.x, p5.y);
+      ctx.closePath();
+      ctx.fillStyle = style.rightFill;
+      ctx.fill();
+      ctx.stroke();
+
+      // Top Roof Face
+      ctx.beginPath();
+      ctx.moveTo(p4.x, p4.y);
+      ctx.lineTo(p5.x, p5.y);
+      ctx.lineTo(p6.x, p6.y);
+      ctx.lineTo(p7.x, p7.y);
+      ctx.closePath();
+      ctx.fillStyle = style.topFill;
+      ctx.fill();
+      ctx.stroke();
+
+      ctx.restore();
+      return { roofCenter: { x: (p4.x + p6.x) / 2, y: (p4.y + p6.y) / 2 } };
+    };
+
+    // -------------------------------------------------------------
+    // Main Render Loop (60 FPS)
+    // -------------------------------------------------------------
     const render = () => {
       time += 0.02;
       ctx.clearRect(0, 0, width, height);
 
       const cx = width / 2;
-      const cy = height / 2;
-
-      // 3D Tilt Vanishing Point
-      const tiltOffsetX = mouseTilt.x * 28;
-      const tiltOffsetY = mouseTilt.y * 20;
-
-      // Anchor positions corresponding to the 4 corner pods
-      const nodes = [
-        { x: width * 0.17, y: height * 0.16, id: "node-1" }, // Top-Left (Barcelona)
-        { x: width * 0.83, y: height * 0.16, id: "node-3" }, // Top-Right (Vienna)
-        { x: width * 0.17, y: height * 0.84, id: "node-4" }, // Bottom-Left (Brisbane)
-        { x: width * 0.83, y: height * 0.84, id: "node-2" }, // Bottom-Right (Boston)
-      ];
-
-      const coreX = cx + tiltOffsetX;
-      const coreY = cy + tiltOffsetY;
+      const cy = height / 2 + 10;
+      const scaleVal = Math.min(width * 0.44, height * 0.58);
+      const pitchVal = 0.52 + mouseTilt.y * 0.18;
+      const yawVal = mouseTilt.x * 0.26;
 
       // -------------------------------------------------------------
-      // 1. 3D Isometric Perspective Floor Grid
+      // 1. 3D Perspective Cyber Floor Grid
       // -------------------------------------------------------------
       ctx.save();
-      ctx.strokeStyle = "rgba(16, 185, 129, 0.05)";
+      ctx.strokeStyle = "rgba(16, 185, 129, 0.06)";
       ctx.lineWidth = 1;
-      const gridCount = 9;
-      for (let i = -gridCount; i <= gridCount; i++) {
-        const gx = cx + i * (width / (gridCount * 2.2)) + tiltOffsetX * 0.6;
+
+      const gridRange = 1.1;
+      const gridStep = 0.22;
+      for (let gx = -gridRange; gx <= gridRange + 0.001; gx += gridStep) {
+        const start = project(gx, -gridRange, 0, scaleVal, pitchVal, yawVal);
+        const end = project(gx, gridRange, 0, scaleVal, pitchVal, yawVal);
         ctx.beginPath();
-        ctx.moveTo(gx, 0);
-        ctx.lineTo(gx + i * 16, height);
+        ctx.moveTo(start.x, start.y);
+        ctx.lineTo(end.x, end.y);
         ctx.stroke();
       }
-      for (let j = 0; j <= 7; j++) {
-        const gy = height * 0.15 + j * (height * 0.12);
+      for (let gy = -gridRange; gy <= gridRange + 0.001; gy += gridStep) {
+        const start = project(-gridRange, gy, 0, scaleVal, pitchVal, yawVal);
+        const end = project(gridRange, gy, 0, scaleVal, pitchVal, yawVal);
         ctx.beginPath();
-        ctx.moveTo(0, gy);
-        ctx.lineTo(width, gy);
+        ctx.moveTo(start.x, start.y);
+        ctx.lineTo(end.x, end.y);
         ctx.stroke();
       }
       ctx.restore();
 
+      // Project Central Server position
+      const serverGround = project(0, 0, 0, scaleVal, pitchVal, yawVal);
+      const serverTop = project(0, 0, 95, scaleVal, pitchVal, yawVal);
+
+      // Project 4 Hospital anchor positions
+      const projectedNodes = DEFAULT_NODES.map((node) => {
+        const ground = project(node.wx, node.wy, 0, scaleVal, pitchVal, yawVal);
+        const top = project(node.wx, node.wy, 55, scaleVal, pitchVal, yawVal);
+        return {
+          id: node.id,
+          x: ground.x,
+          y: ground.y,
+          topY: top.y,
+        };
+      });
+
+      // Notify parent component of exact 2D coordinates for crisp HUD positioning
+      if (onUpdateProjectedPositions && Math.floor(time * 50) % 6 === 0) {
+        onUpdateProjectedPositions(projectedNodes, {
+          x: serverGround.x,
+          y: serverGround.y,
+          topY: serverTop.y,
+        });
+      }
+
       // -------------------------------------------------------------
-      // 2. 3D Pedestal Rings beneath each Hospital Node
+      // 2. Pedestal Anchor Rings & Soft Contact Shadows
       // -------------------------------------------------------------
-      nodes.forEach((node) => {
+      DEFAULT_NODES.forEach((node) => {
+        const p = project(node.wx, node.wy, 0, scaleVal, pitchVal, yawVal);
         const isSelected = node.id === selectedNodeId;
+        const isHovered = node.id === hoveredNodeRef.current;
+
         ctx.save();
+        // Ground Contact Shadow
+        const shadowGrad = ctx.createRadialGradient(p.x, p.y, 2, p.x, p.y, 45);
+        shadowGrad.addColorStop(0, "rgba(0, 0, 0, 0.7)");
+        shadowGrad.addColorStop(1, "rgba(0, 0, 0, 0)");
+        ctx.fillStyle = shadowGrad;
         ctx.beginPath();
-        ctx.ellipse(node.x, node.y, 44, 28, time * 0.3, 0, Math.PI * 2);
-        ctx.strokeStyle = isSelected
-          ? "rgba(16, 185, 129, 0.45)"
-          : "rgba(16, 185, 129, 0.15)";
+        ctx.ellipse(p.x, p.y, 48, 26, 0, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Target Pedestal Ring
+        ctx.beginPath();
+        ctx.ellipse(p.x, p.y, 44, 24, time * 0.2, 0, Math.PI * 2);
+        ctx.strokeStyle = isSelected || isHovered
+          ? node.themeColor
+          : "rgba(16, 185, 129, 0.22)";
         ctx.lineWidth = isSelected ? 2 : 1;
         ctx.setLineDash([4, 6]);
-        ctx.lineDashOffset = time * 8;
+        ctx.lineDashOffset = time * 6;
         ctx.stroke();
 
-        // Glowing center anchor
-        ctx.fillStyle = isSelected ? "#10b981" : "rgba(16, 185, 129, 0.4)";
-        ctx.beginPath();
-        ctx.arc(node.x, node.y, 3, 0, Math.PI * 2);
-        ctx.fill();
+        // Engraved City Code
+        ctx.font = '9px "JetBrains Mono", monospace';
+        ctx.fillStyle = isSelected ? node.themeColor : "rgba(255, 255, 255, 0.4)";
+        ctx.textAlign = "center";
+        ctx.fillText(node.cityCode, p.x, p.y + 22);
         ctx.restore();
       });
 
       // -------------------------------------------------------------
-      // 3. Inter-Hospital Byzantine Verification Mesh (Elliptical Orbit)
+      // 3. 3D Transmission Conduits (Laser Beams)
       // -------------------------------------------------------------
-      ctx.save();
-      const ringRadiusX = width * 0.38;
-      const ringRadiusY = height * 0.35;
-      ctx.beginPath();
-      ctx.ellipse(cx + tiltOffsetX * 0.5, cy + tiltOffsetY * 0.5, ringRadiusX, ringRadiusY, 0, 0, Math.PI * 2);
-      ctx.strokeStyle = "rgba(6, 182, 212, 0.22)";
-      ctx.lineWidth = 1.5;
-      ctx.setLineDash([5, 8]);
-      ctx.lineDashOffset = -time * 14;
-      ctx.stroke();
-
-      // Floating Byzantine tokens along the outer ring
-      const meshAngle = time * 0.5;
-      for (let m = 0; m < 4; m++) {
-        const ma = meshAngle + (m * Math.PI) / 2;
-        const mx = cx + tiltOffsetX * 0.5 + Math.cos(ma) * ringRadiusX;
-        const my = cy + tiltOffsetY * 0.5 + Math.sin(ma) * ringRadiusY;
-        ctx.fillStyle = "#06b6d4";
-        ctx.shadowColor = "#06b6d4";
-        ctx.shadowBlur = 8;
-        ctx.beginPath();
-        ctx.arc(mx, my, 3, 0, Math.PI * 2);
-        ctx.fill();
-      }
-      ctx.restore();
-
-      // -------------------------------------------------------------
-      // 4. Central Aggregator 3D Orbital Rings & Glow Beacon
-      // -------------------------------------------------------------
-      ctx.save();
-      // Outer 3D revolving ring
-      ctx.beginPath();
-      ctx.ellipse(coreX, coreY, 78, 56, time * 0.6, 0, Math.PI * 2);
-      ctx.strokeStyle = "rgba(16, 185, 129, 0.35)";
-      ctx.lineWidth = 1.5;
-      ctx.setLineDash([8, 10]);
-      ctx.lineDashOffset = time * 20;
-      ctx.stroke();
-
-      // Inner 3D counter-revolving ring
-      ctx.beginPath();
-      ctx.ellipse(coreX, coreY, 60, 42, -time * 0.8, 0, Math.PI * 2);
-      ctx.strokeStyle = "rgba(6, 182, 212, 0.4)";
-      ctx.lineWidth = 1.2;
-      ctx.setLineDash([6, 6]);
-      ctx.lineDashOffset = -time * 16;
-      ctx.stroke();
-
-      // Radial Core Ambient Glow
-      const coreGrad = ctx.createRadialGradient(coreX, coreY, 10, coreX, coreY, 75);
-      coreGrad.addColorStop(0, "rgba(16, 185, 129, 0.3)");
-      coreGrad.addColorStop(0.5, "rgba(6, 182, 212, 0.12)");
-      coreGrad.addColorStop(1, "rgba(16, 185, 129, 0)");
-      ctx.fillStyle = coreGrad;
-      ctx.beginPath();
-      ctx.arc(coreX, coreY, 75, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.restore();
-
-      // -------------------------------------------------------------
-      // 5. 3D Transmission Tunnels (Curved Energy Beams)
-      // -------------------------------------------------------------
-      nodes.forEach((node, idx) => {
+      DEFAULT_NODES.forEach((node, idx) => {
         const isSelected = node.id === selectedNodeId;
+        const from = project(node.wx, node.wy, 24, scaleVal, pitchVal, yawVal);
+        const to = project(0, 0, 32, scaleVal, pitchVal, yawVal);
+
+        const midX = (from.x + to.x) / 2 + (idx % 2 === 0 ? -18 : 18);
+        const midY = (from.y + to.y) / 2 - 20;
+
         ctx.save();
-
-        const midX = (node.x + coreX) / 2 + (idx % 2 === 0 ? -20 : 20);
-        const midY = (node.y + coreY) / 2 + (idx < 2 ? -15 : 15);
-
-        // Core conduit line
         ctx.beginPath();
-        ctx.moveTo(node.x, node.y);
-        ctx.quadraticCurveTo(midX, midY, coreX, coreY);
-        ctx.strokeStyle = isSelected
-          ? "rgba(16, 185, 129, 0.6)"
+        ctx.moveTo(from.x, from.y);
+        ctx.quadraticCurveTo(midX, midY, to.x, to.y);
+
+        ctx.strokeStyle = isSelected || isSimulatingRound
+          ? "rgba(16, 185, 129, 0.65)"
           : "rgba(16, 185, 129, 0.22)";
-        ctx.lineWidth = isSelected ? 2.5 : 1.5;
+        ctx.lineWidth = isSelected || isSimulatingRound ? 2.5 : 1.2;
         ctx.setLineDash([6, 6]);
         ctx.lineDashOffset = -time * 16;
         ctx.stroke();
 
-        // Neon Glow on active tunnels
         if (isSelected || isSimulatingRound) {
           ctx.beginPath();
-          ctx.moveTo(node.x, node.y);
-          ctx.quadraticCurveTo(midX, midY, coreX, coreY);
-          ctx.strokeStyle = "rgba(6, 182, 212, 0.45)";
+          ctx.moveTo(from.x, from.y);
+          ctx.quadraticCurveTo(midX, midY, to.x, to.y);
+          ctx.strokeStyle = "rgba(6, 182, 212, 0.4)";
           ctx.lineWidth = 4;
           ctx.stroke();
         }
-
         ctx.restore();
       });
 
       // -------------------------------------------------------------
-      // 6. 3D Encrypted Ciphertext Packets (Stream Animation)
+      // 4. 3D Ciphertext Flowing Packets
       // -------------------------------------------------------------
-      particles.forEach((p) => {
-        const node = nodes[p.tunnelIndex];
-        const currentSpeed = isSimulatingRound ? p.speed * 3.2 : p.speed;
+      packets.forEach((p) => {
+        const node = DEFAULT_NODES[p.tunnelIndex];
+        const currentSpeed = isSimulatingRound ? p.speed * 3.5 : p.speed;
         p.progress = (p.progress + currentSpeed) % 1;
 
         const u = p.progress;
-        const midX = (node.x + coreX) / 2 + (p.tunnelIndex % 2 === 0 ? -20 : 20);
-        const midY = (node.y + coreY) / 2 + (p.tunnelIndex < 2 ? -15 : 15);
+        const from = project(node.wx, node.wy, 24, scaleVal, pitchVal, yawVal);
+        const to = project(0, 0, 32, scaleVal, pitchVal, yawVal);
+
+        const midX = (from.x + to.x) / 2 + (p.tunnelIndex % 2 === 0 ? -18 : 18);
+        const midY = (from.y + to.y) / 2 - 20;
 
         // Quadratic Bezier interpolation
-        const px = (1 - u) * (1 - u) * node.x + 2 * (1 - u) * u * midX + u * u * coreX;
-        const py = (1 - u) * (1 - u) * node.y + 2 * (1 - u) * u * midY + u * u * coreY;
+        const px = (1 - u) * (1 - u) * from.x + 2 * (1 - u) * u * midX + u * u * to.x;
+        const py = (1 - u) * (1 - u) * from.y + 2 * (1 - u) * u * midY + u * u * to.y;
 
         ctx.save();
-
-        // 3D depth scaling: particles grow slightly as they converge towards the center
-        const scale = 0.85 + u * 0.4;
-
-        // Glowing packet orb
-        ctx.fillStyle = "#10b981";
-        ctx.shadowColor = "#10b981";
-        ctx.shadowBlur = 12;
+        const scaleDepth = 0.8 + u * 0.4;
+        ctx.fillStyle = node.themeColor;
+        ctx.shadowColor = node.themeColor;
+        ctx.shadowBlur = 10;
         ctx.beginPath();
-        ctx.arc(px, py, p.size * scale, 0, Math.PI * 2);
+        ctx.arc(px, py, p.size * scaleDepth, 0, Math.PI * 2);
         ctx.fill();
 
-        // Trailing phosphorescent tail
-        const trailU = Math.max(0, u - 0.05);
-        const tx = (1 - trailU) * (1 - trailU) * node.x + 2 * (1 - trailU) * trailU * midX + trailU * trailU * coreX;
-        const ty = (1 - trailU) * (1 - trailU) * node.y + 2 * (1 - trailU) * trailU * midY + trailU * trailU * coreY;
-        ctx.beginPath();
-        ctx.moveTo(px, py);
-        ctx.lineTo(tx, ty);
-        ctx.strokeStyle = "rgba(6, 182, 212, 0.55)";
-        ctx.lineWidth = 2;
-        ctx.stroke();
-
-        // Encrypted ciphertext mathematical label
-        if (u > 0.12 && u < 0.88) {
+        // Cipher label
+        if (u > 0.15 && u < 0.85) {
           ctx.shadowBlur = 0;
-          ctx.font = `${Math.floor(9 * scale)}px "JetBrains Mono", monospace`;
-          ctx.fillStyle = "rgba(16, 185, 129, 0.95)";
+          ctx.font = `${Math.floor(8.5 * scaleDepth)}px "JetBrains Mono", monospace`;
+          ctx.fillStyle = "rgba(255, 255, 255, 0.85)";
           ctx.fillText(p.label, px + 8, py - 4);
         }
-
         ctx.restore();
       });
 
       // -------------------------------------------------------------
-      // 7. Consensus Shockwave Expansion (Triggered Round Effect)
+      // 5. Render the 4 3D Hospital Nodes (Institutions)
+      // -------------------------------------------------------------
+      DEFAULT_NODES.forEach((node) => {
+        const isSelected = node.id === selectedNodeId;
+        const isHovered = node.id === hoveredNodeRef.current;
+        const levitation = isSelected ? Math.sin(time * 3) * 3 + 6 : isHovered ? 4 : 0;
+
+        const bw = 0.16;
+        const bd = 0.14;
+        const bh = 38;
+
+        // Base 3D Hospital Wing
+        draw3DBox(
+          node.wx,
+          node.wy,
+          levitation,
+          bw,
+          bd,
+          bh,
+          scaleVal,
+          pitchVal,
+          yawVal,
+          {
+            topFill: isSelected ? "rgba(16, 185, 129, 0.28)" : "#1e293b",
+            leftFill: isSelected ? "rgba(15, 23, 42, 0.95)" : "#0f172a",
+            rightFill: isSelected ? "rgba(9, 13, 22, 0.95)" : "#080c14",
+            stroke: isSelected ? node.themeColor : "rgba(255, 255, 255, 0.15)",
+            lineWidth: isSelected ? 2 : 1,
+          }
+        );
+
+        // Illuminated Diagnostic Floor Bands on Front Wall
+        const pLeftMid1 = project(node.wx - bw / 2, node.wy + bd / 2, levitation + 12, scaleVal, pitchVal, yawVal);
+        const pRightMid1 = project(node.wx + bw / 2, node.wy + bd / 2, levitation + 12, scaleVal, pitchVal, yawVal);
+        const pLeftMid2 = project(node.wx - bw / 2, node.wy + bd / 2, levitation + 24, scaleVal, pitchVal, yawVal);
+        const pRightMid2 = project(node.wx + bw / 2, node.wy + bd / 2, levitation + 24, scaleVal, pitchVal, yawVal);
+
+        ctx.save();
+        ctx.strokeStyle = node.themeColor;
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        ctx.moveTo(pLeftMid1.x, pLeftMid1.y);
+        ctx.lineTo(pRightMid1.x, pRightMid1.y);
+        ctx.stroke();
+
+        ctx.beginPath();
+        ctx.moveTo(pLeftMid2.x, pLeftMid2.y);
+        ctx.lineTo(pRightMid2.x, pRightMid2.y);
+        ctx.stroke();
+
+        // Medical Cross Emblem on Front Wall
+        const crossCenter = project(node.wx, node.wy + bd / 2 + 0.005, levitation + 18, scaleVal, pitchVal, yawVal);
+        ctx.strokeStyle = isSelected ? "#ffffff" : node.themeColor;
+        ctx.lineWidth = 2.5;
+        ctx.beginPath();
+        ctx.moveTo(crossCenter.x - 5, crossCenter.y);
+        ctx.lineTo(crossCenter.x + 5, crossCenter.y);
+        ctx.moveTo(crossCenter.x, crossCenter.y - 5);
+        ctx.lineTo(crossCenter.x, crossCenter.y + 5);
+        ctx.stroke();
+
+        // Rooftop Architecture & Beacon
+        const roofPeak = project(node.wx, node.wy, levitation + bh + 12, scaleVal, pitchVal, yawVal);
+        ctx.fillStyle = node.themeColor;
+        ctx.shadowColor = node.themeColor;
+        ctx.shadowBlur = 12;
+        ctx.beginPath();
+        ctx.arc(roofPeak.x, roofPeak.y, isSelected ? 4.5 : 3.5, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Beacon Laser Tether
+        const roofCenter = project(node.wx, node.wy, levitation + bh, scaleVal, pitchVal, yawVal);
+        ctx.strokeStyle = node.themeColor;
+        ctx.lineWidth = 1;
+        ctx.setLineDash([2, 2]);
+        ctx.beginPath();
+        ctx.moveTo(roofCenter.x, roofCenter.y);
+        ctx.lineTo(roofPeak.x, roofPeak.y);
+        ctx.stroke();
+        ctx.restore();
+      });
+
+      // -------------------------------------------------------------
+      // 6. Render the 3D Central Server Core (in the middle!)
+      // -------------------------------------------------------------
+      const serverLev = Math.sin(time * 2.5) * 2;
+      const sw = 0.20;
+      const sd = 0.18;
+
+      // Tier 1: Foundation Server Pedestal
+      draw3DBox(0, 0, serverLev, sw * 1.3, sd * 1.3, 16, scaleVal, pitchVal, yawVal, {
+        topFill: "#1e293b",
+        leftFill: "#0f172a",
+        rightFill: "#0a0e17",
+        stroke: "rgba(16, 185, 129, 0.4)",
+        lineWidth: 1.5,
+      });
+
+      // Tier 2: 3D Server Mainframe Tower
+      draw3DBox(0, 0, serverLev + 16, sw, sd, 54, scaleVal, pitchVal, yawVal, {
+        topFill: "rgba(16, 185, 129, 0.35)",
+        leftFill: "#0f172a",
+        rightFill: "#070b12",
+        stroke: "#10b981",
+        lineWidth: 2,
+      });
+
+      // Blinking Server Blade LEDs on Mainframe Face
+      ctx.save();
+      for (let rack = 0; rack < 3; rack++) {
+        const rz = serverLev + 22 + rack * 14;
+        const ledPos = project(0, sd / 2 + 0.005, rz, scaleVal, pitchVal, yawVal);
+        const isBlinking = Math.floor(time * 6 + rack) % 2 === 0;
+
+        ctx.fillStyle = isBlinking ? "#10b981" : "#06b6d4";
+        ctx.shadowColor = ctx.fillStyle;
+        ctx.shadowBlur = 8;
+        ctx.beginPath();
+        ctx.arc(ledPos.x - 7, ledPos.y, 1.8, 0, Math.PI * 2);
+        ctx.arc(ledPos.x, ledPos.y, 1.8, 0, Math.PI * 2);
+        ctx.arc(ledPos.x + 7, ledPos.y, 1.8, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      ctx.restore();
+
+      // Tier 3: Cryptographic Chamber & Floating CKKS Core
+      const coreZ = serverLev + 80;
+      const corePos = project(0, 0, coreZ, scaleVal, pitchVal, yawVal);
+
+      ctx.save();
+      // Glowing Energy Core
+      const coreGrad = ctx.createRadialGradient(corePos.x, corePos.y, 4, corePos.x, corePos.y, 35);
+      coreGrad.addColorStop(0, "rgba(255, 255, 255, 0.95)");
+      coreGrad.addColorStop(0.3, "rgba(16, 185, 129, 0.8)");
+      coreGrad.addColorStop(0.7, "rgba(6, 182, 212, 0.3)");
+      coreGrad.addColorStop(1, "rgba(16, 185, 129, 0)");
+      ctx.fillStyle = coreGrad;
+      ctx.beginPath();
+      ctx.arc(corePos.x, corePos.y, 35, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Rotating Orbital Ring 1 (CKKS 128-Bit)
+      ctx.beginPath();
+      ctx.ellipse(corePos.x, corePos.y, 48, 22, time * 0.8, 0, Math.PI * 2);
+      ctx.strokeStyle = "rgba(16, 185, 129, 0.55)";
+      ctx.lineWidth = 1.5;
+      ctx.setLineDash([6, 8]);
+      ctx.lineDashOffset = time * 18;
+      ctx.stroke();
+
+      // Rotating Orbital Ring 2 (FedOpt Momentum)
+      ctx.beginPath();
+      ctx.ellipse(corePos.x, corePos.y, 36, 16, -time * 1.1, 0, Math.PI * 2);
+      ctx.strokeStyle = "rgba(6, 182, 212, 0.65)";
+      ctx.lineWidth = 1.5;
+      ctx.setLineDash([4, 6]);
+      ctx.lineDashOffset = -time * 14;
+      ctx.stroke();
+      ctx.restore();
+
+      // -------------------------------------------------------------
+      // 7. Consensus Shockwave Expansion (Triggered Round)
       // -------------------------------------------------------------
       if (isShockwaveActive) {
-        shockwaveRadius += 5;
+        shockwaveRadius += 6;
         const maxRadius = Math.max(width, height) * 0.75;
         const alpha = Math.max(0, 1 - shockwaveRadius / maxRadius);
 
         ctx.save();
         ctx.beginPath();
-        ctx.arc(coreX, coreY, shockwaveRadius, 0, Math.PI * 2);
-        ctx.strokeStyle = `rgba(16, 185, 129, ${alpha * 0.8})`;
+        ctx.ellipse(serverGround.x, serverGround.y, shockwaveRadius, shockwaveRadius * 0.55, 0, 0, Math.PI * 2);
+        ctx.strokeStyle = `rgba(16, 185, 129, ${alpha * 0.85})`;
         ctx.lineWidth = 3.5;
         ctx.stroke();
 
-        // Secondary cyan pulse
         if (shockwaveRadius > 45) {
           ctx.beginPath();
-          ctx.arc(coreX, coreY, shockwaveRadius - 35, 0, Math.PI * 2);
+          ctx.ellipse(serverGround.x, serverGround.y, shockwaveRadius - 35, (shockwaveRadius - 35) * 0.55, 0, 0, Math.PI * 2);
           ctx.strokeStyle = `rgba(6, 182, 212, ${alpha * 0.6})`;
           ctx.lineWidth = 2;
           ctx.stroke();
@@ -343,18 +638,40 @@ export default function Consortium3DCanvas({
 
     render();
 
+    // Canvas click & hover detection
+    const handleCanvasClick = (e: MouseEvent) => {
+      const rect = canvas.getBoundingClientRect();
+      const mx = e.clientX - rect.left;
+      const my = e.clientY - rect.top;
+      const scaleVal = Math.min(width * 0.44, height * 0.58);
+      const pitchVal = 0.52 + mouseTilt.y * 0.18;
+      const yawVal = mouseTilt.x * 0.26;
+
+      for (const node of DEFAULT_NODES) {
+        const p = project(node.wx, node.wy, 18, scaleVal, pitchVal, yawVal);
+        const dist = Math.hypot(mx - p.x, my - p.y);
+        if (dist < 46) {
+          if (onSelectNode) onSelectNode(node.id);
+          return;
+        }
+      }
+    };
+
+    canvas.addEventListener("click", handleCanvasClick);
+
     return () => {
       window.removeEventListener("resize", handleResize);
+      canvas.removeEventListener("click", handleCanvasClick);
       if (animFrameRef.current) {
         cancelAnimationFrame(animFrameRef.current);
       }
     };
-  }, [isSimulatingRound, selectedNodeId, mouseTilt, onSimulationComplete]);
+  }, [isSimulatingRound, selectedNodeId, mouseTilt, onSelectNode, onSimulationComplete, onUpdateProjectedPositions]);
 
   return (
     <canvas
       ref={canvasRef}
-      className="absolute inset-0 w-full h-full pointer-events-none select-none z-0"
+      className="absolute inset-0 w-full h-full select-none cursor-pointer z-0"
     />
   );
 }
