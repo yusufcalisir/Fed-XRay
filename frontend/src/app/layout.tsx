@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import "./globals.css";
 import { LanguageProvider } from "@/context/LanguageContext";
 import { ApiProvider } from "@/context/ApiContext";
+import ClientRuntimeShield from "@/components/ClientRuntimeShield";
 
 export const metadata: Metadata = {
   title: "Fed-XRay | Decentralized Healthcare AI Infrastructure",
@@ -18,11 +19,13 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en">
-      <body className="antialiased">
+    <html lang="en" suppressHydrationWarning>
+      <body className="antialiased" suppressHydrationWarning>
         <LanguageProvider>
           <ApiProvider>
-            {children}
+            <ClientRuntimeShield>
+              {children}
+            </ClientRuntimeShield>
           </ApiProvider>
         </LanguageProvider>
       </body>
