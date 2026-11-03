@@ -502,7 +502,7 @@ export default function PresentationLandingPage() {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-[var(--border-subtle)] font-mono">
-                    {systemState?.rounds && systemState.rounds.length > 0 ? (
+                    {systemState?.rounds && Array.isArray(systemState.rounds) && systemState.rounds.length > 0 ? (
                       systemState.rounds.map((rd) => (
                         <tr
                           key={rd.round_num}

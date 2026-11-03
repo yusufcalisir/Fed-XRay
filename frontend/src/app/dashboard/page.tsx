@@ -77,13 +77,15 @@ export default function DashboardPage() {
             if (data.hospitals[0]?.sample_images && Array.isArray(data.hospitals[0].sample_images)) {
               setHospitals(data.hospitals);
               setIsTrained(Boolean(data.model_trained));
+              if (data.rounds && Array.isArray(data.rounds) && data.rounds.length > 0) {
+                setHistory(data.rounds);
+                setCurrentRound(data.rounds.length);
+              }
             } else {
               setHospitals([]);
               setIsTrained(false);
-            }
-            if (data.rounds && Array.isArray(data.rounds) && data.rounds.length > 0) {
-              setHistory(data.rounds);
-              setCurrentRound(data.rounds.length);
+              setHistory([]);
+              setCurrentRound(0);
             }
             if (data.reference_cases && Array.isArray(data.reference_cases)) {
               setRagTwins(data.reference_cases);
@@ -249,8 +251,8 @@ export default function DashboardPage() {
         <WorkflowStepper
           hasIngested={hospitals.length > 0}
           isTraining={isTraining}
-          isTrained={isTrained}
-          hasDiagnosis={diagnosis !== null}
+          isTrained={hospitals.length > 0 && isTrained}
+          hasDiagnosis={hospitals.length > 0 && isTrained && diagnosis !== null}
           onScrollToStep={scrollToSection}
         />
 

@@ -441,7 +441,7 @@ export default function DiagnosticStudio({
                 </div>
                 <div className="space-y-3">
                   {classLabels.map((lbl, idx) => {
-                    const rawVal = diagnosis.probabilities[idx] ?? 0;
+                    const rawVal = diagnosis.probabilities?.[idx] ?? 0;
                     const pct = Math.min(100, Math.max(0, Math.round(rawVal > 1.0 ? rawVal : rawVal * 100)));
                     return (
                       <div key={idx}>
