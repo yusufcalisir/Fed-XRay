@@ -303,21 +303,21 @@ export default function DiagnosticStudio({
       ) : (
         <>
           {/* Diagnostic Target & Scan Ingestion Toolbar */}
-          <div className="card p-3 sm:p-3.5 mb-3.5 sm:mb-4 flex flex-col md:flex-row md:items-center justify-between gap-3">
-            <div className="flex flex-wrap items-center gap-2 w-full md:w-auto">
-              <span className="text-xs text-[var(--text-muted)] font-medium mr-1 hidden sm:inline">
+          <div className="card p-3 sm:p-3.5 mb-3.5 sm:mb-4 flex flex-col md:flex-row md:items-center justify-between gap-2.5 sm:gap-3">
+            <div className="flex flex-col sm:flex-row sm:items-center gap-2 w-full md:w-auto">
+              <span className="text-xs text-[var(--text-muted)] font-medium mr-1 hidden sm:inline shrink-0">
                 {t("sec3_results_header")}:
               </span>
-              {/* Target Pathology Filter Chips - Full width touch layout on mobile */}
-              <div className="flex flex-wrap items-center gap-1 bg-[var(--bg-card-inner)] border border-[var(--border-subtle)] p-1 rounded-lg text-xs w-full sm:w-auto">
+              {/* Target Pathology Filter Chips: 2x2 Grid on Mobile, Flex Pill Bar on Desktop */}
+              <div className="grid grid-cols-2 sm:flex sm:flex-wrap items-center gap-1.5 sm:gap-1 bg-[var(--bg-card-inner)] border border-[var(--border-subtle)] p-1 rounded-xl text-xs w-full sm:w-auto">
                 <button
                   type="button"
                   onClick={() => setTargetClass(undefined)}
                   disabled={isLoading}
-                  className={`flex-1 sm:flex-none px-2.5 py-1 rounded-md font-medium text-center transition-all ${
+                  className={`min-h-[38px] sm:min-h-0 px-2.5 py-2 sm:py-1 rounded-lg font-medium text-center text-xs flex items-center justify-center transition-all ${
                     targetClass === undefined
-                      ? "bg-purple-500/20 text-purple-600 dark:text-purple-300 font-bold"
-                      : "text-[var(--text-muted)] hover:text-[var(--text-heading)]"
+                      ? "bg-purple-500/20 text-purple-600 dark:text-purple-300 font-bold shadow-sm"
+                      : "text-[var(--text-muted)] hover:text-[var(--text-heading)] hover:bg-[var(--bg-card)]/40"
                   }`}
                 >
                   {t("sec3_filter_all")}
@@ -326,10 +326,10 @@ export default function DiagnosticStudio({
                   type="button"
                   onClick={() => setTargetClass(0)}
                   disabled={isLoading}
-                  className={`flex-1 sm:flex-none px-2.5 py-1 rounded-md font-medium text-center transition-all ${
+                  className={`min-h-[38px] sm:min-h-0 px-2.5 py-2 sm:py-1 rounded-lg font-medium text-center text-xs flex items-center justify-center transition-all ${
                     targetClass === 0
-                      ? "bg-emerald-500/20 text-emerald-600 dark:text-emerald-300 font-bold"
-                      : "text-[var(--text-muted)] hover:text-[var(--text-heading)]"
+                      ? "bg-emerald-500/20 text-emerald-600 dark:text-emerald-300 font-bold shadow-sm"
+                      : "text-[var(--text-muted)] hover:text-[var(--text-heading)] hover:bg-[var(--bg-card)]/40"
                   }`}
                 >
                   {t("sec1_normal")}
@@ -338,10 +338,10 @@ export default function DiagnosticStudio({
                   type="button"
                   onClick={() => setTargetClass(1)}
                   disabled={isLoading}
-                  className={`flex-1 sm:flex-none px-2.5 py-1 rounded-md font-medium text-center transition-all ${
+                  className={`min-h-[38px] sm:min-h-0 px-2.5 py-2 sm:py-1 rounded-lg font-medium text-center text-xs flex items-center justify-center transition-all ${
                     targetClass === 1
-                      ? "bg-amber-500/20 text-amber-600 dark:text-amber-300 font-bold"
-                      : "text-[var(--text-muted)] hover:text-[var(--text-heading)]"
+                      ? "bg-amber-500/20 text-amber-600 dark:text-amber-300 font-bold shadow-sm"
+                      : "text-[var(--text-muted)] hover:text-[var(--text-heading)] hover:bg-[var(--bg-card)]/40"
                   }`}
                 >
                   {t("sec1_pneumonia")}
@@ -350,10 +350,10 @@ export default function DiagnosticStudio({
                   type="button"
                   onClick={() => setTargetClass(2)}
                   disabled={isLoading}
-                  className={`flex-1 sm:flex-none px-2.5 py-1 rounded-md font-medium text-center transition-all ${
+                  className={`min-h-[38px] sm:min-h-0 px-2.5 py-2 sm:py-1 rounded-lg font-medium text-center text-xs flex items-center justify-center transition-all ${
                     targetClass === 2
-                      ? "bg-rose-500/20 text-rose-600 dark:text-rose-300 font-bold"
-                      : "text-[var(--text-muted)] hover:text-[var(--text-heading)]"
+                      ? "bg-rose-500/20 text-rose-600 dark:text-rose-300 font-bold shadow-sm"
+                      : "text-[var(--text-muted)] hover:text-[var(--text-heading)] hover:bg-[var(--bg-card)]/40"
                   }`}
                 >
                   {t("sec1_covid")}
@@ -374,7 +374,7 @@ export default function DiagnosticStudio({
                 type="button"
                 onClick={() => fileInputRef.current?.click()}
                 disabled={isLoading}
-                className="flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg border border-[var(--border-card)] bg-[var(--bg-card-inner)] hover:bg-black/5 dark:hover:bg-white/5 text-xs font-semibold text-[var(--text-heading)] transition-all cursor-pointer w-full md:w-auto"
+                className="flex items-center justify-center gap-1.5 px-3.5 py-2 sm:py-1.5 rounded-xl border border-[var(--border-card)] bg-[var(--bg-card-inner)] hover:bg-black/5 dark:hover:bg-white/5 text-xs font-semibold text-[var(--text-heading)] transition-all cursor-pointer w-full md:w-auto shadow-sm"
                 title={t("sec3_upload_tooltip")}
               >
                 <Upload className="w-3.5 h-3.5 text-purple-500 shrink-0" />
