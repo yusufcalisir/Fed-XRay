@@ -636,10 +636,10 @@ export const TRANSLATIONS: Record<Language, Record<string, string>> = {
     landing_tab_action_train: "Federe Eğitimi Çalıştır",
     landing_results_title: "Klinik Çıktılar ve Doğrulama Göstergeleri",
     landing_results_subtitle: "Açıklanabilir dikkat haritalarını, çok modlu vaka eşleştirmelerini, konsorsiyum yakınsama eğrilerini ve klinik raporları inceleyin.",
-    landing_tab_xai: "Grad-CAM Aktivasyon Haritası",
-    landing_tab_rag: "Federe RAG Vaka Eşleme",
-    landing_tab_convergence: "Yakınsama Telemetrisi",
-    landing_tab_report: "Klinik Rapor ve Ses",
+    landing_tab_xai: "Açıklanabilir Teşhis",
+    landing_tab_rag: "Vaka Eşleme (RAG)",
+    landing_tab_convergence: "Eğitim Monitörü",
+    landing_tab_report: "Klinik Raporlama",
 
     // Sonuçlar Sekme 1: Grad-CAM XAI
     landing_tab1_finding: "Birincil Teşhis: Pnömoni",

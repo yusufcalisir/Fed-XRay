@@ -329,16 +329,17 @@ export default function PresentationLandingPage() {
               </p>
             </div>
 
-            {/* Tab Switcher */}
-            <div className="flex items-center gap-1 p-1 rounded-xl bg-[var(--bg-card-inner)] border border-[var(--border-card)] shrink-0 self-start sm:self-auto overflow-x-auto">
+            {/* Tab Switcher: Responsive 2x2 Grid on Mobile (No Horizontal Scroll), Flex Pill Bar on Desktop */}
+            <div className="grid grid-cols-2 sm:flex items-center gap-1.5 sm:gap-1 p-1 rounded-xl bg-[var(--bg-card-inner)] border border-[var(--border-card)] w-full sm:w-auto shrink-0 overflow-hidden">
               {(["xai", "rag", "convergence", "report"] as const).map((tab) => (
                 <button
                   key={tab}
+                  type="button"
                   onClick={() => setActiveTab(tab)}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all whitespace-nowrap ${
+                  className={`w-full sm:w-auto px-2 sm:px-3 py-2 sm:py-1.5 rounded-lg text-[11px] sm:text-xs font-semibold text-center transition-all ${
                     activeTab === tab
-                      ? "bg-[var(--text-heading)] text-[var(--bg-app)] shadow-sm"
-                      : "text-[var(--text-muted)] hover:text-[var(--text-heading)]"
+                      ? "bg-[var(--text-heading)] text-[var(--bg-app)] shadow-sm font-bold"
+                      : "text-[var(--text-muted)] hover:text-[var(--text-heading)] hover:bg-[var(--bg-card)]/50"
                   }`}
                 >
                   {tab === "xai" && t("landing_tab_xai")}
