@@ -2,7 +2,7 @@
 
 import React, { useRef, useMemo, useState, useEffect, useCallback } from "react";
 import * as THREE from "three";
-import { Canvas, useFrame } from "@react-three/fiber";
+import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import { Html, Line, RoundedBox, Edges } from "@react-three/drei";
 
 // Hook to detect dark mode via document element class observer
@@ -54,7 +54,7 @@ const NODES: HospitalNodeData[] = [
     location: "Barcelona, ES",
     modality: "Dermoscopy",
     dpEpsilon: 1.42,
-    position: [-2.6, 0, -1.2],
+    position: [-2.15, 0, -1.05],
     themeColor: "#10b981",
     accentColor: "#34d399",
   },
@@ -64,7 +64,7 @@ const NODES: HospitalNodeData[] = [
     location: "Vienna, AT",
     modality: "Histopathology",
     dpEpsilon: 1.55,
-    position: [2.6, 0, -1.2],
+    position: [2.15, 0, -1.05],
     themeColor: "#06b6d4",
     accentColor: "#38bdf8",
   },
@@ -74,7 +74,7 @@ const NODES: HospitalNodeData[] = [
     location: "Brisbane, AU",
     modality: "Dermoscopy",
     dpEpsilon: 1.48,
-    position: [-2.6, 0, 1.2],
+    position: [-2.15, 0, 1.05],
     themeColor: "#10b981",
     accentColor: "#34d399",
   },
@@ -84,7 +84,7 @@ const NODES: HospitalNodeData[] = [
     location: "Boston, USA",
     modality: "Chest X-Ray",
     dpEpsilon: 1.38,
-    position: [2.6, 0, 1.2],
+    position: [2.15, 0, 1.05],
     themeColor: "#0284c7",
     accentColor: "#38bdf8",
   },
@@ -240,8 +240,9 @@ function HospitalNodePod({
 
       {/* High-Contrast Floating Metadata Badge */}
       <Html
-        position={[0, 0.02, 0.78]}
+        position={[0, 0.02, 0.72]}
         center
+        distanceFactor={7.5}
         zIndexRange={[10, 0]}
         style={{ pointerEvents: "none", userSelect: "none" }}
       >
@@ -492,8 +493,9 @@ function CentralConsortiumCore({ isDark }: { isDark: boolean }) {
 
       {/* High-Contrast Central Aggregator Badge */}
       <Html
-        position={[0, 0.02, 1.15]}
+        position={[0, 0.02, 1.05]}
         center
+        distanceFactor={7.5}
         zIndexRange={[10, 0]}
         style={{ pointerEvents: "none", userSelect: "none" }}
       >
@@ -852,6 +854,38 @@ function SceneRoot({
 }
 
 // ---------------------------------------------------------------------------
+// Sub-component: Responsive Camera Controller
+// Dynamically adjusts camera distance and elevation based on viewport aspect
+// ratio, ensuring full visibility of all nodes and badges on mobile viewports.
+// ---------------------------------------------------------------------------
+function ResponsiveCameraRig() {
+  const { camera, size } = useThree();
+
+  useFrame(() => {
+    if (camera instanceof THREE.PerspectiveCamera) {
+      const aspect = size.width / Math.max(size.height, 1);
+      // When aspect is narrow (e.g. mobile portrait < 1.45), pull camera back
+      // proportionally to keep the entire network comfortably contained.
+      const baseDistance = 5.8;
+      const targetDistance =
+        aspect < 1.4
+          ? baseDistance * (1.4 / Math.max(aspect, 0.55))
+          : baseDistance;
+
+      const targetY = targetDistance * 0.72;
+      const targetZ = targetDistance * 0.95;
+
+      camera.position.y += (targetY - camera.position.y) * 0.08;
+      camera.position.z += (targetZ - camera.position.z) * 0.08;
+      camera.lookAt(0, 0.4, 0);
+      camera.updateProjectionMatrix();
+    }
+  });
+
+  return null;
+}
+
+// ---------------------------------------------------------------------------
 // Consortium3DScene: Exported Canvas Wrapper
 // ---------------------------------------------------------------------------
 export default function Consortium3DScene(props: Consortium3DSceneProps) {
@@ -879,6 +913,7 @@ export default function Consortium3DScene(props: Consortium3DSceneProps) {
       }}
       style={{ width: "100%", height: "100%", background: "transparent" }}
     >
+      <ResponsiveCameraRig />
       <SceneRoot {...props} />
     </Canvas>
   );

@@ -134,18 +134,19 @@ export default function FederatedConsortiumTopology({
   };
 
   return (
-    <div className="relative w-full min-h-[500px] sm:min-h-[520px] lg:h-[550px] flex flex-col justify-between select-none rounded-3xl p-3 sm:p-4 bg-[var(--bg-card)]/35 dark:bg-slate-900/40 border border-[var(--border-card)] shadow-xs backdrop-blur-xs">
+    <div className="relative w-full min-h-[500px] sm:min-h-[520px] lg:h-[550px] flex flex-col justify-between select-none rounded-3xl p-2 sm:p-4 bg-[var(--bg-card)]/35 dark:bg-slate-900/40 border border-[var(--border-card)] shadow-xs backdrop-blur-xs overflow-hidden">
       {/* Floating Top Console Navigation Bar */}
-      <div className="relative z-30 flex items-center justify-between gap-2 p-2 sm:px-3.5 sm:py-2 rounded-2xl bg-[var(--bg-card)]/80 dark:bg-slate-900/80 border border-[var(--border-card)] shadow-xs backdrop-blur-md">
-        <div className="flex items-center gap-2 min-w-0 shrink-0">
+      <div className="relative z-30 flex items-center justify-between gap-1.5 sm:gap-2 p-1.5 sm:px-3.5 sm:py-2 rounded-2xl bg-[var(--bg-card)]/80 dark:bg-slate-900/80 border border-[var(--border-card)] shadow-xs backdrop-blur-md">
+        <div className="flex items-center gap-1.5 sm:gap-2 min-w-0 shrink">
           <div className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse shadow-[0_0_8px_#10b981] shrink-0" />
-          <span className="font-mono text-[11px] sm:text-xs font-bold uppercase tracking-wider text-[var(--text-heading)] whitespace-nowrap">
-            {t("topo_badge_title")}
+          <span className="font-mono text-[10px] sm:text-xs font-bold uppercase tracking-wider text-[var(--text-heading)] truncate">
+            <span className="hidden sm:inline">{t("topo_badge_title")}</span>
+            <span className="sm:hidden">ENCLAVE</span>
           </span>
         </div>
 
         {/* Action Controls & View Switcher */}
-        <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
+        <div className="flex items-center gap-1 sm:gap-2 shrink-0">
           {activeView === "topology" && (
             <button
               type="button"
@@ -164,7 +165,7 @@ export default function FederatedConsortiumTopology({
             <button
               type="button"
               onClick={() => setActiveView("topology")}
-              className={`px-2 sm:px-2.5 py-1 text-center rounded-lg transition-all whitespace-nowrap ${
+              className={`px-1.5 sm:px-2.5 py-0.5 sm:py-1 text-center rounded-lg transition-all whitespace-nowrap ${
                 activeView === "topology"
                   ? "bg-emerald-600 text-white shadow-xs font-bold"
                   : "text-[var(--text-muted)] hover:text-[var(--text-heading)]"
@@ -175,7 +176,7 @@ export default function FederatedConsortiumTopology({
             <button
               type="button"
               onClick={() => setActiveView("crypto")}
-              className={`px-2 sm:px-2.5 py-1 text-center rounded-lg transition-all whitespace-nowrap ${
+              className={`px-1.5 sm:px-2.5 py-0.5 sm:py-1 text-center rounded-lg transition-all whitespace-nowrap ${
                 activeView === "crypto"
                   ? "bg-emerald-600 text-white shadow-xs font-bold"
                   : "text-[var(--text-muted)] hover:text-[var(--text-heading)]"
@@ -186,7 +187,7 @@ export default function FederatedConsortiumTopology({
             <button
               type="button"
               onClick={() => setActiveView("telemetry")}
-              className={`px-2 sm:px-2.5 py-1 text-center rounded-lg transition-all whitespace-nowrap ${
+              className={`px-1.5 sm:px-2.5 py-0.5 sm:py-1 text-center rounded-lg transition-all whitespace-nowrap ${
                 activeView === "telemetry"
                   ? "bg-emerald-600 text-white shadow-xs font-bold"
                   : "text-[var(--text-muted)] hover:text-[var(--text-heading)]"
@@ -421,25 +422,25 @@ export default function FederatedConsortiumTopology({
 
       {/* Docked Minimal Telemetry Inspector (Theme-Harmonized Glass Ribbon) */}
       {activeView === "topology" && (
-        <div className="relative z-30 p-2.5 sm:p-3 rounded-2xl bg-[var(--bg-card)]/80 dark:bg-slate-900/80 border border-[var(--border-card)] text-xs backdrop-blur-md shadow-xs">
-          <div className="flex items-center justify-between gap-2">
+        <div className="relative z-30 p-2 sm:p-3 rounded-2xl bg-[var(--bg-card)]/80 dark:bg-slate-900/80 border border-[var(--border-card)] text-xs backdrop-blur-md shadow-xs">
+          <div className="flex items-center justify-between gap-1.5 sm:gap-2">
             {/* Left: Selected Hospital & Location */}
-            <div className="flex items-center gap-2 min-w-0 flex-1">
-              <div className="w-7 h-7 rounded-xl bg-emerald-500/10 border border-emerald-500/25 flex items-center justify-center text-emerald-600 dark:text-emerald-400 shrink-0 shadow-xs">
-                <Server className="w-4 h-4" />
+            <div className="flex items-center gap-1.5 sm:gap-2 min-w-0 flex-1">
+              <div className="w-6 h-6 sm:w-7 sm:h-7 rounded-xl bg-emerald-500/10 border border-emerald-500/25 flex items-center justify-center text-emerald-600 dark:text-emerald-400 shrink-0 shadow-xs">
+                <Server className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
               </div>
-              <div className="min-w-0 flex items-center gap-1.5 flex-wrap">
-                <span className="font-display font-bold text-[var(--text-heading)] text-xs truncate max-w-[170px] sm:max-w-none">
+              <div className="min-w-0 flex items-center gap-1 sm:gap-1.5 flex-wrap">
+                <span className="font-display font-bold text-[var(--text-heading)] text-[11px] sm:text-xs truncate max-w-[140px] xs:max-w-[180px] sm:max-w-none">
                   {selectedNode.name}
                 </span>
-                <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 shrink-0">
+                <span className="text-[9px] sm:text-[10px] font-mono px-1.5 sm:px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 shrink-0">
                   {selectedNode.location}
                 </span>
               </div>
             </div>
 
             {/* Right: DP Budget & Quick Trigger Action */}
-            <div className="flex items-center gap-2 shrink-0 text-[10px] font-mono">
+            <div className="flex items-center gap-1.5 sm:gap-2 shrink-0 text-[10px] font-mono">
               <div className="hidden sm:inline-flex items-center px-2 py-0.5 rounded-lg bg-[var(--bg-card-inner)] border border-[var(--border-card)]">
                 <span className="text-[var(--text-muted)] mr-1">{t("topo_dp_budget")}</span>
                 <span className="font-bold text-emerald-600 dark:text-emerald-400">ε={selectedNode.dpEpsilon}</span>
@@ -451,7 +452,7 @@ export default function FederatedConsortiumTopology({
                     triggerConsensusRound();
                     if (onLaunchDemo) onLaunchDemo();
                   }}
-                  className="px-3 py-1 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-[10px] sm:text-[11px] transition-all shadow-sm shadow-emerald-600/20 active:scale-95 border border-emerald-500/30"
+                  className="px-2.5 sm:px-3 py-1 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-[10px] sm:text-[11px] transition-all shadow-sm shadow-emerald-600/20 active:scale-95 border border-emerald-500/30"
                 >
                   {t("topo_simulate")}
                 </button>
