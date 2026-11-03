@@ -266,6 +266,11 @@ export default function Consortium3DCanvas({
       time += 0.022;
       ctx.clearRect(0, 0, width, height);
 
+      // Detect current document theme (Light vs Dark mode)
+      const isDark =
+        typeof document !== "undefined" &&
+        document.documentElement.classList.contains("dark");
+
       // Smooth camera tilt damping (lerp)
       currentTiltRef.current.x += (mouseTilt.x - currentTiltRef.current.x) * 0.08;
       currentTiltRef.current.y += (mouseTilt.y - currentTiltRef.current.y) * 0.08;
@@ -274,37 +279,10 @@ export default function Consortium3DCanvas({
       const pitchVal = 0.56 + currentTiltRef.current.y * 0.14;
       const yawVal = currentTiltRef.current.x * 0.22;
 
-      // -------------------------------------------------------------
-      // 1. Cybernetic Floor Grid (Subtle Blueprint Depth)
-      // -------------------------------------------------------------
-      ctx.save();
-      ctx.strokeStyle = "rgba(16, 185, 129, 0.05)";
-      ctx.lineWidth = 1;
-
-      const gridRange = 1.15;
-      const gridStep = 0.23;
-      for (let gx = -gridRange; gx <= gridRange + 0.001; gx += gridStep) {
-        const start = project(gx, -gridRange, 0, scaleVal, pitchVal, yawVal);
-        const end = project(gx, gridRange, 0, scaleVal, pitchVal, yawVal);
-        ctx.beginPath();
-        ctx.moveTo(start.x, start.y);
-        ctx.lineTo(end.x, end.y);
-        ctx.stroke();
-      }
-      for (let gy = -gridRange; gy <= gridRange + 0.001; gy += gridStep) {
-        const start = project(-gridRange, gy, 0, scaleVal, pitchVal, yawVal);
-        const end = project(gridRange, gy, 0, scaleVal, pitchVal, yawVal);
-        ctx.beginPath();
-        ctx.moveTo(start.x, start.y);
-        ctx.lineTo(end.x, end.y);
-        ctx.stroke();
-      }
-      ctx.restore();
-
       const serverGround = project(0, 0, 0, scaleVal, pitchVal, yawVal);
 
       // -------------------------------------------------------------
-      // 2. Pedestal Ground Rings & Ambient Shadows
+      // 1. Pedestal Ground Rings & Ambient Shadows (No competing grid lines!)
       // -------------------------------------------------------------
       DEFAULT_NODES.forEach((node) => {
         const p = project(node.wx, node.wy, 0, scaleVal, pitchVal, yawVal);
@@ -314,7 +292,10 @@ export default function Consortium3DCanvas({
         ctx.save();
         // Soft contact drop-shadow
         const shadowGrad = ctx.createRadialGradient(p.x, p.y, 4, p.x, p.y, 42);
-        shadowGrad.addColorStop(0, "rgba(0, 0, 0, 0.65)");
+        shadowGrad.addColorStop(
+          0,
+          isDark ? "rgba(0, 0, 0, 0.65)" : "rgba(15, 23, 42, 0.12)"
+        );
         shadowGrad.addColorStop(1, "rgba(0, 0, 0, 0)");
         ctx.fillStyle = shadowGrad;
         ctx.beginPath();
@@ -328,7 +309,9 @@ export default function Consortium3DCanvas({
           ? node.themeColor
           : isHovered
           ? "rgba(16, 185, 129, 0.5)"
-          : "rgba(16, 185, 129, 0.18)";
+          : isDark
+          ? "rgba(16, 185, 129, 0.2)"
+          : "rgba(16, 185, 129, 0.35)";
         ctx.lineWidth = isSelected ? 2 : 1;
         ctx.setLineDash([4, 6]);
         ctx.lineDashOffset = time * 8;
@@ -338,9 +321,22 @@ export default function Consortium3DCanvas({
 
       // Central server ambient energy pool on floor
       ctx.save();
-      const serverPool = ctx.createRadialGradient(serverGround.x, serverGround.y, 6, serverGround.x, serverGround.y, 75);
-      serverPool.addColorStop(0, "rgba(16, 185, 129, 0.28)");
-      serverPool.addColorStop(0.5, "rgba(6, 182, 212, 0.12)");
+      const serverPool = ctx.createRadialGradient(
+        serverGround.x,
+        serverGround.y,
+        6,
+        serverGround.x,
+        serverGround.y,
+        75
+      );
+      serverPool.addColorStop(
+        0,
+        isDark ? "rgba(16, 185, 129, 0.28)" : "rgba(16, 185, 129, 0.16)"
+      );
+      serverPool.addColorStop(
+        0.5,
+        isDark ? "rgba(6, 182, 212, 0.12)" : "rgba(6, 182, 212, 0.08)"
+      );
       serverPool.addColorStop(1, "rgba(0, 0, 0, 0)");
       ctx.fillStyle = serverPool;
       ctx.beginPath();
@@ -349,7 +345,7 @@ export default function Consortium3DCanvas({
       ctx.restore();
 
       // -------------------------------------------------------------
-      // 3. Encrypted Communication Conduits (Curved Laser Lines)
+      // 2. Encrypted Communication Conduits (Curved Laser Lines)
       // -------------------------------------------------------------
       DEFAULT_NODES.forEach((node, idx) => {
         const isSelected = node.id === selectedNodeId;
@@ -364,9 +360,12 @@ export default function Consortium3DCanvas({
         ctx.beginPath();
         ctx.moveTo(from.x, from.y);
         ctx.quadraticCurveTo(midX, midY, to.x, to.y);
-        ctx.strokeStyle = isSelected || isSimulatingRound
-          ? "rgba(16, 185, 129, 0.55)"
-          : "rgba(16, 185, 129, 0.2)";
+        ctx.strokeStyle =
+          isSelected || isSimulatingRound
+            ? "rgba(16, 185, 129, 0.65)"
+            : isDark
+            ? "rgba(16, 185, 129, 0.22)"
+            : "rgba(16, 185, 129, 0.35)";
         ctx.lineWidth = isSelected || isSimulatingRound ? 2 : 1.2;
         ctx.stroke();
 
@@ -375,8 +374,10 @@ export default function Consortium3DCanvas({
         ctx.moveTo(from.x, from.y);
         ctx.quadraticCurveTo(midX, midY, to.x, to.y);
         ctx.strokeStyle = isSelected
-          ? "rgba(52, 211, 153, 0.9)"
-          : "rgba(16, 185, 129, 0.4)";
+          ? "rgba(52, 211, 153, 0.95)"
+          : isDark
+          ? "rgba(16, 185, 129, 0.5)"
+          : "rgba(16, 185, 129, 0.65)";
         ctx.lineWidth = isSelected ? 2.5 : 1.5;
         ctx.setLineDash([8, 12]);
         ctx.lineDashOffset = -time * 24;
@@ -385,12 +386,16 @@ export default function Consortium3DCanvas({
       });
 
       // -------------------------------------------------------------
-      // 4. Encrypted Photon Packets (Pure Clean Light Streams)
+      // 3. Encrypted Photon Packets (Pure Clean Light Streams)
       // -------------------------------------------------------------
       packets.forEach((p) => {
         const node = DEFAULT_NODES[p.nodeIndex];
         const isSelected = node.id === selectedNodeId;
-        const currentSpeed = isSimulatingRound ? p.speed * 3.2 : isSelected ? p.speed * 1.5 : p.speed;
+        const currentSpeed = isSimulatingRound
+          ? p.speed * 3.2
+          : isSelected
+          ? p.speed * 1.5
+          : p.speed;
         p.progress = (p.progress + currentSpeed) % 1;
 
         const u = p.progress;
@@ -400,15 +405,15 @@ export default function Consortium3DCanvas({
         const midX = (from.x + to.x) / 2 + (p.nodeIndex % 2 === 0 ? -14 : 14);
         const midY = (from.y + to.y) / 2 - 16;
 
-        const px = (1 - u) * (1 - u) * from.x + 2 * (1 - u) * u * midX + u * u * to.x;
-        const py = (1 - u) * (1 - u) * from.y + 2 * (1 - u) * u * midY + u * u * to.y;
+        const px =
+          (1 - u) * (1 - u) * from.x + 2 * (1 - u) * u * midX + u * u * to.x;
+        const py =
+          (1 - u) * (1 - u) * from.y + 2 * (1 - u) * u * midY + u * u * to.y;
 
-        // Maintain speed trail
         p.trail.unshift({ x: px, y: py });
         if (p.trail.length > 5) p.trail.pop();
 
         ctx.save();
-        // Render trail sparks
         p.trail.forEach((pt, ti) => {
           if (ti === 0) return;
           const trailAlpha = (1 - ti / p.trail.length) * 0.45;
@@ -418,7 +423,6 @@ export default function Consortium3DCanvas({
           ctx.fill();
         });
 
-        // Main luminous photon core
         ctx.shadowColor = node.themeColor;
         ctx.shadowBlur = 12;
         ctx.fillStyle = "#ffffff";
@@ -434,18 +438,38 @@ export default function Consortium3DCanvas({
       });
 
       // -------------------------------------------------------------
-      // 5. 3D Hospital Enclave Monoliths (The 4 Institutions)
+      // 4. 3D Hospital Enclave Monoliths (The 4 Institutions)
       // -------------------------------------------------------------
       DEFAULT_NODES.forEach((node, idx) => {
         const isSelected = node.id === selectedNodeId;
         const isHovered = node.id === hoveredNodeRef.current;
-        const levitation = isSelected ? Math.sin(time * 3) * 3 + 8 : isHovered ? 4 : Math.sin(time * 2 + idx) * 2;
+        const levitation = isSelected
+          ? Math.sin(time * 3) * 3 + 8
+          : isHovered
+          ? 4
+          : Math.sin(time * 2 + idx) * 2;
 
         const bw = 0.16;
         const bd = 0.14;
         const bh = 34;
 
-        // Architectural Monolith Pedestal
+        // Architectural Monolith Pedestal Palette
+        const palette = isDark
+          ? {
+              top: isSelected ? "rgba(16, 185, 129, 0.35)" : "rgba(30, 41, 59, 0.9)",
+              left: isSelected ? "rgba(15, 23, 42, 0.98)" : "rgba(15, 23, 42, 0.92)",
+              right: isSelected ? "rgba(8, 12, 20, 0.98)" : "rgba(8, 12, 20, 0.95)",
+              stroke: isSelected ? node.themeColor : "rgba(255, 255, 255, 0.18)",
+              lineWidth: isSelected ? 2 : 1,
+            }
+          : {
+              top: isSelected ? "rgba(16, 185, 129, 0.22)" : "rgba(255, 255, 255, 0.95)",
+              left: isSelected ? "rgba(226, 232, 240, 0.98)" : "rgba(241, 245, 249, 0.95)",
+              right: isSelected ? "rgba(203, 213, 225, 0.98)" : "rgba(226, 232, 240, 0.95)",
+              stroke: isSelected ? node.themeColor : "rgba(15, 23, 42, 0.15)",
+              lineWidth: isSelected ? 2 : 1,
+            };
+
         draw3DBox(
           node.wx,
           node.wy,
@@ -456,23 +480,17 @@ export default function Consortium3DCanvas({
           scaleVal,
           pitchVal,
           yawVal,
-          {
-            top: isSelected ? "rgba(16, 185, 129, 0.35)" : "rgba(30, 41, 59, 0.9)",
-            left: isSelected ? "rgba(15, 23, 42, 0.98)" : "rgba(15, 23, 42, 0.92)",
-            right: isSelected ? "rgba(8, 12, 20, 0.98)" : "rgba(8, 12, 20, 0.95)",
-            stroke: isSelected ? node.themeColor : "rgba(255, 255, 255, 0.18)",
-            lineWidth: isSelected ? 2 : 1,
-          }
+          palette
         );
 
-        // Modern horizontal architectural illumination bands
+        // Architectural horizontal illumination bands
         const band1Left = project(node.wx - bw / 2, node.wy + bd / 2, levitation + 11, scaleVal, pitchVal, yawVal);
         const band1Right = project(node.wx + bw / 2, node.wy + bd / 2, levitation + 11, scaleVal, pitchVal, yawVal);
         const band2Left = project(node.wx - bw / 2, node.wy + bd / 2, levitation + 22, scaleVal, pitchVal, yawVal);
         const band2Right = project(node.wx + bw / 2, node.wy + bd / 2, levitation + 22, scaleVal, pitchVal, yawVal);
 
         ctx.save();
-        ctx.strokeStyle = isSelected ? node.themeColor : "rgba(16, 185, 129, 0.4)";
+        ctx.strokeStyle = isSelected ? node.themeColor : "rgba(16, 185, 129, 0.5)";
         ctx.lineWidth = 1.2;
         ctx.beginPath();
         ctx.moveTo(band1Left.x, band1Left.y);
@@ -483,7 +501,7 @@ export default function Consortium3DCanvas({
 
         // Medical Cross Hologram on Monolith Face
         const crossPos = project(node.wx, node.wy + bd / 2 + 0.005, levitation + 16, scaleVal, pitchVal, yawVal);
-        ctx.strokeStyle = isSelected ? "#ffffff" : node.themeColor;
+        ctx.strokeStyle = isSelected ? (isDark ? "#ffffff" : node.themeColor) : node.themeColor;
         ctx.lineWidth = 2;
         ctx.beginPath();
         ctx.moveTo(crossPos.x - 4, crossPos.y);
@@ -504,7 +522,6 @@ export default function Consortium3DCanvas({
         ctx.lineTo(roofPeak.x, roofPeak.y);
         ctx.stroke();
 
-        // Radiant status flare
         ctx.fillStyle = node.themeColor;
         ctx.shadowColor = node.themeColor;
         ctx.shadowBlur = isSelected ? 16 : 8;
@@ -513,48 +530,100 @@ export default function Consortium3DCanvas({
         ctx.fill();
         ctx.restore();
 
-        // Built-in Crisp Institutional Label (Directly below pedestal)
+        // Built-in Crisp Institutional Label
         const groundPos = project(node.wx, node.wy, 0, scaleVal, pitchVal, yawVal);
         ctx.save();
         ctx.textAlign = "center";
         ctx.font = 'bold 11px "JetBrains Mono", monospace';
-        ctx.fillStyle = isSelected ? "#ffffff" : "rgba(255, 255, 255, 0.85)";
+        ctx.fillStyle = isSelected
+          ? node.themeColor
+          : isDark
+          ? "#ffffff"
+          : "#0f172a";
         ctx.fillText(node.shortName, groundPos.x, groundPos.y + 24);
 
         ctx.font = '9px "Inter", sans-serif';
-        ctx.fillStyle = isSelected ? node.themeColor : "rgba(148, 163, 184, 0.75)";
-        ctx.fillText(`${node.location.split(",")[0]} · ${node.modality}`, groundPos.x, groundPos.y + 36);
+        ctx.fillStyle = isDark
+          ? "rgba(148, 163, 184, 0.85)"
+          : "rgba(71, 85, 105, 0.85)";
+        ctx.fillText(
+          `${node.location.split(",")[0]} · ${node.modality}`,
+          groundPos.x,
+          groundPos.y + 36
+        );
 
         ctx.font = '9px "JetBrains Mono", monospace';
-        ctx.fillStyle = "rgba(16, 185, 129, 0.85)";
+        ctx.fillStyle = "#10b981";
         ctx.fillText(`ε=${node.dpEpsilon}`, groundPos.x, groundPos.y + 48);
         ctx.restore();
       });
 
       // -------------------------------------------------------------
-      // 6. Central Aggregator Server (The Cryptographic Server Core)
+      // 5. Central Aggregator Server (The Cryptographic Server Core)
       // -------------------------------------------------------------
       const serverLev = Math.sin(time * 2.4) * 2;
-      const sw = 0.20;
+      const sw = 0.2;
       const sd = 0.18;
 
+      const serverPalette1 = isDark
+        ? {
+            top: "#1e293b",
+            left: "#0f172a",
+            right: "#080c14",
+            stroke: "rgba(16, 185, 129, 0.4)",
+            lineWidth: 1.5,
+          }
+        : {
+            top: "#e2e8f0",
+            left: "#cbd5e1",
+            right: "#94a3b8",
+            stroke: "rgba(16, 185, 129, 0.5)",
+            lineWidth: 1.5,
+          };
+
+      const serverPalette2 = isDark
+        ? {
+            top: "rgba(16, 185, 129, 0.35)",
+            left: "#0f172a",
+            right: "#06090f",
+            stroke: "#10b981",
+            lineWidth: 1.8,
+          }
+        : {
+            top: "rgba(16, 185, 129, 0.2)",
+            left: "#1e293b",
+            right: "#0f172a",
+            stroke: "#10b981",
+            lineWidth: 1.8,
+          };
+
       // Base Foundation Pedestal
-      draw3DBox(0, 0, serverLev, sw * 1.35, sd * 1.35, 14, scaleVal, pitchVal, yawVal, {
-        top: "#1e293b",
-        left: "#0f172a",
-        right: "#080c14",
-        stroke: "rgba(16, 185, 129, 0.4)",
-        lineWidth: 1.5,
-      });
+      draw3DBox(
+        0,
+        0,
+        serverLev,
+        sw * 1.35,
+        sd * 1.35,
+        14,
+        scaleVal,
+        pitchVal,
+        yawVal,
+        serverPalette1
+      );
 
       // Mainframe Quantum Server Tower
-      draw3DBox(0, 0, serverLev + 14, sw, sd, 48, scaleVal, pitchVal, yawVal, {
-        top: "rgba(16, 185, 129, 0.35)",
-        left: "#0f172a",
-        right: "#06090f",
-        stroke: "#10b981",
-        lineWidth: 1.8,
-      });
+      draw3DBox(
+        0,
+        0,
+        serverLev + 14,
+        sw,
+        sd,
+        48,
+        scaleVal,
+        pitchVal,
+        yawVal,
+        serverPalette2
+      );
 
       // Animated Server Blade LEDs
       ctx.save();
@@ -579,9 +648,15 @@ export default function Consortium3DCanvas({
       const corePos = project(0, 0, coreZ, scaleVal, pitchVal, yawVal);
 
       ctx.save();
-      // Glowing Cryptographic Energy Orb
       const corePulse = 0.8 + Math.sin(time * 3.5) * 0.2;
-      const coreGrad = ctx.createRadialGradient(corePos.x, corePos.y, 3, corePos.x, corePos.y, 32 * corePulse);
+      const coreGrad = ctx.createRadialGradient(
+        corePos.x,
+        corePos.y,
+        3,
+        corePos.x,
+        corePos.y,
+        32 * corePulse
+      );
       coreGrad.addColorStop(0, "rgba(255, 255, 255, 0.98)");
       coreGrad.addColorStop(0.3, "rgba(16, 185, 129, 0.85)");
       coreGrad.addColorStop(0.7, "rgba(6, 182, 212, 0.35)");
@@ -610,20 +685,26 @@ export default function Consortium3DCanvas({
       ctx.stroke();
       ctx.restore();
 
-      // Built-in Crisp Server Core Label (Directly below server pedestal)
+      // Built-in Crisp Server Core Label
       ctx.save();
       ctx.textAlign = "center";
       ctx.font = 'bold 11px "JetBrains Mono", monospace';
-      ctx.fillStyle = "#ffffff";
+      ctx.fillStyle = isDark ? "#ffffff" : "#0f172a";
       ctx.fillText("CONSORTIUM AGGREGATOR", serverGround.x, serverGround.y + 24);
 
       ctx.font = '9px "Inter", sans-serif';
-      ctx.fillStyle = "rgba(56, 189, 248, 0.85)";
-      ctx.fillText("RLWE CKKS 128-Bit · Zero Plaintext", serverGround.x, serverGround.y + 36);
+      ctx.fillStyle = isDark
+        ? "rgba(56, 189, 248, 0.85)"
+        : "#0284c7";
+      ctx.fillText(
+        "RLWE CKKS 128-Bit · Zero Plaintext",
+        serverGround.x,
+        serverGround.y + 36
+      );
       ctx.restore();
 
       // -------------------------------------------------------------
-      // 7. Consensus Shockwave Expansion (Triggered Round)
+      // 6. Consensus Shockwave Expansion (Triggered Round)
       // -------------------------------------------------------------
       if (isShockwaveActive) {
         shockwaveRadius += 6.5;
@@ -632,14 +713,30 @@ export default function Consortium3DCanvas({
 
         ctx.save();
         ctx.beginPath();
-        ctx.ellipse(serverGround.x, serverGround.y, shockwaveRadius, shockwaveRadius * 0.52, 0, 0, Math.PI * 2);
+        ctx.ellipse(
+          serverGround.x,
+          serverGround.y,
+          shockwaveRadius,
+          shockwaveRadius * 0.52,
+          0,
+          0,
+          Math.PI * 2
+        );
         ctx.strokeStyle = `rgba(16, 185, 129, ${alpha * 0.9})`;
         ctx.lineWidth = 3;
         ctx.stroke();
 
         if (shockwaveRadius > 40) {
           ctx.beginPath();
-          ctx.ellipse(serverGround.x, serverGround.y, shockwaveRadius - 32, (shockwaveRadius - 32) * 0.52, 0, 0, Math.PI * 2);
+          ctx.ellipse(
+            serverGround.x,
+            serverGround.y,
+            shockwaveRadius - 32,
+            (shockwaveRadius - 32) * 0.52,
+            0,
+            0,
+            Math.PI * 2
+          );
           ctx.strokeStyle = `rgba(6, 182, 212, ${alpha * 0.65})`;
           ctx.lineWidth = 1.8;
           ctx.stroke();
@@ -711,7 +808,13 @@ export default function Consortium3DCanvas({
         cancelAnimationFrame(animFrameRef.current);
       }
     };
-  }, [isSimulatingRound, selectedNodeId, mouseTilt, onSelectNode, onSimulationComplete]);
+  }, [
+    isSimulatingRound,
+    selectedNodeId,
+    mouseTilt,
+    onSelectNode,
+    onSimulationComplete,
+  ]);
 
   return (
     <canvas

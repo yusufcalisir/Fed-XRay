@@ -110,20 +110,20 @@ export default function PresentationLandingPage() {
                 <button
                   type="button"
                   onClick={openLaunchModal}
-                  className="w-full sm:w-auto h-11 sm:h-12 px-6 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-semibold text-xs sm:text-sm inline-flex items-center justify-center gap-2 shadow-lg shadow-emerald-600/25 border border-emerald-500/30 transition-all duration-150 active:scale-95 cursor-pointer whitespace-nowrap"
+                  className="w-full sm:w-auto h-11 sm:h-12 px-6 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-semibold text-xs sm:text-sm inline-flex items-center justify-center gap-2 shadow-md shadow-emerald-600/20 border border-emerald-500/30 transition-all duration-150 active:scale-95 cursor-pointer whitespace-nowrap"
                 >
                   <Activity className="w-4 h-4 shrink-0 text-emerald-100" />
-                  <span>{t("landing_cta_launch")}</span>
+                  <span className="whitespace-nowrap">{t("landing_cta_launch")}</span>
                   <ArrowRight className="w-4 h-4 shrink-0 text-emerald-200" />
                 </button>
 
                 <button
                   type="button"
                   onClick={() => scrollToSection("results")}
-                  className="w-full sm:w-auto h-11 sm:h-12 px-6 rounded-xl bg-white/80 dark:bg-slate-900/80 hover:bg-slate-100 dark:hover:bg-slate-800/90 text-[var(--text-heading)] font-semibold text-xs sm:text-sm inline-flex items-center justify-center gap-2 border border-[var(--border-card)] shadow-xs backdrop-blur-md transition-all duration-150 active:scale-95 cursor-pointer whitespace-nowrap group"
+                  className="w-full sm:w-auto h-11 sm:h-12 px-6 rounded-xl bg-[var(--bg-card)]/90 hover:bg-[var(--bg-card-inner)] text-[var(--text-heading)] font-semibold text-xs sm:text-sm inline-flex items-center justify-center gap-2 border border-[var(--border-card)] shadow-xs backdrop-blur-md transition-all duration-150 active:scale-95 cursor-pointer whitespace-nowrap group"
                 >
                   <Eye className="w-4 h-4 shrink-0 text-[var(--text-muted)] group-hover:text-emerald-500 transition-colors" />
-                  <span>{t("landing_cta_results")}</span>
+                  <span className="whitespace-nowrap">{t("landing_cta_results")}</span>
                   <ArrowRight className="w-4 h-4 text-[var(--text-muted)] group-hover:translate-x-0.5 transition-all shrink-0" />
                 </button>
               </div>
@@ -239,23 +239,23 @@ export default function PresentationLandingPage() {
                 return (
                   <div
                     key={i}
-                    className="bg-[var(--bg-card)]/80 backdrop-blur-sm p-4 sm:p-5 transition-colors hover:bg-[var(--bg-card-inner)] flex flex-col text-left items-start min-h-[136px] sm:min-h-[144px]"
+                    className="bg-[var(--bg-card)]/85 backdrop-blur-sm p-4 sm:p-5 transition-colors hover:bg-[var(--bg-card-inner)] flex flex-col justify-between text-left items-start h-[132px] sm:h-[142px]"
                   >
                     {/* Row 1: Fixed Height Header (Icon + Label) */}
-                    <div className="flex items-center gap-1.5 h-6 sm:h-7 mb-2.5 w-full">
+                    <div className="flex items-center gap-1.5 h-6 w-full">
                       <IconComponent className={`w-3.5 h-3.5 ${m.accentColor} shrink-0`} />
-                      <span className="text-[11px] font-semibold text-[var(--text-heading)] leading-tight truncate">
+                      <span className="text-[11px] font-semibold text-[var(--text-heading)] leading-none truncate">
                         {m.label}
                       </span>
                     </div>
 
                     {/* Row 2: Fixed Baseline Metric Value */}
-                    <div className="font-display text-xl sm:text-2xl font-extrabold text-[var(--text-heading)] mb-1.5 tracking-tight leading-none">
+                    <div className="h-8 flex items-baseline font-display text-xl sm:text-2xl font-extrabold text-[var(--text-heading)] tracking-tight leading-none">
                       {m.value}
                     </div>
 
-                    {/* Row 3: Subtitle anchored to bottom */}
-                    <div className="text-[10px] text-[var(--text-muted)] font-mono leading-tight mt-auto truncate w-full">
+                    {/* Row 3: Fixed Height Subtitle with top subtle divider */}
+                    <div className="h-5 flex items-center text-[10px] sm:text-[11px] text-[var(--text-muted)] font-mono leading-none truncate w-full border-t border-[var(--border-card)]/50 pt-1">
                       {m.sub}
                     </div>
                   </div>
@@ -720,26 +720,29 @@ export default function PresentationLandingPage() {
               ].map((pillar, i) => (
                 <div
                   key={i}
-                  className="bg-[var(--bg-card)]/80 backdrop-blur-sm rounded-xl p-5 border border-[var(--border-card)] flex flex-col justify-between h-full min-h-[280px] sm:min-h-[300px]"
+                  className="bg-[var(--bg-card)]/80 backdrop-blur-sm rounded-2xl p-5 border border-[var(--border-card)] flex flex-col h-full shadow-xs transition-all hover:border-emerald-500/30"
                 >
-                  <div>
+                  <div className="flex-1 flex flex-col">
                     <div className={`w-10 h-10 rounded-xl flex items-center justify-center mb-3.5 ${
-                      pillar.accent === "emerald" ? "bg-emerald-500/10 text-emerald-500" :
-                      pillar.accent === "blue" ? "bg-blue-500/10 text-blue-500" :
-                      "bg-amber-500/10 text-amber-500"
+                      pillar.accent === "emerald" ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20" :
+                      pillar.accent === "blue" ? "bg-sky-500/10 text-sky-600 dark:text-sky-400 border border-sky-500/20" :
+                      "bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20"
                     }`}>
                       <pillar.icon className="w-5 h-5" />
                     </div>
-                    <h3 className="text-sm font-bold text-[var(--text-heading)] mb-2 h-10 flex items-start leading-snug">
+                    <h3 className="text-sm font-bold text-[var(--text-heading)] mb-2 min-h-[42px] flex items-start leading-snug">
                       {pillar.title}
                     </h3>
-                    <p className="text-xs text-[var(--text-muted)] leading-relaxed">
+                    <p className="text-xs text-[var(--text-muted)] leading-relaxed flex-1">
                       {pillar.desc}
                     </p>
                   </div>
 
-                  <div className="mt-4 pt-3 border-t border-[var(--border-card)]/60 text-[10px] font-mono font-semibold text-[var(--text-muted)] leading-tight truncate">
-                    {pillar.tag}
+                  {/* Strictly Anchored Bottom Tag Bar: Identical height, padding and baseline across all 4 cards */}
+                  <div className="mt-5 pt-3 border-t border-[var(--border-card)]/60 min-h-[44px] flex items-center">
+                    <span className="text-[10px] sm:text-[11px] font-mono font-semibold text-[var(--text-muted)] leading-snug">
+                      {pillar.tag}
+                    </span>
                   </div>
                 </div>
               ))}

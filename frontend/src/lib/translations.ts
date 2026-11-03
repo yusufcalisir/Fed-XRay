@@ -338,10 +338,10 @@ export const TRANSLATIONS: Record<Language, Record<string, string>> = {
     landing_pillar_3_desc: "Leveled CKKS 128-bit RLWE Homomorphic Encryption aggregates PEFT updates. Byzantine anomaly detection runs in an honest validation protocol prior to encrypted aggregation.",
     landing_pillar_4_title: "Byzantine Resilience & Poison Defense",
     landing_pillar_4_desc: "Cosine distance and hold-out validation filters intercept adversarial poisoning and malformed updates before global consensus aggregation.",
-    landing_p1_tag: "PEFT adapters only cross institution boundary",
-    landing_p2_tag: "Bound: (epsilon <= 2.0, delta <= 1e-5)",
-    landing_p3_tag: "CKKS RLWE (simulated, single-key)",
-    landing_p4_tag: "Cosine distance + loss deviance check",
+    landing_p1_tag: "Zero Raw Data Egress (PEFT Only)",
+    landing_p2_tag: "Bound: (ε ≤ 2.0, δ ≤ 1e-5)",
+    landing_p3_tag: "128-Bit RLWE CKKS Security",
+    landing_p4_tag: "Cosine Distance & Trimmed Mean",
 
     // Landing Architecture
     landing_sec_arch_badge: "System Architecture",
@@ -815,10 +815,10 @@ export const TRANSLATIONS: Record<Language, Record<string, string>> = {
     landing_pillar_3_desc: "Parametre toplama aşamasında 128-bit RLWE CKKS homomorfik şifrelemesi kullanılır; sunucu bireysel güncellemeleri açık metin olarak göremez.",
     landing_pillar_4_title: "Bizans Model Zehirleme Tespiti",
     landing_pillar_4_desc: "Kosinüs uzaklığı ve kayıp sapması analizi ile düşmanca model zehirleme girişimleri küresel modele katılmadan önce filtrelenir.",
-    landing_p1_tag: "Yalnızca PEFT Adaptörleri Aktarılır",
-    landing_p2_tag: "Kuramsal Sınır: ε ≤ 2.0, δ ≤ 10⁻⁵",
-    landing_p3_tag: "128-Bit RLWE CKKS Şifreleme",
-    landing_p4_tag: "Kırpılmış Ortalama ve Sapma Filtresi",
+    landing_p1_tag: "Sıfır Ham Veri İletimi (PEFT)",
+    landing_p2_tag: "Kuramsal Sınır: ε ≤ 2.0, δ ≤ 1e-5",
+    landing_p3_tag: "128-Bit RLWE CKKS Güvenliği",
+    landing_p4_tag: "Kosinüs Sapması & Kırpılmış Ortalama",
 
     // Landing Architecture
     landing_sec_arch_badge: "Sistem Mimarisi ve Protokolü",
