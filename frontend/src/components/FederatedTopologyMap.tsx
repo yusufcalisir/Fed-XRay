@@ -146,7 +146,7 @@ export default function FederatedTopologyMap({
 
   return (
     <div
-      className={`relative w-full h-full min-h-[350px] sm:min-h-[380px] flex flex-col justify-between py-2 sm:py-3 px-1.5 sm:px-4 select-none ${className}`}
+      className={`relative w-full h-[275px] sm:h-[300px] flex flex-col justify-between py-1 px-1 sm:px-2 select-none ${className}`}
     >
       {/* ===================================================================
           BACKGROUND SVG LAYER: ENCRYPTED TENSOR CONDUITS & SHOCKWAVE
@@ -169,10 +169,10 @@ export default function FederatedTopologyMap({
 
         {/* Dynamic Curved Conduits from 4 corners to center (50, 50) */}
         {[
-          { x1: 22, y1: 18, cx: 34, cy: 30, x2: 50, y2: 50, id: "node-1" },
-          { x1: 78, y1: 18, cx: 66, cy: 30, x2: 50, y2: 50, id: "node-3" },
-          { x1: 22, y1: 82, cx: 34, cy: 70, x2: 50, y2: 50, id: "node-4" },
-          { x1: 78, y1: 82, cx: 66, cy: 70, x2: 50, y2: 50, id: "node-2" },
+          { x1: 22, y1: 15, cx: 34, cy: 30, x2: 50, y2: 50, id: "node-1" },
+          { x1: 78, y1: 15, cx: 66, cy: 30, x2: 50, y2: 50, id: "node-3" },
+          { x1: 22, y1: 85, cx: 34, cy: 70, x2: 50, y2: 50, id: "node-4" },
+          { x1: 78, y1: 85, cx: 66, cy: 70, x2: 50, y2: 50, id: "node-2" },
         ].map((c) => {
           const isSelected = selectedNodeId === c.id;
           const isHovered = hoveredNodeId === c.id;
@@ -282,25 +282,25 @@ export default function FederatedTopologyMap({
           ROW 2: CENTRAL CONSORTIUM ORCHESTRATOR ENCLAVE
           High-Contrast Architectural Hub with Cryptographic Proof
           =================================================================== */}
-      <div className="relative z-10 flex items-center justify-center w-full my-auto py-1.5">
-        <div className="relative w-full max-w-[280px] sm:max-w-[340px] px-3 py-2 sm:py-2.5 rounded-2xl bg-white/95 dark:bg-slate-900/95 border-2 border-emerald-500/40 shadow-sm backdrop-blur-md text-center transition-all">
+      <div className="relative z-10 flex items-center justify-center w-full my-auto py-1">
+        <div className="relative w-full max-w-[250px] sm:max-w-[300px] px-2.5 py-1.5 sm:py-2 rounded-xl bg-white/95 dark:bg-slate-900/95 border border-emerald-500/40 shadow-xs backdrop-blur-md text-center transition-all">
           {/* Subtle Outer Status Pip */}
           <div className="flex items-center justify-center gap-1.5 mb-0.5">
-            <div className="w-5 h-5 rounded-lg bg-emerald-500/10 dark:bg-emerald-500/20 border border-emerald-500/30 flex items-center justify-center shrink-0">
-              <Lock className="w-3 h-3 text-emerald-600 dark:text-emerald-400" />
+            <div className="w-4 h-4 rounded bg-emerald-500/10 dark:bg-emerald-500/20 border border-emerald-500/30 flex items-center justify-center shrink-0">
+              <Lock className="w-2.5 h-2.5 text-emerald-600 dark:text-emerald-400" />
             </div>
-            <span className="font-mono text-[11px] sm:text-xs font-bold uppercase tracking-wider text-slate-900 dark:text-slate-100">
+            <span className="font-mono text-[10px] sm:text-[11px] font-bold uppercase tracking-wider text-slate-900 dark:text-slate-100">
               {t("topo_hub_title")}
             </span>
           </div>
 
           {/* Cryptographic Standard */}
-          <div className="font-mono text-[10px] sm:text-[11px] font-semibold text-emerald-600 dark:text-emerald-400">
+          <div className="font-mono text-[9px] sm:text-[9.5px] font-semibold text-emerald-600 dark:text-emerald-400">
             {t("topo_hub_crypto")}
           </div>
 
           {/* Privacy Guarantee */}
-          <div className="text-[9.5px] sm:text-[10px] text-slate-600 dark:text-slate-400 font-medium mt-0.5">
+          <div className="text-[8.5px] sm:text-[9px] text-slate-600 dark:text-slate-400 font-medium">
             {t("topo_hub_privacy")}
           </div>
         </div>
@@ -346,36 +346,36 @@ function InstitutionCard({
       onClick={onSelect}
       onMouseEnter={() => onHover(true)}
       onMouseLeave={() => onHover(false)}
-      className={`relative w-[calc(50%-4px)] sm:w-56 p-2.5 sm:p-3 rounded-xl transition-all cursor-pointer ${
+      className={`relative w-[calc(50%-4px)] sm:w-52 p-2 sm:p-2.5 rounded-xl transition-all cursor-pointer ${
         isSelected
           ? "bg-white dark:bg-slate-900 border-2 border-emerald-500 dark:border-emerald-400 shadow-md scale-[1.02]"
           : "bg-white/95 dark:bg-slate-900/90 border border-slate-200 dark:border-slate-800 shadow-xs hover:border-slate-300 dark:hover:border-slate-700 hover:shadow-sm"
       }`}
     >
       {/* Header: Status Dot + Code + Country Badge */}
-      <div className="flex items-center justify-between gap-1 mb-1">
+      <div className="flex items-center justify-between gap-1 mb-0.5">
         <div className="flex items-center gap-1.5 min-w-0">
           <span
             className="w-2 h-2 rounded-full shrink-0 shadow-xs"
             style={{ backgroundColor: node.themeColor }}
           />
-          <span className="font-mono text-xs sm:text-sm font-bold tracking-tight text-slate-900 dark:text-slate-100 truncate">
+          <span className="font-mono text-[11px] sm:text-xs font-bold tracking-tight text-slate-900 dark:text-slate-100 truncate">
             {node.shortName}
           </span>
         </div>
 
-        <span className="px-1.5 py-0.5 rounded text-[9.5px] sm:text-[10px] font-mono font-bold bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 shrink-0">
+        <span className="px-1.5 py-0.5 rounded text-[8.5px] sm:text-[9px] font-mono font-bold bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 shrink-0">
           {t(node.countryCodeKey)}
         </span>
       </div>
 
       {/* Sub: City & Clinical Modality */}
-      <div className="text-[10.5px] sm:text-xs text-slate-600 dark:text-slate-400 font-medium truncate">
+      <div className="text-[9.5px] sm:text-[10.5px] text-slate-600 dark:text-slate-400 font-medium truncate">
         {t(node.cityKey)} : {t(node.modalityKey)}
       </div>
 
-      {/* Footer: Privacy Budget & Scans */}
-      <div className="mt-1.5 pt-1.5 border-t border-slate-100 dark:border-slate-800/80 flex items-center justify-between text-[10px] sm:text-[11px] font-mono">
+      {/* Footer: Privacy Budget */}
+      <div className="mt-1 pt-1 border-t border-slate-100 dark:border-slate-800/80 flex items-center justify-between text-[9px] sm:text-[10px] font-mono">
         <span className="text-slate-500 dark:text-slate-400">{t("topo_dp_budget")}</span>
         <span className="font-bold text-emerald-600 dark:text-emerald-400">
           ε = {node.dpEpsilon}
