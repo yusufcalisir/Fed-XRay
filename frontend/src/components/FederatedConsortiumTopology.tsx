@@ -148,7 +148,7 @@ export default function FederatedConsortiumTopology({
   };
 
   return (
-    <div className="relative w-full min-h-[500px] sm:min-h-[520px] lg:h-[550px] flex flex-col justify-between select-none rounded-3xl p-2 sm:p-4 bg-[var(--bg-card)]/35 dark:bg-slate-900/40 border border-[var(--border-card)] shadow-xs backdrop-blur-xs overflow-hidden">
+    <div className="relative w-full flex flex-col justify-between select-none rounded-3xl p-2.5 sm:p-4 bg-[var(--bg-card)]/35 dark:bg-slate-900/40 border border-[var(--border-card)] shadow-xs backdrop-blur-xs">
       {/* Floating Top Console Navigation Bar */}
       <div className="relative z-30 flex items-center justify-between gap-1.5 sm:gap-2 p-1.5 sm:px-3.5 sm:py-2 rounded-2xl bg-[var(--bg-card)]/80 dark:bg-slate-900/80 border border-[var(--border-card)] shadow-xs backdrop-blur-md">
         <div className="flex items-center gap-1.5 sm:gap-2 min-w-0 shrink">
@@ -213,12 +213,27 @@ export default function FederatedConsortiumTopology({
         </div>
       </div>
 
-      {/* Main Spatial Stage (Completely transparent background so page grid lines flow seamlessly!) */}
-      <div className="relative flex-1 w-full my-1.5 flex items-center justify-center overflow-hidden bg-transparent">
-        {/* VIEW 1: 3D CONSORTIUM (Authentic 3D Hospitals + 3D Central Server) */}
+      {/* Consensus Round Status Ribbon (Zero Overlap, Guaranteed Visibility) */}
+      <div className="relative z-20 w-full min-h-[26px] my-1 flex items-center justify-center">
+        {roundNotification ? (
+          <div className="px-3 py-0.5 rounded-full text-[10px] sm:text-[11px] font-mono font-bold bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 border border-emerald-500/50 backdrop-blur-md shadow-xs flex items-center gap-1.5 whitespace-nowrap animate-in fade-in zoom-in-95 duration-150">
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-ping shrink-0" />
+            <span>{roundNotification}</span>
+          </div>
+        ) : (
+          <div className="text-[9.5px] font-mono text-slate-400 dark:text-slate-500 flex items-center gap-1.5 opacity-80 select-none">
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500/60" />
+            <span>{t("topo_stream_active")}</span>
+          </div>
+        )}
+      </div>
+
+      {/* Main Spatial Stage */}
+      <div className="relative w-full my-1 flex items-center justify-center bg-transparent">
+        {/* VIEW 1: TOPOLOGY MAP */}
         {activeView === "topology" && (
           <div
-            className="relative w-full h-[370px] sm:h-[400px] flex items-center justify-center overflow-hidden bg-transparent"
+            className="relative w-full flex items-center justify-center bg-transparent"
             onMouseMove={handleMouseMove}
             onMouseLeave={() => setMouseTilt({ x: 0, y: 0 })}
           >
@@ -229,14 +244,6 @@ export default function FederatedConsortiumTopology({
               onSelectNode={(id) => setSelectedNodeId(id)}
               onSimulationComplete={() => setIsSimulatingRound(false)}
             />
-
-            {/* Notification Toast during consensus round */}
-            {roundNotification && (
-              <div className="absolute top-3 left-1/2 -translate-x-1/2 z-30 px-3.5 py-1 rounded-full text-[10px] font-mono font-bold bg-emerald-500/20 text-emerald-600 dark:text-emerald-300 border border-emerald-500/40 backdrop-blur-md shadow-md flex items-center gap-1.5 whitespace-nowrap">
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-ping shrink-0" />
-                <span>{roundNotification}</span>
-              </div>
-            )}
           </div>
         )}
 
@@ -425,7 +432,7 @@ export default function FederatedConsortiumTopology({
 
       {/* Docked Minimal Telemetry Inspector (Theme-Harmonized Glass Ribbon) */}
       {activeView === "topology" && (
-        <div className="relative z-30 p-2 sm:p-3 rounded-2xl bg-[var(--bg-card)]/80 dark:bg-slate-900/80 border border-[var(--border-card)] text-xs backdrop-blur-md shadow-xs">
+        <div className="relative z-30 mt-2 p-2 sm:p-2.5 rounded-2xl bg-[var(--bg-card)]/80 dark:bg-slate-900/80 border border-[var(--border-card)] text-xs backdrop-blur-md shadow-xs">
           <div className="flex items-center justify-between gap-1.5 sm:gap-2">
             {/* Left: Selected Hospital & Location */}
             <div className="flex items-center gap-1.5 sm:gap-2 min-w-0 flex-1">
@@ -455,7 +462,7 @@ export default function FederatedConsortiumTopology({
                     triggerConsensusRound();
                     if (onLaunchDemo) onLaunchDemo();
                   }}
-                  className="px-2.5 sm:px-3 py-1 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-[10px] sm:text-[11px] transition-all shadow-sm shadow-emerald-600/20 active:scale-95 border border-emerald-500/30"
+                  className="px-2.5 sm:px-3 py-1 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-[10px] sm:text-[11px] transition-all shadow-sm shadow-emerald-600/20 active:scale-95 border border-emerald-500/30 cursor-pointer"
                 >
                   {t("topo_simulate")}
                 </button>
@@ -464,11 +471,11 @@ export default function FederatedConsortiumTopology({
           </div>
 
           {/* Subline: Scanner Hardware & Skew */}
-          <div className="mt-2 pt-2 border-t border-[var(--border-card)] flex flex-col sm:flex-row sm:items-center justify-between gap-1.5 text-[10px] font-mono">
+          <div className="mt-1.5 pt-1.5 border-t border-[var(--border-card)] flex flex-col sm:flex-row sm:items-center justify-between gap-1 text-[10px] font-mono">
             <span className="text-[var(--text-muted)] leading-tight break-words truncate">
               {getLocalizedNodeScanner(selectedNode, t)}
             </span>
-            <div className="inline-flex items-center gap-1 text-amber-600 dark:text-amber-300 font-semibold bg-amber-500/10 px-2 py-0.5 rounded-full border border-amber-500/20 text-[10px] w-fit max-w-full">
+            <div className="inline-flex items-center gap-1 text-amber-600 dark:text-amber-300 font-semibold bg-amber-500/10 px-2 py-0.5 rounded-full border border-amber-500/20 text-[9.5px] sm:text-[10px] w-fit max-w-full">
               <span className="shrink-0">{t("topo_skew_label")}</span>
               <span className="break-words">{t(selectedNode.skewKey)}</span>
             </div>

@@ -64,5 +64,8 @@ describe("FederatedConsortiumTopology Localization", () => {
     expect(screen.getByText("Siemens Sensation Optik Dermatoskop")).toBeInTheDocument();
     expect(screen.getByText("Simüle Et")).toBeInTheDocument();
     expect(screen.getByText("Etiket Dağılımı:")).toBeInTheDocument();
+
+    // Stream status indicator visible in normal state
+    expect(screen.getByText("RLWE CKKS 128-Bit Şifreli Akış Aktif")).toBeInTheDocument();
   });
 });
