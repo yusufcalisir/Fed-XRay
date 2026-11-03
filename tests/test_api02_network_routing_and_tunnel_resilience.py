@@ -135,3 +135,4 @@ def test_next_config_tunnel_sanitization():
     # Must sanitize known dead tunnels
     assert "globe-celebration-poems-shakira" in config_text
     assert "backendUrl" in config_text
+
