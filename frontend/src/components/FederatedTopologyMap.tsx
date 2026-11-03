@@ -1,12 +1,12 @@
 "use client";
 
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect } from "react";
 import {
-  Server,
   Lock,
+  Server,
   ShieldCheck,
   CheckCircle2,
-  Database,
+  Activity,
   Layers,
 } from "lucide-react";
 import { useLanguage } from "@/context/LanguageContext";
@@ -23,13 +23,9 @@ export interface TopologyNode {
   modality: string;
   dpEpsilon: number;
   scans: number;
-  x: number;
-  y: number;
   themeColor: string;
-  badgeBgLight: string;
-  badgeBgDark: string;
-  badgeBorderLight: string;
-  badgeBorderDark: string;
+  accentBg: string;
+  accentBorder: string;
 }
 
 export interface FederatedTopologyMapProps {
@@ -41,10 +37,9 @@ export interface FederatedTopologyMapProps {
 }
 
 // ---------------------------------------------------------------------------
-// Institutional Topology Nodes (Normalized 800x480 ViewBox)
-// Dedicated Quadrants with Zero Overlap
+// Institutional Topology Nodes
 // ---------------------------------------------------------------------------
-const INSTITUTIONAL_NODES: TopologyNode[] = [
+const INSTITUTIONS: TopologyNode[] = [
   {
     id: "node-1",
     shortName: "BCN-20000",
@@ -54,13 +49,9 @@ const INSTITUTIONAL_NODES: TopologyNode[] = [
     modality: "Dermoscopy",
     dpEpsilon: 1.42,
     scans: 40,
-    x: 165,
-    y: 110,
     themeColor: "#059669",
-    badgeBgLight: "rgba(5, 150, 105, 0.08)",
-    badgeBgDark: "rgba(16, 185, 129, 0.12)",
-    badgeBorderLight: "rgba(5, 150, 105, 0.25)",
-    badgeBorderDark: "rgba(16, 185, 129, 0.35)",
+    accentBg: "bg-emerald-500/10",
+    accentBorder: "border-emerald-500/30",
   },
   {
     id: "node-3",
@@ -71,13 +62,9 @@ const INSTITUTIONAL_NODES: TopologyNode[] = [
     modality: "Histopathology",
     dpEpsilon: 1.55,
     scans: 40,
-    x: 635,
-    y: 110,
     themeColor: "#0284c7",
-    badgeBgLight: "rgba(2, 132, 199, 0.08)",
-    badgeBgDark: "rgba(56, 189, 248, 0.12)",
-    badgeBorderLight: "rgba(2, 132, 199, 0.25)",
-    badgeBorderDark: "rgba(56, 189, 248, 0.35)",
+    accentBg: "bg-sky-500/10",
+    accentBorder: "border-sky-500/30",
   },
   {
     id: "node-4",
@@ -88,39 +75,28 @@ const INSTITUTIONAL_NODES: TopologyNode[] = [
     modality: "Dermoscopy",
     dpEpsilon: 1.48,
     scans: 40,
-    x: 165,
-    y: 370,
     themeColor: "#0d9488",
-    badgeBgLight: "rgba(13, 148, 136, 0.08)",
-    badgeBgDark: "rgba(20, 184, 166, 0.12)",
-    badgeBorderLight: "rgba(13, 148, 136, 0.25)",
-    badgeBorderDark: "rgba(20, 184, 166, 0.35)",
+    accentBg: "bg-teal-500/10",
+    accentBorder: "border-teal-500/30",
   },
   {
     id: "node-2",
     shortName: "Beth Israel",
-    fullName: "Deaconess Med Center",
+    fullName: "Deaconess Medical",
     city: "Boston",
     countryCode: "USA",
     modality: "Chest X-Ray",
     dpEpsilon: 1.38,
     scans: 40,
-    x: 635,
-    y: 370,
     themeColor: "#2563eb",
-    badgeBgLight: "rgba(37, 99, 235, 0.08)",
-    badgeBgDark: "rgba(96, 165, 250, 0.12)",
-    badgeBorderLight: "rgba(37, 99, 235, 0.25)",
-    badgeBorderDark: "rgba(96, 165, 250, 0.35)",
+    accentBg: "bg-blue-500/10",
+    accentBorder: "border-blue-500/30",
   },
 ];
 
-// Center Orchestrator Coordinates
-const CENTER_X = 400;
-const CENTER_Y = 240;
-
 // ---------------------------------------------------------------------------
 // Main Component: FederatedTopologyMap
+// Hybrid High-Legibility Native HTML Nodes + SVG Encrypted Conduit Layer
 // ---------------------------------------------------------------------------
 export default function FederatedTopologyMap({
   selectedNodeId = "node-1",
@@ -130,506 +106,279 @@ export default function FederatedTopologyMap({
   className = "",
 }: FederatedTopologyMapProps) {
   const { t } = useLanguage();
-  const [animTime, setAnimTime] = useState(0);
+  const [animProgress, setAnimProgress] = useState(0);
+  const [shockwave, setShockwave] = useState(0);
   const [hoveredNodeId, setHoveredNodeId] = useState<string | null>(null);
-  const [shockwaveProgress, setShockwaveProgress] = useState(0);
-  const shockwaveActiveRef = useRef(false);
 
-  // Smooth 60fps animation loop for particle streaming and shockwave ripples
+  // Smooth continuous animation for encrypted packet travel
   useEffect(() => {
-    let animFrame: number;
+    let frameId: number;
     let lastTs = performance.now();
 
     const loop = (ts: number) => {
       const dt = (ts - lastTs) / 1000;
       lastTs = ts;
-      setAnimTime((prev) => prev + dt);
+      const speed = isSimulatingRound ? 2.5 : 0.6;
+      setAnimProgress((prev) => (prev + dt * speed) % 1);
 
-      if (shockwaveActiveRef.current) {
-        setShockwaveProgress((prev) => {
+      if (isSimulatingRound) {
+        setShockwave((prev) => {
           const next = prev + dt * 0.9;
           if (next >= 1) {
-            shockwaveActiveRef.current = false;
             onSimulationComplete?.();
             return 0;
           }
           return next;
         });
+      } else {
+        setShockwave(0);
       }
 
-      animFrame = requestAnimationFrame(loop);
+      frameId = requestAnimationFrame(loop);
     };
 
-    animFrame = requestAnimationFrame(loop);
-    return () => cancelAnimationFrame(animFrame);
-  }, [onSimulationComplete]);
+    frameId = requestAnimationFrame(loop);
+    return () => cancelAnimationFrame(frameId);
+  }, [isSimulatingRound, onSimulationComplete]);
 
-  // Trigger shockwave when simulation starts
-  useEffect(() => {
-    if (isSimulatingRound) {
-      shockwaveActiveRef.current = true;
-      setShockwaveProgress(0);
-    }
-  }, [isSimulatingRound]);
-
-  const speedMultiplier = isSimulatingRound ? 3.5 : 1.0;
+  const topNodes = [INSTITUTIONS[0], INSTITUTIONS[1]];
+  const bottomNodes = [INSTITUTIONS[2], INSTITUTIONS[3]];
 
   return (
     <div
-      className={`relative w-full h-full flex items-center justify-center select-none ${className}`}
+      className={`relative w-full h-full min-h-[350px] sm:min-h-[380px] flex flex-col justify-between py-2 sm:py-3 px-1.5 sm:px-4 select-none ${className}`}
     >
+      {/* ===================================================================
+          BACKGROUND SVG LAYER: ENCRYPTED TENSOR CONDUITS & SHOCKWAVE
+          =================================================================== */}
       <svg
-        viewBox="0 0 800 480"
-        className="w-full h-full max-h-[460px] overflow-visible"
-        preserveAspectRatio="xMidYMid meet"
+        className="absolute inset-0 w-full h-full pointer-events-none overflow-visible"
+        preserveAspectRatio="none"
+        viewBox="0 0 100 100"
       >
         <defs>
-          {/* Subtle grid pattern for precision architectural coordinate grid */}
-          <pattern
-            id="arch-blueprint-grid"
-            width="40"
-            height="40"
-            patternUnits="userSpaceOnUse"
-          >
-            <path
-              d="M 40 0 L 0 0 0 40"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="0.5"
-              className="text-slate-300/40 dark:text-slate-800/40"
-            />
-          </pattern>
-
-          {/* Linear gradient for conduits */}
-          {INSTITUTIONAL_NODES.map((node) => (
-            <linearGradient
-              key={`grad-${node.id}`}
-              id={`conduit-grad-${node.id}`}
-              x1={node.x}
-              y1={node.y}
-              x2={CENTER_X}
-              y2={CENTER_Y}
-              gradientUnits="userSpaceOnUse"
-            >
-              <stop
-                offset="0%"
-                stopColor={node.themeColor}
-                stopOpacity="0.8"
-              />
-              <stop
-                offset="100%"
-                stopColor="#059669"
-                stopOpacity="0.85"
-              />
-            </linearGradient>
-          ))}
-
-          {/* Glow filter for active selection and shockwave */}
-          <filter id="subtle-enclave-glow" x="-20%" y="-20%" width="140%" height="140%">
-            <feGaussianBlur stdDeviation="3" result="blur" />
-            <feComposite in="SourceGraphic" in2="blur" operator="over" />
-          </filter>
+          <linearGradient id="conduit-grad-left" x1="0" y1="0" x2="1" y2="1">
+            <stop offset="0%" stopColor="#059669" stopOpacity="0.7" />
+            <stop offset="100%" stopColor="#0284c7" stopOpacity="0.7" />
+          </linearGradient>
+          <linearGradient id="conduit-grad-right" x1="1" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor="#0284c7" stopOpacity="0.7" />
+            <stop offset="100%" stopColor="#059669" stopOpacity="0.7" />
+          </linearGradient>
         </defs>
 
-        {/* Background Architectural Blueprint Grid */}
-        <rect
-          x="20"
-          y="20"
-          width="760"
-          height="440"
-          rx="16"
-          fill="url(#arch-blueprint-grid)"
-          className="opacity-60"
-        />
-
-        {/* Concentric Coordinate Radar Rings (Centered on Orchestrator) */}
-        {[100, 200, 310].map((radius, i) => (
-          <circle
-            key={`range-${i}`}
-            cx={CENTER_X}
-            cy={CENTER_Y}
-            r={radius}
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="1"
-            strokeDasharray={i === 1 ? "4 6" : undefined}
-            className="text-slate-300/50 dark:text-slate-800/60"
-          />
-        ))}
-
-        {/* Axis Crosshairs */}
-        <line
-          x1={CENTER_X - 320}
-          y1={CENTER_Y}
-          x2={CENTER_X + 320}
-          y2={CENTER_Y}
-          stroke="currentColor"
-          strokeWidth="0.75"
-          strokeDasharray="2 4"
-          className="text-slate-300/40 dark:text-slate-800/40"
-        />
-        <line
-          x1={CENTER_X}
-          y1={CENTER_Y - 180}
-          x2={CENTER_X}
-          y2={CENTER_Y + 180}
-          stroke="currentColor"
-          strokeWidth="0.75"
-          strokeDasharray="2 4"
-          className="text-slate-300/40 dark:text-slate-800/40"
-        />
-
-        {/* ===================================================================
-            LAYER 1: ENCRYPTED TENSOR CONDUITS (Quadratic Bezier Curves)
-            =================================================================== */}
-        {INSTITUTIONAL_NODES.map((node, i) => {
-          const isSelected = selectedNodeId === node.id;
-          const isHovered = hoveredNodeId === node.id;
+        {/* Dynamic Curved Conduits from 4 corners to center (50, 50) */}
+        {[
+          { x1: 22, y1: 18, cx: 34, cy: 30, x2: 50, y2: 50, id: "node-1" },
+          { x1: 78, y1: 18, cx: 66, cy: 30, x2: 50, y2: 50, id: "node-3" },
+          { x1: 22, y1: 82, cx: 34, cy: 70, x2: 50, y2: 50, id: "node-4" },
+          { x1: 78, y1: 82, cx: 66, cy: 70, x2: 50, y2: 50, id: "node-2" },
+        ].map((c) => {
+          const isSelected = selectedNodeId === c.id;
+          const isHovered = hoveredNodeId === c.id;
           const isHighlighted = isSelected || isHovered;
+          const pathD = `M ${c.x1} ${c.y1} Q ${c.cx} ${c.cy} ${c.x2} ${c.y2}`;
 
-          // Compute smooth curved conduit
-          // Control point pulled slightly outward for aesthetic curvature
-          const midX = (node.x + CENTER_X) / 2 + (i % 2 === 0 ? -25 : 25);
-          const midY = (node.y + CENTER_Y) / 2 + (node.y < CENTER_Y ? -15 : 15);
-          const pathD = `M ${node.x} ${node.y} Q ${midX} ${midY} ${CENTER_X} ${CENTER_Y}`;
-
-          // Calculate 3 moving photon packets along the curve
-          // Using quadratic bezier formula: B(t) = (1-t)^2 P0 + 2(1-t)t P1 + t^2 P2
-          const packetOffsets = [0, 0.33, 0.66];
+          // Calculate moving packet point along quadratic bezier
+          // P(t) = (1-t)^2 P0 + 2(1-t)t P1 + t^2 P2
+          const t = animProgress;
+          const inv = 1 - t;
+          const px = inv * inv * c.x1 + 2 * inv * t * c.cx + t * t * c.x2;
+          const py = inv * inv * c.y1 + 2 * inv * t * c.cy + t * t * c.y2;
 
           return (
-            <g key={`conduit-group-${node.id}`}>
-              {/* Static Base Conduit Line */}
+            <g key={`conduit-${c.id}`}>
+              {/* Base Conduit Path */}
               <path
                 d={pathD}
                 fill="none"
                 stroke="currentColor"
-                strokeWidth={isHighlighted ? "2" : "1.25"}
+                strokeWidth={isHighlighted ? "0.8" : "0.5"}
                 className={
                   isHighlighted
-                    ? "text-emerald-500/80 dark:text-emerald-400/90"
-                    : "text-slate-300 dark:text-slate-700/80"
+                    ? "text-emerald-500/80 dark:text-emerald-400"
+                    : "text-slate-300 dark:text-slate-800"
                 }
               />
 
-              {/* Directional Signal Guide Dash */}
+              {/* Animated Dashed Signal Stream */}
               <path
                 d={pathD}
                 fill="none"
-                stroke={`url(#conduit-grad-${node.id})`}
-                strokeWidth={isHighlighted ? "2" : "1.25"}
-                strokeDasharray="6 14"
-                strokeDashoffset={-animTime * 28 * speedMultiplier}
-                className="opacity-70"
+                stroke={c.x1 < 50 ? "url(#conduit-grad-left)" : "url(#conduit-grad-right)"}
+                strokeWidth={isHighlighted ? "0.8" : "0.5"}
+                strokeDasharray="2 3"
+                className="opacity-75"
               />
 
-              {/* Animated Encrypted Tensor Packets (Photons) */}
-              {packetOffsets.map((offset, pIdx) => {
-                const prog =
-                  ((animTime * 0.22 * speedMultiplier + offset + i * 0.12) % 1 + 1) % 1;
-                const inv = 1 - prog;
-                const px =
-                  inv * inv * node.x + 2 * inv * prog * midX + prog * prog * CENTER_X;
-                const py =
-                  inv * inv * node.y + 2 * inv * prog * midY + prog * prog * CENTER_Y;
-
-                return (
-                  <g key={`packet-${node.id}-${pIdx}`}>
-                    {/* Outer glow ring */}
-                    <circle
-                      cx={px}
-                      cy={py}
-                      r={isHighlighted ? 4.5 : 3.5}
-                      fill={node.themeColor}
-                      className="opacity-30"
-                    />
-                    {/* Inner high-contrast bright core */}
-                    <circle
-                      cx={px}
-                      cy={py}
-                      r={isHighlighted ? 2.5 : 1.8}
-                      fill="#ffffff"
-                    />
-                  </g>
-                );
-              })}
-
-              {/* Mathematical Payload Annotations along Conduits */}
-              {isHighlighted && (
-                <text
-                  x={midX}
-                  y={midY - 8}
-                  textAnchor="middle"
-                  className="text-[9px] font-mono font-bold fill-slate-700 dark:fill-slate-300"
-                >
-                  Enc(B_{i + 1}) · A
-                </text>
-              )}
-            </g>
-          );
-        })}
-
-        {/* ===================================================================
-            LAYER 2: CONSENSUS SHOCKWAVE WAVEFRONT RIPPLE
-            =================================================================== */}
-        {shockwaveProgress > 0 && (
-          <g>
-            <circle
-              cx={CENTER_X}
-              cy={CENTER_Y}
-              r={shockwaveProgress * 340}
-              fill="none"
-              stroke="#059669"
-              strokeWidth="2"
-              opacity={(1 - shockwaveProgress) * 0.75}
-            />
-            {shockwaveProgress > 0.08 && (
+              {/* Traveling Encrypted Parameter Photon */}
               <circle
-                cx={CENTER_X}
-                cy={CENTER_Y}
-                r={(shockwaveProgress - 0.08) * 340}
-                fill="none"
-                stroke="#0284c7"
-                strokeWidth="1.5"
-                strokeDasharray="4 6"
-                opacity={(1 - (shockwaveProgress - 0.08)) * 0.55}
+                cx={px}
+                cy={py}
+                r={isHighlighted ? 1.4 : 1.0}
+                className="fill-emerald-500 dark:fill-emerald-400 shadow-sm"
               />
-            )}
-          </g>
-        )}
-
-        {/* ===================================================================
-            LAYER 3: CENTRAL CONSORTIUM ORCHESTRATOR ENCLAVE
-            Multi-Tier Enterprise Pedestal with RLWE CKKS Cryptographic Core
-            =================================================================== */}
-        <g
-          transform={`translate(${CENTER_X}, ${CENTER_Y})`}
-          className="cursor-default"
-        >
-          {/* Ground Footprint Plate */}
-          <rect
-            x="-85"
-            y="-48"
-            width="170"
-            height="96"
-            rx="14"
-            className="fill-slate-100/90 dark:fill-slate-900/95 stroke-slate-300 dark:stroke-slate-700/80 shadow-md"
-            strokeWidth="1.5"
-          />
-
-          {/* Accent Inner Ring / Shield Rim */}
-          <rect
-            x="-80"
-            y="-43"
-            width="160"
-            height="86"
-            rx="10"
-            fill="none"
-            className="stroke-emerald-500/30 dark:stroke-emerald-500/40"
-            strokeWidth="1"
-            strokeDasharray="4 4"
-          />
-
-          {/* Central Cryptographic Lock Pip */}
-          <g transform="translate(0, -20)">
-            <circle
-              cx="0"
-              cy="0"
-              r="15"
-              className="fill-emerald-500/10 dark:fill-emerald-500/20 stroke-emerald-500/40 dark:stroke-emerald-400/50"
-              strokeWidth="1.2"
-            />
-            <g transform="translate(-7, -7)">
-              <Lock className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
-            </g>
-          </g>
-
-          {/* Header Title: Consortium Orchestrator */}
-          <text
-            x="0"
-            y="6"
-            textAnchor="middle"
-            className="text-[10.5px] font-mono font-bold tracking-wider fill-slate-900 dark:fill-slate-100 uppercase"
-          >
-            CONSORTIUM AGGREGATOR
-          </text>
-
-          {/* Security Standard: RLWE CKKS 128-Bit */}
-          <text
-            x="0"
-            y="19"
-            textAnchor="middle"
-            className="text-[8.5px] font-mono font-semibold fill-emerald-600 dark:fill-emerald-400"
-          >
-            RLWE CKKS 128-Bit Enclave
-          </text>
-
-          {/* Status Metric: Zero Plaintext Transfer */}
-          <text
-            x="0"
-            y="31"
-            textAnchor="middle"
-            className="text-[8px] font-sans font-medium fill-slate-500 dark:fill-slate-400"
-          >
-            Zero Plaintext Patient Data
-          </text>
-        </g>
-
-        {/* ===================================================================
-            LAYER 4: CLINICAL INSTITUTIONAL ENCLAVE PODS
-            Zero Overlap, High-Contrast Ceramic/Titanium Architectural Blocks
-            =================================================================== */}
-        {INSTITUTIONAL_NODES.map((node) => {
-          const isSelected = selectedNodeId === node.id;
-          const isHovered = hoveredNodeId === node.id;
-          const isHighlighted = isSelected || isHovered;
-
-          // Pod card dimensions: 170px width, 72px height
-          const W = 170;
-          const H = 72;
-          const left = node.x - W / 2;
-          const top = node.y - H / 2;
-
-          return (
-            <g
-              key={node.id}
-              className="cursor-pointer transition-transform duration-200"
-              onClick={() => onSelectNode?.(node.id)}
-              onMouseEnter={() => setHoveredNodeId(node.id)}
-              onMouseLeave={() => setHoveredNodeId(null)}
-            >
-              {/* Ground Anchor Shadow Plate */}
-              <ellipse
-                cx={node.x}
-                cy={node.y + H / 2 + 6}
-                rx="42"
-                ry="7"
-                className="fill-slate-400/20 dark:fill-black/40"
+              <circle
+                cx={px}
+                cy={py}
+                r={isHighlighted ? 0.7 : 0.5}
+                fill="#ffffff"
               />
-
-              {/* Main Pod Chassis Card */}
-              <rect
-                x={left}
-                y={top}
-                width={W}
-                height={H}
-                rx="12"
-                className={`transition-all duration-200 ${
-                  isSelected
-                    ? "fill-white dark:fill-slate-900 stroke-emerald-500 dark:stroke-emerald-400 shadow-lg"
-                    : isHovered
-                      ? "fill-white dark:fill-slate-900 stroke-slate-400 dark:stroke-slate-600 shadow-md"
-                      : "fill-white/95 dark:fill-slate-900/90 stroke-slate-300 dark:stroke-slate-700/80 shadow-xs"
-                }`}
-                strokeWidth={isSelected ? "2" : "1.25"}
-              />
-
-              {/* Left Color-Coded Accent Indicator Strip */}
-              <rect
-                x={left}
-                y={top + 8}
-                width="3.5"
-                height={H - 16}
-                rx="1.75"
-                fill={node.themeColor}
-              />
-
-              {/* Row 1: Status Dot + Short Name + Country Badge */}
-              <g transform={`translate(${left + 12}, ${top + 18})`}>
-                {/* Status Dot */}
-                <circle
-                  cx="4"
-                  cy="-3"
-                  r="3.5"
-                  fill={node.themeColor}
-                />
-                <circle
-                  cx="4"
-                  cy="-3"
-                  r="6"
-                  fill="none"
-                  stroke={node.themeColor}
-                  strokeWidth="1"
-                  className={isSelected ? "animate-ping opacity-60" : "opacity-30"}
-                />
-
-                {/* Institutional Code */}
-                <text
-                  x="14"
-                  y="0"
-                  className="text-[11px] font-mono font-bold tracking-tight fill-slate-900 dark:fill-slate-100"
-                >
-                  {node.shortName}
-                </text>
-
-                {/* Country Badge */}
-                <rect
-                  x="96"
-                  y="-9"
-                  width="44"
-                  height="14"
-                  rx="4"
-                  className="fill-slate-100 dark:fill-slate-800 stroke-slate-200 dark:stroke-slate-700"
-                  strokeWidth="0.8"
-                />
-                <text
-                  x="118"
-                  y="1.5"
-                  textAnchor="middle"
-                  className="text-[8px] font-mono font-bold fill-slate-600 dark:fill-slate-300"
-                >
-                  {node.countryCode}
-                </text>
-              </g>
-
-              {/* Row 2: Location & Clinical Modality */}
-              <text
-                x={left + 14}
-                y={top + 37}
-                className="text-[9px] font-sans font-medium fill-slate-500 dark:fill-slate-400 truncate"
-              >
-                {node.city} · {node.modality}
-              </text>
-
-              {/* Row 3: Bottom Divider & Differential Privacy Budget */}
-              <line
-                x1={left + 12}
-                y1={top + 48}
-                x2={left + W - 12}
-                y2={top + 48}
-                className="stroke-slate-200 dark:stroke-slate-800"
-                strokeWidth="0.8"
-              />
-
-              <g transform={`translate(${left + 14}, ${top + 61})`}>
-                <text
-                  x="0"
-                  y="0"
-                  className="text-[8.5px] font-mono fill-slate-400 dark:fill-slate-500"
-                >
-                  DP Budget:
-                </text>
-                <text
-                  x="56"
-                  y="0"
-                  className="text-[8.5px] font-mono font-bold fill-emerald-600 dark:fill-emerald-400"
-                >
-                  ε = {node.dpEpsilon}
-                </text>
-
-                {/* Verified Biopsy/Cohort Indicator */}
-                <text
-                  x="112"
-                  y="0"
-                  className="text-[8px] font-mono font-semibold fill-slate-500 dark:fill-slate-400"
-                >
-                  {node.scans} scans
-                </text>
-              </g>
             </g>
           );
         })}
+
+        {/* Concentric Center Range Rings */}
+        <circle
+          cx="50"
+          cy="50"
+          r="16"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="0.35"
+          strokeDasharray="1.5 2"
+          className="text-slate-300/60 dark:text-slate-800/80"
+        />
+        <circle
+          cx="50"
+          cy="50"
+          r="28"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="0.35"
+          className="text-slate-200/50 dark:text-slate-800/40"
+        />
+
+        {/* Consensus Shockwave Wavefront */}
+        {shockwave > 0 && (
+          <circle
+            cx="50"
+            cy="50"
+            r={shockwave * 45}
+            fill="none"
+            stroke="#059669"
+            strokeWidth="0.8"
+            opacity={(1 - shockwave) * 0.8}
+          />
+        )}
       </svg>
+
+      {/* ===================================================================
+          ROW 1: TOP CLINICAL INSTITUTIONS (BCN-20000 & ViDIR)
+          =================================================================== */}
+      <div className="relative z-10 flex items-center justify-between gap-2 sm:gap-4 w-full">
+        {topNodes.map((node) => (
+          <InstitutionCard
+            key={node.id}
+            node={node}
+            isSelected={selectedNodeId === node.id}
+            onSelect={() => onSelectNode?.(node.id)}
+            onHover={(h) => setHoveredNodeId(h ? node.id : null)}
+          />
+        ))}
+      </div>
+
+      {/* ===================================================================
+          ROW 2: CENTRAL CONSORTIUM ORCHESTRATOR ENCLAVE
+          High-Contrast Architectural Hub with Cryptographic Proof
+          =================================================================== */}
+      <div className="relative z-10 flex items-center justify-center w-full my-auto py-1.5">
+        <div className="relative w-full max-w-[280px] sm:max-w-[340px] px-3 py-2 sm:py-2.5 rounded-2xl bg-white/95 dark:bg-slate-900/95 border-2 border-emerald-500/40 shadow-sm backdrop-blur-md text-center transition-all">
+          {/* Subtle Outer Status Pip */}
+          <div className="flex items-center justify-center gap-1.5 mb-0.5">
+            <div className="w-5 h-5 rounded-lg bg-emerald-500/10 dark:bg-emerald-500/20 border border-emerald-500/30 flex items-center justify-center shrink-0">
+              <Lock className="w-3 h-3 text-emerald-600 dark:text-emerald-400" />
+            </div>
+            <span className="font-mono text-[11px] sm:text-xs font-bold uppercase tracking-wider text-slate-900 dark:text-slate-100">
+              CONSORTIUM AGGREGATOR
+            </span>
+          </div>
+
+          {/* Cryptographic Standard */}
+          <div className="font-mono text-[10px] sm:text-[11px] font-semibold text-emerald-600 dark:text-emerald-400">
+            RLWE CKKS 128-Bit Enclave
+          </div>
+
+          {/* Privacy Guarantee */}
+          <div className="text-[9.5px] sm:text-[10px] text-slate-600 dark:text-slate-400 font-medium mt-0.5">
+            Zero Plaintext Patient Data Transfer
+          </div>
+        </div>
+      </div>
+
+      {/* ===================================================================
+          ROW 3: BOTTOM CLINICAL INSTITUTIONS (Queensland & Beth Israel)
+          =================================================================== */}
+      <div className="relative z-10 flex items-center justify-between gap-2 sm:gap-4 w-full">
+        {bottomNodes.map((node) => (
+          <InstitutionCard
+            key={node.id}
+            node={node}
+            isSelected={selectedNodeId === node.id}
+            onSelect={() => onSelectNode?.(node.id)}
+            onHover={(h) => setHoveredNodeId(h ? node.id : null)}
+          />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Sub-component: High-Legibility Native HTML Institution Card
+// WCAG AAA Contrast, 100% Crisp Font Rendering across All Viewports
+// ---------------------------------------------------------------------------
+function InstitutionCard({
+  node,
+  isSelected,
+  onSelect,
+  onHover,
+}: {
+  node: TopologyNode;
+  isSelected: boolean;
+  onSelect: () => void;
+  onHover: (hovered: boolean) => void;
+}) {
+  return (
+    <div
+      onClick={onSelect}
+      onMouseEnter={() => onHover(true)}
+      onMouseLeave={() => onHover(false)}
+      className={`relative w-[calc(50%-4px)] sm:w-56 p-2.5 sm:p-3 rounded-xl transition-all cursor-pointer ${
+        isSelected
+          ? "bg-white dark:bg-slate-900 border-2 border-emerald-500 dark:border-emerald-400 shadow-md scale-[1.02]"
+          : "bg-white/95 dark:bg-slate-900/90 border border-slate-200 dark:border-slate-800 shadow-xs hover:border-slate-300 dark:hover:border-slate-700 hover:shadow-sm"
+      }`}
+    >
+      {/* Header: Status Dot + Code + Country Badge */}
+      <div className="flex items-center justify-between gap-1 mb-1">
+        <div className="flex items-center gap-1.5 min-w-0">
+          <span
+            className="w-2 h-2 rounded-full shrink-0 shadow-xs"
+            style={{ backgroundColor: node.themeColor }}
+          />
+          <span className="font-mono text-xs sm:text-sm font-bold tracking-tight text-slate-900 dark:text-slate-100 truncate">
+            {node.shortName}
+          </span>
+        </div>
+
+        <span className="px-1.5 py-0.5 rounded text-[9.5px] sm:text-[10px] font-mono font-bold bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 shrink-0">
+          {node.countryCode}
+        </span>
+      </div>
+
+      {/* Sub: City & Clinical Modality */}
+      <div className="text-[10.5px] sm:text-xs text-slate-600 dark:text-slate-400 font-medium truncate">
+        {node.city} · {node.modality}
+      </div>
+
+      {/* Footer: Privacy Budget & Scans */}
+      <div className="mt-1.5 pt-1.5 border-t border-slate-100 dark:border-slate-800/80 flex items-center justify-between text-[10px] sm:text-[11px] font-mono">
+        <span className="text-slate-500 dark:text-slate-400">DP Budget:</span>
+        <span className="font-bold text-emerald-600 dark:text-emerald-400">
+          ε = {node.dpEpsilon}
+        </span>
+      </div>
     </div>
   );
 }
