@@ -5,6 +5,7 @@ import Navbar from "@/components/Navbar";
 import ConsortiumLaunchOverlay from "@/components/ConsortiumLaunchOverlay";
 import LungViewer3D from "@/components/LungViewer3D";
 import FederatedConsortiumTopology from "@/components/FederatedConsortiumTopology";
+import Footer from "@/components/Footer";
 import FedXRayLogo from "@/components/FedXRayLogo";
 import { useLanguage } from "@/context/LanguageContext";
 import { useApi } from "@/context/ApiContext";
@@ -851,24 +852,7 @@ export default function PresentationLandingPage() {
       </main>
 
       {/* Footer */}
-      <footer className="border-t border-[var(--border-card)] py-6 px-4 text-[var(--text-muted)] select-none">
-        <div className="max-w-[1200px] mx-auto flex flex-col gap-4">
-          <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
-            <div className="flex items-center gap-3">
-              <FedXRayLogo size={20} />
-              <span className="font-display font-bold text-xs text-[var(--text-heading)] tracking-tight">
-                Fed<span className="text-emerald-500">-</span>XRay
-              </span>
-            </div>
-            <div className="text-[11px] text-[var(--text-muted)]">
-              {t("footer_text")}
-            </div>
-          </div>
-          <div className="text-[10px] text-amber-600 dark:text-amber-400 leading-relaxed border-t border-[var(--border-subtle)] pt-3 text-center sm:text-left">
-            {t("footer_disclaimer")}
-          </div>
-        </div>
-      </footer>
+      <Footer maxWidth="max-w-[1200px]" />
     </div>
   );
 }

@@ -412,9 +412,12 @@ export const TRANSLATIONS: Record<Language, Record<string, string>> = {
     topo_skew_carcinoma: "Invasive Squamous Cell Carcinomas",
     topo_skew_nevi: "Compound Dysplastic Melanocytic Nevi",
 
-    footer_text: "Fed-XRay | Research Prototype - Not for Clinical Use | Privacy-Preserving Federated Learning for Medical Imaging",
-    footer_disclaimer: "RESEARCH PROTOTYPE: This system is not validated or approved for clinical use. Outputs must not be used for diagnostic or treatment decisions. Hospital node names (BCN-20000, ViDIR, Beth Israel, Queensland) reference public dataset contributing institutions, not active partnerships.",
-    footer_bench_note: "AUC values in the benchmark table are literature reference targets, not measurements from this demo environment. Demo uses 40 samples per hospital for illustrative purposes."
+    footer_text: "Privacy-Preserving Federated Learning for Medical Imaging",
+    footer_disclaimer: "RESEARCH PROTOTYPE: Investigational system not approved for clinical decision-making. Outputs must not guide diagnosis or therapy. Hospital node names reference public benchmarking cohorts.",
+    footer_bench_note: "AUC values in the benchmark table are literature reference targets, not measurements from this demo environment. Demo uses 40 samples per hospital for illustrative purposes.",
+    footer_egress: "Zero Patient Data Egress",
+    footer_he: "RLWE CKKS 128-Bit HE",
+    footer_dp: "Patient-Level DP (ε ≤ 2.0)",
   },
   TR: {
     app_title: "Fed-XRay",
@@ -825,8 +828,11 @@ export const TRANSLATIONS: Record<Language, Record<string, string>> = {
     topo_skew_carcinoma: "İnvaziv Skuamöz Hücreli Karsinom",
     topo_skew_nevi: "Bileşik Displastik Melanositik Nevüs",
 
-    footer_text: "Fed-XRay | Araştırma Prototipi - Klinik Tanı Amacıyla Kullanılamaz | Medikal Görüntülemede Mahremiyet Korumalı Federe Öğrenme | PyTorch ve Next.js 14 ile Geliştirilmiştir",
-    footer_disclaimer: "ARAŞTIRMA PROTOTİPİ: Bu sistem klinik kullanım için onaylanmamış veya sertifikalandırılmamıştır. Çıktılar tanı veya tedavi kararlarında kullanılamaz. Hastane düğüm isimleri (BCN-20000, ViDIR, Beth Israel, Queensland) kamuya açık açık kaynaklı veri setlerinin katkı sağlayıcı merkezlerine atıfta bulunur; aktif ticari ortaklıkları temsil etmez.",
-    footer_bench_note: "Kıyaslama tablosundaki AUC değerleri literatürdeki bağımsız çalışmalara ait referans hedefleridir; bu canlı demo ortamından alınan ölçümler değildir. Canlı arayüz hızlı yanıt için merkez başına 40 örnek kullanır."
+    footer_text: "Medikal Görüntülemede Mahremiyet Korumalı Federe Öğrenme Platformu",
+    footer_disclaimer: "ARAŞTIRMA PROTOTİPİ: Araştırma amaçlı geliştirilmiş olup klinik tanı ve tedavi kararlarında kullanılamaz. Hastane düğüm adları kamuya açık kıyaslama kohortlarına atıfta bulunur.",
+    footer_bench_note: "Kıyaslama tablosundaki AUC değerleri literatürdeki bağımsız çalışmalara ait referans hedefleridir; bu canlı demo ortamından alınan ölçümler değildir. Canlı arayüz hızlı yanıt için merkez başına 40 örnek kullanır.",
+    footer_egress: "Sıfır Hasta Verisi Çıkışı",
+    footer_he: "RLWE CKKS 128-Bit HE",
+    footer_dp: "Hasta Düzeyinde DP (ε ≤ 2.0)",
   }
 };
