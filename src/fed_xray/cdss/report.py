@@ -581,21 +581,27 @@ def generate_medical_report(
             pdf.set_draw_color(203, 213, 225)
             pdf.rect(15, y_c, 180, 7, "DF")
 
+            # 1. Twin Case Identifier (Dynamic non-overlapping width)
             pdf.set_xy(17, y_c + 1.5)
             pdf.set_font("Arial", "B", 7)
             pdf.set_text_color(14, 165, 233)
             raw_cid = str(case.get("case_id", f"REF-{idx + 1:03d}"))
             clean_cid = _sanitize_for_pdf(raw_cid.split("#")[0])
             lbl_twin = f"Dijital Ikiz {idx + 1}:" if is_tr else f"Twin Case {idx + 1}:"
-            pdf.cell(32, 4, f"{lbl_twin} {clean_cid[:14]}", 0, 0)
+            twin_str = f"{lbl_twin} {clean_cid[:18]}"
+            twin_w = max(44.0, pdf.get_string_width(twin_str) + 4.0)
+            pdf.cell(twin_w, 4, twin_str, 0, 0)
 
+            # 2. Similarity Percentage Badge (Explicit spacing to prevent text collision)
             pdf.set_font("Arial", "B", 7)
             pdf.set_text_color(15, 23, 42)
             sim_val = float(case.get("similarity", 0.0))
             sim_pct = sim_val * 100.0 if sim_val <= 1.0 else sim_val
             lbl_sim = f"Benzerlik: %{sim_pct:.1f}" if is_tr else f"Similarity: {sim_pct:.1f}%"
-            pdf.cell(26, 4, _sanitize_for_pdf(lbl_sim), 0, 0)
+            sim_w = max(26.0, pdf.get_string_width(lbl_sim) + 5.0)
+            pdf.cell(sim_w, 4, _sanitize_for_pdf(lbl_sim), 0, 0)
 
+            # 3. Clinical Reference Note (Constrained cleanly within outer card margin)
             pdf.set_font("Arial", "", 6.8)
             pdf.set_text_color(71, 85, 105)
             finding_note = (
@@ -606,7 +612,16 @@ def generate_medical_report(
             )
             clean_note = _sanitize_for_pdf(finding_note)
             lbl_ref = "Referans Notu: " if is_tr else "Reference Note: "
-            pdf.cell(122, 4, f"{lbl_ref}{clean_note[:85]}", 0, 1)
+
+            curr_x = pdf.get_x()
+            avail_w = max(40.0, 193.0 - curr_x)
+            ref_body = f"{lbl_ref}{clean_note}"
+            if pdf.get_string_width(ref_body) > avail_w:
+                while len(ref_body) > 15 and pdf.get_string_width(ref_body + "...") > avail_w:
+                    ref_body = ref_body[:-1]
+                ref_body = ref_body.rstrip() + "..."
+
+            pdf.cell(avail_w, 4, ref_body, 0, 1)
     else:
         # Honest clinical state: Disclose when no verified digital twins are retrieved
         pdf.set_fill_color(248, 250, 252)  # Slate 50
