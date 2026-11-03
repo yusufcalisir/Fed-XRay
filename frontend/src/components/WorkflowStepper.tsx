@@ -37,10 +37,10 @@ export default function WorkflowStepper({
       num: 2,
       name: t("workflow_step_2"),
       icon: Cpu,
-      isCompleted: isTrained,
+      isCompleted: hasIngested && isTrained,
       isActive: hasIngested && !isTrained,
       isLocked: !hasIngested,
-      statusLabel: isTrained
+      statusLabel: (hasIngested && isTrained)
         ? t("workflow_status_completed")
         : hasIngested
         ? isTraining
@@ -53,12 +53,12 @@ export default function WorkflowStepper({
       num: 3,
       name: t("workflow_step_3"),
       icon: Stethoscope,
-      isCompleted: hasDiagnosis,
-      isActive: isTrained && !hasDiagnosis,
-      isLocked: !isTrained,
-      statusLabel: hasDiagnosis
+      isCompleted: hasIngested && isTrained && hasDiagnosis,
+      isActive: hasIngested && isTrained && !hasDiagnosis,
+      isLocked: !hasIngested || !isTrained,
+      statusLabel: (hasIngested && isTrained && hasDiagnosis)
         ? t("workflow_status_completed")
-        : isTrained
+        : (hasIngested && isTrained)
         ? t("workflow_status_active")
         : t("workflow_status_locked"),
     },
@@ -67,10 +67,10 @@ export default function WorkflowStepper({
       num: 4,
       name: t("workflow_step_4"),
       icon: FileText,
-      isCompleted: hasDiagnosis,
-      isActive: hasDiagnosis,
-      isLocked: !hasDiagnosis,
-      statusLabel: hasDiagnosis ? t("workflow_status_active") : t("workflow_status_locked"),
+      isCompleted: hasIngested && isTrained && hasDiagnosis,
+      isActive: hasIngested && isTrained && hasDiagnosis,
+      isLocked: !hasIngested || !isTrained || !hasDiagnosis,
+      statusLabel: (hasIngested && isTrained && hasDiagnosis) ? t("workflow_status_active") : t("workflow_status_locked"),
     },
   ];
 
@@ -82,9 +82,9 @@ export default function WorkflowStepper({
           {t("workflow_pipeline_title")}
         </div>
         <div className="text-[10px] sm:text-[11px] font-mono text-[var(--text-muted)]">
-          {hasDiagnosis
+          {hasIngested && isTrained && hasDiagnosis
             ? `4 / 4 ${t("workflow_completed_count")}`
-            : isTrained
+            : hasIngested && isTrained
             ? `2 / 4 ${t("workflow_completed_count")}`
             : hasIngested
             ? `1 / 4 ${t("workflow_completed_count")}`

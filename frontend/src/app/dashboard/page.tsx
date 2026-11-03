@@ -66,23 +66,35 @@ export default function DashboardPage() {
     }
   };
 
-  // Pre-load cohorts when backend connection is verified
+  // Load state when backend connection is verified
   useEffect(() => {
     if (isConnected) {
-      fetch(`${apiUrl.replace(/\/$/, "")}/api/state`)
+      fetch(`${apiUrl.replace(/\/+$/, "")}/api/state`)
         .then((res) => (res.ok ? res.json() : null))
         .then((data) => {
-          if (data) {
+          if (data && data.hospitals && Array.isArray(data.hospitals) && data.hospitals.length > 0) {
+            setHospitals(data.hospitals);
             setIsTrained(Boolean(data.model_trained));
-            if (!data.has_test_set || data.hospitals_loaded === 0) {
-              handleGenerateCohorts();
+            if (data.rounds && Array.isArray(data.rounds) && data.rounds.length > 0) {
+              setHistory(data.rounds);
+              setCurrentRound(data.rounds.length);
             }
+            if (data.reference_cases && Array.isArray(data.reference_cases)) {
+              setRagTwins(data.reference_cases);
+            }
+            if (data.model_type) setActiveModel(data.model_type);
+            if (data.peft_mode) setActivePeft(data.peft_mode);
           } else {
-            handleGenerateCohorts();
+            setHospitals([]);
+            setIsTrained(false);
+            setHistory([]);
+            setDiagnosis(null);
+            setRagTwins([]);
           }
         })
         .catch(() => {
-          handleGenerateCohorts();
+          setHospitals([]);
+          setIsTrained(false);
         });
     }
   }, [apiUrl, isConnected]);
@@ -207,13 +219,13 @@ export default function DashboardPage() {
           numHospitals={hospitals.length}
           totalRounds={totalRounds}
           totalSamples={hospitals.reduce((acc, h) => acc + h.num_samples, 0)}
-          isTrained={isTrained}
+          isTrained={hospitals.length > 0 && isTrained}
         />
 
         <LiveHud
           numHospitals={hospitals.length}
           isDefenseActive={true}
-          isTrained={isTrained}
+          isTrained={hospitals.length > 0 && isTrained}
           modelType={activeModel}
           peftMode={activePeft}
         />
