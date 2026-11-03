@@ -2,7 +2,6 @@
 
 import React, { useState } from "react";
 import {
-  ShieldCheck,
   Lock,
   Activity,
   Server,
@@ -41,18 +40,6 @@ const HOSPITAL_NODES: HospitalNode[] = [
     status: "online",
   },
   {
-    id: "node-2",
-    name: "Beth Israel Deaconess Medical Center",
-    location: "Boston, USA",
-    scanner: "GE Revolution Digital Radiography (MIMIC-CXR)",
-    scans: 40,
-    modalityKey: "topo_mod_xray",
-    skewKey: "topo_skew_pneumonia",
-    adapter: "FFA-LoRA (r=8, alpha=16)",
-    dpEpsilon: 1.38,
-    status: "online",
-  },
-  {
     id: "node-3",
     name: "ViDIR Dermatopathology Institute",
     location: "Vienna, AT",
@@ -74,6 +61,18 @@ const HOSPITAL_NODES: HospitalNode[] = [
     skewKey: "topo_skew_nevi",
     adapter: "FFA-LoRA (r=8, alpha=16)",
     dpEpsilon: 1.48,
+    status: "online",
+  },
+  {
+    id: "node-2",
+    name: "Beth Israel Deaconess Medical Center",
+    location: "Boston, USA",
+    scanner: "GE Revolution Digital Radiography (MIMIC-CXR)",
+    scans: 40,
+    modalityKey: "topo_mod_xray",
+    skewKey: "topo_skew_pneumonia",
+    adapter: "FFA-LoRA (r=8, alpha=16)",
+    dpEpsilon: 1.38,
     status: "online",
   },
 ];
@@ -106,10 +105,6 @@ export default function FederatedConsortiumTopology({
   const [isSimulatingRound, setIsSimulatingRound] = useState<boolean>(false);
   const [mouseTilt, setMouseTilt] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
   const [roundNotification, setRoundNotification] = useState<string | null>(null);
-  const [projectedPositions, setProjectedPositions] = useState<{
-    nodes: { id: string; x: number; y: number; topY: number }[];
-    server: { x: number; y: number; topY: number };
-  } | null>(null);
 
   const nodeList = hospitals && hospitals.length > 0 ? hospitals : HOSPITAL_NODES;
   const selectedNode = nodeList.find((n) => n.id === selectedNodeId) || nodeList[0];
@@ -135,17 +130,16 @@ export default function FederatedConsortiumTopology({
   };
 
   return (
-    <div className="relative min-h-[520px] sm:min-h-[540px] lg:h-[570px] flex flex-col justify-between overflow-hidden p-3.5 sm:p-5 select-none rounded-3xl bg-gradient-to-b from-slate-950 via-slate-900 to-slate-950 border border-emerald-500/20 shadow-2xl ring-1 ring-white/5">
-      {/* Top Floating Console Navigation Bar */}
+    <div className="relative min-h-[500px] sm:min-h-[520px] lg:h-[550px] flex flex-col justify-between overflow-hidden p-3.5 sm:p-5 select-none rounded-3xl bg-slate-950/85 border border-emerald-500/20 shadow-2xl backdrop-blur-xl ring-1 ring-white/5">
+      {/* Top Console Navigation Bar */}
       <div className="relative z-30 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 pb-2.5 border-b border-white/10">
         <div className="flex items-center gap-2 min-w-0">
           <div className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse shadow-[0_0_10px_#10b981] shrink-0" />
-          <span className="font-mono text-[11px] sm:text-xs font-bold uppercase tracking-wider text-white">
-            {t("topo_badge_title")}
-          </span>
-          <span className="px-2 py-0.5 rounded-full text-[9px] font-mono font-bold bg-emerald-500/15 text-emerald-300 border border-emerald-500/30 hidden sm:inline-block">
-            3D Spatial Network
-          </span>
+          <div className="min-w-0">
+            <span className="font-mono text-[11px] sm:text-xs font-bold uppercase tracking-wider text-white block truncate">
+              {t("topo_badge_title")}
+            </span>
+          </div>
         </div>
 
         {/* Action Controls & View Switcher */}
@@ -203,12 +197,12 @@ export default function FederatedConsortiumTopology({
         </div>
       </div>
 
-      {/* Main 3D Spatial Stage */}
+      {/* Main Spatial Stage */}
       <div className="relative flex-1 w-full my-2 flex items-center justify-center overflow-hidden">
-        {/* VIEW 1: 3D ISOMETRIC CONSORTIUM (Authentic 3D Hospitals + 3D Central Server) */}
+        {/* VIEW 1: 3D CONSORTIUM (Authentic 3D Hospitals + 3D Central Server) */}
         {activeView === "topology" && (
           <div
-            className="relative w-full h-[400px] sm:h-[420px] flex items-center justify-center overflow-hidden rounded-2xl bg-radial-gradient from-slate-900/40 to-black/80"
+            className="relative w-full h-[370px] sm:h-[400px] flex items-center justify-center overflow-hidden rounded-2xl bg-gradient-to-b from-slate-900/40 via-slate-950/60 to-black/80 border border-white/5"
             onMouseMove={handleMouseMove}
             onMouseLeave={() => setMouseTilt({ x: 0, y: 0 })}
           >
@@ -219,106 +213,19 @@ export default function FederatedConsortiumTopology({
               mouseTilt={mouseTilt}
               onSelectNode={(id) => setSelectedNodeId(id)}
               onSimulationComplete={() => setIsSimulatingRound(false)}
-              onUpdateProjectedPositions={(nodes, server) => {
-                setProjectedPositions({ nodes, server });
-              }}
             />
 
             {/* Notification Toast during consensus round */}
             {roundNotification && (
-              <div className="absolute top-3 left-1/2 -translate-x-1/2 z-30 px-3.5 py-1 rounded-full text-[10px] font-mono font-bold bg-emerald-500/25 text-emerald-300 border border-emerald-500/50 backdrop-blur-md shadow-xl animate-in fade-in flex items-center gap-1.5 whitespace-nowrap">
+              <div className="absolute top-3 left-1/2 -translate-x-1/2 z-30 px-3.5 py-1 rounded-full text-[10px] font-mono font-bold bg-emerald-500/25 text-emerald-300 border border-emerald-500/50 backdrop-blur-md shadow-xl flex items-center gap-1.5 whitespace-nowrap">
                 <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping shrink-0" />
                 <span>{roundNotification}</span>
               </div>
             )}
-
-            {/* Floating Holographic HUD Markers (Not cards - purely floating 3D pills) */}
-            <div className="absolute inset-0 pointer-events-none overflow-hidden">
-              {/* Central Server 3D Marker */}
-              {projectedPositions?.server && (
-                <div
-                  style={{
-                    position: "absolute",
-                    left: `${projectedPositions.server.x}px`,
-                    top: `${projectedPositions.server.topY - 18}px`,
-                    transform: "translate(-50%, -100%)",
-                    transition: "transform 0.08s ease-out",
-                  }}
-                  className="z-20 flex items-center gap-2 px-3 py-1 rounded-full bg-slate-950/90 border border-sky-400/50 text-[10px] sm:text-[11px] font-mono text-white shadow-[0_0_24px_rgba(6,182,212,0.4)] backdrop-blur-xl pointer-events-auto select-none"
-                >
-                  <ShieldCheck className="w-3.5 h-3.5 text-sky-400 shrink-0" />
-                  <span className="font-bold truncate">{t("topo_aggregator_title")}</span>
-                  <span className="px-1.5 py-0.2 rounded bg-sky-500/20 text-sky-300 font-bold border border-sky-500/30 text-[9px]">
-                    CKKS 128-Bit
-                  </span>
-                </div>
-              )}
-
-              {/* 4 Hospital 3D Floating HUD Markers */}
-              {nodeList.map((node) => {
-                const isSelected = selectedNodeId === node.id;
-                const pos = projectedPositions?.nodes.find((p) => p.id === node.id);
-
-                // Fallback positions before canvas projection updates
-                const defaultPosMap: Record<string, { x: string; y: string }> = {
-                  "node-1": { x: "20%", y: "24%" },
-                  "node-3": { x: "80%", y: "24%" },
-                  "node-4": { x: "20%", y: "76%" },
-                  "node-2": { x: "80%", y: "76%" },
-                };
-                const def = defaultPosMap[node.id] || { x: "50%", y: "50%" };
-
-                const style: React.CSSProperties = pos
-                  ? {
-                      position: "absolute",
-                      left: `${pos.x}px`,
-                      top: `${pos.topY - 14}px`,
-                      transform: "translate(-50%, -100%)",
-                      transition: "transform 0.08s ease-out",
-                    }
-                  : {
-                      position: "absolute",
-                      left: def.x,
-                      top: def.y,
-                      transform: "translate(-50%, -50%)",
-                    };
-
-                return (
-                  <button
-                    type="button"
-                    key={node.id}
-                    onClick={() => setSelectedNodeId(node.id)}
-                    style={style}
-                    className={`group pointer-events-auto z-20 flex items-center gap-1.5 px-2.5 py-1 sm:px-3 sm:py-1 rounded-full text-[10px] sm:text-[11px] font-mono transition-all backdrop-blur-xl select-none ${
-                      isSelected
-                        ? "bg-slate-950/95 border border-emerald-400 text-white shadow-[0_0_20px_rgba(16,185,129,0.5)] ring-2 ring-emerald-500/50 scale-105"
-                        : "bg-slate-950/80 hover:bg-slate-950/95 border border-slate-700/60 hover:border-emerald-500/50 text-slate-300 shadow-lg"
-                    }`}
-                  >
-                    <span
-                      className={`w-2 h-2 rounded-full shrink-0 ${
-                        isSelected
-                          ? "bg-emerald-400 shadow-[0_0_8px_#10b981] animate-pulse"
-                          : "bg-emerald-500/70 group-hover:bg-emerald-400"
-                      }`}
-                    />
-                    <span className="font-bold text-white truncate max-w-[90px] sm:max-w-[120px]">
-                      {node.name.split(" ")[0]}
-                    </span>
-                    <span className="text-emerald-400 font-semibold hidden xs:inline">
-                      [{node.location.split(",")[0]}]
-                    </span>
-                    <span className="text-slate-400 font-mono text-[9px] shrink-0">
-                      ε={node.dpEpsilon}
-                    </span>
-                  </button>
-                );
-              })}
-            </div>
           </div>
         )}
 
-        {/* VIEW 2: CRYPTOGRAPHIC ENCLAVE & DP SIMULATOR */}
+        {/* VIEW 2: CRYPTOGRAPHIC ENCLAVE & DP PROTOCOL */}
         {activeView === "crypto" && (
           <div className="w-full h-full flex flex-col justify-between p-4 rounded-2xl bg-slate-900/80 border border-white/10 text-white">
             <div>
