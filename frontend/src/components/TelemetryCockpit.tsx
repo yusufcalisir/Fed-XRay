@@ -115,19 +115,19 @@ export default function TelemetryCockpit({
       ) : (
         <>
           {/* Hyperparameter & Defense Toolbar */}
-          <div className="card p-3 sm:p-3.5 mb-3.5 sm:mb-4 flex flex-col md:flex-row md:items-center justify-between gap-3">
-            <div className="flex flex-col sm:flex-row flex-wrap items-stretch sm:items-center gap-2.5 sm:gap-3 w-full md:w-auto">
+          <div className="card p-3 sm:p-3.5 mb-3.5 sm:mb-4 flex flex-col lg:flex-row lg:items-center justify-between gap-2.5 sm:gap-3">
+            <div className="flex flex-col sm:flex-row flex-wrap items-stretch sm:items-center gap-2.5 sm:gap-3 w-full lg:w-auto">
               {/* Model Architecture Selector */}
-              <div className="flex items-center justify-between sm:justify-start gap-2 bg-[var(--bg-card-inner)] border border-[var(--border-subtle)] px-2.5 py-1.5 rounded-lg text-xs w-full sm:w-auto">
-                <div className="flex items-center gap-2">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1.5 sm:gap-2.5 bg-[var(--bg-card-inner)] border border-[var(--border-subtle)] px-3 py-2 sm:py-1.5 rounded-xl text-xs w-full sm:w-auto">
+                <div className="flex items-center gap-2 shrink-0">
                   <Cpu className="w-3.5 h-3.5 text-blue-500 shrink-0" />
-                  <span className="text-[var(--text-muted)] font-medium">{t("sec2_model_label")}</span>
+                  <span className="text-[var(--text-muted)] font-medium whitespace-nowrap">{t("sec2_model_label")}</span>
                 </div>
                 <select
                   value={modelType}
                   onChange={(e) => setModelType(e.target.value)}
                   disabled={isTraining}
-                  className="bg-transparent text-[var(--text-heading)] font-semibold outline-none cursor-pointer text-xs"
+                  className="bg-transparent text-[var(--text-heading)] font-semibold outline-none cursor-pointer text-xs w-full sm:w-auto text-left sm:text-right pr-1"
                 >
                   <option value="vit_base" className="bg-slate-900 text-slate-100">{t("sec2_model_vit_base")}</option>
                   <option value="vit_tiny" className="bg-slate-900 text-slate-100">{t("sec2_model_vit_tiny")}</option>
@@ -138,16 +138,16 @@ export default function TelemetryCockpit({
               </div>
 
               {/* FL Optimizer Selector */}
-              <div className="flex items-center justify-between sm:justify-start gap-2 bg-[var(--bg-card-inner)] border border-[var(--border-subtle)] px-2.5 py-1.5 rounded-lg text-xs w-full sm:w-auto">
-                <div className="flex items-center gap-2">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1.5 sm:gap-2.5 bg-[var(--bg-card-inner)] border border-[var(--border-subtle)] px-3 py-2 sm:py-1.5 rounded-xl text-xs w-full sm:w-auto">
+                <div className="flex items-center gap-2 shrink-0">
                   <SlidersHorizontal className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
-                  <span className="text-[var(--text-muted)] font-medium">{t("sec2_algo_label")}</span>
+                  <span className="text-[var(--text-muted)] font-medium whitespace-nowrap">{t("sec2_algo_label")}</span>
                 </div>
                 <select
                   value={algorithm}
                   onChange={(e) => setAlgorithm(e.target.value)}
                   disabled={isTraining}
-                  className="bg-transparent text-[var(--text-heading)] font-semibold outline-none cursor-pointer text-xs"
+                  className="bg-transparent text-[var(--text-heading)] font-semibold outline-none cursor-pointer text-xs w-full sm:w-auto text-left sm:text-right pr-1"
                 >
                   <option value="FedDyn" className="bg-slate-900 text-slate-100">FedDyn</option>
                   <option value="FedAvg" className="bg-slate-900 text-slate-100">FedAvg</option>
@@ -158,7 +158,7 @@ export default function TelemetryCockpit({
             </div>
 
             {/* Byzantine Attack Simulation Toggle */}
-            <label className={`flex items-center justify-center sm:justify-start gap-2 px-3 py-1.5 rounded-lg border text-xs font-semibold cursor-pointer select-none transition-all w-full md:w-auto ${
+            <label className={`flex items-center justify-start gap-2.5 px-3 py-2 sm:py-1.5 rounded-xl border text-xs font-semibold cursor-pointer select-none transition-all w-full lg:w-auto ${
               simulateAttack
                 ? "bg-rose-500/10 border-rose-500/30 text-rose-600 dark:text-rose-400 shadow-sm"
                 : "bg-[var(--bg-card-inner)] border-[var(--border-subtle)] text-[var(--text-muted)] hover:text-[var(--text-heading)]"
@@ -168,9 +168,9 @@ export default function TelemetryCockpit({
                 checked={simulateAttack}
                 onChange={(e) => setSimulateAttack(e.target.checked)}
                 disabled={isTraining}
-                className="w-3.5 h-3.5 rounded accent-rose-500 cursor-pointer"
+                className="w-4 h-4 rounded accent-rose-500 cursor-pointer shrink-0"
               />
-              <span className="whitespace-nowrap">{t("sec2_simulate_attack")}</span>
+              <span className="leading-snug">{t("sec2_simulate_attack")}</span>
             </label>
           </div>
 
