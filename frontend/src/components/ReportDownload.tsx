@@ -21,10 +21,18 @@ export default function ReportDownload({
   findings,
   predictedClass,
 }: ReportDownloadProps) {
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
   const { apiUrl } = useApi();
   const effectivePatientId = patientId || "PAT-CDSS-LIVE";
-  const pdfUrl = getPdfReportUrl(apiUrl, diagnosisName, confidence, effectivePatientId, findings, predictedClass);
+  const pdfUrl = getPdfReportUrl(
+    apiUrl,
+    diagnosisName,
+    confidence,
+    effectivePatientId,
+    findings,
+    predictedClass,
+    language.toLowerCase()
+  );
 
   return (
     <div className="card p-3.5 sm:p-5 flex flex-col justify-between">

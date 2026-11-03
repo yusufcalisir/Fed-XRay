@@ -8,7 +8,16 @@ import {
 } from "@/types";
 
 const DIAG_TO_CLASS: Record<string, number> = {
-  Normal: 0, Pneumonia: 1, COVID: 2, "COVID-19": 2,
+  Normal: 0,
+  Pneumonia: 1,
+  COVID: 2,
+  "COVID-19": 2,
+  "Benign Dysplastic Nevus": 0,
+  "Malignant Melanoma": 1,
+  "Basal Cell Carcinoma": 2,
+  "Benign Displastik Nevüs": 0,
+  "Malign Melanom": 1,
+  "Bazal Hücreli Karsinom": 2,
 };
 
 export async function fetchEnclaveHandshake(
@@ -252,7 +261,8 @@ export function getPdfReportUrl(
   confidence: number = 95,
   patientId: string = "PT-EHR-7721",
   findings?: string,
-  predictedClass?: number
+  predictedClass?: number,
+  lang: string = "en"
 ): string {
   const predClass = predictedClass ?? (DIAG_TO_CLASS[diagnosis] ?? 0);
   const reportFindings =
@@ -263,6 +273,7 @@ export function getPdfReportUrl(
     `?patient_id=${encodeURIComponent(patientId)}` +
     `&predicted_class=${predClass}` +
     `&confidence=${confidence.toFixed(1)}` +
-    `&findings=${encodeURIComponent(reportFindings)}`
+    `&findings=${encodeURIComponent(reportFindings)}` +
+    `&lang=${encodeURIComponent(lang || "en")}`
   );
 }

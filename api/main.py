@@ -1606,8 +1606,31 @@ async def download_diagnostic_pdf(
     if state.last_scan is None:
         raise HTTPException(status_code=409, detail="No diagnosed scan is available. Run a diagnosis before exporting a report.")
 
+    actual_pred_class = state.last_predicted_class if state.last_predicted_class is not None else predicted_class
+    actual_patient_id = state.last_patient_id if (state.last_patient_id and patient_id in ("PT-EHR-7721", "PAT-CDSS-LIVE")) else patient_id
+    actual_confidence = (
+        state.last_probabilities[actual_pred_class]
+        if (state.last_probabilities and actual_pred_class < len(state.last_probabilities))
+        else confidence
+    )
+
     active_labels = get_dataset_label_map(state.data_source)
-    p_name = active_labels.get(predicted_class, "Unknown")
+    p_name = active_labels.get(actual_pred_class, "Unknown")
+
+    tr_labels = {
+        "Normal": "Normal Parankim",
+        "Pneumonia": "Pnömoni (Konsolidasyon)",
+        "COVID-19": "COVID-19 (Buzlu Cam)",
+        "Benign Dysplastic Nevus": "Benign Displastik Nevüs",
+        "Malignant Melanoma": "Malign Melanom",
+        "Basal Cell Carcinoma": "Bazal Hücreli Karsinom",
+    }
+    is_tr = (lang or "en").lower().startswith("tr")
+    diag_display = tr_labels.get(p_name, p_name) if is_tr else p_name
+    class_labels = [
+        tr_labels.get(active_labels.get(i, f"Class {i}"), active_labels.get(i, f"Class {i}")) if is_tr else active_labels.get(i, f"Class {i}")
+        for i in range(len(active_labels))
+    ]
 
     similar_cases: List[Dict[str, Any]] = []
     if state.server is not None and state.last_scan is not None:
@@ -1625,9 +1648,9 @@ async def download_diagnostic_pdf(
 
     try:
         pdf_bytes = generate_medical_report(
-            patient_id=patient_id,
-            diagnosis=p_name,
-            confidence=confidence,
+            patient_id=actual_patient_id,
+            diagnosis=diag_display,
+            confidence=actual_confidence,
             explanation=findings,
             heatmap_image=state.last_heatmap,
             original_image=state.last_scan,
@@ -1635,6 +1658,9 @@ async def download_diagnostic_pdf(
             probabilities=state.last_probabilities,
             model_architecture=f"{state.model_type.upper()} ({state.peft_mode.upper() if state.peft_mode else 'Full'})",
             institution_source=f"Strategy E Node ({state.data_source})",
+            class_labels=class_labels,
+            lang=lang,
+            dataset_name=state.data_source,
         )
     except Exception as exc:
         raise HTTPException(status_code=500, detail=f"PDF generation failed: {exc}")
@@ -1642,5 +1668,5 @@ async def download_diagnostic_pdf(
     return Response(
         content=pdf_bytes,
         media_type="application/pdf",
-        headers={"Content-Disposition": f'attachment; filename="FedXRay_Report_{patient_id}.pdf"'},
+        headers={"Content-Disposition": f'attachment; filename="FedXRay_Report_{actual_patient_id}.pdf"'},
     )

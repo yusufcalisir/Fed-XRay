@@ -204,7 +204,7 @@ export default function DashboardPage() {
     }
   };
 
-  const diagName = diagnosis ? diagnosis.predicted_name.split(" ")[0] : "";
+  const fullDiagName = diagnosis ? diagnosis.predicted_name : "";
   const diagConf = diagnosis ? diagnosis.confidence : 0;
 
   return (
@@ -298,9 +298,9 @@ export default function DashboardPage() {
           <div id="section-cdss" className="scroll-mt-20">
             <RagDigitalTwins twins={ragTwins} />
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5 sm:gap-4 mb-5 sm:mb-6">
-              <VoiceAssistant diagnosisName={diagName} confidence={diagConf} />
+              <VoiceAssistant diagnosisName={fullDiagName} confidence={diagConf} />
               <ReportDownload
-                diagnosisName={diagName}
+                diagnosisName={fullDiagName}
                 confidence={diagConf}
                 patientId={diagnosis.patient_id}
                 predictedClass={diagnosis.predicted_class}

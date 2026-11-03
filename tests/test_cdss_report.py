@@ -162,3 +162,58 @@ def test_get_diagnosis_explanation_with_probabilities_and_heatmap():
     assert "covid-19" in exp.lower()
     assert "grad-cam peak relevance" in exp.lower()
     assert "upper-left" in exp.lower()
+
+
+def test_generate_medical_report_isic_dermoscopy():
+    """Verify ISIC dermoscopy reports use genuine pathology and omit chest markers and canned COVID badges."""
+    import re
+    import zlib
+
+    scan = np.random.rand(224, 224).astype(np.float32)
+    heat = np.random.rand(224, 224).astype(np.float32)
+    pdf_bytes = generate_medical_report(
+        patient_id="PAT-ISIC-0099",
+        diagnosis="Basal Cell Carcinoma",
+        confidence=40.0,
+        explanation="Model prediction: Basal Cell Carcinoma (softmax confidence: 40.0%).",
+        original_image=scan,
+        heatmap_image=heat,
+        probabilities=[24.0, 36.0, 40.0],
+        class_labels=["Benign Dysplastic Nevus", "Malignant Melanoma", "Basal Cell Carcinoma"],
+        dataset_name="ISIC_2019",
+        lang="en",
+    )
+    assert isinstance(pdf_bytes, bytes)
+    assert pdf_bytes.startswith(b"%PDF-")
+
+    # Decompress PDF streams to inspect rendered text
+    streams = re.findall(b"stream\r?\n(.*?)\r?\nendstream", pdf_bytes, re.DOTALL)
+    decompressed = b""
+    for s in streams:
+        try:
+            decompressed += zlib.decompress(s)
+        except Exception:
+            decompressed += s
+
+    # Verify no canned COVID-19 fallback badge
+    assert b"COVID-19 (INFECTIOUS)" not in decompressed
+    assert b"BASAL CELL CARCINOMA" in decompressed
+    assert b"Dermoscopy" in decompressed or b"DERMOSCOPY" in decompressed
+
+
+def test_generate_medical_report_turkish_localization():
+    """Verify Turkish localization safely sanitizes non-Latin-1 characters without encoding crashes."""
+    pdf_bytes = generate_medical_report(
+        patient_id="PAT-TR-01",
+        diagnosis="Bazal Hücreli Karsinom",
+        confidence=40.0,
+        explanation="Model tahmini: Bazal Hücreli Karsinom. İkinci olası sınıf: Malign Melanom. Yoğun odak sağ alanda.",
+        probabilities=[24.0, 36.0, 40.0],
+        class_labels=["Benign Displastik Nevüs", "Malign Melanom", "Bazal Hücreli Karsinom"],
+        dataset_name="ISIC_2019",
+        lang="tr",
+    )
+    assert isinstance(pdf_bytes, bytes)
+    assert pdf_bytes.startswith(b"%PDF-")
+    assert len(pdf_bytes) > 2000
+
