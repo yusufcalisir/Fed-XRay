@@ -106,24 +106,25 @@ export default function PresentationLandingPage() {
                 {t("landing_hero_desc")}
               </p>
 
-              <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 mb-8">
+              <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 mb-8">
                 <button
                   type="button"
                   onClick={openLaunchModal}
-                  className="w-full sm:w-auto btn-primary text-sm px-6 py-3 rounded-md flex items-center justify-center gap-2"
+                  className="w-full sm:w-auto h-11 sm:h-12 px-6 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-semibold text-xs sm:text-sm inline-flex items-center justify-center gap-2 shadow-lg shadow-emerald-600/25 border border-emerald-500/30 transition-all duration-150 active:scale-95 cursor-pointer whitespace-nowrap"
                 >
-                  <Activity className="w-4 h-4 shrink-0" />
+                  <Activity className="w-4 h-4 shrink-0 text-emerald-100" />
                   <span>{t("landing_cta_launch")}</span>
-                  <ArrowRight className="w-4 h-4 shrink-0" />
+                  <ArrowRight className="w-4 h-4 shrink-0 text-emerald-200" />
                 </button>
 
                 <button
                   type="button"
                   onClick={() => scrollToSection("results")}
-                  className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-5 py-3 rounded-md border border-[var(--border-card)] text-sm font-semibold text-[var(--text-heading)] hover:bg-[var(--bg-card-inner)] transition-colors"
+                  className="w-full sm:w-auto h-11 sm:h-12 px-6 rounded-xl bg-white/80 dark:bg-slate-900/80 hover:bg-slate-100 dark:hover:bg-slate-800/90 text-[var(--text-heading)] font-semibold text-xs sm:text-sm inline-flex items-center justify-center gap-2 border border-[var(--border-card)] shadow-xs backdrop-blur-md transition-all duration-150 active:scale-95 cursor-pointer whitespace-nowrap group"
                 >
-                  <span>{t("landing_results_title")}</span>
-                  <ArrowRight className="w-4 h-4 text-[var(--text-muted)] shrink-0" />
+                  <Eye className="w-4 h-4 shrink-0 text-[var(--text-muted)] group-hover:text-emerald-500 transition-colors" />
+                  <span>{t("landing_cta_results")}</span>
+                  <ArrowRight className="w-4 h-4 text-[var(--text-muted)] group-hover:translate-x-0.5 transition-all shrink-0" />
                 </button>
               </div>
 
