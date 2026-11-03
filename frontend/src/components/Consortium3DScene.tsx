@@ -3,9 +3,9 @@
 import React, { useRef, useMemo, useState, useEffect, useCallback } from "react";
 import * as THREE from "three";
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
-import { Html, Line, RoundedBox, Edges } from "@react-three/drei";
+import { Html, Line, Edges } from "@react-three/drei";
 
-// Hook to detect dark mode via document element class observer
+// Hook to detect dark mode via document observer
 function useIsDark(): boolean {
   const [isDark, setIsDark] = useState(false);
   useEffect(() => {
@@ -54,7 +54,7 @@ const NODES: HospitalNodeData[] = [
     location: "Barcelona, ES",
     modality: "Dermoscopy",
     dpEpsilon: 1.42,
-    position: [-2.15, 0, -1.05],
+    position: [-2.2, 0, -1.3],
     themeColor: "#10b981",
     accentColor: "#34d399",
   },
@@ -64,7 +64,7 @@ const NODES: HospitalNodeData[] = [
     location: "Vienna, AT",
     modality: "Histopathology",
     dpEpsilon: 1.55,
-    position: [2.15, 0, -1.05],
+    position: [2.2, 0, -1.3],
     themeColor: "#06b6d4",
     accentColor: "#38bdf8",
   },
@@ -74,7 +74,7 @@ const NODES: HospitalNodeData[] = [
     location: "Brisbane, AU",
     modality: "Dermoscopy",
     dpEpsilon: 1.48,
-    position: [-2.15, 0, 1.05],
+    position: [-2.2, 0, 1.3],
     themeColor: "#10b981",
     accentColor: "#34d399",
   },
@@ -84,18 +84,18 @@ const NODES: HospitalNodeData[] = [
     location: "Boston, USA",
     modality: "Chest X-Ray",
     dpEpsilon: 1.38,
-    position: [2.15, 0, 1.05],
+    position: [2.2, 0, 1.3],
     themeColor: "#0284c7",
     accentColor: "#38bdf8",
   },
 ];
 
 // ---------------------------------------------------------------------------
-// Sub-component: Hospital Node Edge Pod
-// Sleek frosted glass / titanium computing block with rotating holographic
-// diamond crystal, precision glowing bevel edges, and high-contrast badge.
+// Sub-component: Hospital Node Computing Tower
+// Dark titanium octagonal server chassis with floating holographic crystal
+// and sleek floating micro-capsule badge (zero clutter, zero overlap).
 // ---------------------------------------------------------------------------
-function HospitalNodePod({
+function HospitalNodeTower({
   node,
   isSelected,
   isDark,
@@ -106,65 +106,62 @@ function HospitalNodePod({
   isDark: boolean;
   onSelect: (id: string) => void;
 }) {
-  const groupRef = useRef<THREE.Group>(null);
   const crystalRef = useRef<THREE.Mesh>(null);
   const ringRef = useRef<THREE.Mesh>(null);
+  const floatGroup = useRef<THREE.Group>(null);
   const [hovered, setHovered] = useState(false);
 
   useFrame(({ clock }) => {
     const t = clock.elapsedTime;
 
-    // Subtle breathing elevation for the pod
-    if (groupRef.current) {
+    // Gentle float oscillation
+    if (floatGroup.current) {
       const lev = isSelected
-        ? Math.sin(t * 3) * 0.08 + 0.16
+        ? Math.sin(t * 3) * 0.05 + 0.1
         : hovered
-          ? 0.1
-          : Math.sin(t * 2 + node.position[0]) * 0.03;
-      groupRef.current.position.y = lev;
+          ? 0.06
+          : Math.sin(t * 2 + node.position[0]) * 0.02;
+      floatGroup.current.position.y = lev;
     }
 
-    // Rotating holographic crystal above the pod
+    // Holographic crystal rotation
     if (crystalRef.current) {
-      crystalRef.current.rotation.y = t * 1.2;
-      crystalRef.current.rotation.x = Math.sin(t * 0.8) * 0.2;
+      crystalRef.current.rotation.y = t * 1.4;
+      crystalRef.current.rotation.x = Math.sin(t * 0.9) * 0.25;
     }
 
-    // Counter-rotating targeting reticle
+    // Slow orbiting beacon ring
     if (ringRef.current) {
-      ringRef.current.rotation.z = -t * 0.6;
+      ringRef.current.rotation.z = -t * 0.8;
+      ringRef.current.rotation.x = Math.PI / 2.3 + Math.sin(t * 0.5) * 0.1;
     }
   });
 
   return (
     <group position={[node.position[0], 0, node.position[2]]}>
-      {/* Ground Concentric Radar Reticle */}
+      {/* Ground Concentric Holographic Radar Reticle */}
       <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.005, 0]}>
-        <ringGeometry args={[0.65, 0.68, 48]} />
-        <meshBasicMaterial
-          color={node.themeColor}
-          transparent
-          opacity={isSelected ? 0.6 : isDark ? 0.25 : 0.35}
-        />
-      </mesh>
-      <mesh
-        ref={ringRef}
-        rotation={[-Math.PI / 2, 0, 0]}
-        position={[0, 0.008, 0]}
-      >
-        <ringGeometry args={[0.48, 0.51, 6]} />
+        <ringGeometry args={[0.55, 0.58, 48]} />
         <meshBasicMaterial
           color={node.themeColor}
           transparent
           opacity={isSelected ? 0.7 : isDark ? 0.3 : 0.4}
         />
       </mesh>
+      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.008, 0]}>
+        <ringGeometry args={[0.38, 0.41, 6]} />
+        <meshBasicMaterial
+          color={node.themeColor}
+          transparent
+          opacity={isSelected ? 0.8 : isDark ? 0.35 : 0.45}
+        />
+      </mesh>
 
-      {/* Floating Interactive Computing Pod Group */}
-      <group ref={groupRef}>
-        {/* Main Computing Pod Chassis */}
+      {/* Floating Interactive Computing Assembly */}
+      <group ref={floatGroup}>
+        {/* Octagonal Polished Titanium / Dark Glass Server Chassis */}
         <mesh
-          position={[0, 0.35, 0]}
+          position={[0, 0.28, 0]}
           onClick={(e) => {
             e.stopPropagation();
             onSelect(node.id);
@@ -181,98 +178,92 @@ function HospitalNodePod({
           castShadow
           receiveShadow
         >
-          <RoundedBox args={[0.74, 0.7, 0.74]} radius={0.08} smoothness={4}>
-            <meshPhysicalMaterial
-              color={isDark ? "#0f172a" : "#ffffff"}
-              metalness={isDark ? 0.6 : 0.15}
-              roughness={isDark ? 0.25 : 0.35}
-              clearcoat={0.7}
-              clearcoatRoughness={0.2}
-              transmission={isDark ? 0.3 : 0.6}
-              opacity={isDark ? 0.95 : 0.92}
-              transparent
-              reflectivity={0.9}
-            />
-            {/* Luminous Neon Edges */}
-            <Edges
-              scale={1.002}
-              threshold={15}
-              color={isSelected ? "#ffffff" : node.themeColor}
-            />
-          </RoundedBox>
-        </mesh>
-
-        {/* Laser Emitter Beam to Crystal */}
-        <mesh position={[0, 0.75, 0]}>
-          <cylinderGeometry args={[0.008, 0.008, 0.12, 8]} />
-          <meshBasicMaterial
-            color={node.themeColor}
-            transparent
-            opacity={0.8}
+          <cylinderGeometry args={[0.42, 0.46, 0.52, 8]} />
+          <meshPhysicalMaterial
+            color={isDark ? "#090d16" : "#1e293b"}
+            metalness={0.88}
+            roughness={0.18}
+            clearcoat={0.9}
+            clearcoatRoughness={0.15}
+            reflectivity={0.95}
+          />
+          {/* Luminous Precision Edges */}
+          <Edges
+            scale={1.002}
+            threshold={15}
+            color={isSelected ? "#ffffff" : node.themeColor}
           />
         </mesh>
 
-        {/* Holographic Floating Crystal (Octahedron) */}
-        <mesh ref={crystalRef} position={[0, 0.92, 0]}>
-          <octahedronGeometry args={[0.13, 0]} />
+        {/* Luminous Chassis Collar Ring */}
+        <mesh position={[0, 0.54, 0]}>
+          <cylinderGeometry args={[0.32, 0.34, 0.04, 8]} />
+          <meshBasicMaterial color={node.themeColor} />
+        </mesh>
+
+        {/* Floating Holographic Crystal (Octahedron) */}
+        <mesh ref={crystalRef} position={[0, 0.78, 0]}>
+          <octahedronGeometry args={[0.14, 0]} />
           <meshPhysicalMaterial
             color={node.accentColor}
             emissive={node.themeColor}
-            emissiveIntensity={isSelected ? 0.8 : 0.4}
-            roughness={0.1}
+            emissiveIntensity={isSelected ? 1.0 : 0.6}
+            roughness={0.05}
             metalness={0.2}
             clearcoat={1}
             transparent
-            opacity={0.85}
+            opacity={0.9}
           />
           <Edges scale={1.02} color="#ffffff" threshold={1} />
         </mesh>
 
+        {/* Orbiting Laser Halo */}
+        <mesh ref={ringRef} position={[0, 0.78, 0]}>
+          <torusGeometry args={[0.24, 0.008, 8, 32]} />
+          <meshBasicMaterial
+            color={node.themeColor}
+            transparent
+            opacity={0.65}
+          />
+        </mesh>
+
         {/* Local Soft Glow Light */}
         <pointLight
-          position={[0, 0.92, 0]}
+          position={[0, 0.78, 0]}
           color={node.themeColor}
-          intensity={isSelected ? 3.5 : 1.2}
-          distance={2.2}
+          intensity={isSelected ? 3.0 : 1.2}
+          distance={2.5}
           decay={2}
         />
-      </group>
 
-      {/* High-Contrast Floating Metadata Badge */}
-      <Html
-        position={[0, 0.02, 0.72]}
-        center
-        distanceFactor={7.5}
-        zIndexRange={[10, 0]}
-        style={{ pointerEvents: "none", userSelect: "none" }}
-      >
-        <div
-          style={{
-            fontFamily: "'JetBrains Mono', monospace",
-            whiteSpace: "nowrap",
-            padding: "4px 8px",
-            borderRadius: "8px",
-            background: isDark
-              ? "rgba(15, 23, 42, 0.88)"
-              : "rgba(255, 255, 255, 0.92)",
-            border: isDark
-              ? `1px solid ${isSelected ? node.themeColor : "rgba(51, 65, 85, 0.7)"}`
-              : `1px solid ${isSelected ? node.themeColor : "rgba(226, 232, 240, 0.95)"}`,
-            boxShadow: isDark
-              ? "0 4px 16px rgba(0, 0, 0, 0.55)"
-              : "0 4px 12px rgba(15, 23, 42, 0.08)",
-            backdropFilter: "blur(8px)",
-            textAlign: "center",
-            transform: "translateY(0)",
-            transition: "all 0.2s ease",
-          }}
+        {/* Sleek Ultra-Compact Floating Micro-Capsule (Crowned Above Node) */}
+        <Html
+          position={[0, 1.15, 0]}
+          center
+          distanceFactor={7}
+          zIndexRange={[10, 0]}
+          style={{ pointerEvents: "none", userSelect: "none" }}
         >
           <div
             style={{
               display: "flex",
               alignItems: "center",
-              justifyContent: "center",
               gap: "5px",
+              padding: "3px 8px",
+              borderRadius: "9999px",
+              background: isDark
+                ? "rgba(10, 15, 29, 0.88)"
+                : "rgba(15, 23, 42, 0.92)",
+              border: `1px solid ${isSelected ? "#ffffff" : isDark ? "rgba(71, 85, 105, 0.6)" : "rgba(51, 65, 85, 0.8)"}`,
+              boxShadow: isDark
+                ? "0 4px 16px rgba(0, 0, 0, 0.7)"
+                : "0 4px 14px rgba(15, 23, 42, 0.35)",
+              backdropFilter: "blur(8px)",
+              fontFamily: "'JetBrains Mono', monospace",
+              whiteSpace: "nowrap",
+              color: "#ffffff",
+              fontSize: "10px",
+              lineHeight: 1,
             }}
           >
             <span
@@ -283,89 +274,65 @@ function HospitalNodePod({
                 backgroundColor: node.themeColor,
                 boxShadow: `0 0 6px ${node.themeColor}`,
                 display: "inline-block",
+                flexShrink: 0,
               }}
             />
-            <span
-              style={{
-                fontSize: "10.5px",
-                fontWeight: 700,
-                color: isDark ? "#f8fafc" : "#0f172a",
-                letterSpacing: "0.4px",
-              }}
-            >
+            <span style={{ fontWeight: 700, letterSpacing: "0.3px" }}>
               {node.shortName}
             </span>
+            <span style={{ color: "#64748b", fontSize: "9px" }}>·</span>
+            <span
+              style={{
+                color: "#34d399",
+                fontWeight: 600,
+                fontSize: "9px",
+              }}
+            >
+              ε={node.dpEpsilon}
+            </span>
           </div>
-
-          <div
-            style={{
-              fontSize: "8px",
-              color: isDark ? "#94a3b8" : "#475569",
-              marginTop: "2px",
-              fontFamily: "'Inter', sans-serif",
-            }}
-          >
-            {node.location} · {node.modality}
-          </div>
-
-          <div
-            style={{
-              fontSize: "8.5px",
-              fontWeight: 700,
-              color: node.themeColor,
-              marginTop: "2px",
-              letterSpacing: "0.3px",
-            }}
-          >
-            ε = {node.dpEpsilon}
-          </div>
-        </div>
-      </Html>
+        </Html>
+      </group>
     </group>
   );
 }
 
 // ---------------------------------------------------------------------------
-// Sub-component: Central Consortium Aggregator
-// Architectural server pedestal with precision gyroscope rings, glowing
-// icosahedral RLWE CKKS encryption core, and floating status badge.
+// Sub-component: Central Consortium Aggregator Hyper-Core
+// Multi-axis gyroscope rings, pulsating icosahedral encryption core,
+// and ground-anchored status capsule (never overlaps nodes).
 // ---------------------------------------------------------------------------
 function CentralConsortiumCore({ isDark }: { isDark: boolean }) {
   const gyroRing1Ref = useRef<THREE.Mesh>(null);
   const gyroRing2Ref = useRef<THREE.Mesh>(null);
-  const gyroRing3Ref = useRef<THREE.Mesh>(null);
   const coreRef = useRef<THREE.Mesh>(null);
-  const columnRef = useRef<THREE.Mesh>(null);
+  const forcefieldRef = useRef<THREE.Mesh>(null);
 
   useFrame(({ clock }) => {
     const t = clock.elapsedTime;
 
     // Multi-axis gyroscope rotation
     if (gyroRing1Ref.current) {
-      gyroRing1Ref.current.rotation.x = t * 0.7;
-      gyroRing1Ref.current.rotation.y = t * 0.4;
+      gyroRing1Ref.current.rotation.x = t * 0.75;
+      gyroRing1Ref.current.rotation.y = t * 0.45;
     }
     if (gyroRing2Ref.current) {
-      gyroRing2Ref.current.rotation.y = -t * 0.85;
-      gyroRing2Ref.current.rotation.z = t * 0.5;
-    }
-    if (gyroRing3Ref.current) {
-      gyroRing3Ref.current.rotation.x = -t * 0.5;
-      gyroRing3Ref.current.rotation.z = -t * 0.75;
+      gyroRing2Ref.current.rotation.y = -t * 0.9;
+      gyroRing2Ref.current.rotation.z = t * 0.55;
     }
 
-    // Cryptographic core pulsating breath
+    // Cryptographic core pulsating rotation
     if (coreRef.current) {
       coreRef.current.rotation.y = t * 0.6;
-      coreRef.current.rotation.x = Math.sin(t * 0.8) * 0.3;
-      const s = 1 + Math.sin(t * 3.5) * 0.12;
+      coreRef.current.rotation.x = Math.sin(t * 0.8) * 0.25;
+      const s = 1 + Math.sin(t * 3.5) * 0.1;
       coreRef.current.scale.set(s, s, s);
     }
 
-    // Vertical containment energy pulse
-    if (columnRef.current) {
-      const mat = columnRef.current.material as THREE.MeshBasicMaterial;
-      mat.opacity = 0.08 + Math.sin(t * 2.5) * 0.04;
+    // Translucent containment forcefield
+    if (forcefieldRef.current) {
+      const mat = forcefieldRef.current.material as THREE.MeshBasicMaterial;
+      mat.opacity = 0.07 + Math.sin(t * 2.2) * 0.03;
     }
   });
 
@@ -373,71 +340,67 @@ function CentralConsortiumCore({ isDark }: { isDark: boolean }) {
     <group position={[0, 0, 0]}>
       {/* Ground Concentric Energy Pad */}
       <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.005, 0]}>
-        <circleGeometry args={[1.5, 48]} />
+        <circleGeometry args={[1.3, 48]} />
         <meshBasicMaterial
           color="#10b981"
           transparent
-          opacity={isDark ? 0.08 : 0.05}
+          opacity={isDark ? 0.09 : 0.06}
         />
       </mesh>
       <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.008, 0]}>
-        <ringGeometry args={[1.1, 1.13, 64]} />
+        <ringGeometry args={[0.95, 0.98, 64]} />
         <meshBasicMaterial
           color="#10b981"
           transparent
-          opacity={isDark ? 0.3 : 0.4}
+          opacity={isDark ? 0.35 : 0.45}
         />
       </mesh>
 
-      {/* Cybernetic Server Base Pedestal */}
+      {/* Octagonal Cyber-Pedestal */}
       <mesh position={[0, 0.12, 0]} castShadow receiveShadow>
-        <RoundedBox args={[1.4, 0.24, 1.4]} radius={0.06} smoothness={4}>
-          <meshPhysicalMaterial
-            color={isDark ? "#090d16" : "#ffffff"}
-            metalness={isDark ? 0.7 : 0.2}
-            roughness={isDark ? 0.3 : 0.4}
-            clearcoat={0.6}
-            transparent
-            opacity={0.96}
-          />
-          <Edges scale={1.002} threshold={15} color="#10b981" />
-        </RoundedBox>
+        <cylinderGeometry args={[0.7, 0.78, 0.24, 8]} />
+        <meshPhysicalMaterial
+          color={isDark ? "#090d16" : "#0f172a"}
+          metalness={0.9}
+          roughness={0.2}
+          clearcoat={0.8}
+        />
+        <Edges scale={1.002} threshold={15} color="#10b981" />
       </mesh>
 
-      {/* Server Column Core */}
-      <mesh position={[0, 0.52, 0]} castShadow receiveShadow>
-        <RoundedBox args={[0.76, 0.56, 0.76]} radius={0.05} smoothness={4}>
-          <meshPhysicalMaterial
-            color={isDark ? "#0f172a" : "#f8fafc"}
-            metalness={isDark ? 0.8 : 0.25}
-            roughness={0.3}
-            clearcoat={0.7}
-          />
-          <Edges scale={1.002} threshold={15} color="#06b6d4" />
-        </RoundedBox>
+      {/* Secondary Pedestal Column */}
+      <mesh position={[0, 0.36, 0]} castShadow receiveShadow>
+        <cylinderGeometry args={[0.42, 0.46, 0.24, 8]} />
+        <meshPhysicalMaterial
+          color={isDark ? "#0f172a" : "#1e293b"}
+          metalness={0.85}
+          roughness={0.25}
+          clearcoat={0.7}
+        />
+        <Edges scale={1.002} threshold={15} color="#06b6d4" />
       </mesh>
 
-      {/* Cylindrical Containment Field */}
-      <mesh ref={columnRef} position={[0, 1.35, 0]}>
-        <cylinderGeometry args={[0.55, 0.55, 1.1, 32, 1, true]} />
+      {/* Forcefield Containment Cylinder */}
+      <mesh ref={forcefieldRef} position={[0, 1.05, 0]}>
+        <cylinderGeometry args={[0.48, 0.48, 0.9, 32, 1, true]} />
         <meshBasicMaterial
           color="#10b981"
           transparent
-          opacity={0.1}
+          opacity={0.08}
           side={THREE.DoubleSide}
         />
       </mesh>
 
-      {/* Cryptographic Quantum Enclave Core (Y = 1.35) */}
-      <group position={[0, 1.35, 0]}>
+      {/* Suspended Cryptographic Quantum Core Assembly (Y = 1.05) */}
+      <group position={[0, 1.05, 0]}>
         {/* Core Icosahedron */}
         <mesh ref={coreRef}>
-          <icosahedronGeometry args={[0.22, 0]} />
+          <icosahedronGeometry args={[0.2, 0]} />
           <meshPhysicalMaterial
             color="#34d399"
             emissive="#10b981"
-            emissiveIntensity={0.9}
-            roughness={0.1}
+            emissiveIntensity={0.85}
+            roughness={0.08}
             metalness={0.1}
             clearcoat={1}
             transparent
@@ -448,117 +411,97 @@ function CentralConsortiumCore({ isDark }: { isDark: boolean }) {
 
         {/* Gyroscope Orbit Ring 1 (Emerald) */}
         <mesh ref={gyroRing1Ref}>
-          <torusGeometry args={[0.46, 0.012, 12, 64]} />
+          <torusGeometry args={[0.38, 0.01, 12, 64]} />
           <meshPhysicalMaterial
             color="#10b981"
             emissive="#10b981"
-            emissiveIntensity={0.6}
-            metalness={0.8}
-            roughness={0.2}
+            emissiveIntensity={0.7}
+            metalness={0.9}
+            roughness={0.15}
           />
         </mesh>
 
         {/* Gyroscope Orbit Ring 2 (Cyan) */}
         <mesh ref={gyroRing2Ref}>
-          <torusGeometry args={[0.38, 0.01, 12, 64]} />
+          <torusGeometry args={[0.3, 0.009, 12, 64]} />
           <meshPhysicalMaterial
             color="#06b6d4"
             emissive="#06b6d4"
-            emissiveIntensity={0.6}
-            metalness={0.8}
-            roughness={0.2}
+            emissiveIntensity={0.7}
+            metalness={0.9}
+            roughness={0.15}
           />
         </mesh>
 
-        {/* Gyroscope Orbit Ring 3 (Sky) */}
-        <mesh ref={gyroRing3Ref}>
-          <torusGeometry args={[0.3, 0.008, 12, 64]} />
-          <meshPhysicalMaterial
-            color="#38bdf8"
-            emissive="#38bdf8"
-            emissiveIntensity={0.6}
-            metalness={0.8}
-            roughness={0.2}
-          />
-        </mesh>
-
-        {/* Central Luminous Point Light */}
+        {/* Core Point Light */}
         <pointLight
           color="#10b981"
-          intensity={5}
-          distance={4.5}
+          intensity={4.5}
+          distance={4.0}
           decay={2}
         />
       </group>
 
-      {/* High-Contrast Central Aggregator Badge */}
+      {/* Ground-Anchored Minimalist Status Capsule (Positioned in front, zero overlap) */}
       <Html
-        position={[0, 0.02, 1.05]}
+        position={[0, 0.02, 0.75]}
         center
-        distanceFactor={7.5}
+        distanceFactor={7}
         zIndexRange={[10, 0]}
         style={{ pointerEvents: "none", userSelect: "none" }}
       >
         <div
           style={{
+            display: "flex",
+            alignItems: "center",
+            gap: "6px",
+            padding: "4px 10px",
+            borderRadius: "9999px",
+            background: isDark
+              ? "rgba(10, 15, 29, 0.9)"
+              : "rgba(15, 23, 42, 0.94)",
+            border: "1px solid rgba(16, 185, 129, 0.5)",
+            boxShadow: isDark
+              ? "0 4px 18px rgba(0, 0, 0, 0.75)"
+              : "0 4px 16px rgba(15, 23, 42, 0.4)",
+            backdropFilter: "blur(10px)",
             fontFamily: "'JetBrains Mono', monospace",
             whiteSpace: "nowrap",
-            padding: "5px 12px",
-            borderRadius: "10px",
-            background: isDark
-              ? "rgba(15, 23, 42, 0.92)"
-              : "rgba(255, 255, 255, 0.94)",
-            border: isDark
-              ? "1px solid rgba(16, 185, 129, 0.4)"
-              : "1px solid rgba(16, 185, 129, 0.5)",
-            boxShadow: isDark
-              ? "0 4px 20px rgba(0, 0, 0, 0.65)"
-              : "0 4px 14px rgba(15, 23, 42, 0.1)",
-            backdropFilter: "blur(10px)",
-            textAlign: "center",
+            color: "#ffffff",
+            fontSize: "10.5px",
+            lineHeight: 1,
           }}
         >
-          <div
+          <span
             style={{
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              gap: "6px",
+              width: "7px",
+              height: "7px",
+              borderRadius: "50%",
+              backgroundColor: "#10b981",
+              boxShadow: "0 0 8px #10b981",
+              display: "inline-block",
+              flexShrink: 0,
+            }}
+          />
+          <span
+            style={{
+              fontWeight: 800,
+              letterSpacing: "0.5px",
+              color: "#34d399",
             }}
           >
-            <span
-              style={{
-                width: "7px",
-                height: "7px",
-                borderRadius: "50%",
-                backgroundColor: "#10b981",
-                boxShadow: "0 0 8px #10b981",
-                display: "inline-block",
-              }}
-            />
-            <span
-              style={{
-                fontSize: "11px",
-                fontWeight: 800,
-                color: isDark ? "#f8fafc" : "#0f172a",
-                letterSpacing: "0.6px",
-              }}
-            >
-              CONSORTIUM AGGREGATOR
-            </span>
-          </div>
-
-          <div
+            CONSORTIUM AGGREGATOR
+          </span>
+          <span style={{ color: "#64748b", fontSize: "9px" }}>·</span>
+          <span
             style={{
-              fontSize: "8.5px",
+              color: "#94a3b8",
               fontWeight: 600,
-              color: isDark ? "#94a3b8" : "#475569",
-              marginTop: "2px",
-              letterSpacing: "0.2px",
+              fontSize: "9px",
             }}
           >
-            RLWE CKKS 128-Bit · Zero Plaintext
-          </div>
+            CKKS 128b
+          </span>
         </div>
       </Html>
     </group>
@@ -583,7 +526,7 @@ function HighSpeedPhoton({
   const progress = useRef(offset);
 
   useFrame((_, delta) => {
-    progress.current = (progress.current + delta * 0.28 * speedMul) % 1;
+    progress.current = (progress.current + delta * 0.32 * speedMul) % 1;
     const pt = curve.getPoint(progress.current);
     if (meshRef.current) {
       meshRef.current.position.copy(pt);
@@ -592,7 +535,7 @@ function HighSpeedPhoton({
 
   return (
     <mesh ref={meshRef}>
-      <sphereGeometry args={[0.035, 12, 12]} />
+      <sphereGeometry args={[0.032, 10, 10]} />
       <meshBasicMaterial color={color} />
     </mesh>
   );
@@ -615,15 +558,15 @@ function FiberConduit({
   idx: number;
 }) {
   const { curve, points } = useMemo(() => {
-    const start = new THREE.Vector3(nodePos[0], 0.92, nodePos[2]);
-    const end = new THREE.Vector3(0, 1.35, 0);
-    const midX = (start.x + end.x) / 2 + (idx % 2 === 0 ? -0.25 : 0.25);
-    const midY = Math.max(start.y, end.y) + 0.6;
+    const start = new THREE.Vector3(nodePos[0], 0.78, nodePos[2]);
+    const end = new THREE.Vector3(0, 1.05, 0);
+    const midX = (start.x + end.x) / 2 + (idx % 2 === 0 ? -0.2 : 0.2);
+    const midY = Math.max(start.y, end.y) + 0.45;
     const midZ = (start.z + end.z) / 2;
     const mid = new THREE.Vector3(midX, midY, midZ);
     const c = new THREE.QuadraticBezierCurve3(start, mid, end);
     const pts = c
-      .getPoints(36)
+      .getPoints(32)
       .map((p) => [p.x, p.y, p.z] as [number, number, number]);
     return { curve: c, points: pts };
   }, [nodePos, idx]);
@@ -632,13 +575,13 @@ function FiberConduit({
 
   return (
     <group>
-      {/* Sleek Fiber Line */}
+      {/* Sleek Laser Fiber Line */}
       <Line
         points={points}
         color={color}
-        lineWidth={1.5}
+        lineWidth={1.4}
         transparent
-        opacity={isSelected ? 0.6 : 0.25}
+        opacity={isSelected ? 0.7 : 0.3}
       />
 
       {/* 3 Streamlined Micro-Photons per Conduit */}
@@ -683,7 +626,7 @@ function ConsensusShockwaveRipple({
 
   useFrame((_, delta) => {
     if (!runningRef.current) return;
-    progressRef.current += delta * 0.9;
+    progressRef.current += delta * 0.95;
 
     if (progressRef.current >= 1) {
       runningRef.current = false;
@@ -694,15 +637,15 @@ function ConsensusShockwaveRipple({
     }
 
     const p = progressRef.current;
-    const s = 1 + p * 12;
+    const s = 1 + p * 11;
     const alpha = (1 - p) * 0.6;
 
     if (outerRef.current) {
       outerRef.current.scale.set(s, s, 1);
       (outerRef.current.material as THREE.MeshBasicMaterial).opacity = alpha;
     }
-    if (innerRef.current && p > 0.06) {
-      const s2 = 1 + (p - 0.06) * 12;
+    if (innerRef.current && p > 0.05) {
+      const s2 = 1 + (p - 0.05) * 11;
       innerRef.current.scale.set(s2, s2, 1);
       (innerRef.current.material as THREE.MeshBasicMaterial).opacity =
         alpha * 0.7;
@@ -717,7 +660,7 @@ function ConsensusShockwaveRipple({
         position={[0, 0.015, 0]}
         visible={false}
       >
-        <ringGeometry args={[0.3, 0.35, 64]} />
+        <ringGeometry args={[0.28, 0.32, 64]} />
         <meshBasicMaterial
           color="#10b981"
           transparent
@@ -731,7 +674,7 @@ function ConsensusShockwaveRipple({
         position={[0, 0.015, 0]}
         visible={false}
       >
-        <ringGeometry args={[0.22, 0.27, 64]} />
+        <ringGeometry args={[0.2, 0.24, 64]} />
         <meshBasicMaterial
           color="#06b6d4"
           transparent
@@ -744,7 +687,7 @@ function ConsensusShockwaveRipple({
 }
 
 // ---------------------------------------------------------------------------
-// Scene Root: Lighting, Parallax, and Geometry Composition
+// Scene Root: Studio Lighting, Parallax, and Geometry Composition
 // ---------------------------------------------------------------------------
 function SceneRoot({
   isSimulatingRound = false,
@@ -761,8 +704,8 @@ function SceneRoot({
     tilt.current.x += (mouseTilt.x - tilt.current.x) * 0.06;
     tilt.current.y += (mouseTilt.y - tilt.current.y) * 0.06;
     if (sceneRef.current) {
-      sceneRef.current.rotation.y = tilt.current.x * 0.16;
-      sceneRef.current.rotation.x = tilt.current.y * 0.08;
+      sceneRef.current.rotation.y = tilt.current.x * 0.14;
+      sceneRef.current.rotation.x = tilt.current.y * 0.07;
     }
   });
 
@@ -779,10 +722,10 @@ function SceneRoot({
   return (
     <>
       {/* Studio Lighting Rig */}
-      <ambientLight intensity={isDark ? 0.35 : 0.8} />
+      <ambientLight intensity={isDark ? 0.45 : 0.9} />
       <directionalLight
         position={[5, 8, 5]}
-        intensity={isDark ? 2.2 : 2.6}
+        intensity={isDark ? 2.2 : 2.5}
         color="#ffffff"
         castShadow
       />
@@ -792,23 +735,23 @@ function SceneRoot({
         color="#bae6fd"
       />
       <pointLight
-        position={[0, 4, 0]}
+        position={[0, 3.5, 0]}
         intensity={isDark ? 2.5 : 1.2}
         color="#10b981"
-        distance={10}
+        distance={8}
         decay={2}
       />
 
       {/* Global Parallax Group */}
       <group ref={sceneRef}>
-        {/* Subtle Cybernetic Floor Reticle */}
-        {[1.8, 3.2, 4.6].map((rad, i) => (
+        {/* Subtle Cybernetic Floor Reticle Rings */}
+        {[1.6, 2.8, 4.0].map((rad, i) => (
           <mesh
             key={i}
             rotation={[-Math.PI / 2, 0, 0]}
             position={[0, 0.002, 0]}
           >
-            <ringGeometry args={[rad - 0.008, rad, 64]} />
+            <ringGeometry args={[rad - 0.006, rad, 64]} />
             <meshBasicMaterial
               color={isDark ? "#334155" : "#cbd5e1"}
               transparent
@@ -817,9 +760,9 @@ function SceneRoot({
           </mesh>
         ))}
 
-        {/* 4 Hospital Institutional Computing Pods */}
+        {/* 4 Hospital Institutional Computing Towers */}
         {NODES.map((n) => (
-          <HospitalNodePod
+          <HospitalNodeTower
             key={n.id}
             node={n}
             isSelected={selectedNodeId === n.id}
@@ -855,8 +798,8 @@ function SceneRoot({
 
 // ---------------------------------------------------------------------------
 // Sub-component: Responsive Camera Controller
-// Dynamically adjusts camera distance and elevation based on viewport aspect
-// ratio, ensuring full visibility of all nodes and badges on mobile viewports.
+// High-angle architectural isometric perspective (~50° tilt) that clearly
+// separates the top, center, and bottom nodes without vertical overlap.
 // ---------------------------------------------------------------------------
 function ResponsiveCameraRig() {
   const { camera, size } = useThree();
@@ -864,20 +807,20 @@ function ResponsiveCameraRig() {
   useFrame(() => {
     if (camera instanceof THREE.PerspectiveCamera) {
       const aspect = size.width / Math.max(size.height, 1);
-      // When aspect is narrow (e.g. mobile portrait < 1.45), pull camera back
-      // proportionally to keep the entire network comfortably contained.
-      const baseDistance = 5.8;
+      // High-angle isometric camera distance
+      const baseDistance = 6.2;
       const targetDistance =
-        aspect < 1.4
-          ? baseDistance * (1.4 / Math.max(aspect, 0.55))
+        aspect < 1.35
+          ? baseDistance * (1.35 / Math.max(aspect, 0.6))
           : baseDistance;
 
-      const targetY = targetDistance * 0.72;
-      const targetZ = targetDistance * 0.95;
+      // Camera position: Elevated isometric (~50 degree pitch)
+      const targetY = targetDistance * 0.85;
+      const targetZ = targetDistance * 0.75;
 
       camera.position.y += (targetY - camera.position.y) * 0.08;
       camera.position.z += (targetZ - camera.position.z) * 0.08;
-      camera.lookAt(0, 0.4, 0);
+      camera.lookAt(0, 0.25, 0);
       camera.updateProjectionMatrix();
     }
   });
@@ -893,7 +836,7 @@ export default function Consortium3DScene(props: Consortium3DSceneProps) {
     <Canvas
       className="w-full h-full"
       dpr={[1, 2]}
-      camera={{ position: [0, 5.2, 6.2], fov: 38 }}
+      camera={{ position: [0, 5.8, 5.0], fov: 36 }}
       gl={{
         antialias: true,
         alpha: true,
@@ -901,9 +844,9 @@ export default function Consortium3DScene(props: Consortium3DSceneProps) {
         toneMapping: THREE.ACESFilmicToneMapping,
       }}
       onCreated={({ gl, camera, scene }) => {
-        gl.toneMappingExposure = 1.1;
+        gl.toneMappingExposure = 1.15;
         gl.setClearColor(0x000000, 0);
-        camera.lookAt(0, 0.45, 0);
+        camera.lookAt(0, 0.25, 0);
         scene.background = null;
         gl.domElement.addEventListener(
           "webglcontextlost",
