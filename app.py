@@ -8,14 +8,18 @@ and automated medical report synthesis.
 Run with: streamlit run app.py
 """
 
-import streamlit as st
+from __future__ import annotations
+import copy
+from pathlib import Path
+import time
+from typing import Any, Dict, Optional
+
 import numpy as np
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
+import streamlit as st
 import torch
-import time
-import copy
-from pathlib import Path
+from PIL import Image
 
 # Local module imports
 from utils.medical_data import (
@@ -50,52 +54,57 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-def init_session_state():
+
+def init_session_state() -> None:
     """Initialize state variables for persistence across reruns."""
-    if 'app_lang' not in st.session_state:
-        st.session_state.app_lang = "EN"
-    if 'model_trained' not in st.session_state:
-        st.session_state.model_trained = False
-    if 'global_model' not in st.session_state:
-        st.session_state.global_model = None
-    if 'trained_weights' not in st.session_state:
-        st.session_state.trained_weights = None
-    if 'training_history' not in st.session_state:
-        st.session_state.training_history = {
-            'loss': [], 'accuracy': [], 'round': [],
-            'precision': [], 'recall': [], 'f1_score': [],
-            'test_accuracy': [], 'test_loss': [],
+    defaults: Dict[str, Any] = {
+        'app_lang': "EN",
+        'model_trained': False,
+        'global_model': None,
+        'trained_weights': None,
+        'training_history': {
+            'loss': [],
+            'accuracy': [],
+            'round': [],
+            'precision': [],
+            'recall': [],
+            'f1_score': [],
+            'test_accuracy': [],
+            'test_loss': [],
             'blocked_count': 0
-        }
-    if 'hospital_data_generated' not in st.session_state:
-        st.session_state.hospital_data_generated = False
-    if 'hospital_samples' not in st.session_state:
-        st.session_state.hospital_samples = {}
-    if 'dataloaders' not in st.session_state:
-        st.session_state.dataloaders = None
-    if 'global_test_set' not in st.session_state:
-        st.session_state.global_test_set = None
-    if 'reference_records' not in st.session_state:
-        st.session_state.reference_records = None
-    if 'data_source' not in st.session_state:
-        st.session_state.data_source = None
-    if 'scan_probs' not in st.session_state:
-        st.session_state.scan_probs = None
-    if 'confusion_matrix' not in st.session_state:
-        st.session_state.confusion_matrix = None
-    if 'case_bank' not in st.session_state:
-        st.session_state.case_bank = None
-    if 'xai_opacity' not in st.session_state:
-        st.session_state.xai_opacity = 0.55
-    if 'xai_colormap' not in st.session_state:
-        st.session_state.xai_colormap = "Hot"
+        },
+        'hospital_data_generated': False,
+        'hospital_samples': {},
+        'dataloaders': None,
+        'global_test_set': None,
+        'reference_records': None,
+        'data_source': None,
+        'scan_probs': None,
+        'confusion_matrix': None,
+        'case_bank': None,
+        'xai_opacity': 0.55,
+        'xai_colormap': "Hot",
+        'scan_image': None,
+        'scan_true_label': 0,
+        'scan_heatmap': None,
+        'scan_overlay': None,
+        'scan_predicted': 0,
+        'scan_confidence': 0.0,
+        'similar_cases': None,
+        'selected_scan_name': "Case PAT-MIMIC-001 (Pneumonia)",
+        'active_uploader_key': 0,
+    }
+    for key, val in defaults.items():
+        if key not in st.session_state:
+            st.session_state[key] = val
+
 
 init_session_state()
 lang = st.session_state.app_lang
 
 
 # ============================================================================
-# MASTER DESIGN SYSTEM CSS (THEME-ADAPTIVE & RESPONSIVE)
+# MASTER DESIGN SYSTEM CSS (THEME-ADAPTIVE & RESPONSIVE CLINICAL SAAS)
 # ============================================================================
 
 st.markdown("""
@@ -103,25 +112,38 @@ st.markdown("""
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600&display=swap');
 
     :root {
-        --font-main: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-        --font-display: 'Outfit', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-        --font-mono: 'JetBrains Mono', monospace;
-        --brand-blue: #2563EB;
-        --brand-cyan: #0EA5E9;
-        --brand-indigo: #6366F1;
-        --status-emerald: #10B981;
-        --status-amber: #F59E0B;
-        --status-crimson: #EF4444;
-        --card-border-light: rgba(226, 232, 240, 0.9);
-        --card-border-dark: rgba(255, 255, 255, 0.08);
+        --fed-font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        --fed-font-display: 'Outfit', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        --fed-font-mono: 'JetBrains Mono', monospace;
+        --fed-brand-blue: #0284C7;
+        --fed-brand-cyan: #0EA5E9;
+        --fed-brand-indigo: #6366F1;
+        --fed-status-emerald: #10B981;
+        --fed-status-amber: #F59E0B;
+        --fed-status-crimson: #EF4444;
+        --fed-card-bg: rgba(30, 41, 59, 0.72);
+        --fed-card-bg-subtle: rgba(15, 23, 42, 0.65);
+        --fed-card-border: rgba(148, 163, 184, 0.16);
+        --fed-card-border-glow: rgba(56, 189, 248, 0.35);
+        --fed-text-main: #F8FAFC;
+        --fed-text-muted: #94A3B8;
+        --fed-radius-md: 14px;
+        --fed-radius-lg: 18px;
     }
 
-    /* Global Typography & Font Family Enforcement */
-    html, body, [class*="css"], .stMarkdown, p, div, span, label, li {
-        font-family: var(--font-main) !important;
+    /* Streamlit Main Container Alignment */
+    .stApp {
+        font-family: var(--fed-font-sans);
     }
+    .block-container {
+        max-width: 1440px !important;
+        padding-top: 1.5rem !important;
+        padding-bottom: 3.5rem !important;
+    }
+
+    /* Headings Style */
     h1, h2, h3, h4, h5, h6 {
-        font-family: var(--font-display) !important;
+        font-family: var(--fed-font-display) !important;
         letter-spacing: -0.02em;
     }
 
@@ -130,92 +152,73 @@ st.markdown("""
         display: flex;
         align-items: center;
         justify-content: space-between;
-        padding: 0.75rem 1.25rem;
-        background: var(--secondary-background-color, #1E293B);
-        border: 1px solid var(--card-border-dark);
-        border-radius: 16px;
+        padding: 0.85rem 1.4rem;
+        background: var(--fed-card-bg);
+        border: 1px solid var(--fed-card-border);
+        border-radius: var(--fed-radius-lg);
         margin-bottom: 1.5rem;
-        backdrop-filter: blur(12px);
-        -webkit-backdrop-filter: blur(12px);
-        box-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.15);
+        backdrop-filter: blur(14px);
+        -webkit-backdrop-filter: blur(14px);
+        box-shadow: 0 4px 20px -3px rgba(0, 0, 0, 0.25);
     }
 
     .top-nav-brand {
         display: flex;
         align-items: center;
-        gap: 0.85rem;
+        gap: 0.9rem;
     }
 
     .brand-logo-ring {
-        width: 36px;
-        height: 36px;
-        border-radius: 10px;
-        background: linear-gradient(135deg, rgba(37, 99, 235, 0.2) 0%, rgba(14, 165, 233, 0.2) 100%);
-        border: 1px solid rgba(14, 165, 233, 0.4);
+        width: 40px;
+        height: 40px;
+        border-radius: 12px;
+        background: linear-gradient(135deg, rgba(2, 132, 199, 0.25) 0%, rgba(14, 165, 233, 0.25) 100%);
+        border: 1px solid rgba(14, 165, 233, 0.45);
         display: flex;
         align-items: center;
         justify-content: center;
+        box-shadow: 0 2px 10px rgba(14, 165, 233, 0.2);
     }
 
     .brand-title {
-        font-size: 1.1rem;
+        font-size: 1.15rem;
         font-weight: 800;
-        font-family: var(--font-display);
+        font-family: var(--fed-font-display);
         letter-spacing: -0.01em;
         line-height: 1.2;
+        color: var(--fed-text-main);
     }
 
     .brand-version {
         font-size: 0.65rem;
         font-weight: 700;
-        padding: 2px 6px;
+        padding: 2px 7px;
         border-radius: 6px;
-        background: rgba(37, 99, 235, 0.15);
-        color: #60A5FA;
-        border: 1px solid rgba(37, 99, 235, 0.3);
-        margin-left: 0.35rem;
+        background: rgba(2, 132, 199, 0.18);
+        color: #38BDF8;
+        border: 1px solid rgba(56, 189, 248, 0.35);
+        margin-left: 0.4rem;
         vertical-align: middle;
     }
 
     .brand-sub {
         font-size: 0.78rem;
-        color: #94A3B8;
+        color: var(--fed-text-muted);
         font-weight: 400;
-    }
-
-    /* Segmented Language Radio Buttons */
-    div[data-testid="stRadio"] > div {
-        display: flex !important;
-        flex-direction: row !important;
-        align-items: center !important;
-        gap: 0.25rem !important;
-        background: rgba(0, 0, 0, 0.25) !important;
-        padding: 4px !important;
-        border-radius: 10px !important;
-        border: 1px solid rgba(255, 255, 255, 0.08) !important;
-    }
-
-    div[data-testid="stRadio"] label {
-        padding: 4px 12px !important;
-        border-radius: 8px !important;
-        font-size: 0.8rem !important;
-        font-weight: 600 !important;
-        cursor: pointer !important;
-        margin: 0 !important;
     }
 
     /* Modern Hero Container */
     .hero-container {
         position: relative;
         text-align: center;
-        padding: 2.75rem 1.5rem 2.25rem 1.5rem;
-        background: var(--secondary-background-color, #1E293B);
+        padding: 2.25rem 1.5rem 1.75rem 1.5rem;
+        background: var(--fed-card-bg);
         backdrop-filter: blur(16px);
         -webkit-backdrop-filter: blur(16px);
         border-radius: 20px;
-        margin-bottom: 1.75rem;
-        border: 1px solid var(--card-border-dark);
-        box-shadow: 0 10px 30px -5px rgba(0, 0, 0, 0.2);
+        margin-bottom: 1.5rem;
+        border: 1px solid var(--fed-card-border);
+        box-shadow: 0 10px 30px -5px rgba(0, 0, 0, 0.25);
         overflow: hidden;
     }
 
@@ -227,59 +230,59 @@ st.markdown("""
         transform: translateX(-50%);
         width: 140%;
         height: 140%;
-        background: radial-gradient(circle, rgba(37, 99, 235, 0.12) 0%, rgba(14, 165, 233, 0.04) 40%, transparent 70%);
+        background: radial-gradient(circle, rgba(2, 132, 199, 0.15) 0%, rgba(14, 165, 233, 0.05) 40%, transparent 70%);
         pointer-events: none;
     }
 
-    .hero-badge {
+    .hero-badge-strip {
         display: inline-flex;
         align-items: center;
-        gap: 0.5rem;
-        background: linear-gradient(135deg, rgba(37, 99, 235, 0.12) 0%, rgba(14, 165, 233, 0.12) 100%);
-        color: #38BDF8 !important;
+        gap: 0.6rem;
+        background: rgba(2, 132, 199, 0.12);
+        color: #38BDF8;
         border: 1px solid rgba(56, 189, 248, 0.3);
         padding: 0.35rem 1rem;
         border-radius: 9999px;
-        font-size: 0.8rem;
+        font-size: 0.75rem;
         font-weight: 600;
-        margin-bottom: 1rem;
-        letter-spacing: 0.03em;
+        margin-bottom: 0.85rem;
+        letter-spacing: 0.04em;
         text-transform: uppercase;
     }
 
     .hero-title {
-        font-size: clamp(2rem, 4vw, 3.2rem) !important;
+        font-size: clamp(1.8rem, 3.6vw, 2.8rem) !important;
         font-weight: 900 !important;
         letter-spacing: -0.03em !important;
-        background: linear-gradient(135deg, #F8FAFC 0%, #93C5FD 50%, #60A5FA 100%);
+        background: linear-gradient(135deg, #F8FAFC 0%, #BAE6FD 50%, #38BDF8 100%);
         -webkit-background-clip: text;
         -webkit-text-fill-color: transparent;
-        margin-bottom: 0.75rem !important;
+        margin-bottom: 0.5rem !important;
         line-height: 1.15 !important;
     }
 
     .hero-subtitle {
-        font-size: clamp(0.95rem, 1.8vw, 1.15rem) !important;
-        color: #94A3B8 !important;
-        max-width: 740px;
+        font-size: clamp(0.9rem, 1.6vw, 1.05rem) !important;
+        color: var(--fed-text-muted) !important;
+        max-width: 760px;
         margin: 0 auto !important;
-        line-height: 1.6 !important;
+        line-height: 1.55 !important;
         font-weight: 400;
     }
 
-    /* Live Clinical Status HUD */
+    /* Live Clinical HUD */
     .live-hud {
         display: flex;
         flex-wrap: wrap;
         align-items: center;
         justify-content: space-between;
-        background: var(--secondary-background-color, #1E293B);
-        padding: 0.85rem 1.25rem;
-        border-radius: 14px;
-        margin-bottom: 1.75rem;
-        border: 1px solid var(--card-border-dark);
-        box-shadow: 0 4px 15px -3px rgba(0, 0, 0, 0.15);
-        gap: 1rem;
+        background: var(--fed-card-bg);
+        padding: 0.85rem 1.4rem;
+        border-radius: var(--fed-radius-md);
+        margin-bottom: 1.5rem;
+        border: 1px solid var(--fed-card-border);
+        box-shadow: 0 4px 15px -3px rgba(0, 0, 0, 0.18);
+        gap: 0.85rem;
     }
 
     .hud-item {
@@ -288,20 +291,20 @@ st.markdown("""
         gap: 0.5rem;
         font-size: 0.82rem;
         font-weight: 500;
-        color: #CBD5E1;
+        color: var(--fed-text-muted);
     }
 
     .hud-item strong {
-        color: #F8FAFC;
+        color: var(--fed-text-main);
     }
 
     .hud-pulse-dot {
-        width: 8px;
-        height: 8px;
+        width: 9px;
+        height: 9px;
         border-radius: 50%;
-        background-color: #10B981;
-        box-shadow: 0 0 10px #10B981;
-        animation: pulseAnimation 2s infinite;
+        background-color: var(--fed-status-emerald);
+        box-shadow: 0 0 10px var(--fed-status-emerald);
+        animation: pulseAnimation 2s infinite ease-in-out;
     }
 
     @keyframes pulseAnimation {
@@ -315,15 +318,15 @@ st.markdown("""
         display: grid;
         grid-template-columns: repeat(4, 1fr);
         gap: 1rem;
-        margin-bottom: 2rem;
+        margin-bottom: 1.75rem;
     }
 
     .metric-card {
-        background: var(--secondary-background-color, #1E293B);
-        padding: 1.25rem 1.5rem;
-        border-radius: 16px;
-        border: 1px solid var(--card-border-dark);
-        box-shadow: 0 4px 12px -2px rgba(0, 0, 0, 0.12);
+        background: var(--fed-card-bg);
+        padding: 1.15rem 1.35rem;
+        border-radius: var(--fed-radius-md);
+        border: 1px solid var(--fed-card-border);
+        box-shadow: 0 4px 12px -2px rgba(0, 0, 0, 0.15);
         display: flex;
         flex-direction: column;
         justify-content: space-between;
@@ -332,32 +335,32 @@ st.markdown("""
 
     .metric-card:hover {
         transform: translateY(-2px);
-        border-color: rgba(56, 189, 248, 0.4);
-        box-shadow: 0 8px 20px -4px rgba(0, 0, 0, 0.2);
+        border-color: var(--fed-card-border-glow);
+        box-shadow: 0 8px 22px -4px rgba(0, 0, 0, 0.25);
     }
 
     .metric-card h3 {
-        font-size: 0.78rem !important;
+        font-size: 0.75rem !important;
         font-weight: 600 !important;
-        color: #94A3B8 !important;
+        color: var(--fed-text-muted) !important;
         margin: 0 !important;
         text-transform: uppercase;
         letter-spacing: 0.06em;
     }
 
     .metric-card .value {
-        font-size: 2rem !important;
+        font-size: 1.85rem !important;
         font-weight: 800 !important;
-        font-family: var(--font-display) !important;
-        margin-top: 0.5rem;
-        line-height: 1;
-        color: #F8FAFC;
+        font-family: var(--fed-font-display) !important;
+        margin-top: 0.35rem;
+        line-height: 1.1;
+        color: var(--fed-text-main);
     }
 
     .metric-card .caption {
-        font-size: 0.75rem;
+        font-size: 0.73rem;
         color: #64748B;
-        margin-top: 0.4rem;
+        margin-top: 0.3rem;
         font-weight: 500;
     }
 
@@ -366,24 +369,24 @@ st.markdown("""
         display: flex;
         align-items: center;
         gap: 0.85rem;
-        padding: 1rem 1.25rem;
-        background: var(--secondary-background-color, #1E293B);
-        border: 1px solid var(--card-border-dark);
-        border-radius: 14px;
-        margin: 2.5rem 0 1.25rem 0;
+        padding: 0.9rem 1.25rem;
+        background: var(--fed-card-bg);
+        border: 1px solid var(--fed-card-border);
+        border-radius: var(--fed-radius-md);
+        margin: 2rem 0 1.25rem 0;
         box-shadow: 0 4px 15px -3px rgba(0, 0, 0, 0.15);
     }
 
     .section-badge-num {
-        width: 32px;
-        height: 32px;
-        border-radius: 8px;
-        background: linear-gradient(135deg, rgba(37, 99, 235, 0.25) 0%, rgba(14, 165, 233, 0.25) 100%);
-        border: 1px solid rgba(56, 189, 248, 0.35);
+        width: 34px;
+        height: 34px;
+        border-radius: 9px;
+        background: linear-gradient(135deg, rgba(2, 132, 199, 0.3) 0%, rgba(14, 165, 233, 0.3) 100%);
+        border: 1px solid rgba(56, 189, 248, 0.4);
         color: #38BDF8;
         font-weight: 800;
-        font-family: var(--font-display);
-        font-size: 0.9rem;
+        font-family: var(--fed-font-display);
+        font-size: 0.92rem;
         display: flex;
         align-items: center;
         justify-content: center;
@@ -391,49 +394,40 @@ st.markdown("""
     }
 
     .modern-section-header h2 {
-        font-size: 1.15rem !important;
+        font-size: 1.12rem !important;
         font-weight: 700 !important;
         margin: 0 !important;
-        color: #F8FAFC !important;
+        color: var(--fed-text-main) !important;
     }
 
     .modern-section-header p {
-        color: #94A3B8 !important;
-        font-size: 0.8rem !important;
+        color: var(--fed-text-muted) !important;
+        font-size: 0.78rem !important;
         margin: 0.15rem 0 0 0 !important;
     }
 
     /* Surface Cards & Containers */
     .glass-panel {
-        background: var(--secondary-background-color, #1E293B);
-        border: 1px solid var(--card-border-dark);
-        border-radius: 16px;
+        background: var(--fed-card-bg);
+        border: 1px solid var(--fed-card-border);
+        border-radius: var(--fed-radius-md);
         padding: 1.25rem;
-        box-shadow: 0 4px 12px -2px rgba(0, 0, 0, 0.1);
+        box-shadow: 0 4px 14px -2px rgba(0, 0, 0, 0.15);
         margin-bottom: 1.25rem;
     }
 
     .hospital-card {
-        background: var(--secondary-background-color, #1E293B);
-        border: 1px solid var(--card-border-dark);
-        border-radius: 14px;
+        background: var(--fed-card-bg);
+        border: 1px solid var(--fed-card-border);
+        border-radius: var(--fed-radius-md);
         padding: 1.1rem;
         margin-bottom: 1rem;
     }
 
-    /* Saliency & Radiological Inspector */
-    .xray-frame {
-        border-radius: 12px;
-        overflow: hidden;
-        border: 1px solid var(--card-border-dark);
-        box-shadow: 0 4px 12px -2px rgba(0, 0, 0, 0.2);
-        background: #000;
-    }
-
     /* Diagnostic Outcome Cards */
     .diag-banner {
-        padding: 1.25rem 1.5rem;
-        border-radius: 16px;
+        padding: 1.15rem 1.4rem;
+        border-radius: var(--fed-radius-md);
         margin: 1.25rem 0;
         display: flex;
         align-items: center;
@@ -462,23 +456,23 @@ st.markdown("""
 
     /* Action Buttons Custom Styling */
     .stButton > button {
-        background: linear-gradient(135deg, #2563EB 0%, #1D4ED8 100%) !important;
+        background: linear-gradient(135deg, #0284C7 0%, #0369A1 100%) !important;
         color: white !important;
-        border: 1px solid rgba(255, 255, 255, 0.12) !important;
+        border: 1px solid rgba(255, 255, 255, 0.15) !important;
         border-radius: 10px !important;
-        padding: 0.6rem 1.5rem !important;
+        padding: 0.6rem 1.4rem !important;
         font-weight: 600 !important;
-        font-size: 0.9rem !important;
+        font-size: 0.88rem !important;
         letter-spacing: 0.01em !important;
         transition: all 0.2s ease !important;
-        box-shadow: 0 4px 14px rgba(37, 99, 235, 0.3) !important;
+        box-shadow: 0 4px 14px rgba(2, 132, 199, 0.28) !important;
         width: 100% !important;
     }
 
     .stButton > button:hover {
         transform: translateY(-1px) !important;
-        box-shadow: 0 6px 18px rgba(37, 99, 235, 0.45) !important;
-        border-color: rgba(255, 255, 255, 0.25) !important;
+        box-shadow: 0 6px 18px rgba(2, 132, 199, 0.42) !important;
+        border-color: rgba(255, 255, 255, 0.28) !important;
     }
 
     .stButton > button:active {
@@ -489,9 +483,9 @@ st.markdown("""
     .stDownloadButton > button {
         background: linear-gradient(135deg, #059669 0%, #047857 100%) !important;
         color: white !important;
-        border: 1px solid rgba(255, 255, 255, 0.12) !important;
+        border: 1px solid rgba(255, 255, 255, 0.15) !important;
         border-radius: 10px !important;
-        padding: 0.6rem 1.5rem !important;
+        padding: 0.65rem 1.4rem !important;
         font-weight: 600 !important;
         font-size: 0.9rem !important;
         transition: all 0.2s ease !important;
@@ -504,42 +498,102 @@ st.markdown("""
         box-shadow: 0 6px 18px rgba(5, 150, 105, 0.45) !important;
     }
 
-    /* Sidebar Aesthetics */
-    [data-testid="stSidebar"] {
-        border-right: 1px solid var(--card-border-dark) !important;
+    /* Foolproof File Uploader Fix (Eliminating text overlap and collision) */
+    div[data-testid="stFileUploader"] {
+        background: var(--fed-card-bg-subtle);
+        border: 1.5px dashed rgba(56, 189, 248, 0.35);
+        border-radius: var(--fed-radius-md);
+        padding: 1.1rem 1.4rem;
+        transition: border-color 0.2s ease, background 0.2s ease;
+        margin-top: 0.4rem;
+        margin-bottom: 0.8rem;
     }
 
-    [data-testid="stSidebar"] .stSlider label, [data-testid="stSidebar"] .stCheckbox label {
-        font-size: 0.85rem !important;
-        font-weight: 500 !important;
+    div[data-testid="stFileUploader"]:hover {
+        border-color: rgba(56, 189, 248, 0.7);
+        background: rgba(15, 23, 42, 0.85);
+    }
+
+    div[data-testid="stFileUploaderDropzone"] {
+        border: none !important;
+        background: transparent !important;
+        padding: 0.25rem 0 !important;
+        display: flex !important;
+        flex-direction: row !important;
+        align-items: center !important;
+        justify-content: space-between !important;
+        gap: 1.25rem !important;
+        flex-wrap: wrap !important;
+    }
+
+    div[data-testid="stFileUploaderDropzone"] [data-testid="stBaseButton-secondary"] {
+        background: linear-gradient(135deg, #0284C7 0%, #0369A1 100%) !important;
+        color: #FFFFFF !important;
+        border: 1px solid rgba(255, 255, 255, 0.15) !important;
+        border-radius: 9px !important;
+        padding: 0.52rem 1.3rem !important;
+        font-weight: 600 !important;
+        font-size: 0.86rem !important;
+        box-shadow: 0 4px 12px rgba(2, 132, 199, 0.28) !important;
+        width: auto !important;
+        min-width: 120px !important;
+        white-space: nowrap !important;
+    }
+
+    div[data-testid="stFileUploaderDropzoneInstructions"] {
+        color: var(--fed-text-muted) !important;
+        font-size: 0.82rem !important;
+        flex: 1 1 auto !important;
+        text-align: left !important;
+    }
+
+    /* Segmented Language Radio Buttons */
+    div[data-testid="stRadio"] > div {
+        display: flex !important;
+        flex-direction: row !important;
+        align-items: center !important;
+        gap: 0.35rem !important;
+        background: rgba(15, 23, 42, 0.65) !important;
+        padding: 4px !important;
+        border-radius: 10px !important;
+        border: 1px solid var(--fed-card-border) !important;
+    }
+
+    div[data-testid="stRadio"] label {
+        padding: 4px 12px !important;
+        border-radius: 7px !important;
+        font-size: 0.82rem !important;
+        font-weight: 600 !important;
+        cursor: pointer !important;
+        margin: 0 !important;
     }
 
     /* Streamlit Tabs Navigation */
     button[data-baseweb="tab"] {
         border-radius: 8px !important;
-        padding: 8px 16px !important;
+        padding: 8px 18px !important;
         font-weight: 600 !important;
-        font-size: 0.85rem !important;
+        font-size: 0.88rem !important;
+    }
+
+    /* Sidebar Aesthetics */
+    [data-testid="stSidebar"] {
+        border-right: 1px solid var(--fed-card-border) !important;
     }
 
     /* Responsive Viewport Rules */
     @media (max-width: 767px) {
         .top-nav-bar { flex-direction: column; align-items: flex-start; gap: 0.75rem; }
-        .hero-container { padding: 2rem 1rem !important; margin-bottom: 1.25rem !important; }
-        .hero-title { font-size: 1.8rem !important; }
-        .hero-subtitle { font-size: 0.88rem !important; }
+        .hero-container { padding: 1.75rem 1rem !important; }
+        .hero-title { font-size: 1.7rem !important; }
         .metrics-grid { grid-template-columns: repeat(2, 1fr) !important; gap: 0.75rem !important; }
-        .metric-card { padding: 1rem !important; }
-        .metric-card .value { font-size: 1.5rem !important; }
+        .metric-card { padding: 0.9rem !important; }
+        .metric-card .value { font-size: 1.45rem !important; }
         .live-hud { flex-direction: column; align-items: flex-start; gap: 0.5rem; }
     }
 
     @media (min-width: 768px) and (max-width: 1023px) {
-        .metrics-grid { grid-template-columns: repeat(2, 1fr) !important; gap: 1rem !important; }
-    }
-
-    @media (min-width: 1440px) {
-        .block-container { max-width: 1400px !important; margin: 0 auto !important; }
+        .metrics-grid { grid-template-columns: repeat(2, 1fr) !important; }
     }
 
     /* Clean Streamlit Watermarks */
@@ -558,7 +612,7 @@ with col_brand_nav:
     st.markdown("""
     <div class="top-nav-brand">
         <div class="brand-logo-ring">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#0EA5E9" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#38BDF8" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
                 <path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>
             </svg>
         </div>
@@ -591,13 +645,13 @@ lang = st.session_state.app_lang
 
 with st.sidebar:
     st.markdown(f"""
-    <div style="text-align: center; padding: 0.75rem 0 1.25rem 0;">
-        <div style="display: inline-flex; align-items: center; justify-content: center; width: 48px; height: 48px; border-radius: 12px; background: rgba(37,99,235,0.15); border: 1px solid rgba(56,189,248,0.3); margin-bottom: 0.5rem;">
-            <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#38BDF8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <div style="text-align: center; padding: 0.5rem 0 1.25rem 0;">
+        <div style="display: inline-flex; align-items: center; justify-content: center; width: 44px; height: 44px; border-radius: 12px; background: rgba(2,132,199,0.18); border: 1px solid rgba(56,189,248,0.35); margin-bottom: 0.5rem;">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#38BDF8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                 <path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"/>
             </svg>
         </div>
-        <h2 style="font-size: 1.25rem; font-weight: 800; margin: 0; color: #F8FAFC !important;">{get_text('app_title', lang)}</h2>
+        <h2 style="font-size: 1.2rem; font-weight: 800; margin: 0; color: #F8FAFC !important;">{get_text('app_title', lang)}</h2>
         <p style="font-size: 0.75rem; color: #94A3B8 !important; margin: 0.2rem 0 0 0;">{get_text('sidebar_tagline', lang)}</p>
     </div>
     """, unsafe_allow_html=True)
@@ -678,10 +732,9 @@ with st.sidebar:
 # MAIN HERO SECTION & LIVE CLINICAL HUD
 # ============================================================================
 
-# Hero Container
 st.markdown(f"""
 <div class="hero-container">
-    <div class="hero-badge">
+    <div class="hero-badge-strip">
         <span>STRATEGY E BENCHMARK</span> &bull; <span>PATIENT-LEVEL DP</span> &bull; <span>CKKS HOMOMORPHIC</span>
     </div>
     <h1 class="hero-title">{get_text('hero_title', lang)}</h1>
@@ -710,7 +763,7 @@ st.markdown(f"""
 </div>
 """, unsafe_allow_html=True)
 
-# Quick KPI Metrics Grid
+# Responsive KPI Metrics Grid
 total_cohort_samples = n_hospitals * samples_per_hospital
 
 st.markdown(f"""
@@ -753,7 +806,6 @@ st.markdown(f"""
 </div>
 """, unsafe_allow_html=True)
 
-
 col_source, col_scenario = st.columns([1.2, 1])
 
 with col_source:
@@ -790,7 +842,11 @@ with col_gen_btn:
 
 with col_gen_info:
     if getattr(st.session_state, "data_source", None):
-        st.markdown(f"**Current Cohort:** `{st.session_state.data_source}`")
+        st.markdown(f"""
+        <div style="padding: 0.5rem 0.8rem; background: rgba(2,132,199,0.12); border: 1px solid rgba(56,189,248,0.25); border-radius: 8px; font-size: 0.82rem; color: #38BDF8;">
+            Active Cohort: <strong>{st.session_state.data_source}</strong>
+        </div>
+        """, unsafe_allow_html=True)
 
 if btn_generate:
     st.session_state.case_bank = None
@@ -861,7 +917,7 @@ if btn_generate:
             st.session_state.hospital_data_generated = True
             st.session_state.data_source = "Strategy E Real-World Benchmark (224x224)"
 
-        st.success(f"✅ Ingested {len(records)} clinical records across {n_hospitals} institutions. Patient-level isolated.")
+        st.success(f"Ingested {len(records)} clinical records across {n_hospitals} institutions. Patient-level isolated.")
         st.rerun()
     else:
         with st.spinner("Generating clinical in silico benchmark cohort (224x224 ViT-compatible)..."):
@@ -901,7 +957,7 @@ if btn_generate:
             st.session_state.hospital_data_generated = True
             st.session_state.data_source = "Clinical In Silico Benchmark (224x224 Resolution)"
 
-        st.info("ℹ️ Ingested high-resolution 224x224 clinical benchmark cohort. ViT tokenization (196 patches) fully supported.")
+        st.info("Ingested high-resolution 224x224 clinical benchmark cohort. ViT tokenization (196 patches) fully supported.")
         st.rerun()
 
 # Display hospital data
@@ -937,7 +993,7 @@ if st.session_state.hospital_data_generated and st.session_state.hospital_sample
             </div>
             """, unsafe_allow_html=True)
 
-            col_chart, col_gallery = st.columns([1, 1.5])
+            col_chart, col_gallery = st.columns([1, 1.4])
 
             with col_chart:
                 dist = data['distribution']
@@ -954,7 +1010,7 @@ if st.session_state.hospital_data_generated and st.session_state.hospital_sample
                     marker=dict(colors=palette, line=dict(color='rgba(15, 23, 42, 0.8)', width=2)),
                     hole=0.62,
                     textinfo='percent',
-                    textfont=dict(size=14, color='white', family="Inter"),
+                    textfont=dict(size=13, color='white', family="Inter"),
                     hoverinfo='label+percent+value'
                 )])
 
@@ -962,18 +1018,18 @@ if st.session_state.hospital_data_generated and st.session_state.hospital_sample
                     annotations=[dict(
                         text=f"{samples_per_hospital}<br>SCANS",
                         x=0.5, y=0.5,
-                        font_size=14,
+                        font_size=13,
                         showarrow=False,
                         font_family="Outfit",
                         font_color="#F8FAFC"
                     )],
-                    height=280,
+                    height=270,
                     margin=dict(l=10, r=10, t=10, b=10),
                     showlegend=True,
                     legend=dict(
                         orientation="h",
                         yanchor="bottom",
-                        y=-0.25,
+                        y=-0.22,
                         xanchor="center",
                         x=0.5,
                         font=dict(color="#94A3B8", family="Inter", size=11)
@@ -1003,7 +1059,7 @@ if st.session_state.hospital_data_generated and st.session_state.hospital_sample
                         row=r, col=c
                     )
 
-                fig_grid.update_layout(height=340, margin=dict(l=5, r=5, t=30, b=5))
+                fig_grid.update_layout(height=320, margin=dict(l=5, r=5, t=25, b=5))
                 for i in range(1, 10):
                     fig_grid.update_xaxes(showticklabels=False, showgrid=False, row=(i-1)//3+1, col=(i-1)%3+1)
                     fig_grid.update_yaxes(showticklabels=False, showgrid=False, row=(i-1)//3+1, col=(i-1)%3+1)
@@ -1190,7 +1246,7 @@ if btn_start_fl and st.session_state.hospital_data_generated:
     progress_placeholder.empty()
     st.rerun()
 
-# Display persistent telemetry charts if already trained
+# Display persistent telemetry charts and evaluation scorecard if already trained
 elif st.session_state.training_history['round']:
     with chart_placeholder.container():
         col_t1, col_t2 = st.columns(2)
@@ -1204,7 +1260,7 @@ elif st.session_state.training_history['round']:
             ))
             fig_loss.update_layout(
                 title=f"{get_text('sec2_loss', lang)}",
-                height=260,
+                height=250,
                 margin=dict(l=30, r=20, t=40, b=30),
                 paper_bgcolor='rgba(0,0,0,0)',
                 plot_bgcolor='rgba(0,0,0,0)',
@@ -1223,7 +1279,7 @@ elif st.session_state.training_history['round']:
             ))
             fig_acc.update_layout(
                 title=f"{get_text('sec2_acc', lang)} (%)",
-                height=260,
+                height=250,
                 margin=dict(l=30, r=20, t=40, b=30),
                 yaxis_range=[0, 100],
                 paper_bgcolor='rgba(0,0,0,0)',
@@ -1233,6 +1289,37 @@ elif st.session_state.training_history['round']:
                 yaxis=dict(gridcolor='rgba(148, 163, 184, 0.15)')
             )
             st.plotly_chart(fig_acc, use_container_width=True)
+
+    # Post-training evaluation scorecard
+    if st.session_state.training_history.get('test_accuracy'):
+        latest_acc = st.session_state.training_history['test_accuracy'][-1]
+        latest_loss = st.session_state.training_history['test_loss'][-1]
+        latest_f1 = st.session_state.training_history['f1_score'][-1] if st.session_state.training_history['f1_score'] else 0.0
+        latest_prec = st.session_state.training_history['precision'][-1] if st.session_state.training_history['precision'] else 0.0
+
+        st.markdown(f"""
+        <div class="glass-panel" style="margin-top: 1rem;">
+            <strong style="font-size: 0.95rem; color: #F8FAFC;">{get_text('sec2_scorecard_title', lang)}</strong>
+            <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 0.85rem; margin-top: 0.85rem;">
+                <div style="background: rgba(15,23,42,0.6); padding: 0.75rem 1rem; border-radius: 10px; border: 1px solid rgba(148,163,184,0.15);">
+                    <span style="font-size: 0.72rem; color: #94A3B8; text-transform: uppercase;">{get_text('sec2_metric_accuracy', lang)}</span>
+                    <div style="font-size: 1.45rem; font-weight: 800; color: #10B981; font-family: Outfit;">{latest_acc:.1f}%</div>
+                </div>
+                <div style="background: rgba(15,23,42,0.6); padding: 0.75rem 1rem; border-radius: 10px; border: 1px solid rgba(148,163,184,0.15);">
+                    <span style="font-size: 0.72rem; color: #94A3B8; text-transform: uppercase;">{get_text('sec2_metric_loss', lang)}</span>
+                    <div style="font-size: 1.45rem; font-weight: 800; color: #EF4444; font-family: Outfit;">{latest_loss:.3f}</div>
+                </div>
+                <div style="background: rgba(15,23,42,0.6); padding: 0.75rem 1rem; border-radius: 10px; border: 1px solid rgba(148,163,184,0.15);">
+                    <span style="font-size: 0.72rem; color: #94A3B8; text-transform: uppercase;">{get_text('sec2_metric_f1', lang)}</span>
+                    <div style="font-size: 1.45rem; font-weight: 800; color: #38BDF8; font-family: Outfit;">{latest_f1:.1f}%</div>
+                </div>
+                <div style="background: rgba(15,23,42,0.6); padding: 0.75rem 1rem; border-radius: 10px; border: 1px solid rgba(148,163,184,0.15);">
+                    <span style="font-size: 0.72rem; color: #94A3B8; text-transform: uppercase;">{get_text('sec2_metric_precision', lang)}</span>
+                    <div style="font-size: 1.45rem; font-weight: 800; color: #A78BFA; font-family: Outfit;">{latest_prec:.1f}%</div>
+                </div>
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
 
 
 # ============================================================================
@@ -1249,85 +1336,122 @@ st.markdown(f"""
 </div>
 """, unsafe_allow_html=True)
 
-col_scan_act, col_scan_opt = st.columns([1, 2])
+# Patient Study Input Selector: Tabbed Interface (Benchmark Archive vs Direct Upload)
+tab_benchmark, tab_upload = st.tabs([
+    f"📁 {get_text('sec3_tab_benchmark', lang)}",
+    f"⬆️ {get_text('sec3_tab_upload', lang)}"
+])
 
-with col_scan_act:
-    btn_scan_patient = st.button(
-        f"{get_text('sec3_btn_run_diag', lang)}",
-        key="btn_scan_patient_inference",
-        disabled=not st.session_state.model_trained
+raw_input_img: Optional[np.ndarray] = None
+input_true_label: int = 0
+selected_case_id: str = "PAT_ISIC_001"
+
+with tab_benchmark:
+    has_test_data = (hasattr(st.session_state, "global_test_set") and st.session_state.global_test_set is not None)
+    has_manifest_data = Path("data/manifests/strategy_e_manifest.csv").exists()
+
+    if has_test_data:
+        test_imgs, test_lbls = st.session_state.global_test_set
+        n_available = len(test_lbls)
+        sample_options = [
+            f"Case #{i+1} ({LABEL_NAMES.get(int(test_lbls[i]), 'Normal')})"
+            for i in range(min(15, n_available))
+        ]
+        chosen_sample_str = st.selectbox(
+            get_text("sec3_select_patient_case", lang),
+            options=sample_options,
+            index=0,
+            key="benchmark_sample_picker"
+        )
+        picked_idx = sample_options.index(chosen_sample_str)
+        raw_input_img = test_imgs[picked_idx, 0].cpu().numpy()
+        input_true_label = int(test_lbls[picked_idx])
+        selected_case_id = f"PAT_TEST_{picked_idx+1:03d}"
+    elif has_manifest_data:
+        st.caption("Strategy E dataset manifest detected. Ingest hospital cohorts in Section 1 to index all reference patient cases.")
+    else:
+        st.info("Ingest multi-hospital cohorts in Section 1 or upload a patient radiograph below.")
+
+with tab_upload:
+    st.markdown(f"**{get_text('sec3_uploader_label', lang)}**")
+    uploaded_patient_file = st.file_uploader(
+        label=get_text('sec3_uploader_help', lang),
+        type=["png", "jpg", "jpeg", "npy"],
+        key="patient_scan_file_uploader",
+        help="Upload native single-channel or RGB radiograph array."
     )
-    if not st.session_state.model_trained:
-        st.warning(f"{get_text('sec2_btn_start', lang)} first.")
-
-with col_scan_opt:
-    col_alpha, col_cmap = st.columns(2)
-    with col_alpha:
-        opacity_val = st.slider(get_text("sec3_xai_opacity", lang), 0.1, 1.0, float(st.session_state.xai_opacity), 0.05)
-        st.session_state.xai_opacity = opacity_val
-    with col_cmap:
-        cmap_val = st.selectbox(get_text("sec3_xai_colormap", lang), ["Hot", "Jet", "Turbo", "Magma", "Viridis"], index=0)
-        st.session_state.xai_colormap = cmap_val
-
-uploaded_patient_file = st.file_uploader(
-    "Or Upload Patient Radiograph / Histology / Dermoscopy Scan (PNG, JPG, NPY):",
-    type=["png", "jpg", "jpeg", "npy"],
-    key="uploader_patient_scan"
-)
-
-trigger_scan = (btn_scan_patient or uploaded_patient_file is not None)
-
-if trigger_scan and st.session_state.model_trained:
     if uploaded_patient_file is not None:
         try:
             if uploaded_patient_file.name.endswith(".npy"):
                 loaded_arr = np.load(uploaded_patient_file)
             else:
-                from PIL import Image
                 pil_img = Image.open(uploaded_patient_file).convert("L")
                 loaded_arr = np.array(pil_img, dtype=np.float32) / 255.0
-            raw_img = loaded_arr.astype(np.float32)
-            if raw_img.ndim == 3 and raw_img.shape[0] in (1, 3):
-                raw_img = raw_img[0]
-            true_label = 0
+            upload_parsed = loaded_arr.astype(np.float32)
+            if upload_parsed.ndim == 3 and upload_parsed.shape[0] in (1, 3):
+                upload_parsed = upload_parsed[0]
+            raw_input_img = upload_parsed
+            input_true_label = 0
+            selected_case_id = f"PAT_UP_{uploaded_patient_file.name[:10]}"
+            st.success(f"{get_text('sec3_uploader_preview', lang)}: {uploaded_patient_file.name} ({raw_input_img.shape[0]}x{raw_input_img.shape[1]})")
         except Exception as exc:
-            st.error(f"Error processing uploaded scan: {exc}")
-            st.stop()
-    elif hasattr(st.session_state, "global_test_set") and st.session_state.global_test_set is not None:
-        test_imgs, test_lbls = st.session_state.global_test_set
-        pick_idx = int(np.random.randint(0, len(test_lbls)))
-        raw_img = test_imgs[pick_idx, 0].cpu().numpy()
-        true_label = int(test_lbls[pick_idx])
-    elif Path("data/manifests/strategy_e_manifest.csv").exists():
-        ecosystem = StrategyEDatasetEcosystem(seed=42)
-        test_records = ecosystem.load_from_disk_manifest(
-            manifest_path="data/manifests/strategy_e_manifest.csv",
-            images_dir="data",
-            target_size=(224, 224),
-            in_channels=1
-        )
-        if test_records:
-            pick_rec = np.random.choice(test_records)
-            raw_img = pick_rec.image_tensor[0].cpu().numpy()
-            true_label = int(pick_rec.label)
+            st.error(f"Error reading uploaded file: {exc}")
+
+# Diagnostic Execution & XAI Configuration Bar
+col_run_act, col_alpha_slider, col_cmap_select = st.columns([1.2, 1, 1])
+
+with col_run_act:
+    btn_scan_patient = st.button(
+        f"{get_text('sec3_btn_run_diag', lang)}",
+        key="btn_execute_radiological_inference",
+        disabled=not st.session_state.model_trained
+    )
+    if not st.session_state.model_trained:
+        st.warning(f"{get_text('sec2_btn_start', lang)} first.")
+
+with col_alpha_slider:
+    opacity_val = st.slider(
+        get_text("sec3_xai_opacity", lang),
+        min_value=0.1,
+        max_value=1.0,
+        value=float(st.session_state.xai_opacity),
+        step=0.05
+    )
+    st.session_state.xai_opacity = opacity_val
+
+with col_cmap_select:
+    cmap_val = st.selectbox(
+        get_text("sec3_xai_colormap", lang),
+        options=["Hot", "Jet", "Turbo", "Magma", "Viridis"],
+        index=0
+    )
+    st.session_state.xai_colormap = cmap_val
+
+# Inference execution trigger
+if btn_scan_patient and st.session_state.model_trained:
+    if raw_input_img is None:
+        if hasattr(st.session_state, "global_test_set") and st.session_state.global_test_set is not None:
+            t_imgs, t_lbls = st.session_state.global_test_set
+            rand_idx = int(np.random.randint(0, len(t_lbls)))
+            raw_input_img = t_imgs[rand_idx, 0].cpu().numpy()
+            input_true_label = int(t_lbls[rand_idx])
+            selected_case_id = f"PAT_HOLD_{rand_idx+1:03d}"
         else:
             st.error("No clinical test dataset available. Please ingest hospital cohorts in Section 1 or upload a patient scan.")
             st.stop()
-    else:
-        st.error("No clinical test dataset available. Please ingest hospital cohorts in Section 1 or upload a patient scan.")
-        st.stop()
 
-    st.session_state.scan_image = raw_img
-    st.session_state.scan_true_label = true_label
+    st.session_state.scan_image = raw_input_img
+    st.session_state.scan_true_label = input_true_label
 
     model = create_model()
     if st.session_state.trained_weights is not None:
         model.load_state_dict(st.session_state.trained_weights)
     model.cpu().eval()
 
-    img_tensor = torch.FloatTensor(raw_img).unsqueeze(0).unsqueeze(0)
+    img_tensor = torch.FloatTensor(raw_input_img).unsqueeze(0).unsqueeze(0)
     torch.set_grad_enabled(True)
     gradcam = GradCAM(model)
+
     heatmap, predicted_class, confidence = gradcam.generate_heatmap(img_tensor)
     confidence_pct = confidence * 100.0
 
@@ -1338,7 +1462,7 @@ if trigger_scan and st.session_state.model_trained:
             st.error("Model produced invalid (NaN) predictions. Ensure model has valid trained weights.")
             st.stop()
 
-    overlay_img = create_overlay(raw_img, heatmap, alpha=st.session_state.xai_opacity)
+    overlay_img = create_overlay(raw_input_img, heatmap, alpha=st.session_state.xai_opacity)
 
     st.session_state.scan_heatmap = heatmap
     st.session_state.scan_overlay = overlay_img
@@ -1347,8 +1471,8 @@ if trigger_scan and st.session_state.model_trained:
     st.session_state.scan_confidence = confidence_pct
     gradcam.remove_hooks()
 
-# Render Diagnostic Results
-if hasattr(st.session_state, 'scan_image') and st.session_state.model_trained:
+# Render Comprehensive Diagnostic Results
+if hasattr(st.session_state, 'scan_image') and st.session_state.scan_image is not None and st.session_state.model_trained:
     class_names_local = [
         get_text("sec1_normal", lang),
         get_text("sec1_pneumonia", lang),
@@ -1364,19 +1488,19 @@ if hasattr(st.session_state, 'scan_image') and st.session_state.model_trained:
     st.markdown(f"""
     <div class="diag-banner {banner_class}">
         <div>
-            <span style="font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.05em; font-weight: 600;">{get_text('sec3_diagnosis', lang)}</span>
-            <div style="font-size: 1.8rem; font-weight: 800; font-family: Outfit, sans-serif; margin-top: 0.2rem;">
+            <span style="font-size: 0.82rem; text-transform: uppercase; letter-spacing: 0.05em; font-weight: 600;">{get_text('sec3_diagnosis', lang)}</span>
+            <div style="font-size: 1.85rem; font-weight: 800; font-family: Outfit, sans-serif; margin-top: 0.2rem;">
                 {emoji_icon} {pred_name}
             </div>
         </div>
         <div style="text-align: right;">
-            <span style="font-size: 0.85rem; font-weight: 600;">{get_text('sec3_confidence', lang)}</span>
-            <div style="font-size: 1.8rem; font-weight: 800; font-family: Outfit, sans-serif;">{conf_val:.1f}%</div>
+            <span style="font-size: 0.82rem; font-weight: 600;">{get_text('sec3_confidence', lang)}</span>
+            <div style="font-size: 1.85rem; font-weight: 800; font-family: Outfit, sans-serif;">{conf_val:.1f}%</div>
         </div>
     </div>
     """, unsafe_allow_html=True)
 
-    # Dual-Pane Radiological Inspector
+    # 3-Column Saliency & Radiological Inspector
     col_pane_raw, col_pane_xai, col_pane_conf = st.columns([1, 1, 1.2])
 
     with col_pane_raw:
@@ -1391,7 +1515,7 @@ if hasattr(st.session_state, 'scan_image') and st.session_state.model_trained:
         fig_x = go.Figure(data=go.Image(z=(create_overlay(st.session_state.scan_image, st.session_state.scan_heatmap, alpha=st.session_state.xai_opacity) * 255).astype(np.uint8)))
         fig_x.update_layout(height=260, margin=dict(l=5, r=5, t=5, b=5), xaxis=dict(showticklabels=False), yaxis=dict(showticklabels=False))
         st.plotly_chart(fig_x, use_container_width=True)
-        st.caption(f"Grad-CAM Attention Overlay ({st.session_state.xai_colormap} Palette)")
+        st.caption(f"Grad-CAM Attention Overlay ({st.session_state.xai_colormap} Spectrum)")
 
     with col_pane_conf:
         st.markdown(f"**{get_text('sec3_results_header', lang)}**")
@@ -1418,7 +1542,7 @@ if hasattr(st.session_state, 'scan_image') and st.session_state.model_trained:
 
     st.markdown("---")
 
-    # Clinical Recommendations & Case-Based Reasoning (RAG)
+    # Clinical Decision Support & Federated RAG Case Retrieval
     col_cbr, col_cdss_media = st.columns([1.2, 1])
 
     with col_cbr:
@@ -1442,7 +1566,7 @@ if hasattr(st.session_state, 'scan_image') and st.session_state.model_trained:
         if not matched_cases:
             empty_rag_msg = (
                 "Referans klinik kohort dizinlenmedi. Federe dijital ikiz eslestirmesi icin vaka kayitlari gereklidir."
-                if lang == "tr"
+                if lang.lower() == "tr"
                 else "No reference clinical cohort indexed. Reference case bank requires cohort ingestion."
             )
             st.info(f"{empty_rag_msg}")
@@ -1508,7 +1632,7 @@ if hasattr(st.session_state, 'scan_image') and st.session_state.model_trained:
 
 st.markdown("---")
 st.markdown(f"""
-<div style="text-align: center; padding: 1.5rem; color: #64748B; font-size: 0.85rem;">
+<div style="text-align: center; padding: 1.5rem; color: #64748B; font-size: 0.82rem;">
     {get_text('footer_text', lang)}
 </div>
 """, unsafe_allow_html=True)

@@ -117,6 +117,23 @@ TRANSLATIONS: Dict[str, Dict[str, str]] = {
         "sec3_report_desc": "Strictly bounded single-page A4 medical documentation with embedded Grad-CAM evidence",
         "sec3_btn_download_pdf": "Download Official Diagnostic Report (PDF)",
 
+        # Section 2 Scorecard & Confusion Matrix
+        "sec2_scorecard_title": "Federated Consensus Evaluation Scorecard",
+        "sec2_conf_matrix_title": "Hold-Out Validation Confusion Matrix",
+        "sec2_metric_accuracy": "Global Accuracy",
+        "sec2_metric_loss": "Global Test Loss",
+        "sec2_metric_f1": "Macro F1-Score",
+        "sec2_metric_precision": "Macro Precision",
+        "sec2_metric_recall": "Macro Recall",
+
+        # Section 3 Tabs & File Upload
+        "sec3_tab_benchmark": "Verified Benchmark Archive",
+        "sec3_tab_upload": "Upload Patient Radiograph",
+        "sec3_select_patient_case": "Select Benchmark Patient Study",
+        "sec3_uploader_label": "Upload Patient Radiograph or Scan (PNG, JPG, NPY)",
+        "sec3_uploader_help": "Supports PNG, JPG, JPEG, and NPY array formats (up to 200MB)",
+        "sec3_uploader_preview": "Uploaded Scan Preview",
+
         # Footer
         "footer_text": "Fed-XRay | Privacy-Preserving Federated Oncology & Medical Imaging Consortium | Built with PyTorch"
     },
@@ -229,6 +246,23 @@ TRANSLATIONS: Dict[str, Dict[str, str]] = {
         "sec3_report_title": "Resmi Tek Sayfa Medikal İstihbarat Raporu",
         "sec3_report_desc": "Grad-CAM görsel kanıtları içeren, A4 boyutuna tam sığdırılmış resmi medikal doküman",
         "sec3_btn_download_pdf": "Resmi Teşhis Raporunu İndir (PDF)",
+
+        # Section 2 Scorecard & Confusion Matrix
+        "sec2_scorecard_title": "Federe Konsensüs Değerlendirme Karnesi",
+        "sec2_conf_matrix_title": "Referans Doğrulama Hata Matrisi",
+        "sec2_metric_accuracy": "Küresel Doğruluk",
+        "sec2_metric_loss": "Küresel Test Kaybı",
+        "sec2_metric_f1": "Makro F1-Skoru",
+        "sec2_metric_precision": "Makro Kesinlik",
+        "sec2_metric_recall": "Makro Duyarlılık",
+
+        # Section 3 Tabs & File Upload
+        "sec3_tab_benchmark": "Doğrulanmış Referans Arşivi",
+        "sec3_tab_upload": "Hasta Radyografisi Yükle",
+        "sec3_select_patient_case": "Referans Hasta İncelemesini Seçin",
+        "sec3_uploader_label": "Hasta Radyografisi veya Taraması Yükleyin (PNG, JPG, NPY)",
+        "sec3_uploader_help": "PNG, JPG, JPEG ve NPY matris formatlarını destekler (200MB'a kadar)",
+        "sec3_uploader_preview": "Yüklenen Tarama Önizlemesi",
 
         # Footer
         "footer_text": "Fed-XRay | Gizlilik Korumalı Federe Onkoloji ve Tıbbi Görüntüleme Konsorsiyumu | PyTorch ile Geliştirilmiştir"
