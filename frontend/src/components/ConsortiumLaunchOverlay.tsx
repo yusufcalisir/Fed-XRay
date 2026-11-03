@@ -134,7 +134,7 @@ export default function ConsortiumLaunchOverlay({
       try {
         const sysState = await fetchSystemState(effectiveBase);
         if (!sysState.cohorts || sysState.cohorts.length === 0) {
-          await fetchHospitalCohorts(effectiveBase, 4, 40);
+          await fetchHospitalCohorts(effectiveBase, 4, 50);
         }
       } catch {
         // Non-blocking: dashboard page also auto-hydrates

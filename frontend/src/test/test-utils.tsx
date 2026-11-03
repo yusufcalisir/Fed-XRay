@@ -1,4 +1,5 @@
 import React from "react";
+import "@testing-library/jest-dom/vitest";
 import { render, RenderOptions } from "@testing-library/react";
 import { LanguageProvider } from "@/context/LanguageContext";
 import { ApiProvider } from "@/context/ApiContext";

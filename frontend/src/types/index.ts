@@ -91,6 +91,7 @@ export interface BackendSystemState {
   data_provenance?: string;
   is_authentic_clinical?: boolean;
   strict_real_data?: boolean;
+  cohorts?: HospitalCohort[];
   persistence?: {
     backend: string;
     db_path: string;

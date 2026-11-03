@@ -347,8 +347,8 @@ def load_pretrained_vit_weights(
             else:
                 cls_p = state["encoder.pos_embedding"][:, :1, :dim]
                 patch_p = state["encoder.pos_embedding"][:, 1:, :dim]
-                orig_grid = int(math.isqrt(patch_p.shape[1]))
-                target_grid = int(math.isqrt(target_tokens - 1))
+                orig_grid = math.isqrt(patch_p.shape[1])
+                target_grid = math.isqrt(target_tokens - 1)
                 if target_grid * target_grid == target_tokens - 1:
                     patch_2d = patch_p.reshape(1, orig_grid, orig_grid, dim).permute(0, 3, 1, 2)
                     patch_interp = F.interpolate(

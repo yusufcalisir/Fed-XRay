@@ -1,4 +1,5 @@
 import React from "react";
+import "@testing-library/jest-dom/vitest";
 import { describe, it, expect, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
 import HospitalStudio from "../components/HospitalStudio";
@@ -7,6 +8,7 @@ import TelemetryCockpit from "../components/TelemetryCockpit";
 import RootRouteError from "../app/error";
 import GlobalError from "../app/global-error";
 import { AllTheProviders } from "../test/test-utils";
+import { HospitalCohort, RagCase } from "@/types";
 
 describe("Client Subtree Isolation and Defensive Rendering Suite", () => {
   it("renders HospitalStudio without crashing when sample_images is null, undefined, or empty", () => {
@@ -26,7 +28,7 @@ describe("Client Subtree Isolation and Defensive Rendering Suite", () => {
     render(
       <AllTheProviders>
         <HospitalStudio
-          hospitals={malformedHospitals}
+          hospitals={malformedHospitals as unknown as HospitalCohort[]}
           onGenerate={vi.fn()}
           isLoading={false}
         />
@@ -40,7 +42,7 @@ describe("Client Subtree Isolation and Defensive Rendering Suite", () => {
   it("handles RagDigitalTwins gracefully without throwing when twins is undefined, null, or empty", () => {
     const { container: container1 } = render(
       <AllTheProviders>
-        <RagDigitalTwins twins={undefined as unknown as []} />
+        <RagDigitalTwins twins={undefined as unknown as RagCase[]} />
       </AllTheProviders>
     );
     expect(container1.firstChild).toBeNull();
@@ -48,18 +50,18 @@ describe("Client Subtree Isolation and Defensive Rendering Suite", () => {
     const sampleTwin = [
       {
         case_id: "PAT-ISIC-0099",
-        label: 1,
+        label_id: 1,
         label_name: "Malignant Melanoma",
         similarity: 94.5,
         site_id: "BCN_20000",
-        clinical_notes: "Biopsy verified",
+        history: "Biopsy verified",
         biopsy_confirmed: true,
       },
     ];
 
     const { getByText } = render(
       <AllTheProviders>
-        <RagDigitalTwins twins={sampleTwin} />
+        <RagDigitalTwins twins={sampleTwin as unknown as RagCase[]} />
       </AllTheProviders>
     );
     expect(getByText("PAT-ISIC-0099")).toBeInTheDocument();
