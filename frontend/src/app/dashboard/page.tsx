@@ -164,38 +164,42 @@ export default function DashboardPage() {
     };
   }, [apiUrl, isConnected]);
 
-  // Track active section in viewport so the workflow stepper highlights the current stage
+  // Track active section in viewport so the workflow stepper accurately highlights the stage in view
   useEffect(() => {
-    if (typeof window === "undefined" || !("IntersectionObserver" in window)) return;
+    if (typeof window === "undefined") return;
 
     const sectionIds = ["section-ingestion", "section-training", "section-diagnosis", "section-cdss"];
 
-    const observer = new IntersectionObserver(
-      (entries) => {
-        const intersecting = entries.filter((e) => e.isIntersecting);
-        if (intersecting.length > 0) {
-          intersecting.sort((a, b) => {
-            return Math.abs(a.boundingClientRect.top) - Math.abs(b.boundingClientRect.top);
-          });
-          const best = intersecting[0];
-          if (best && best.target.id) {
-            setActiveSection(best.target.id);
+    const handleScroll = () => {
+      // If user is near the top of the dashboard, step 1 is active
+      if (window.scrollY < 200) {
+        setActiveSection("section-ingestion");
+        return;
+      }
+
+      // Check which section is currently centered/visible in the top third of viewport
+      const scrollPos = window.scrollY + 220;
+
+      let current = sectionIds[0];
+      for (const id of sectionIds) {
+        const el = document.getElementById(id);
+        if (el) {
+          const top = el.offsetTop;
+          const height = el.offsetHeight;
+          if (scrollPos >= top && scrollPos < top + height) {
+            current = id;
+            break;
           }
         }
-      },
-      {
-        rootMargin: "-60px 0px -40% 0px",
-        threshold: [0.1, 0.25, 0.5],
       }
-    );
+      setActiveSection(current);
+    };
 
-    sectionIds.forEach((id) => {
-      const el = document.getElementById(id);
-      if (el) observer.observe(el);
-    });
+    window.addEventListener("scroll", handleScroll, { passive: true });
+    handleScroll();
 
     return () => {
-      observer.disconnect();
+      window.removeEventListener("scroll", handleScroll);
     };
   }, [hospitals.length, history.length, diagnosis]);
 

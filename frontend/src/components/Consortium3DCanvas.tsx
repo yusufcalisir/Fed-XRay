@@ -3,7 +3,6 @@
 import React, { useEffect, useRef } from "react";
 
 interface Consortium3DCanvasProps {
-  is3DMode?: boolean;
   isSimulatingRound?: boolean;
   selectedNodeId?: string;
   mouseTilt?: { x: number; y: number };
@@ -26,7 +25,6 @@ const TUNNEL_LABELS = [
 ];
 
 export default function Consortium3DCanvas({
-  is3DMode = true,
   isSimulatingRound = false,
   selectedNodeId = "node-1",
   mouseTilt = { x: 0, y: 0 },
@@ -77,16 +75,16 @@ export default function Consortium3DCanvas({
         particles.push({
           tunnelIndex: t,
           progress: (p * 0.25 + t * 0.08) % 1,
-          speed: 0.0035 + Math.random() * 0.0015,
+          speed: 0.004 + Math.random() * 0.0015,
           label: TUNNEL_LABELS[t][p % TUNNEL_LABELS[t].length],
-          size: 3 + (p % 2),
+          size: 3.5 + (p % 2),
         });
       }
     }
 
     // Trigger shockwave on simulation round
     if (isSimulatingRound) {
-      shockwaveRadius = 10;
+      shockwaveRadius = 15;
       isShockwaveActive = true;
     }
 
@@ -97,135 +95,158 @@ export default function Consortium3DCanvas({
       const cx = width / 2;
       const cy = height / 2;
 
-      // 3D Tilt Vanishing Offset
-      const tiltOffsetX = is3DMode ? mouseTilt.x * 24 : 0;
-      const tiltOffsetY = is3DMode ? mouseTilt.y * 18 : 0;
+      // 3D Tilt Vanishing Point
+      const tiltOffsetX = mouseTilt.x * 28;
+      const tiltOffsetY = mouseTilt.y * 20;
 
-      // Node coordinate positions (percentage of container width/height)
+      // Anchor positions corresponding to the 4 corner pods
       const nodes = [
-        { x: width * 0.22, y: height * 0.19, id: "node-1" }, // Top-Left (Barcelona)
-        { x: width * 0.78, y: height * 0.19, id: "node-3" }, // Top-Right (Vienna)
-        { x: width * 0.22, y: height * 0.81, id: "node-4" }, // Bottom-Left (Brisbane)
-        { x: width * 0.78, y: height * 0.81, id: "node-2" }, // Bottom-Right (Boston)
+        { x: width * 0.17, y: height * 0.16, id: "node-1" }, // Top-Left (Barcelona)
+        { x: width * 0.83, y: height * 0.16, id: "node-3" }, // Top-Right (Vienna)
+        { x: width * 0.17, y: height * 0.84, id: "node-4" }, // Bottom-Left (Brisbane)
+        { x: width * 0.83, y: height * 0.84, id: "node-2" }, // Bottom-Right (Boston)
       ];
 
-      // -------------------------------------------------------------
-      // 1. 3D Isometric Ground Grid
-      // -------------------------------------------------------------
-      if (is3DMode) {
-        ctx.save();
-        ctx.strokeStyle = "rgba(16, 185, 129, 0.04)";
-        ctx.lineWidth = 1;
-        const gridLines = 8;
-        for (let i = -gridLines; i <= gridLines; i++) {
-          const gx = cx + i * (width / (gridLines * 2.2)) + tiltOffsetX * 0.5;
-          ctx.beginPath();
-          ctx.moveTo(gx, 0);
-          ctx.lineTo(gx + (i * 12), height);
-          ctx.stroke();
-        }
-        for (let j = 0; j <= 6; j++) {
-          const gy = height * 0.25 + j * (height * 0.12);
-          ctx.beginPath();
-          ctx.moveTo(0, gy);
-          ctx.lineTo(width, gy);
-          ctx.stroke();
-        }
-        ctx.restore();
-      }
+      const coreX = cx + tiltOffsetX;
+      const coreY = cy + tiltOffsetY;
 
       // -------------------------------------------------------------
-      // 2. Inter-Hospital Byzantine Verification Mesh (Elliptical Ring)
+      // 1. 3D Isometric Perspective Floor Grid
+      // -------------------------------------------------------------
+      ctx.save();
+      ctx.strokeStyle = "rgba(16, 185, 129, 0.05)";
+      ctx.lineWidth = 1;
+      const gridCount = 9;
+      for (let i = -gridCount; i <= gridCount; i++) {
+        const gx = cx + i * (width / (gridCount * 2.2)) + tiltOffsetX * 0.6;
+        ctx.beginPath();
+        ctx.moveTo(gx, 0);
+        ctx.lineTo(gx + i * 16, height);
+        ctx.stroke();
+      }
+      for (let j = 0; j <= 7; j++) {
+        const gy = height * 0.15 + j * (height * 0.12);
+        ctx.beginPath();
+        ctx.moveTo(0, gy);
+        ctx.lineTo(width, gy);
+        ctx.stroke();
+      }
+      ctx.restore();
+
+      // -------------------------------------------------------------
+      // 2. 3D Pedestal Rings beneath each Hospital Node
+      // -------------------------------------------------------------
+      nodes.forEach((node) => {
+        const isSelected = node.id === selectedNodeId;
+        ctx.save();
+        ctx.beginPath();
+        ctx.ellipse(node.x, node.y, 44, 28, time * 0.3, 0, Math.PI * 2);
+        ctx.strokeStyle = isSelected
+          ? "rgba(16, 185, 129, 0.45)"
+          : "rgba(16, 185, 129, 0.15)";
+        ctx.lineWidth = isSelected ? 2 : 1;
+        ctx.setLineDash([4, 6]);
+        ctx.lineDashOffset = time * 8;
+        ctx.stroke();
+
+        // Glowing center anchor
+        ctx.fillStyle = isSelected ? "#10b981" : "rgba(16, 185, 129, 0.4)";
+        ctx.beginPath();
+        ctx.arc(node.x, node.y, 3, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+      });
+
+      // -------------------------------------------------------------
+      // 3. Inter-Hospital Byzantine Verification Mesh (Elliptical Orbit)
       // -------------------------------------------------------------
       ctx.save();
       const ringRadiusX = width * 0.38;
-      const ringRadiusY = height * 0.34;
+      const ringRadiusY = height * 0.35;
       ctx.beginPath();
-      ctx.ellipse(cx + tiltOffsetX * 0.4, cy + tiltOffsetY * 0.4, ringRadiusX, ringRadiusY, 0, 0, Math.PI * 2);
-      ctx.strokeStyle = "rgba(6, 182, 212, 0.18)";
+      ctx.ellipse(cx + tiltOffsetX * 0.5, cy + tiltOffsetY * 0.5, ringRadiusX, ringRadiusY, 0, 0, Math.PI * 2);
+      ctx.strokeStyle = "rgba(6, 182, 212, 0.22)";
       ctx.lineWidth = 1.5;
-      ctx.setLineDash([4, 8]);
-      ctx.lineDashOffset = -time * 12;
+      ctx.setLineDash([5, 8]);
+      ctx.lineDashOffset = -time * 14;
       ctx.stroke();
 
-      // Floating Byzantine validation tokens on the mesh perimeter
-      const meshAngle = time * 0.4;
+      // Floating Byzantine tokens along the outer ring
+      const meshAngle = time * 0.5;
       for (let m = 0; m < 4; m++) {
         const ma = meshAngle + (m * Math.PI) / 2;
-        const mx = cx + tiltOffsetX * 0.4 + Math.cos(ma) * ringRadiusX;
-        const my = cy + tiltOffsetY * 0.4 + Math.sin(ma) * ringRadiusY;
-        ctx.fillStyle = "rgba(6, 182, 212, 0.6)";
+        const mx = cx + tiltOffsetX * 0.5 + Math.cos(ma) * ringRadiusX;
+        const my = cy + tiltOffsetY * 0.5 + Math.sin(ma) * ringRadiusY;
+        ctx.fillStyle = "#06b6d4";
+        ctx.shadowColor = "#06b6d4";
+        ctx.shadowBlur = 8;
         ctx.beginPath();
-        ctx.arc(mx, my, 2.5, 0, Math.PI * 2);
+        ctx.arc(mx, my, 3, 0, Math.PI * 2);
         ctx.fill();
       }
       ctx.restore();
 
       // -------------------------------------------------------------
-      // 3. Central Aggregator 3D Orbital Rings & Glow Beacon
+      // 4. Central Aggregator 3D Orbital Rings & Glow Beacon
       // -------------------------------------------------------------
       ctx.save();
-      const coreX = cx + tiltOffsetX;
-      const coreY = cy + tiltOffsetY;
-
-      // Outer revolving cipher ring
+      // Outer 3D revolving ring
       ctx.beginPath();
-      ctx.ellipse(coreX, coreY, 68, 52, time * 0.5, 0, Math.PI * 2);
-      ctx.strokeStyle = "rgba(16, 185, 129, 0.3)";
+      ctx.ellipse(coreX, coreY, 78, 56, time * 0.6, 0, Math.PI * 2);
+      ctx.strokeStyle = "rgba(16, 185, 129, 0.35)";
       ctx.lineWidth = 1.5;
-      ctx.setLineDash([8, 12]);
-      ctx.lineDashOffset = time * 18;
+      ctx.setLineDash([8, 10]);
+      ctx.lineDashOffset = time * 20;
       ctx.stroke();
 
-      // Inner counter-revolving ring
+      // Inner 3D counter-revolving ring
       ctx.beginPath();
-      ctx.ellipse(coreX, coreY, 54, 38, -time * 0.7, 0, Math.PI * 2);
-      ctx.strokeStyle = "rgba(6, 182, 212, 0.35)";
+      ctx.ellipse(coreX, coreY, 60, 42, -time * 0.8, 0, Math.PI * 2);
+      ctx.strokeStyle = "rgba(6, 182, 212, 0.4)";
       ctx.lineWidth = 1.2;
       ctx.setLineDash([6, 6]);
-      ctx.lineDashOffset = -time * 14;
+      ctx.lineDashOffset = -time * 16;
       ctx.stroke();
 
-      // Ambient radial core glow
-      const coreGrad = ctx.createRadialGradient(coreX, coreY, 8, coreX, coreY, 64);
-      coreGrad.addColorStop(0, "rgba(16, 185, 129, 0.25)");
-      coreGrad.addColorStop(0.6, "rgba(6, 182, 212, 0.08)");
+      // Radial Core Ambient Glow
+      const coreGrad = ctx.createRadialGradient(coreX, coreY, 10, coreX, coreY, 75);
+      coreGrad.addColorStop(0, "rgba(16, 185, 129, 0.3)");
+      coreGrad.addColorStop(0.5, "rgba(6, 182, 212, 0.12)");
       coreGrad.addColorStop(1, "rgba(16, 185, 129, 0)");
       ctx.fillStyle = coreGrad;
       ctx.beginPath();
-      ctx.arc(coreX, coreY, 64, 0, Math.PI * 2);
+      ctx.arc(coreX, coreY, 75, 0, Math.PI * 2);
       ctx.fill();
       ctx.restore();
 
       // -------------------------------------------------------------
-      // 4. Transmission Tunnels (Hospital Node -> Central Gateway)
+      // 5. 3D Transmission Tunnels (Curved Energy Beams)
       // -------------------------------------------------------------
       nodes.forEach((node, idx) => {
         const isSelected = node.id === selectedNodeId;
         ctx.save();
 
-        // Curved spline path through an elevated control point
-        const midX = (node.x + coreX) / 2 + (idx % 2 === 0 ? -15 : 15);
-        const midY = (node.y + coreY) / 2 + (idx < 2 ? -10 : 10);
+        const midX = (node.x + coreX) / 2 + (idx % 2 === 0 ? -20 : 20);
+        const midY = (node.y + coreY) / 2 + (idx < 2 ? -15 : 15);
 
-        // Background glowing tunnel line
+        // Core conduit line
         ctx.beginPath();
         ctx.moveTo(node.x, node.y);
         ctx.quadraticCurveTo(midX, midY, coreX, coreY);
         ctx.strokeStyle = isSelected
-          ? "rgba(16, 185, 129, 0.5)"
-          : "rgba(16, 185, 129, 0.2)";
+          ? "rgba(16, 185, 129, 0.6)"
+          : "rgba(16, 185, 129, 0.22)";
         ctx.lineWidth = isSelected ? 2.5 : 1.5;
-        ctx.setLineDash([5, 5]);
-        ctx.lineDashOffset = -time * 15;
+        ctx.setLineDash([6, 6]);
+        ctx.lineDashOffset = -time * 16;
         ctx.stroke();
 
-        // Subtle glow blur on active tunnels
+        // Neon Glow on active tunnels
         if (isSelected || isSimulatingRound) {
           ctx.beginPath();
           ctx.moveTo(node.x, node.y);
           ctx.quadraticCurveTo(midX, midY, coreX, coreY);
-          ctx.strokeStyle = "rgba(6, 182, 212, 0.4)";
+          ctx.strokeStyle = "rgba(6, 182, 212, 0.45)";
           ctx.lineWidth = 4;
           ctx.stroke();
         }
@@ -234,77 +255,77 @@ export default function Consortium3DCanvas({
       });
 
       // -------------------------------------------------------------
-      // 5. Flowing Encrypted Ciphertext Packets (3D Stream)
+      // 6. 3D Encrypted Ciphertext Packets (Stream Animation)
       // -------------------------------------------------------------
       particles.forEach((p) => {
         const node = nodes[p.tunnelIndex];
-        const currentSpeed = isSimulatingRound ? p.speed * 2.8 : p.speed;
+        const currentSpeed = isSimulatingRound ? p.speed * 3.2 : p.speed;
         p.progress = (p.progress + currentSpeed) % 1;
 
         const u = p.progress;
-        const midX = (node.x + coreX) / 2 + (p.tunnelIndex % 2 === 0 ? -15 : 15);
-        const midY = (node.y + coreY) / 2 + (p.tunnelIndex < 2 ? -10 : 10);
+        const midX = (node.x + coreX) / 2 + (p.tunnelIndex % 2 === 0 ? -20 : 20);
+        const midY = (node.y + coreY) / 2 + (p.tunnelIndex < 2 ? -15 : 15);
 
-        // Quadratic Bezier interpolation: B(u) = (1-u)^2 * P0 + 2*(1-u)*u * P1 + u^2 * P2
+        // Quadratic Bezier interpolation
         const px = (1 - u) * (1 - u) * node.x + 2 * (1 - u) * u * midX + u * u * coreX;
         const py = (1 - u) * (1 - u) * node.y + 2 * (1 - u) * u * midY + u * u * coreY;
 
         ctx.save();
 
-        // 3D perspective scale: packets grow slightly as they approach center
-        const scale = is3DMode ? 0.85 + u * 0.35 : 1.0;
+        // 3D depth scaling: particles grow slightly as they converge towards the center
+        const scale = 0.85 + u * 0.4;
 
-        // Glowing packet capsule
+        // Glowing packet orb
         ctx.fillStyle = "#10b981";
         ctx.shadowColor = "#10b981";
-        ctx.shadowBlur = 10;
+        ctx.shadowBlur = 12;
         ctx.beginPath();
         ctx.arc(px, py, p.size * scale, 0, Math.PI * 2);
         ctx.fill();
 
-        // Glowing tail trail
-        const trailU = Math.max(0, u - 0.04);
+        // Trailing phosphorescent tail
+        const trailU = Math.max(0, u - 0.05);
         const tx = (1 - trailU) * (1 - trailU) * node.x + 2 * (1 - trailU) * trailU * midX + trailU * trailU * coreX;
         const ty = (1 - trailU) * (1 - trailU) * node.y + 2 * (1 - trailU) * trailU * midY + trailU * trailU * coreY;
         ctx.beginPath();
         ctx.moveTo(px, py);
         ctx.lineTo(tx, ty);
-        ctx.strokeStyle = "rgba(6, 182, 212, 0.4)";
-        ctx.lineWidth = 1.5;
+        ctx.strokeStyle = "rgba(6, 182, 212, 0.55)";
+        ctx.lineWidth = 2;
         ctx.stroke();
 
-        // Ciphertext badge label (shows encrypted token text)
-        if (u > 0.15 && u < 0.85) {
+        // Encrypted ciphertext mathematical label
+        if (u > 0.12 && u < 0.88) {
           ctx.shadowBlur = 0;
-          ctx.font = `${Math.floor(8 * scale)}px "JetBrains Mono", monospace`;
-          ctx.fillStyle = "rgba(16, 185, 129, 0.9)";
-          ctx.fillText(p.label, px + 7, py - 4);
+          ctx.font = `${Math.floor(9 * scale)}px "JetBrains Mono", monospace`;
+          ctx.fillStyle = "rgba(16, 185, 129, 0.95)";
+          ctx.fillText(p.label, px + 8, py - 4);
         }
 
         ctx.restore();
       });
 
       // -------------------------------------------------------------
-      // 6. Expanding Consensus Shockwave (when round completes or pulses)
+      // 7. Consensus Shockwave Expansion (Triggered Round Effect)
       // -------------------------------------------------------------
       if (isShockwaveActive) {
-        shockwaveRadius += 4;
-        const maxRadius = Math.max(width, height) * 0.7;
+        shockwaveRadius += 5;
+        const maxRadius = Math.max(width, height) * 0.75;
         const alpha = Math.max(0, 1 - shockwaveRadius / maxRadius);
 
         ctx.save();
         ctx.beginPath();
         ctx.arc(coreX, coreY, shockwaveRadius, 0, Math.PI * 2);
-        ctx.strokeStyle = `rgba(16, 185, 129, ${alpha * 0.7})`;
-        ctx.lineWidth = 3;
+        ctx.strokeStyle = `rgba(16, 185, 129, ${alpha * 0.8})`;
+        ctx.lineWidth = 3.5;
         ctx.stroke();
 
         // Secondary cyan pulse
-        if (shockwaveRadius > 40) {
+        if (shockwaveRadius > 45) {
           ctx.beginPath();
-          ctx.arc(coreX, coreY, shockwaveRadius - 30, 0, Math.PI * 2);
-          ctx.strokeStyle = `rgba(6, 182, 212, ${alpha * 0.5})`;
-          ctx.lineWidth = 1.5;
+          ctx.arc(coreX, coreY, shockwaveRadius - 35, 0, Math.PI * 2);
+          ctx.strokeStyle = `rgba(6, 182, 212, ${alpha * 0.6})`;
+          ctx.lineWidth = 2;
           ctx.stroke();
         }
         ctx.restore();
@@ -328,7 +349,7 @@ export default function Consortium3DCanvas({
         cancelAnimationFrame(animFrameRef.current);
       }
     };
-  }, [is3DMode, isSimulatingRound, selectedNodeId, mouseTilt, onSimulationComplete]);
+  }, [isSimulatingRound, selectedNodeId, mouseTilt, onSimulationComplete]);
 
   return (
     <canvas

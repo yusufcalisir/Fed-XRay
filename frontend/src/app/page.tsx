@@ -467,11 +467,21 @@ export default function PresentationLandingPage() {
                       </span>
                     </div>
                     <div className="text-xs font-semibold text-[var(--text-heading)]">
-                      {language === "TR" && c.diagnosis === "Malignant Melanoma" ? "Malign Melanom" : c.diagnosis}
+                      {language === "TR"
+                        ? c.diagnosis?.toLowerCase().includes("melanoma")
+                          ? "Malign Melanom"
+                          : c.diagnosis?.toLowerCase().includes("basal")
+                          ? "Bazal Hücreli Karsinom"
+                          : c.diagnosis?.toLowerCase().includes("nevus")
+                          ? "Benign Displastik Nevüs"
+                          : c.diagnosis
+                        : c.diagnosis}
                     </div>
                     <p className="text-xs text-[var(--text-muted)] leading-relaxed line-clamp-3">
                       {language === "TR" && (c.case_id.startsWith("PAT_ISIC") || c.clinical_notes?.toLowerCase().includes("melanoma"))
-                        ? "55 yaşındaki hastada gövde bölgesinde yerleşik, histopatoloji (biyopsi) ile doğrulanmış Malign Melanom. Eksantrik hiperpigmentasyon ve periferik çizgilenmeler mevcut. Geniş lokal eksizyon endikedir."
+                        ? idx === 0
+                          ? "Gövde bölgesinde yerleşik, histopatoloji (biyopsi) ile doğrulanmış Malign Melanom. Eksantrik hiperpigmentasyon ve periferik çizgilenmeler mevcut. Geniş lokal eksizyon endikedir."
+                          : "Sırt bölgesinde yerleşik, konkomitant biyopsi ile doğrulanmış yüzeyel yayılan Malign Melanom. Atipik pigmentsel retikülasyon ve lezyon kenarlarında asimetri izlenmektedir."
                         : c.clinical_notes}
                     </p>
                     <div className="text-[10px] font-mono text-[var(--text-muted)] pt-1 border-t border-[var(--border-subtle)] flex items-center justify-between">

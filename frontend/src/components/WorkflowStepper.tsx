@@ -37,16 +37,8 @@ export default function WorkflowStepper({
     : 0;
 
   // Active step resolution:
-  // If activeSection prop is supplied, use it; otherwise fallback to the most advanced available step
-  const defaultActive = isDiagDone
-    ? "section-cdss"
-    : isTrainingDone
-    ? "section-diagnosis"
-    : hasIngested || isTraining
-    ? "section-training"
-    : "section-ingestion";
-
-  const effectiveActive = activeSection || defaultActive;
+  // Strictly follows where the user currently is in the viewport (defaulting to step 1)
+  const effectiveActive = activeSection || "section-ingestion";
 
   const steps = [
     {
@@ -58,7 +50,9 @@ export default function WorkflowStepper({
       isActive: !isHydrating && effectiveActive === "section-ingestion",
       isLocked: false,
       statusLabel: hasIngested
-        ? t("workflow_status_completed")
+        ? effectiveActive === "section-ingestion"
+          ? t("workflow_status_viewing")
+          : t("workflow_status_completed")
         : t("workflow_status_active"),
     },
     {
@@ -70,7 +64,9 @@ export default function WorkflowStepper({
       isActive: !isHydrating && effectiveActive === "section-training",
       isLocked: !hasIngested,
       statusLabel: isTrainingDone
-        ? t("workflow_status_completed")
+        ? effectiveActive === "section-training"
+          ? t("workflow_status_viewing")
+          : t("workflow_status_completed")
         : isTraining
         ? t("kpi_status_training")
         : !hasIngested
@@ -88,7 +84,9 @@ export default function WorkflowStepper({
       isActive: !isHydrating && effectiveActive === "section-diagnosis",
       isLocked: !isTrainingDone,
       statusLabel: isDiagDone
-        ? t("workflow_status_completed")
+        ? effectiveActive === "section-diagnosis"
+          ? t("workflow_status_viewing")
+          : t("workflow_status_completed")
         : !isTrainingDone
         ? t("workflow_status_locked")
         : effectiveActive === "section-diagnosis"
@@ -106,7 +104,7 @@ export default function WorkflowStepper({
       statusLabel: !isDiagDone
         ? t("workflow_status_locked")
         : effectiveActive === "section-cdss"
-        ? t("workflow_status_active")
+        ? t("workflow_status_viewing")
         : t("workflow_status_completed"),
     },
   ];
