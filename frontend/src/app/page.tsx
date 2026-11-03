@@ -158,45 +158,50 @@ export default function PresentationLandingPage() {
             </div>
           </div>
 
-          {/* Key Metrics Strip - horizontal rule + inline stats, no card grid */}
+          {/* Key Metrics Strip */}
           <div className="mt-14 sm:mt-18 pt-8 border-t border-[var(--border-card)]">
-            <div className="flex items-center gap-2 mb-5">
-              <span
-                className={`w-1.5 h-1.5 rounded-full shrink-0 ${
-                  systemState?.is_live && systemState?.rounds && systemState.rounds.length > 0
-                    ? "bg-emerald-500 animate-pulse"
-                    : "bg-slate-400"
-                }`}
-              />
-              <span className="font-mono text-[10px] font-semibold uppercase tracking-widest text-[var(--text-muted)]">
-                {systemState?.is_live && systemState?.rounds && systemState.rounds.length > 0
-                  ? `${t("landing_kpi_live_title")} - ${systemState.history_rounds} ${t("landing_kpi_rounds")} - ${systemState.model_type.toUpperCase()}`
-                  : t("landing_kpi_ref_title")}
-              </span>
+            <div className="flex items-center justify-between flex-wrap gap-2 mb-4">
+              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-xs text-[10.5px] font-mono font-semibold tracking-wider text-slate-700 dark:text-slate-300">
+                <span
+                  className={`w-2 h-2 rounded-full shrink-0 ${
+                    systemState?.is_live && systemState?.rounds && systemState.rounds.length > 0
+                      ? "bg-emerald-500 animate-pulse shadow-[0_0_8px_#10b981]"
+                      : "bg-emerald-500/80"
+                  }`}
+                />
+                <span className="uppercase">
+                  {systemState?.is_live && systemState?.rounds && systemState.rounds.length > 0
+                    ? `${t("landing_kpi_live_title")} : ${systemState.history_rounds} ${t("landing_kpi_rounds")} : ${systemState.model_type.toUpperCase()}`
+                    : t("landing_kpi_ref_title")}
+                </span>
+              </div>
             </div>
 
-            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-px border border-[var(--border-card)] rounded-2xl overflow-hidden bg-[var(--border-card)] shadow-xs">
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2.5 sm:gap-3.5">
               {[
                 {
                   value: systemState?.hospitals?.length ? String(systemState.hospitals.length) : "4",
                   label: t("landing_metric_nodes"),
                   sub: systemState?.is_live ? t("landing_metric_nodes_live_sub") : t("landing_metric_nodes_sub"),
                   icon: Server,
-                  accentColor: "text-emerald-500",
+                  iconBg: "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20",
+                  valColor: "text-slate-900 dark:text-slate-50",
                 },
                 {
                   value: "0 B",
                   label: t("landing_metric_leakage"),
                   sub: t("landing_metric_leakage_sub"),
                   icon: Lock,
-                  accentColor: "text-emerald-500",
+                  iconBg: "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20",
+                  valColor: "text-emerald-600 dark:text-emerald-400",
                 },
                 {
                   value: "128-Bit",
                   label: t("landing_metric_crypto"),
                   sub: t("landing_metric_crypto_sub"),
                   icon: Cpu,
-                  accentColor: "text-sky-500",
+                  iconBg: "bg-sky-500/10 text-sky-600 dark:text-sky-400 border-sky-500/20",
+                  valColor: "text-sky-600 dark:text-sky-400",
                 },
                 {
                   value:
@@ -212,7 +217,8 @@ export default function PresentationLandingPage() {
                       ? `${t("landing_kpi_round")} ${systemState.rounds.length} (${systemState.peft_mode ? systemState.peft_mode.toUpperCase() : "Full"})`
                       : t("landing_metric_auc_sub"),
                   icon: Activity,
-                  accentColor: "text-emerald-500",
+                  iconBg: "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20",
+                  valColor: "text-slate-900 dark:text-slate-50",
                 },
                 {
                   value:
@@ -225,37 +231,41 @@ export default function PresentationLandingPage() {
                       ? t("landing_metric_renyi_dp")
                       : t("landing_metric_dp_sub"),
                   icon: ShieldCheck,
-                  accentColor: "text-indigo-500",
+                  iconBg: "bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border-indigo-500/20",
+                  valColor: "text-indigo-600 dark:text-indigo-400",
                 },
                 {
                   value: "99.6%",
                   label: t("landing_metric_efficiency"),
                   sub: t("landing_metric_efficiency_sub"),
                   icon: Zap,
-                  accentColor: "text-amber-500",
+                  iconBg: "bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20",
+                  valColor: "text-amber-600 dark:text-amber-400",
                 },
               ].map((m, i) => {
                 const IconComponent = m.icon;
                 return (
                   <div
                     key={i}
-                    className="bg-[var(--bg-card)]/85 backdrop-blur-sm p-4 sm:p-5 transition-colors hover:bg-[var(--bg-card-inner)] flex flex-col justify-between text-left items-start h-[132px] sm:h-[142px]"
+                    className="p-3.5 sm:p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 shadow-xs hover:border-slate-300 dark:hover:border-slate-700 hover:shadow-sm transition-all flex flex-col justify-between h-[126px] sm:h-[136px]"
                   >
-                    {/* Row 1: Fixed Height Header (Icon + Label) */}
-                    <div className="flex items-center gap-1.5 h-6 w-full">
-                      <IconComponent className={`w-3.5 h-3.5 ${m.accentColor} shrink-0`} />
-                      <span className="text-[11px] font-semibold text-[var(--text-heading)] leading-none truncate">
+                    {/* Row 1: Icon + Label */}
+                    <div className="flex items-center gap-1.5 min-w-0">
+                      <div className={`w-5 h-5 rounded-md ${m.iconBg} border flex items-center justify-center shrink-0`}>
+                        <IconComponent className="w-3 h-3" />
+                      </div>
+                      <span className="text-[11px] font-semibold text-slate-800 dark:text-slate-200 truncate">
                         {m.label}
                       </span>
                     </div>
 
-                    {/* Row 2: Fixed Baseline Metric Value */}
-                    <div className="h-8 flex items-baseline font-display text-xl sm:text-2xl font-extrabold text-[var(--text-heading)] tracking-tight leading-none">
+                    {/* Row 2: Metric Value */}
+                    <div className={`font-mono text-xl sm:text-2xl font-bold tracking-tight ${m.valColor}`}>
                       {m.value}
                     </div>
 
-                    {/* Row 3: Fixed Height Subtitle with top subtle divider */}
-                    <div className="h-5 flex items-center text-[10px] sm:text-[11px] text-[var(--text-muted)] font-mono leading-none truncate w-full border-t border-[var(--border-card)]/50 pt-1">
+                    {/* Row 3: Subtitle with subtle divider */}
+                    <div className="text-[10px] sm:text-[10.5px] font-mono text-slate-500 dark:text-slate-400 truncate pt-1 border-t border-slate-100 dark:border-slate-800/80">
                       {m.sub}
                     </div>
                   </div>
