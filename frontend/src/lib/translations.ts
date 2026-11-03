@@ -283,7 +283,7 @@ export const TRANSLATIONS: Record<Language, Record<string, string>> = {
     landing_pillar_2_title: "Patient-Level Differential Privacy",
     landing_pillar_2_desc: "Calibrated Gaussian differential privacy with per-patient gradient clipping (C=1.0) and Rényi DP accounting guarantees formal (ε ≤ 2.0, δ ≤ 10^-5) bounds, calibrated for minimal utility trade-off.",
     landing_pillar_3_title: "Cryptographic Secure Aggregation",
-    landing_pillar_3_desc: "Leveled CKKS 128-bit RLWE Homomorphic Encryption aggregates PEFT updates. Byzantine anomaly detection runs in an honest plaintext validation phase prior to aggregation.",
+    landing_pillar_3_desc: "Leveled CKKS 128-bit RLWE Homomorphic Encryption aggregates PEFT updates. Byzantine anomaly detection runs in an honest validation protocol prior to encrypted aggregation.",
     landing_pillar_4_title: "Byzantine Resilience & Poison Defense",
     landing_pillar_4_desc: "Cosine distance and hold-out validation filters intercept adversarial poisoning and malformed updates before global consensus aggregation.",
     landing_p1_tag: "PEFT adapters only cross institution boundary",
@@ -346,9 +346,9 @@ export const TRANSLATIONS: Record<Language, Record<string, string>> = {
     launch_modal_handshake: "Federated Handshake",
     launch_modal_footer_nodes: "4 Nodes: Patient DP ε ≤ 2.0",
     launch_modal_skip: "Enter Immediately",
-    launch_fl_phase1: "Phase 1: Local PEFT Training (Data Stays in Hospital)",
-    launch_fl_phase2: "Phase 2: CKKS 128-Bit Encrypted Gradient Aggregation",
-    launch_fl_phase3: "Phase 3: Global Consensus Broadcast & Synchronization",
+    launch_fl_phase1: "Local Clinical Training: Patient Data Isolated On-Premise",
+    launch_fl_phase2: "Cryptographic Aggregation: CKKS 128-Bit Homomorphic Updates",
+    launch_fl_phase3: "Consortium Synchronization: Global Consensus Model Dispatched",
 
     // Landing Banner
     landing_banner_title: "Ready to see it in action?",
@@ -761,9 +761,9 @@ export const TRANSLATIONS: Record<Language, Record<string, string>> = {
     launch_modal_handshake: "Federe Kriptografik El Sıkışma",
     launch_modal_footer_nodes: "4 Düğüm: Hasta Düzeyinde DP ε ≤ 2.0",
     launch_modal_skip: "Hemen Başlat",
-    launch_fl_phase1: "Aşama 1: Yerel LoRA Eğitimi (Veri Hastane Sınırında Kalır)",
-    launch_fl_phase2: "Aşama 2: CKKS 128-Bit Şifreli Gradyan Toplama",
-    launch_fl_phase3: "Aşama 3: Küresel Konsensüs Model Dağıtımı ve Senkronizasyon",
+    launch_fl_phase1: "Yerel Klinik Model Eğitimi: Hasta Verisi Kurum Sınırında İzole",
+    launch_fl_phase2: "Kriptografik Güvenli Toplama: CKKS 128-Bit Homomorfik Güncellemeler",
+    launch_fl_phase3: "Konsorsiyum Senkronizasyonu: Küresel Konsensüs Modeli Dağıtıldı",
 
     // Tanıtım Sonu Şeridi
     landing_banner_title: "Dağıtık Klinik Yapay Zekayı Yönetmeye Hazır mısınız?",

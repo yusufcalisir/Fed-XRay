@@ -50,54 +50,59 @@ export default function ConsortiumLaunchOverlay({
 
     const candidates = [
       manualUrl,
-      "",
       apiUrl,
       "http://127.0.0.1:8000",
       "http://localhost:8000",
+      "",
     ].filter((u): u is string => typeof u === "string");
 
     let effectiveBase = (manualUrl || apiUrl || "").trim().replace(/\/+$/, "");
 
     try {
-      // Step 1: Central Server Enclave Health Attestation across candidate endpoints
+      // Step 1: Central Server Enclave Health Attestation across candidate endpoints (parallel probe)
       let workingBase: string | null = null;
       let healthData: any = null;
 
-      for (const cand of candidates) {
+      const probe = async (cand: string) => {
+        const clean = cand.trim().replace(/\/+$/, "");
+        const testUrl = clean ? `${clean}/api/health` : "/api/health";
+        const controller = new AbortController();
+        const tId = setTimeout(() => controller.abort(), 1000);
         try {
-          const clean = cand.trim().replace(/\/+$/, "");
-          const testUrl = clean ? `${clean}/api/health` : "/api/health";
-          const controller = new AbortController();
-          const tId = setTimeout(() => controller.abort(), 1200);
           const res = await fetch(testUrl, { signal: controller.signal, cache: "no-store" });
           clearTimeout(tId);
           if (res && res.ok) {
             const data = await res.json().catch(() => null);
             if (data && (data.status === "healthy" || data.status === "ok")) {
-              workingBase = clean;
-              healthData = data;
-              break;
+              return { base: clean, data };
             }
           }
         } catch {
-          // Probe next candidate
+          clearTimeout(tId);
+        }
+        throw new Error("unreachable");
+      };
+
+      try {
+        const winner = await Promise.any(candidates.map(probe));
+        workingBase = winner.base;
+        healthData = winner.data;
+      } catch {
+        // Fallback to auto-discovery if direct candidates failed
+        const discovered = await autoDiscoverApi();
+        if (discovered) {
+          const cleanDisc = discovered.trim().replace(/\/+$/, "");
+          const res = await fetch(`${cleanDisc}/api/health`, { cache: "no-store" }).catch(() => null);
+          if (res && res.ok) {
+            healthData = await res.json().catch(() => null);
+            workingBase = cleanDisc;
+          }
         }
       }
 
       if (workingBase !== null) {
         effectiveBase = workingBase;
         setApiUrl(workingBase);
-      } else {
-        // Fallback to auto-discovery if direct candidates failed
-        const discovered = await autoDiscoverApi();
-        if (discovered) {
-          effectiveBase = discovered.trim().replace(/\/+$/, "");
-          setApiUrl(effectiveBase);
-          const res = await fetch(`${effectiveBase}/api/health`, { cache: "no-store" });
-          if (res.ok) {
-            healthData = await res.json();
-          }
-        }
       }
 
       if (!healthData || (healthData.status !== "healthy" && healthData.status !== "ok")) {
@@ -106,7 +111,6 @@ export default function ConsortiumLaunchOverlay({
         );
       }
 
-      await new Promise((r) => setTimeout(r, 260));
       setProgress(45);
       setActiveStage(1);
 
@@ -122,32 +126,29 @@ export default function ConsortiumLaunchOverlay({
         // Ignore session storage errors if restricted
       }
 
-      await new Promise((r) => setTimeout(r, 300));
-      setProgress(75);
+      setProgress(80);
       setActiveStage(2);
 
-      // Step 3: Cryptographic Parameter & Patient-Level DP Handshake + Cohort Hydration Check
-      const epsVal = typeof handshake.privacy.epsilon === "number" ? handshake.privacy.epsilon.toFixed(1) : "2.0";
-      const cVal = typeof handshake.privacy.clipping_bound_C === "number" ? handshake.privacy.clipping_bound_C : "0.5";
+      // Step 3: Cryptographic Parameter & Patient-Level DP Handshake
+      const epsVal =
+        typeof handshake?.privacy?.epsilon === "number"
+          ? handshake.privacy.epsilon.toFixed(1)
+          : typeof (handshake as any)?.dp_budget?.epsilon === "number"
+          ? (handshake as any).dp_budget.epsilon.toFixed(1)
+          : "2.0";
+      const cVal =
+        typeof handshake?.privacy?.clipping_bound_C === "number"
+          ? handshake.privacy.clipping_bound_C
+          : "0.5";
       setPrivacySummary(`CKKS 128-Bit + Patient DP (eps <= ${epsVal}, C = ${cVal})`);
 
-      try {
-        const sysState = await fetchSystemState(effectiveBase);
-        if (!sysState.cohorts || sysState.cohorts.length === 0) {
-          await fetchHospitalCohorts(effectiveBase, 4, 50);
-        }
-      } catch {
-        // Non-blocking: dashboard page also auto-hydrates
-      }
-
-      await new Promise((r) => setTimeout(r, 280));
       setProgress(100);
       setActiveStage(3);
       setIsVerifying(false);
 
       const timer = setTimeout(() => {
         router.push("/dashboard");
-      }, 450);
+      }, 350);
       return () => clearTimeout(timer);
     } catch (err: any) {
       console.error("Enclave handshake failed:", err);
