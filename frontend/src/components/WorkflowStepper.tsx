@@ -120,7 +120,7 @@ export default function WorkflowStepper({
         </div>
         <div className="text-[10px] sm:text-[11px] font-mono text-[var(--text-muted)]">
           {isHydrating ? (
-            <span className="animate-pulse">Syncing...</span>
+            <span className="animate-pulse">{t("workflow_syncing")}</span>
           ) : (
             `${completedCount} / 4 ${t("workflow_completed_count")}`
           )}

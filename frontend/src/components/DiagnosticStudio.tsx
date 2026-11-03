@@ -234,10 +234,10 @@ export default function DiagnosticStudio({
                 <div className="flex items-center justify-between mb-4">
                   <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-mono font-bold bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20">
                     <Lock className="w-3 h-3" />
-                    <span>Weights Locked · Standby</span>
+                    <span>{t("diag_locked_badge")}</span>
                   </span>
                   <span className="font-mono text-[10px] text-[var(--text-muted)]">
-                    Round 0 / 5
+                    {t("diag_locked_round")} 0 / 5
                   </span>
                 </div>
 
@@ -251,32 +251,32 @@ export default function DiagnosticStudio({
                     </span>
                   </div>
                   <h4 className="font-display text-sm font-bold text-[var(--text-heading)]">
-                    Federated Model Weights Awaiting Consensus
+                    {t("diag_locked_headline")}
                   </h4>
                   <p className="text-[11px] text-[var(--text-muted)] max-w-xs mt-1 leading-relaxed">
-                    Diagnostic inference and Grad-CAM attention require global foundation model adapters distributed across consortium nodes.
+                    {t("diag_locked_subtitle")}
                   </p>
                 </div>
 
                 <div className="space-y-2 pt-2">
                   <div className="flex items-center justify-between p-2 rounded-lg bg-[var(--bg-card)] border border-[var(--border-subtle)] text-[11px]">
-                    <span className="text-[var(--text-muted)]">Hospital Nodes Connected:</span>
-                    <span className="font-mono font-bold text-emerald-600 dark:text-emerald-400">4 / 4 Nodes Ready</span>
+                    <span className="text-[var(--text-muted)]">{t("diag_locked_nodes_label")}</span>
+                    <span className="font-mono font-bold text-emerald-600 dark:text-emerald-400">{t("diag_locked_nodes_val")}</span>
                   </div>
                   <div className="flex items-center justify-between p-2 rounded-lg bg-[var(--bg-card)] border border-[var(--border-subtle)] text-[11px]">
-                    <span className="text-[var(--text-muted)]">Cryptographic Standard:</span>
+                    <span className="text-[var(--text-muted)]">{t("diag_locked_crypto_label")}</span>
                     <span className="font-mono font-bold text-sky-600 dark:text-sky-400">RLWE CKKS 128-Bit</span>
                   </div>
                   <div className="flex items-center justify-between p-2 rounded-lg bg-[var(--bg-card)] border border-[var(--border-subtle)] text-[11px]">
-                    <span className="text-[var(--text-muted)]">Differential Privacy Budget:</span>
-                    <span className="font-mono font-bold text-violet-600 dark:text-violet-400">ε ≤ 2.0, δ = 10^-5</span>
+                    <span className="text-[var(--text-muted)]">{t("diag_locked_dp_label")}</span>
+                    <span className="font-mono font-bold text-violet-600 dark:text-violet-400">&epsilon; &le; 2.0, &delta; = 10^-5</span>
                   </div>
                 </div>
               </div>
 
               <div className="pt-4 border-t border-[var(--border-subtle)] text-[10px] font-mono text-[var(--text-muted)] flex items-center justify-between">
-                <span>Consortium Enclave Status:</span>
-                <span className="text-amber-600 dark:text-amber-400 font-bold">Synchronizing Parameters</span>
+                <span>{t("diag_locked_status_label")}</span>
+                <span className="text-amber-600 dark:text-amber-400 font-bold">{t("diag_locked_status_val")}</span>
               </div>
             </div>
 

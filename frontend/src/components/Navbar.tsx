@@ -131,7 +131,7 @@ export default function Navbar({ mode = "landing", onLaunchDemo }: NavbarProps) 
 
             {/* Clinical CDSS tag */}
             <span className="hidden md:inline text-[10px] font-semibold uppercase tracking-widest text-[var(--text-muted)] border-l border-[var(--border-subtle)] pl-3">
-              Clinical CDSS
+              {t("nav_clinical_cdss")}
             </span>
 
             {mode === "dashboard" && (
@@ -300,7 +300,7 @@ export default function Navbar({ mode = "landing", onLaunchDemo }: NavbarProps) 
           {/* Main Navigation Links Tier */}
           <div className="flex-1 py-8 flex flex-col justify-center space-y-4">
             <div className="text-[10px] font-mono font-bold uppercase tracking-widest text-emerald-600 dark:text-emerald-400 mb-1">
-              Clinical Navigation
+              {t("nav_mobile_title")}
             </div>
 
             {mode === "landing" && (
@@ -353,7 +353,7 @@ export default function Navbar({ mode = "landing", onLaunchDemo }: NavbarProps) 
 
             {/* Quick Engine Status */}
             <div className="flex items-center justify-between px-3.5 py-2.5 rounded-xl bg-[var(--bg-card-inner)] border border-[var(--border-subtle)] text-xs">
-              <span className="text-[var(--text-muted)] font-medium">Consortium Engine:</span>
+              <span className="text-[var(--text-muted)] font-medium">{t("nav_mobile_engine")}</span>
               <div className="flex items-center gap-2">
                 <span className={`w-2 h-2 rounded-full ${dotClass}`} />
                 <span className="font-mono text-[11px] font-semibold text-[var(--text-heading)]">
@@ -380,7 +380,7 @@ export default function Navbar({ mode = "landing", onLaunchDemo }: NavbarProps) 
 
             {/* Security Guarantee Invariant */}
             <div className="text-center text-[10px] font-mono text-[var(--text-muted)] pt-1">
-              Patient-Level DP (&epsilon; &le; 2.0) &bull; 128-Bit CKKS HE
+              {t("nav_mobile_security_guarantee")}
             </div>
           </div>
 

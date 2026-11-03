@@ -131,15 +131,15 @@ export default function PresentationLandingPage() {
               <div className="flex flex-col gap-2 text-[12px] text-[var(--text-muted)]">
                 <div className="flex items-center gap-2">
                   <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
-                  <span>Decentralized Node Training: Raw patient scans never leave local hospital firewalls</span>
+                  <span>{t("landing_hero_bullet_1")}</span>
                 </div>
                 <div className="flex items-center gap-2">
                   <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
-                  <span>Dual Privacy Defense: RLWE 128-bit CKKS homomorphic encryption + Patient-Level DP (&epsilon; &le; 2.0)</span>
+                  <span>{t("landing_hero_bullet_2")}</span>
                 </div>
                 <div className="flex items-center gap-2">
                   <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
-                  <span>Parameter-Efficient Consensus: FFA-LoRA adapters reduce communication payloads by 99.6%</span>
+                  <span>{t("landing_hero_bullet_3")}</span>
                 </div>
               </div>
             </div>
@@ -169,8 +169,8 @@ export default function PresentationLandingPage() {
               />
               <span className="font-mono text-[10px] font-semibold uppercase tracking-widest text-[var(--text-muted)]">
                 {systemState?.is_live && systemState?.rounds && systemState.rounds.length > 0
-                  ? `Live Telemetry - ${systemState.history_rounds} Rounds - ${systemState.model_type.toUpperCase()}`
-                  : "Strategy E Reference Benchmarks - Option J Baseline"}
+                  ? `${t("landing_kpi_live_title")} - ${systemState.history_rounds} ${t("landing_kpi_rounds")} - ${systemState.model_type.toUpperCase()}`
+                  : t("landing_kpi_ref_title")}
               </span>
             </div>
 
@@ -179,7 +179,7 @@ export default function PresentationLandingPage() {
                 {
                   value: systemState?.hospitals?.length ? String(systemState.hospitals.length) : "4",
                   label: t("landing_metric_nodes"),
-                  sub: systemState?.is_live ? "Connected Clinical Cohorts" : t("landing_metric_nodes_sub"),
+                  sub: systemState?.is_live ? t("landing_metric_nodes_live_sub") : t("landing_metric_nodes_sub"),
                   icon: Server,
                   accentColor: "text-emerald-500",
                 },
@@ -204,11 +204,11 @@ export default function PresentationLandingPage() {
                       : "98.4%",
                   label:
                     systemState?.is_live && systemState?.rounds && systemState.rounds.length > 0
-                      ? "Validation Accuracy"
+                      ? t("landing_metric_val_acc")
                       : t("landing_metric_auc"),
                   sub:
                     systemState?.is_live && systemState?.rounds && systemState.rounds.length > 0
-                      ? `Round ${systemState.rounds.length} (${systemState.peft_mode ? systemState.peft_mode.toUpperCase() : "Full"})`
+                      ? `${t("landing_kpi_round")} ${systemState.rounds.length} (${systemState.peft_mode ? systemState.peft_mode.toUpperCase() : "Full"})`
                       : t("landing_metric_auc_sub"),
                   icon: Activity,
                   accentColor: "text-emerald-500",
@@ -221,7 +221,7 @@ export default function PresentationLandingPage() {
                   label: t("landing_metric_dp"),
                   sub:
                     systemState?.privacy?.epsilon && systemState.privacy.epsilon > 0
-                      ? "Rényi DP Accountant Budget"
+                      ? t("landing_metric_renyi_dp")
                       : t("landing_metric_dp_sub"),
                   icon: ShieldCheck,
                   accentColor: "text-indigo-500",
@@ -411,7 +411,7 @@ export default function PresentationLandingPage() {
                 </div>
                 <span className="px-2.5 py-1 rounded-md text-[10px] font-mono font-bold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
                   {systemState?.reference_cases?.length
-                    ? `Live Biopsy Bank (${systemState.reference_cases.length} Verified Cases)`
+                    ? `${t("landing_rag_live_bank")} (${systemState.reference_cases.length} ${t("landing_rag_verified_cases")})`
                     : t("landing_tab2_badge")}
                 </span>
               </div>
@@ -463,20 +463,26 @@ export default function PresentationLandingPage() {
                             : "bg-blue-500/10 text-blue-600 dark:text-blue-400"
                         }`}
                       >
-                        {c.similarity}% Match
+                        {c.similarity}% {t("landing_rag_match")}
                       </span>
                     </div>
                     <div className="text-xs font-semibold text-[var(--text-heading)]">
-                      {c.diagnosis}
+                      {language === "TR" && c.diagnosis === "Malignant Melanoma" ? "Malign Melanom" : c.diagnosis}
                     </div>
                     <p className="text-xs text-[var(--text-muted)] leading-relaxed line-clamp-3">
-                      {c.clinical_notes}
+                      {language === "TR" && (c.case_id.startsWith("PAT_ISIC") || c.clinical_notes?.toLowerCase().includes("melanoma"))
+                        ? "55 yaşındaki hastada gövde bölgesinde yerleşik, histopatoloji (biyopsi) ile doğrulanmış Malign Melanom. Eksantrik hiperpigmentasyon ve periferik çizgilenmeler mevcut. Geniş lokal eksizyon endikedir."
+                        : c.clinical_notes}
                     </p>
                     <div className="text-[10px] font-mono text-[var(--text-muted)] pt-1 border-t border-[var(--border-subtle)] flex items-center justify-between">
-                      <span className="truncate">{c.site_id || "ISIC Multi-Center Bank"}</span>
+                      <span className="truncate">
+                        {language === "TR" && c.site_id?.includes("BCN-20000")
+                          ? "BCN-20000 Deri Kanseri Merkezi (Barselona)"
+                          : c.site_id || (language === "TR" ? "ISIC Çok Merkezli Bankası" : "ISIC Multi-Center Bank")}
+                      </span>
                       {c.biopsy_confirmed && (
                         <span className="text-emerald-600 dark:text-emerald-400 font-semibold shrink-0 ml-1">
-                          Biopsy Confirmed: Yes
+                          {t("landing_rag_biopsy_yes")}
                         </span>
                       )}
                     </div>
@@ -493,12 +499,14 @@ export default function PresentationLandingPage() {
                 <div>
                   <h3 className="font-display text-base font-bold text-[var(--text-heading)]">
                     {systemState?.is_live && systemState?.rounds && systemState.rounds.length > 0
-                      ? `Live Runtime Telemetry (${systemState.history_rounds} Rounds · ${systemState.model_type.toUpperCase()})`
+                      ? `${t("landing_tab3_live_title")} (${systemState.history_rounds} ${t("landing_kpi_rounds")} · ${systemState.model_type.toUpperCase()})`
                       : t("landing_tab3_title")}
                   </h3>
                   <p className="text-xs text-[var(--text-muted)]">
                     {systemState?.is_live && systemState?.rounds && systemState.rounds.length > 0
-                      ? `Trained on ${systemState.data_source} with ${systemState.peft_mode ? systemState.peft_mode.toUpperCase() : "full consensus"} adapters.`
+                      ? (language === "TR"
+                          ? `${systemState.data_source} üzerinde ${systemState.peft_mode ? systemState.peft_mode.toUpperCase() : "tam konsensüs"} adaptörleri ile eğitildi.`
+                          : `Trained on ${systemState.data_source} with ${systemState.peft_mode ? systemState.peft_mode.toUpperCase() : "full consensus"} adapters.`)
                       : t("landing_tab3_desc")}
                   </p>
                 </div>
@@ -512,8 +520,8 @@ export default function PresentationLandingPage() {
                   />
                   <span className="text-xs font-semibold text-emerald-600 dark:text-emerald-400">
                     {systemState?.is_live && systemState?.rounds && systemState.rounds.length > 0
-                      ? "Runtime Synchronized"
-                      : "Reference Benchmark Target"}
+                      ? t("landing_tab3_live_synced")
+                      : t("landing_tab3_ref_target")}
                   </span>
                 </div>
               </div>

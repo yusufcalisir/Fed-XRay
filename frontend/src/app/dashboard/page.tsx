@@ -72,12 +72,12 @@ export default function DashboardPage() {
         setHistory([]);
         setCurrentRound(0);
       } else {
-        throw new Error(res.error || "Cohort generation failed on backend");
+        throw new Error(res.error || t("dashboard_cohort_error"));
       }
     } catch (err: any) {
       console.warn("Cohort generation error:", err.message);
       setHospitals([]);
-      setErrorMessage(`Cohort generation failed: ${err.message}. Ensure backend service is reachable.`);
+      setErrorMessage(`${t("dashboard_cohort_error_prefix")}: ${err.message}. ${t("dashboard_cohort_error_suffix")}`);
     } finally {
       setIsCohortLoading(false);
     }
@@ -258,7 +258,7 @@ export default function DashboardPage() {
     imageBase64?: string
   ) => {
     if (!isTrained) {
-      setErrorMessage("Federated model is not trained yet. Complete Step 2 before initiating diagnosis.");
+      setErrorMessage(t("dashboard_model_not_trained"));
       return;
     }
     setErrorMessage(null);
@@ -312,8 +312,8 @@ export default function DashboardPage() {
         <div className="card-inner flex items-start gap-2.5 p-3 mb-4 border-l-4 border-l-amber-400 bg-amber-50/5">
           <AlertCircle className="w-3.5 h-3.5 text-amber-500 shrink-0 mt-0.5" />
           <p className="text-[10px] text-[var(--text-muted)] leading-relaxed">
-            <span className="font-semibold text-amber-600 dark:text-amber-400">Research Prototype:</span>{" "}
-            This system is not validated or approved for clinical use. Outputs must not be used for diagnostic or treatment decisions.
+            <span className="font-semibold text-amber-600 dark:text-amber-400">{t("dashboard_disclaimer_badge")}:</span>{" "}
+            {t("dashboard_disclaimer_text")}
           </p>
         </div>
 

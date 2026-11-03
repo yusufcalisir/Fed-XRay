@@ -453,7 +453,7 @@ export default function ConsortiumLaunchOverlay({
                 {isTunnelExpired && (
                   <div className="mt-2 p-1.5 rounded-md bg-amber-500/10 border border-amber-500/30 text-amber-500 dark:text-amber-400 text-[11px] font-sans flex items-center gap-1.5">
                     <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
-                    <span>Configured cloud tunnel has expired. Switched to local backend (http://127.0.0.1:8000).</span>
+                    <span>{t("overlay_tunnel_expired")}</span>
                   </div>
                 )}
 
@@ -463,7 +463,7 @@ export default function ConsortiumLaunchOverlay({
                     onClick={handleSkip}
                     className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-[11px] font-bold bg-emerald-600 text-white hover:bg-emerald-500 shadow-sm transition-all"
                   >
-                    <span>Proceed to Dashboard (Standby Mode)</span>
+                    <span>{t("overlay_proceed_standby")}</span>
                     <ArrowRight className="w-3.5 h-3.5" />
                   </button>
 
@@ -473,7 +473,7 @@ export default function ConsortiumLaunchOverlay({
                     className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-[11px] font-semibold bg-rose-500/80 text-white hover:bg-rose-500 transition-colors disabled:opacity-50"
                   >
                     <RefreshCw className={`w-3 h-3 ${isVerifying ? "animate-spin" : ""}`} />
-                    <span>Retry Handshake</span>
+                    <span>{t("overlay_retry_handshake")}</span>
                   </button>
 
                   <button
@@ -484,7 +484,7 @@ export default function ConsortiumLaunchOverlay({
                     disabled={isVerifying}
                     className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-md text-[11px] font-semibold bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 transition-colors disabled:opacity-50"
                   >
-                    <span>Connect Localhost (8000)</span>
+                    <span>{t("overlay_connect_localhost")}</span>
                   </button>
 
                   <button
@@ -492,7 +492,7 @@ export default function ConsortiumLaunchOverlay({
                     className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-md text-[11px] font-semibold bg-slate-800/60 hover:bg-slate-700 text-slate-300 transition-colors"
                   >
                     <Link2 className="w-3 h-3" />
-                    <span>Change API URL</span>
+                    <span>{t("overlay_change_url")}</span>
                   </button>
                 </div>
 
