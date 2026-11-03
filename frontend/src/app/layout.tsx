@@ -26,11 +26,18 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <body className="antialiased" suppressHydrationWarning>
+      <body className="antialiased relative min-h-screen" suppressHydrationWarning>
         <LanguageProvider>
           <ApiProvider>
             <ClientRuntimeShield>
-              {children}
+              {/* Technical Precision Blueprint Grid Pattern */}
+              <div
+                className="fixed inset-0 pointer-events-none z-0 bg-grid-pattern bg-grid-mask opacity-80 dark:opacity-90"
+                aria-hidden="true"
+              />
+              <div className="relative z-10 flex flex-col min-h-screen">
+                {children}
+              </div>
             </ClientRuntimeShield>
           </ApiProvider>
         </LanguageProvider>

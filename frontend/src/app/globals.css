@@ -67,6 +67,25 @@ body {
   transition: background-color 0.2s ease, color 0.2s ease;
 }
 
+/* === Technical Blueprint Engineering Grid Pattern === */
+.bg-grid-pattern {
+  background-size: 44px 44px;
+  background-image: 
+    linear-gradient(to right, rgba(15, 23, 42, 0.045) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(15, 23, 42, 0.045) 1px, transparent 1px);
+}
+
+.dark .bg-grid-pattern {
+  background-image: 
+    linear-gradient(to right, rgba(255, 255, 255, 0.045) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(255, 255, 255, 0.045) 1px, transparent 1px);
+}
+
+.bg-grid-mask {
+  mask-image: radial-gradient(ellipse 90% 85% at 50% 20%, black 45%, transparent 95%);
+  -webkit-mask-image: radial-gradient(ellipse 90% 85% at 50% 20%, black 45%, transparent 95%);
+}
+
 /* === Surfaces === */
 .card {
   background-color: var(--bg-card);
