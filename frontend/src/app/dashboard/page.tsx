@@ -139,16 +139,12 @@ export default function DashboardPage() {
       }
 
       if (isCancelled) return;
-      const roundsList = (fetchedData.rounds && Array.isArray(fetchedData.rounds)) ? fetchedData.rounds : [];
-      if (roundsList.length > 0) {
-        setHistory(roundsList);
-        setCurrentRound(roundsList.length);
-        setIsTrained(Boolean(fetchedData.model_trained));
-      } else {
-        setHistory([]);
-        setCurrentRound(0);
-        setIsTrained(false);
-      }
+      // In the interactive clinical cockpit, a new session begins in clean un-trained state.
+      // Do not auto-populate historical rounds as a completed training run.
+      setHistory([]);
+      setCurrentRound(0);
+      setIsTrained(false);
+
       if (fetchedData.reference_cases && Array.isArray(fetchedData.reference_cases)) {
         setRagTwins(fetchedData.reference_cases);
       }
