@@ -654,7 +654,11 @@ def get_default_reference_cases() -> List[Dict[str, Any]]:
 
 @app.get("/api/state")
 async def get_state():
-    if not state.hospital_cohort_info or state.dataloaders is None:
+    if (
+        not state.hospital_cohort_info
+        or state.dataloaders is None
+        or any(not getattr(h, "sample_images", None) for h in state.hospital_cohort_info)
+    ):
         state.ensure_cohort_loaded()
     checkpoint_exists = Path("checkpoints/federated_global_model.pt").exists()
     active_epsilon = (
@@ -662,6 +666,11 @@ async def get_state():
         if state.server is not None
         else float(state.training_history.get("privacy_spent", 0.0))
     )
+
+    if not state.training_history.get("round"):
+        saved_hist = state.store.get_training_history()
+        if saved_hist and saved_hist.get("round"):
+            state.training_history = saved_hist
 
     hospitals_list: List[Dict[str, Any]] = []
     cohorts_data: List[Dict[str, Any]] = []
@@ -745,13 +754,15 @@ async def get_state():
     else:
         reference_cases = get_default_reference_cases()
 
-    is_live = state.model_trained and len(rounds_list) > 0
+    has_rounds = len(rounds_list) > 0
+    effective_trained = bool(state.model_trained and has_rounds)
+    is_live = effective_trained and len(rounds_list) > 0
 
     return {
-        "model_trained": state.model_trained,
+        "model_trained": effective_trained,
         "hospitals_loaded": len(state.hospital_samples) or len(hospitals_list),
         "has_test_set": state.global_test_set is not None,
-        "history_rounds": len(state.training_history["round"]),
+        "history_rounds": len(rounds_list),
         "model_type": state.model_type,
         "peft_mode": state.peft_mode,
         "persisted_on_disk": checkpoint_exists,

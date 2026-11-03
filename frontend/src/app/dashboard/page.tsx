@@ -14,6 +14,7 @@ import ReportDownload from "@/components/ReportDownload";
 import FedXRayLogo from "@/components/FedXRayLogo";
 import { HospitalCohort, TelemetryRound, DiagnosisResult, RagCase } from "@/types";
 import { fetchHospitalCohorts, fetchClinicalDiagnosis, fetchRagTwins, streamFederatedTraining } from "@/lib/api";
+import authenticCohorts from "@/lib/authenticCohortsCompact.json";
 import { useLanguage } from "@/context/LanguageContext";
 import { useApi } from "@/context/ApiContext";
 import { AlertCircle } from "lucide-react";
@@ -43,13 +44,25 @@ export default function DashboardPage() {
 
   const abortControllerRef = useRef<AbortController | null>(null);
 
+  const sanitizeCohorts = (cohortList: any[]): HospitalCohort[] => {
+    return cohortList.map((h: any, idx: number) => {
+      const hasImages = h.sample_images && Array.isArray(h.sample_images) && h.sample_images.length > 0;
+      return {
+        ...h,
+        sample_images: hasImages
+          ? h.sample_images
+          : (authenticCohorts as any[])[idx % (authenticCohorts.length || 1)]?.sample_images || [],
+      };
+    });
+  };
+
   const handleGenerateCohorts = async () => {
     setErrorMessage(null);
     try {
       setIsCohortLoading(true);
       const res = await fetchHospitalCohorts(apiUrl, numHospitals, samplesPerHospital);
       if (res.success && res.hospitals) {
-        setHospitals(res.hospitals);
+        setHospitals(sanitizeCohorts(res.hospitals));
         setIsTrained(false);
         setDiagnosis(null);
         setRagTwins([]);
@@ -103,24 +116,32 @@ export default function DashboardPage() {
         : null;
 
       if (rawCohorts && rawCohorts.length > 0) {
-        setHospitals(rawCohorts);
+        setHospitals(sanitizeCohorts(rawCohorts));
       } else {
         // Auto-load authentic Strategy E cohorts if backend has not loaded them yet
         try {
           const res = await fetchHospitalCohorts(workingBase, 4, 50);
           if (!isCancelled && res.success && res.hospitals) {
-            setHospitals(res.hospitals);
+            setHospitals(sanitizeCohorts(res.hospitals));
           }
         } catch {
-          // Graceful: keep existing without wiping state
+          // Graceful fallback to authentic Strategy E compact manifest
+          if (!isCancelled) {
+            setHospitals(sanitizeCohorts(authenticCohorts as any[]));
+          }
         }
       }
 
       if (isCancelled) return;
-      setIsTrained(Boolean(fetchedData.model_trained));
-      if (fetchedData.rounds && Array.isArray(fetchedData.rounds) && fetchedData.rounds.length > 0) {
-        setHistory(fetchedData.rounds);
-        setCurrentRound(fetchedData.rounds.length);
+      const roundsList = (fetchedData.rounds && Array.isArray(fetchedData.rounds)) ? fetchedData.rounds : [];
+      if (roundsList.length > 0) {
+        setHistory(roundsList);
+        setCurrentRound(roundsList.length);
+        setIsTrained(Boolean(fetchedData.model_trained));
+      } else {
+        setHistory([]);
+        setCurrentRound(0);
+        setIsTrained(false);
       }
       if (fetchedData.reference_cases && Array.isArray(fetchedData.reference_cases)) {
         setRagTwins(fetchedData.reference_cases);
@@ -268,65 +289,73 @@ export default function DashboardPage() {
           </div>
         )}
 
-        <Hero
-          numHospitals={hospitals.length}
-          totalRounds={totalRounds}
-          totalSamples={(hospitals || []).reduce((acc, h) => acc + (h?.num_samples || 0), 0)}
-          isTrained={hospitals.length > 0 && isTrained}
-        />
+        {/* Training completed invariant: requires authentic ingested cohorts, model_trained flag, AND recorded rounds */}
+        {(() => {
+          const isTrainingDone = hospitals.length > 0 && isTrained && history.length > 0;
+          return (
+            <>
+              <Hero
+                numHospitals={hospitals.length}
+                totalRounds={totalRounds}
+                totalSamples={(hospitals || []).reduce((acc, h) => acc + (h?.num_samples || 0), 0)}
+                isTrained={isTrainingDone}
+              />
 
-        <LiveHud
-          numHospitals={hospitals.length}
-          isDefenseActive={true}
-          isTrained={hospitals.length > 0 && isTrained}
-          modelType={activeModel}
-          peftMode={activePeft}
-        />
+              <LiveHud
+                numHospitals={hospitals.length}
+                isDefenseActive={true}
+                isTrained={isTrainingDone}
+                modelType={activeModel}
+                peftMode={activePeft}
+              />
 
-        {/* 4-Step Clinical Workflow Stepper */}
-        <WorkflowStepper
-          hasIngested={hospitals.length > 0}
-          isTraining={isTraining}
-          isTrained={hospitals.length > 0 && isTrained}
-          hasDiagnosis={hospitals.length > 0 && isTrained && diagnosis !== null}
-          onScrollToStep={scrollToSection}
-        />
+              {/* 4-Step Clinical Workflow Stepper */}
+              <WorkflowStepper
+                hasIngested={hospitals.length > 0}
+                isTraining={isTraining}
+                isTrained={isTrainingDone}
+                hasDiagnosis={isTrainingDone && diagnosis !== null}
+                onScrollToStep={scrollToSection}
+              />
 
-        {/* Step 1: Ingestion */}
-        <ClinicalErrorBoundary language={language}>
-          <HospitalStudio
-            hospitals={hospitals}
-            onGenerate={handleGenerateCohorts}
-            isLoading={isCohortLoading}
-          />
-        </ClinicalErrorBoundary>
+              {/* Step 1: Ingestion */}
+              <ClinicalErrorBoundary language={language}>
+                <HospitalStudio
+                  hospitals={hospitals}
+                  onGenerate={handleGenerateCohorts}
+                  isLoading={isCohortLoading}
+                />
+              </ClinicalErrorBoundary>
 
-        {/* Step 2: Training */}
-        <ClinicalErrorBoundary language={language}>
-          <TelemetryCockpit
-            history={history}
-            onStartTraining={handleStartTraining}
-            isTraining={isTraining}
-            currentRound={currentRound}
-            totalRounds={totalRounds}
-            isLocked={hospitals.length === 0}
-            onUnlock={() => {
-              scrollToSection("section-ingestion");
-              handleGenerateCohorts();
-            }}
-          />
-        </ClinicalErrorBoundary>
+              {/* Step 2: Training */}
+              <ClinicalErrorBoundary language={language}>
+                <TelemetryCockpit
+                  history={history}
+                  onStartTraining={handleStartTraining}
+                  isTraining={isTraining}
+                  currentRound={currentRound}
+                  totalRounds={totalRounds}
+                  isLocked={hospitals.length === 0}
+                  onUnlock={() => {
+                    scrollToSection("section-ingestion");
+                    handleGenerateCohorts();
+                  }}
+                />
+              </ClinicalErrorBoundary>
 
-        {/* Step 3: Diagnostic Inference & Grad-CAM */}
-        <ClinicalErrorBoundary language={language}>
-          <DiagnosticStudio
-            diagnosis={diagnosis}
-            onDiagnose={handleRunDiagnosis}
-            isLoading={isDiagLoading}
-            isLocked={!isTrained}
-            onScrollToTraining={() => scrollToSection("section-training")}
-          />
-        </ClinicalErrorBoundary>
+              {/* Step 3: Diagnostic Inference & Grad-CAM */}
+              <ClinicalErrorBoundary language={language}>
+                <DiagnosticStudio
+                  diagnosis={diagnosis}
+                  onDiagnose={handleRunDiagnosis}
+                  isLoading={isDiagLoading}
+                  isLocked={!isTrainingDone}
+                  onScrollToTraining={() => scrollToSection("section-training")}
+                />
+              </ClinicalErrorBoundary>
+            </>
+          );
+        })()}
 
         {/* Step 4: Digital Twins & Reports */}
         {diagnosis && (
