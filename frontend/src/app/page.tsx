@@ -352,7 +352,7 @@ export default function PresentationLandingPage() {
             {activeTab === "xai" && (
             <div className="card p-4 sm:p-6">
               <div className="grid grid-cols-1 lg:grid-cols-5 gap-5 items-stretch">
-                <div className="relative lg:col-span-3 h-[380px] sm:h-[460px] rounded-xl overflow-hidden border border-[var(--border-card)] bg-[var(--bg-card-inner)]">
+                <div className="relative lg:col-span-3 min-h-[380px] sm:min-h-[460px] h-[380px] sm:h-[460px] lg:h-full rounded-2xl overflow-hidden border border-[var(--border-card)] bg-[var(--bg-card-inner)] shadow-xs">
                   <LungViewer3D className="absolute inset-0" mode="anatomy" labels={false} />
                   <div className="pointer-events-none absolute left-3 top-3 inline-flex items-center gap-1.5 rounded-lg border border-[var(--border-card)] bg-[var(--bg-card)]/90 px-2.5 py-1 font-mono text-[10px] text-[var(--text-muted)] backdrop-blur">
                     <Eye className="w-3 h-3 text-emerald-500" />
