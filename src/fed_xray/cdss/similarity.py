@@ -9,6 +9,7 @@ Implements:
 """
 
 from __future__ import annotations
+import os
 from typing import Any, Dict, List, Optional, Sequence, Union
 import numpy as np
 from sklearn.metrics.pairwise import cosine_similarity  # pyrefly: ignore[missing-source-for-stubs]
@@ -17,9 +18,13 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 try:
-    import hnswlib  # pyrefly: ignore[missing-source-for-stubs]
-    HNSW_AVAILABLE = True
-except ImportError:
+    if os.environ.get("DISABLE_HNSW", "0") != "1":
+        import hnswlib  # pyrefly: ignore[missing-source-for-stubs]
+        HNSW_AVAILABLE = True
+    else:
+        hnswlib = None
+        HNSW_AVAILABLE = False
+except (ImportError, Exception):
     hnswlib = None
     HNSW_AVAILABLE = False
 

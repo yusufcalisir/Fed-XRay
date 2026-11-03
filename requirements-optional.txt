@@ -1,0 +1,6 @@
+# Optional Heavy / C++ Dependencies
+# These packages compile with native instructions (AVX/AVX2).
+# Install for local advanced benchmarking: pip install -r requirements-optional.txt
+
+hnswlib>=0.8.0
+tenseal>=0.3.14

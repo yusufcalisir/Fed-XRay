@@ -27,8 +27,8 @@ Pillow>=10.0.0
 # PDF Report Generation (fpdf2: maintained fork of fpdf, used by report.py)
 fpdf2>=2.7.0
 
-# Vector Database & High-Speed Case Indexing (Federated RAG)
-hnswlib>=0.8.0
+# Vector Database & High-Speed Case Indexing (Federated RAG: optional, falls back to pure scikit-learn/numpy)
+# hnswlib>=0.8.0
 
 # Federated Learning Multi-Node Orchestration (Flower v1.8+)
 flwr>=1.8.0
@@ -36,8 +36,8 @@ flwr>=1.8.0
 # Clinical Voice Briefing (gTTS - internet-based TTS)
 gTTS>=2.3.0
 
-# Homomorphic Encryption (CKKS via TenSEAL - optional, gracefully skipped if unavailable)
-tenseal>=0.3.14
+# Homomorphic Encryption (CKKS via TenSEAL: optional, requires AVX2 - see requirements-optional.txt)
+# tenseal>=0.3.14
 
 # Privacy & Cryptography
 cryptography>=41.0.0
