@@ -239,16 +239,25 @@ export default function PresentationLandingPage() {
                 return (
                   <div
                     key={i}
-                    className="bg-[var(--bg-card)]/80 backdrop-blur-sm p-3.5 sm:p-5 transition-colors hover:bg-[var(--bg-card-inner)] flex flex-col justify-between text-left items-start"
+                    className="bg-[var(--bg-card)]/80 backdrop-blur-sm p-4 sm:p-5 transition-colors hover:bg-[var(--bg-card-inner)] flex flex-col text-left items-start min-h-[136px] sm:min-h-[144px]"
                   >
-                    <div className="flex items-center gap-1.5 mb-1.5">
-                      <IconComponent className={`w-3.5 h-3.5 ${m.accentColor}`} />
-                      <span className="text-[11px] font-semibold text-[var(--text-heading)]">{m.label}</span>
+                    {/* Row 1: Fixed Height Header (Icon + Label) */}
+                    <div className="flex items-center gap-1.5 h-6 sm:h-7 mb-2.5 w-full">
+                      <IconComponent className={`w-3.5 h-3.5 ${m.accentColor} shrink-0`} />
+                      <span className="text-[11px] font-semibold text-[var(--text-heading)] leading-tight truncate">
+                        {m.label}
+                      </span>
                     </div>
-                    <div className="font-display text-xl sm:text-2xl font-extrabold text-[var(--text-heading)] mb-0.5 tracking-tight">
+
+                    {/* Row 2: Fixed Baseline Metric Value */}
+                    <div className="font-display text-xl sm:text-2xl font-extrabold text-[var(--text-heading)] mb-1.5 tracking-tight leading-none">
                       {m.value}
                     </div>
-                    <div className="text-[10px] text-[var(--text-muted)] font-mono">{m.sub}</div>
+
+                    {/* Row 3: Subtitle anchored to bottom */}
+                    <div className="text-[10px] text-[var(--text-muted)] font-mono leading-tight mt-auto truncate w-full">
+                      {m.sub}
+                    </div>
                   </div>
                 );
               })}
