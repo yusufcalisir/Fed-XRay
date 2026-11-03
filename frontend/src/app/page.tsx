@@ -711,24 +711,36 @@ export default function PresentationLandingPage() {
               </p>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 items-stretch">
               {[
                 { icon: Database, title: t("landing_pillar_1_title"), desc: t("landing_pillar_1_desc"), tag: t("landing_p1_tag"), accent: "emerald" },
                 { icon: ShieldCheck, title: t("landing_pillar_2_title"), desc: t("landing_pillar_2_desc"), tag: t("landing_p2_tag"), accent: "blue" },
                 { icon: Lock, title: t("landing_pillar_3_title"), desc: t("landing_pillar_3_desc"), tag: t("landing_p3_tag"), accent: "emerald" },
                 { icon: AlertTriangle, title: t("landing_pillar_4_title"), desc: t("landing_pillar_4_desc"), tag: t("landing_p4_tag"), accent: "amber" },
               ].map((pillar, i) => (
-                <div key={i} className="bg-[var(--bg-card)]/80 backdrop-blur-sm rounded-xl p-5 border border-[var(--border-card)]">
-                  <div className={`w-10 h-10 rounded-xl flex items-center justify-center mb-3 ${
-                    pillar.accent === "emerald" ? "bg-emerald-500/10 text-emerald-500" :
-                    pillar.accent === "blue" ? "bg-blue-500/10 text-blue-500" :
-                    "bg-amber-500/10 text-amber-500"
-                  }`}>
-                    <pillar.icon className="w-5 h-5" />
+                <div
+                  key={i}
+                  className="bg-[var(--bg-card)]/80 backdrop-blur-sm rounded-xl p-5 border border-[var(--border-card)] flex flex-col justify-between h-full min-h-[280px] sm:min-h-[300px]"
+                >
+                  <div>
+                    <div className={`w-10 h-10 rounded-xl flex items-center justify-center mb-3.5 ${
+                      pillar.accent === "emerald" ? "bg-emerald-500/10 text-emerald-500" :
+                      pillar.accent === "blue" ? "bg-blue-500/10 text-blue-500" :
+                      "bg-amber-500/10 text-amber-500"
+                    }`}>
+                      <pillar.icon className="w-5 h-5" />
+                    </div>
+                    <h3 className="text-sm font-bold text-[var(--text-heading)] mb-2 h-10 flex items-start leading-snug">
+                      {pillar.title}
+                    </h3>
+                    <p className="text-xs text-[var(--text-muted)] leading-relaxed">
+                      {pillar.desc}
+                    </p>
                   </div>
-                  <h3 className="text-sm font-bold text-[var(--text-heading)] mb-1.5">{pillar.title}</h3>
-                  <p className="text-xs text-[var(--text-muted)] leading-relaxed mb-3">{pillar.desc}</p>
-                  <div className="text-[10px] font-mono font-semibold text-[var(--text-muted)]">{pillar.tag}</div>
+
+                  <div className="mt-4 pt-3 border-t border-[var(--border-card)]/60 text-[10px] font-mono font-semibold text-[var(--text-muted)] leading-tight truncate">
+                    {pillar.tag}
+                  </div>
                 </div>
               ))}
             </div>
