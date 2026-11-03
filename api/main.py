@@ -654,7 +654,7 @@ def get_default_reference_cases() -> List[Dict[str, Any]]:
 
 @app.get("/api/state")
 async def get_state():
-    if not state.hospital_cohort_info:
+    if not state.hospital_cohort_info or state.dataloaders is None:
         state.ensure_cohort_loaded()
     checkpoint_exists = Path("checkpoints/federated_global_model.pt").exists()
     active_epsilon = (
