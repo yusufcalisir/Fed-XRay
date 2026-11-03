@@ -15,17 +15,30 @@ interface NavbarProps {
 export default function Navbar({ mode = "landing", onLaunchDemo }: NavbarProps) {
   const { language, setLanguage, t } = useLanguage();
   const { isConnected, isChecking, reconnectAttempts } = useApi();
-  const [isDark, setIsDark] = useState(true);
+  const [isDark, setIsDark] = useState(false);
 
   useEffect(() => {
-    const savedTheme = localStorage.getItem("theme");
-    if (savedTheme) {
-      const dark = savedTheme === "dark";
-      setIsDark(dark);
-      document.documentElement.classList.toggle("dark", dark);
+    let sessionTheme: string | null = null;
+    try {
+      if (typeof window !== "undefined") {
+        sessionTheme = sessionStorage.getItem("theme");
+      }
+    } catch {
+      // Ignore storage errors
+    }
+
+    if (sessionTheme === "dark") {
+      setIsDark(true);
+      document.documentElement.classList.add("dark");
     } else {
-      const hasDarkClass = document.documentElement.classList.contains("dark");
-      setIsDark(hasDarkClass);
+      // System always defaults to Light Theme on initial startup
+      setIsDark(false);
+      document.documentElement.classList.remove("dark");
+      try {
+        localStorage.setItem("theme", "light");
+      } catch {
+        // Ignore storage errors
+      }
     }
   }, []);
 
@@ -34,10 +47,20 @@ export default function Navbar({ mode = "landing", onLaunchDemo }: NavbarProps) 
     setIsDark(newDark);
     if (newDark) {
       document.documentElement.classList.add("dark");
-      localStorage.setItem("theme", "dark");
+      try {
+        sessionStorage.setItem("theme", "dark");
+        localStorage.setItem("theme", "dark");
+      } catch {
+        // Ignore storage errors
+      }
     } else {
       document.documentElement.classList.remove("dark");
-      localStorage.setItem("theme", "light");
+      try {
+        sessionStorage.setItem("theme", "light");
+        localStorage.setItem("theme", "light");
+      } catch {
+        // Ignore storage errors
+      }
     }
   };
 

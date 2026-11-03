@@ -15,15 +15,36 @@ export function LanguageProvider({ children }: { children: React.ReactNode }) {
   const [language, setLanguage] = useState<Language>("EN");
 
   useEffect(() => {
-    const saved = localStorage.getItem("fedxray_lang") as Language;
-    if (saved && (saved === "EN" || saved === "TR")) {
-      setLanguage(saved);
+    let sessionLang: Language | null = null;
+    try {
+      if (typeof window !== "undefined") {
+        sessionLang = sessionStorage.getItem("fedxray_lang") as Language;
+      }
+    } catch {
+      // Ignore storage errors
+    }
+
+    if (sessionLang && (sessionLang === "EN" || sessionLang === "TR")) {
+      setLanguage(sessionLang);
+    } else {
+      // System always defaults to English (EN) on initial startup
+      setLanguage("EN");
+      try {
+        localStorage.setItem("fedxray_lang", "EN");
+      } catch {
+        // Ignore storage errors
+      }
     }
   }, []);
 
   const handleSetLanguage = (lang: Language) => {
     setLanguage(lang);
-    localStorage.setItem("fedxray_lang", lang);
+    try {
+      sessionStorage.setItem("fedxray_lang", lang);
+      localStorage.setItem("fedxray_lang", lang);
+    } catch {
+      // Ignore storage errors
+    }
   };
 
   const t = (key: string): string => {
