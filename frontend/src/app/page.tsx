@@ -87,105 +87,59 @@ export default function PresentationLandingPage() {
             SECTION 1: HERO
             Clean, product-focused. Problem + Solution in one view.
             ================================================================ */}
-        <section className="relative max-w-[1200px] mx-auto px-4 sm:px-6 pt-8 sm:pt-14 pb-12 sm:pb-20">
-          {/* Ambient Glow */}
-          <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full max-w-6xl h-80 bg-gradient-to-b from-emerald-500/[0.07] via-sky-500/[0.03] to-transparent pointer-events-none blur-3xl -z-10" />
+        <section className="max-w-[1200px] mx-auto px-4 sm:px-6 pt-10 sm:pt-16 pb-12 sm:pb-20">
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-10 lg:gap-14 items-center">
             {/* Left: Value Proposition */}
             <div className="max-w-xl">
-              {/* Architecture & Governance Badges */}
-              <div className="flex flex-wrap items-center gap-2 mb-4">
-                <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full border border-emerald-500/25 text-emerald-600 dark:text-emerald-400 text-[11px] font-semibold bg-emerald-500/5">
-                  <ShieldCheck className="w-3.5 h-3.5" />
-                  <span>{t("landing_hero_badge")}</span>
-                </div>
-                <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full border border-[var(--border-card)] bg-[var(--bg-card-inner)] text-[11px] font-medium text-[var(--text-muted)]">
-                  <Lock className="w-3 h-3 text-emerald-500" />
-                  <span>Zero Patient Egress</span>
-                </div>
-                <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full border border-[var(--border-card)] bg-[var(--bg-card-inner)] text-[11px] font-medium text-[var(--text-muted)]">
-                  <Cpu className="w-3 h-3 text-sky-500" />
-                  <span>CKKS 128-Bit HE</span>
-                </div>
-                <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full border border-[var(--border-card)] bg-[var(--bg-card-inner)] text-[11px] font-medium text-[var(--text-muted)]">
-                  <Layers className="w-3 h-3 text-indigo-500" />
-                  <span>FFA-LoRA 99.6% PEFT</span>
-                </div>
+              {/* Single concise category tag */}
+              <div className="inline-flex items-center gap-2 mb-5 text-[11px] font-semibold uppercase tracking-widest text-emerald-600 dark:text-emerald-400">
+                <span className="w-4 h-px bg-emerald-500 shrink-0" />
+                <span>{t("landing_hero_badge")}</span>
               </div>
 
-              <h1 className="font-display text-3xl sm:text-4xl lg:text-[42px] font-extrabold tracking-tight text-[var(--text-heading)] leading-[1.14] mb-4">
+              <h1 className="font-display text-3xl sm:text-4xl lg:text-[44px] font-extrabold tracking-tight text-[var(--text-heading)] leading-[1.12] mb-5">
                 {t("landing_hero_title")}
               </h1>
 
-              <p className="text-[15px] sm:text-base text-[var(--text-muted)] leading-relaxed mb-5 max-w-lg">
+              <p className="text-[15px] sm:text-base text-[var(--text-muted)] leading-relaxed mb-7 max-w-lg">
                 {t("landing_hero_desc")}
               </p>
 
-              {/* High-Impact Clinical Architecture Highlights */}
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 mb-6">
-                <div className="p-3 rounded-xl border border-[var(--border-card)] bg-[var(--bg-card-inner)] flex flex-col justify-between">
-                  <div className="flex items-center gap-1.5 text-emerald-600 dark:text-emerald-400 font-bold text-xs">
-                    <Lock className="w-3.5 h-3.5 shrink-0" />
-                    <span>Zero Data Egress</span>
-                  </div>
-                  <p className="text-[11px] text-[var(--text-muted)] mt-1 leading-snug">
-                    Patient scans remain 100% inside local hospital firewalls.
-                  </p>
-                </div>
-
-                <div className="p-3 rounded-xl border border-[var(--border-card)] bg-[var(--bg-card-inner)] flex flex-col justify-between">
-                  <div className="flex items-center gap-1.5 text-sky-600 dark:text-sky-400 font-bold text-xs">
-                    <Cpu className="w-3.5 h-3.5 shrink-0" />
-                    <span>CKKS 128-Bit HE</span>
-                  </div>
-                  <p className="text-[11px] text-[var(--text-muted)] mt-1 leading-snug">
-                    Leveled homomorphic encryption with zero plaintext exposure.
-                  </p>
-                </div>
-
-                <div className="p-3 rounded-xl border border-[var(--border-card)] bg-[var(--bg-card-inner)] flex flex-col justify-between">
-                  <div className="flex items-center gap-1.5 text-indigo-600 dark:text-indigo-400 font-bold text-xs">
-                    <Zap className="w-3.5 h-3.5 shrink-0" />
-                    <span>99.6% PEFT</span>
-                  </div>
-                  <p className="text-[11px] text-[var(--text-muted)] mt-1 leading-snug">
-                    FFA-LoRA low-rank adaptation across heterogeneous nodes.
-                  </p>
-                </div>
-              </div>
-
-              <div className="flex flex-wrap items-center gap-3 mb-5">
+              <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 mb-8">
                 <button
                   type="button"
                   onClick={openLaunchModal}
-                  className="btn-primary text-sm px-6 py-3 rounded-xl shadow-lg shadow-emerald-500/20 hover:shadow-emerald-500/30 transition-all flex items-center gap-2"
+                  className="w-full sm:w-auto btn-primary text-sm px-6 py-3 rounded-md flex items-center justify-center gap-2"
                 >
-                  <Activity className="w-4 h-4" />
+                  <Activity className="w-4 h-4 shrink-0" />
                   <span>{t("landing_cta_launch")}</span>
-                  <ArrowRight className="w-4 h-4" />
+                  <ArrowRight className="w-4 h-4 shrink-0" />
                 </button>
 
                 <button
                   type="button"
                   onClick={() => scrollToSection("results")}
-                  className="inline-flex items-center gap-2 px-5 py-3 rounded-xl border border-[var(--border-card)] text-sm font-semibold text-[var(--text-heading)] hover:bg-[var(--bg-card-inner)] transition-colors shadow-xs"
+                  className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-5 py-3 rounded-md border border-[var(--border-card)] text-sm font-semibold text-[var(--text-heading)] hover:bg-[var(--bg-card-inner)] transition-colors"
                 >
                   <span>{t("landing_results_title")}</span>
-                  <ArrowRight className="w-4 h-4 text-[var(--text-muted)]" />
+                  <ArrowRight className="w-4 h-4 text-[var(--text-muted)] shrink-0" />
                 </button>
               </div>
 
-              {/* Enterprise Enclave Security Assurance Pills */}
-              <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 text-[11px] text-[var(--text-muted)]">
-                <div className="flex items-center gap-1.5">
-                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" />
-                  <span>HIPAA &amp; GDPR Compliant Enclaves</span>
+              {/* Three key facts - plain text with dot separators */}
+              <div className="flex flex-col gap-2 text-[12px] text-[var(--text-muted)]">
+                <div className="flex items-center gap-2">
+                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
+                  <span>Zero patient data egress - scans stay inside hospital firewalls</span>
                 </div>
-                <span className="text-[var(--border-card)] hidden sm:inline">&bull;</span>
-                <div className="flex items-center gap-1.5">
-                  <ShieldCheck className="w-3.5 h-3.5 text-sky-500" />
-                  <span>Patient-Level DP (&epsilon; &le; 2.0)</span>
+                <div className="flex items-center gap-2">
+                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
+                  <span>CKKS 128-bit homomorphic encryption with Patient-Level DP (&epsilon; &le; 2.0)</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
+                  <span>FFA-LoRA PEFT at 99.6% parameter efficiency across non-IID hospital cohorts</span>
                 </div>
               </div>
             </div>
@@ -203,27 +157,20 @@ export default function PresentationLandingPage() {
             </div>
           </div>
 
-          {/* Key Metrics Strip */}
-          <div className="mt-12 sm:mt-16">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1.5 mb-3 px-1">
-              <div className="flex items-start sm:items-center gap-2">
-                <span
-                  className={`w-2 h-2 rounded-full mt-1 sm:mt-0 shrink-0 ${
-                    systemState?.is_live && systemState?.rounds && systemState.rounds.length > 0
-                      ? "bg-emerald-500 animate-pulse shadow-[0_0_8px_#10b981]"
-                      : "bg-sky-500"
-                  }`}
-                />
-                <span className="font-mono text-[10px] sm:text-[11px] font-bold uppercase tracking-wider text-[var(--text-heading)] leading-snug">
-                  {systemState?.is_live && systemState?.rounds && systemState.rounds.length > 0
-                    ? `Live Consortium Telemetry (Active Session · ${systemState.history_rounds} Rounds · ${systemState.model_type.toUpperCase()})`
-                    : "Strategy E Reference Benchmark Target (Option J Baseline)"}
-                </span>
-              </div>
-              <span className="text-[10px] font-mono text-[var(--text-muted)] hidden sm:inline">
+          {/* Key Metrics Strip - horizontal rule + inline stats, no card grid */}
+          <div className="mt-14 sm:mt-18 pt-8 border-t border-[var(--border-card)]">
+            <div className="flex items-center gap-2 mb-5">
+              <span
+                className={`w-1.5 h-1.5 rounded-full shrink-0 ${
+                  systemState?.is_live && systemState?.rounds && systemState.rounds.length > 0
+                    ? "bg-emerald-500 animate-pulse"
+                    : "bg-slate-400"
+                }`}
+              />
+              <span className="font-mono text-[10px] font-semibold uppercase tracking-widest text-[var(--text-muted)]">
                 {systemState?.is_live && systemState?.rounds && systemState.rounds.length > 0
-                  ? "Real-time state synced from FastAPI runtime"
-                  : "Pre-training baseline · Launch cockpit for live execution"}
+                  ? `Live Telemetry - ${systemState.history_rounds} Rounds - ${systemState.model_type.toUpperCase()}`
+                  : "Strategy E Reference Benchmarks - Option J Baseline"}
               </span>
             </div>
 
