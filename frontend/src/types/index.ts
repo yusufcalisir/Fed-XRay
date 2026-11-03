@@ -91,6 +91,19 @@ export interface BackendSystemState {
   data_provenance?: string;
   is_authentic_clinical?: boolean;
   strict_real_data?: boolean;
+  persistence?: {
+    backend: string;
+    db_path: string;
+    stats: {
+      db_path: string;
+      wal_mode_enabled: boolean;
+      size_bytes: number;
+      rounds_count: number;
+      cohorts_count: number;
+      audits_count: number;
+      checkpoints_count: number;
+    };
+  };
   privacy: {
     dp_active: boolean;
     dp_mode: string;

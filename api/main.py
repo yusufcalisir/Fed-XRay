@@ -36,6 +36,7 @@ from src.fed_xray.data.real_world import (
     StrategyEDatasetEcosystem,
 )
 from src.fed_xray.data.ingest_real_world import ensure_strategy_e_dataset
+from src.fed_xray.storage import PersistentStateStore
 from src.fed_xray.core.client import HospitalClient
 from src.fed_xray.core.server import CentralServer, run_federated_round
 from src.fed_xray.core.privacy import SecAggPeer
@@ -124,8 +125,13 @@ class AppState:
         self.task_complete: bool = False
         self.task_error: Optional[str] = None
 
+        # Product Grade: ACID-compliant persistent SQLite state store in WAL mode
+        db_dir = Path("data/state")
+        db_dir.mkdir(parents=True, exist_ok=True)
+        self.store = PersistentStateStore(db_path=db_dir / "consortium_state.db")
+
     def save_to_disk(self, checkpoint_dir: str = "checkpoints") -> bool:
-        """Persist trained model weights, metadata, and training history to disk."""
+        """Persist trained model weights, metadata, cohorts, and history to SQLite and disk."""
         if not self.model_trained or self.server is None:
             return False
         try:
@@ -136,6 +142,61 @@ class AppState:
 
             torch.save(self.server.global_model.state_dict(), model_path)
 
+            with open(model_path, "rb") as mf:
+                model_hash = hashlib.sha256(mf.read()).hexdigest()
+
+            # 1. Update SQLite relational state store
+            self.store.save_system_state({
+                "model_trained": self.model_trained,
+                "model_type": self.model_type,
+                "peft_mode": self.peft_mode,
+                "defense_mode": self.defense_mode,
+                "image_size": self.image_size,
+                "data_source": self.data_source,
+                "data_provenance": self.data_provenance,
+                "is_authentic_clinical": self.is_authentic_clinical,
+                "strict_real_data": self.strict_real_data,
+                "rounds_completed": len(self.training_history.get("round", [])),
+                "privacy_spent": self.server.get_privacy_spent() if self.server else 0.0,
+            })
+
+            # 2. Persist hospital cohorts
+            if self.hospital_cohort_info:
+                self.store.save_hospital_cohorts([h.model_dump() for h in self.hospital_cohort_info])
+
+            # 3. Persist training rounds into relational table
+            round_nums = self.training_history.get("round", [])
+            losses = self.training_history.get("loss", [])
+            accs = self.training_history.get("accuracy", [])
+            test_losses = self.training_history.get("test_loss", losses)
+            test_accs = self.training_history.get("test_accuracy", accs)
+            f1s = self.training_history.get("f1_score", [])
+            for idx, r in enumerate(round_nums):
+                self.store.record_training_round({
+                    "round_num": r,
+                    "train_loss": losses[idx] if idx < len(losses) else 0.0,
+                    "train_accuracy": accs[idx] if idx < len(accs) else 0.0,
+                    "test_loss": test_losses[idx] if idx < len(test_losses) else 0.0,
+                    "test_accuracy": test_accs[idx] if idx < len(test_accs) else 0.0,
+                    "precision": accs[idx] if idx < len(accs) else 0.0,
+                    "recall": accs[idx] if idx < len(accs) else 0.0,
+                    "f1_score": f1s[idx] if idx < len(f1s) else 0.0,
+                    "privacy_epsilon": self.server.get_privacy_spent() if self.server else 0.0,
+                    "status": "completed",
+                })
+
+            # 4. Log checkpoint in audit ledger
+            self.store.record_checkpoint({
+                "model_type": self.model_type,
+                "peft_mode": self.peft_mode,
+                "checkpoint_path": str(model_path),
+                "checkpoint_hash": model_hash,
+                "is_pretrained": True,
+                "provenance": f"disk_checkpoint:{model_path.name}",
+                "rounds_completed": len(round_nums),
+            })
+
+            # Legacy JSON metadata backup
             meta = {
                 "timestamp": time.time(),
                 "model_trained": self.model_trained,
@@ -149,81 +210,119 @@ class AppState:
                 "data_provenance": self.data_provenance,
                 "is_authentic_clinical": self.is_authentic_clinical,
                 "training_history": self.training_history,
-                "rounds_completed": len(self.training_history.get("round", [])),
+                "rounds_completed": len(round_nums),
                 "privacy_spent": self.server.get_privacy_spent() if self.server else 0.0,
+                "checkpoint_hash": model_hash,
             }
             with open(meta_path, "w", encoding="utf-8") as f:
                 json.dump(meta, f, indent=2)
-            logger.info("Persisted trained federated model state and weights to %s", out_dir)
+            logger.info("Persisted trained federated model state to SQLite and %s", out_dir)
             return True
         except Exception as exc:
-            logger.warning("Failed to persist federated state to disk: %s", exc)
+            logger.warning("Failed to persist federated state: %s", exc)
             return False
 
     def restore_from_disk(self, checkpoint_dir: str = "checkpoints") -> bool:
-        """Restore trained model weights and metadata from disk if available."""
+        """Restore trained model weights, metadata, cohorts, and history from SQLite and disk."""
+        restored_any = False
         out_dir = Path(checkpoint_dir)
         model_path = out_dir / "federated_global_model.pt"
-        meta_path = out_dir / "federated_state_metadata.json"
 
-        if not model_path.exists() or not meta_path.exists():
-            return False
-
+        # 1. Hydrate system state from SQLite
         try:
-            with open(meta_path, "r", encoding="utf-8") as f:
-                meta = json.load(f)
+            saved_state = self.store.load_system_state()
+            if saved_state:
+                self.model_type = saved_state.get("model_type", self.model_type)
+                self.peft_mode = saved_state.get("peft_mode", self.peft_mode)
+                self.defense_mode = saved_state.get("defense_mode", self.defense_mode)
+                self.image_size = int(saved_state.get("image_size", self.image_size))
+                self.data_source = saved_state.get("data_source", self.data_source)
+                self.data_provenance = saved_state.get("data_provenance", self.data_provenance)
+                self.is_authentic_clinical = bool(saved_state.get("is_authentic_clinical", self.is_authentic_clinical))
+                self.strict_real_data = bool(saved_state.get("strict_real_data", self.strict_real_data))
+                if saved_state.get("model_trained"):
+                    self.model_trained = True
+                restored_any = True
 
-            self.model_type = meta.get("model_type", "vit_tiny")
-            self.peft_mode = meta.get("peft_mode", "ffa_lora")
-            self.image_size = meta.get("image_size", 224)
-            self.data_source = meta.get("data_source", "strategy_e_disk_manifest")
-            self.data_provenance = meta.get("data_provenance", self.data_source)
-            self.is_authentic_clinical = meta.get("is_authentic_clinical", True)
-            self.training_history = meta.get("training_history", self.training_history)
-            lora_r = meta.get("lora_r", 8)
-            lora_alpha = meta.get("lora_alpha", 16.0)
-            deep_layers_only = meta.get("deep_layers_only", True)
+            # 2. Hydrate training history from SQLite
+            saved_history = self.store.get_training_history()
+            if saved_history and saved_history.get("round"):
+                self.training_history = saved_history
+                restored_any = True
 
-            server = CentralServer(
-                device=self.device,
-                model_type=self.model_type,
-                peft_mode=self.peft_mode,
-                lora_r=lora_r,
-                lora_alpha=lora_alpha,
-                deep_layers_only=deep_layers_only,
-                img_size=self.image_size,
-            )
-            saved_weights = torch.load(model_path, map_location=self.device)
-            server.global_model.load_state_dict(saved_weights)
-            base_m = getattr(server.global_model, "base_model", server.global_model)
-            base_m.is_pretrained = True
-            base_m.checkpoint_provenance = f"restored_disk_checkpoint:{model_path}"
-            self.server = server
-            self.model_trained = True
+            # 3. Hydrate hospital cohorts from SQLite
+            persisted_cohorts = self.store.load_hospital_cohorts()
+            if persisted_cohorts:
+                self.hospital_cohort_info = [HospitalCohortInfo(**c) for c in persisted_cohorts]
+                for c in persisted_cohorts:
+                    hid = c["hospital_id"] - 1
+                    s_imgs = c.get("sample_images", [])
+                    s_lbls = c.get("sample_labels", [0])
+                    self.hospital_samples[hid] = {
+                        "images": np.array(s_imgs) if s_imgs else np.zeros((1, self.image_size, self.image_size)),
+                        "labels": np.array(s_lbls),
+                        "distribution": c.get("distribution", [0.33, 0.33, 0.34]),
+                    }
+                restored_any = True
 
-            default_manifest = Path("data/manifests/strategy_e_manifest.csv")
-            if default_manifest.exists():
-                try:
-                    ecosystem = StrategyEDatasetEcosystem(seed=42)
-                    records = ecosystem.load_from_disk_manifest(
-                        manifest_path=str(default_manifest),
-                        images_dir=str(Path("data")),
-                        target_size=(self.image_size, self.image_size),
-                        in_channels=1,
-                    )
-                    self.reference_records = records
-                    self.rag_matcher = FederatedRAGCaseMatcher(
-                        reference_records=self.reference_records,
-                        model=server.get_model(),
-                    )
-                except Exception:
-                    pass
+            # 4. Hydrate last diagnosis if present
+            last_diag = self.store.get_last_diagnosis()
+            if last_diag:
+                self.last_patient_id = last_diag.get("patient_id")
+                self.last_predicted_class = last_diag.get("predicted_class")
+                self.last_probabilities = last_diag.get("probabilities")
+                if last_diag.get("raw_image"):
+                    self.last_scan = np.array(last_diag["raw_image"], dtype=np.float32)
+                if last_diag.get("heatmap"):
+                    self.last_heatmap = np.array(last_diag["heatmap"], dtype=np.float32)
 
-            logger.info("Successfully restored federated state and trained weights from %s", out_dir)
-            return True
         except Exception as exc:
-            logger.warning("Failed to restore federated state from disk: %s", exc)
-            return False
+            logger.warning("SQLite state hydration encountered warning: %s", exc)
+
+        # 5. Restore PyTorch model weights if file exists
+        if model_path.exists():
+            try:
+                server = CentralServer(
+                    device=self.device,
+                    model_type=self.model_type,
+                    peft_mode=self.peft_mode,
+                    lora_r=8,
+                    lora_alpha=16.0,
+                    deep_layers_only=True,
+                    img_size=self.image_size,
+                )
+                saved_weights = torch.load(model_path, map_location=self.device)
+                server.global_model.load_state_dict(saved_weights)
+                base_m = getattr(server.global_model, "base_model", server.global_model)
+                base_m.is_pretrained = True
+                base_m.checkpoint_provenance = f"restored_disk_checkpoint:{model_path.name}"
+                self.server = server
+                self.model_trained = True
+
+                default_manifest = Path("data/manifests/strategy_e_manifest.csv")
+                if default_manifest.exists():
+                    try:
+                        ecosystem = StrategyEDatasetEcosystem(seed=42)
+                        records = ecosystem.load_from_disk_manifest(
+                            manifest_path=str(default_manifest),
+                            images_dir=str(Path("data")),
+                            target_size=(self.image_size, self.image_size),
+                            in_channels=1,
+                        )
+                        self.reference_records = records
+                        self.rag_matcher = FederatedRAGCaseMatcher(
+                            reference_records=self.reference_records,
+                            model=server.get_model(),
+                        )
+                    except Exception:
+                        pass
+
+                logger.info("Successfully restored federated state and trained weights from %s", out_dir)
+                restored_any = True
+            except Exception as exc:
+                logger.warning("Failed to restore PyTorch model from disk: %s", exc)
+
+        return restored_any
 
 
 state = AppState()
@@ -534,6 +633,11 @@ async def get_state():
         "data_provenance": state.data_provenance,
         "is_authentic_clinical": state.is_authentic_clinical,
         "strict_real_data": state.strict_real_data,
+        "persistence": {
+            "backend": "sqlite_wal",
+            "db_path": str(state.store.db_path),
+            "stats": state.store.get_database_stats(),
+        },
         "privacy": {
             "dp_active": getattr(state.server, "privacy_noise", 0.0) > 0.0 if state.server else False,
             "dp_mode": getattr(state.server, "dp_mode", "distributed") if state.server else "distributed",
@@ -551,6 +655,44 @@ async def get_state():
         "available_peft_modes": ["ffa_lora", "lora", "fedsa_lora", "medsam", "feddat"],
         "available_optimizers": ["FedDyn", "FedAvg", "FedProx", "FedCola"],
     }
+
+
+@app.get("/api/state/history")
+async def get_state_history_endpoint():
+    """Retrieve full persistent training history rounds from SQLite WAL store."""
+    history = state.store.get_training_history()
+    return {"history": history, "total_rounds": len(history.get("round", []))}
+
+
+@app.post("/api/state/reset")
+async def reset_state_endpoint():
+    """Wipe persistent SQLite state store and reset consortium memory to initial clean state."""
+    state.store.clear_state()
+    state.model_trained = False
+    state.server = None
+    state.hospital_samples = {}
+    state.hospital_cohort_info = []
+    state.dataloaders = None
+    state.global_test_set = None
+    state.rag_matcher = None
+    state.reference_records = []
+    state.last_scan = None
+    state.last_heatmap = None
+    state.last_probabilities = None
+    state.last_predicted_class = None
+    state.last_patient_id = None
+    state.training_history = {
+        "loss": [],
+        "accuracy": [],
+        "round": [],
+        "precision": [],
+        "recall": [],
+        "f1_score": [],
+        "test_accuracy": [],
+        "test_loss": [],
+        "blocked_count": 0,
+    }
+    return {"status": "reset", "message": "Persistent store and memory state cleared cleanly"}
 
 
 @app.post("/api/state/save")
@@ -744,6 +886,25 @@ async def generate_cohorts(req: CohortGenerateRequest):
 
     total_samples = sum(len(p) for p in client_partitions)
 
+    # Write-through persistence into SQLite WAL store
+    try:
+        state.store.save_hospital_cohorts([h.model_dump() for h in hospitals_info])
+        state.store.save_system_state({
+            "model_type": state.model_type,
+            "peft_mode": state.peft_mode,
+            "defense_mode": state.defense_mode,
+            "image_size": state.image_size,
+            "data_source": state.data_source,
+            "data_provenance": state.data_provenance,
+            "is_authentic_clinical": state.is_authentic_clinical,
+            "strict_real_data": state.strict_real_data,
+            "model_trained": False,
+            "rounds_completed": 0,
+            "privacy_spent": 0.0,
+        })
+    except Exception as exc:
+        logger.warning("Failed to auto-persist generated cohorts to SQLite: %s", exc)
+
     return CohortGenerateResponse(
         success=True,
         num_hospitals=req.num_hospitals,
@@ -932,6 +1093,22 @@ async def stream_federated_training(
                 state.training_history["f1_score"].append(f1)
                 if blocked_nodes:
                     state.training_history["blocked_count"] += len(blocked_nodes)
+
+                try:
+                    state.store.record_training_round({
+                        "round_num": round_num,
+                        "train_loss": t_loss,
+                        "train_accuracy": t_acc,
+                        "test_loss": val_loss,
+                        "test_accuracy": val_acc,
+                        "precision": prec,
+                        "recall": rec,
+                        "f1_score": f1,
+                        "privacy_epsilon": float(state.server.get_privacy_spent()) if state.server else 0.0,
+                        "status": "training" if round_num < num_rounds else "complete",
+                    })
+                except Exception as db_exc:
+                    logger.warning("Failed to persist training round %d to SQLite: %s", round_num, db_exc)
 
                 data_payload = {
                     "round_num": round_num,
@@ -1122,6 +1299,22 @@ async def start_training_background(
                 state.task_rounds.append(round_data)
                 state.task_current_round = round_num
 
+                try:
+                    state.store.record_training_round({
+                        "round_num": round_num,
+                        "train_loss": t_loss,
+                        "train_accuracy": t_acc,
+                        "test_loss": val_loss,
+                        "test_accuracy": val_acc,
+                        "precision": prec,
+                        "recall": rec,
+                        "f1_score": f1,
+                        "privacy_epsilon": float(srv.get_privacy_spent()),
+                        "status": "training" if round_num < num_rounds else "complete",
+                    })
+                except Exception as db_exc:
+                    logger.warning("Failed to persist training round %d to SQLite: %s", round_num, db_exc)
+
             state.model_trained = True
             state.rag_matcher = build_rag_matcher(srv)
             state.task_complete = True
@@ -1267,6 +1460,22 @@ async def start_flower_training_background(
                 }
                 state.task_rounds.append(round_data)
                 state.task_current_round = round_num
+
+                try:
+                    state.store.record_training_round({
+                        "round_num": round_num,
+                        "train_loss": val_loss,
+                        "train_accuracy": val_acc,
+                        "test_loss": val_loss,
+                        "test_accuracy": val_acc,
+                        "precision": prec,
+                        "recall": rec,
+                        "f1_score": f1,
+                        "privacy_epsilon": float(srv.get_privacy_spent()),
+                        "status": "training" if round_num < num_rounds else "complete",
+                    })
+                except Exception as db_exc:
+                    logger.warning("Failed to persist training round %d to SQLite: %s", round_num, db_exc)
 
             run_flower_federated_orchestration(
                 server=srv,
@@ -1566,6 +1775,27 @@ async def perform_diagnosis(req: DiagnoseRequest):
         else image_np.round(4).tolist()
     )
 
+    # Write-through persistence into SQLite diagnostic audits
+    try:
+        state.store.record_diagnostic_audit({
+            "patient_id": patient_id,
+            "predicted_class": predicted_class,
+            "predicted_name": active_labels.get(predicted_class, "Unknown"),
+            "true_class": true_class,
+            "true_name": true_name,
+            "confidence": round(confidence * 100.0, 2),
+            "probabilities": [round(float(p) * 100.0, 2) for p in probs],
+            "findings": findings,
+            "raw_image": raw_for_export,
+            "heatmap": heatmap.tolist() if heatmap is not None else None,
+            "image_source": image_source,
+            "provenance": provenance,
+            "anatomical_site": anatomical_site,
+            "biopsy_confirmed": biopsy_confirmed,
+        })
+    except Exception as db_exc:
+        logger.warning("Failed to record diagnostic audit in SQLite: %s", db_exc)
+
     return DiagnoseResponse(
         patient_id=patient_id,
         predicted_class=predicted_class,
@@ -1584,6 +1814,13 @@ async def perform_diagnosis(req: DiagnoseRequest):
         anatomical_site=anatomical_site,
         biopsy_confirmed=biopsy_confirmed,
     )
+
+
+@app.get("/api/diagnose/audit-trail")
+async def get_diagnostic_audit_trail_endpoint(limit: int = Query(default=50, ge=1, le=500)):
+    """Retrieve forensic audit trail of all clinical diagnoses performed by the federated model."""
+    audits = state.store.get_diagnostic_audits(limit=limit)
+    return {"audits": audits, "total_records": len(audits)}
 
 
 @app.get("/api/cdss/rag-similar", response_model=RagSimilarResponse)
