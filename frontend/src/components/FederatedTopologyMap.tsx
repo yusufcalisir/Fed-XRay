@@ -17,10 +17,10 @@ import { useLanguage } from "@/context/LanguageContext";
 export interface TopologyNode {
   id: string;
   shortName: string;
-  fullName: string;
-  city: string;
-  countryCode: string;
-  modality: string;
+  fullNameKey: string;
+  cityKey: string;
+  countryCodeKey: string;
+  modalityKey: string;
   dpEpsilon: number;
   scans: number;
   themeColor: string;
@@ -43,10 +43,10 @@ const INSTITUTIONS: TopologyNode[] = [
   {
     id: "node-1",
     shortName: "BCN-20000",
-    fullName: "Skin Cancer Hub",
-    city: "Barcelona",
-    countryCode: "ES",
-    modality: "Dermoscopy",
+    fullNameKey: "topo_node1_fullname",
+    cityKey: "topo_city_barcelona",
+    countryCodeKey: "topo_country_es",
+    modalityKey: "topo_mod_dermo",
     dpEpsilon: 1.42,
     scans: 40,
     themeColor: "#059669",
@@ -56,10 +56,10 @@ const INSTITUTIONS: TopologyNode[] = [
   {
     id: "node-3",
     shortName: "ViDIR",
-    fullName: "Dermatopathology Inst.",
-    city: "Vienna",
-    countryCode: "AT",
-    modality: "Histopathology",
+    fullNameKey: "topo_node3_fullname",
+    cityKey: "topo_city_vienna",
+    countryCodeKey: "topo_country_at",
+    modalityKey: "topo_mod_histo",
     dpEpsilon: 1.55,
     scans: 40,
     themeColor: "#0284c7",
@@ -69,10 +69,10 @@ const INSTITUTIONS: TopologyNode[] = [
   {
     id: "node-4",
     shortName: "Queensland",
-    fullName: "Oncology Screening",
-    city: "Brisbane",
-    countryCode: "AU",
-    modality: "Dermoscopy",
+    fullNameKey: "topo_node4_fullname",
+    cityKey: "topo_city_brisbane",
+    countryCodeKey: "topo_country_au",
+    modalityKey: "topo_mod_dermo",
     dpEpsilon: 1.48,
     scans: 40,
     themeColor: "#0d9488",
@@ -82,10 +82,10 @@ const INSTITUTIONS: TopologyNode[] = [
   {
     id: "node-2",
     shortName: "Beth Israel",
-    fullName: "Deaconess Medical",
-    city: "Boston",
-    countryCode: "USA",
-    modality: "Chest X-Ray",
+    fullNameKey: "topo_node2_fullname",
+    cityKey: "topo_city_boston",
+    countryCodeKey: "topo_country_us",
+    modalityKey: "topo_mod_xray",
     dpEpsilon: 1.38,
     scans: 40,
     themeColor: "#2563eb",
@@ -290,18 +290,18 @@ export default function FederatedTopologyMap({
               <Lock className="w-3 h-3 text-emerald-600 dark:text-emerald-400" />
             </div>
             <span className="font-mono text-[11px] sm:text-xs font-bold uppercase tracking-wider text-slate-900 dark:text-slate-100">
-              CONSORTIUM AGGREGATOR
+              {t("topo_hub_title")}
             </span>
           </div>
 
           {/* Cryptographic Standard */}
           <div className="font-mono text-[10px] sm:text-[11px] font-semibold text-emerald-600 dark:text-emerald-400">
-            RLWE CKKS 128-Bit Enclave
+            {t("topo_hub_crypto")}
           </div>
 
           {/* Privacy Guarantee */}
           <div className="text-[9.5px] sm:text-[10px] text-slate-600 dark:text-slate-400 font-medium mt-0.5">
-            Zero Plaintext Patient Data Transfer
+            {t("topo_hub_privacy")}
           </div>
         </div>
       </div>
@@ -339,6 +339,8 @@ function InstitutionCard({
   onSelect: () => void;
   onHover: (hovered: boolean) => void;
 }) {
+  const { t } = useLanguage();
+
   return (
     <div
       onClick={onSelect}
@@ -363,18 +365,18 @@ function InstitutionCard({
         </div>
 
         <span className="px-1.5 py-0.5 rounded text-[9.5px] sm:text-[10px] font-mono font-bold bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 shrink-0">
-          {node.countryCode}
+          {t(node.countryCodeKey)}
         </span>
       </div>
 
       {/* Sub: City & Clinical Modality */}
       <div className="text-[10.5px] sm:text-xs text-slate-600 dark:text-slate-400 font-medium truncate">
-        {node.city} · {node.modality}
+        {t(node.cityKey)} : {t(node.modalityKey)}
       </div>
 
       {/* Footer: Privacy Budget & Scans */}
       <div className="mt-1.5 pt-1.5 border-t border-slate-100 dark:border-slate-800/80 flex items-center justify-between text-[10px] sm:text-[11px] font-mono">
-        <span className="text-slate-500 dark:text-slate-400">DP Budget:</span>
+        <span className="text-slate-500 dark:text-slate-400">{t("topo_dp_budget")}</span>
         <span className="font-bold text-emerald-600 dark:text-emerald-400">
           ε = {node.dpEpsilon}
         </span>

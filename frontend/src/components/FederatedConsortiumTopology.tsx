@@ -26,6 +26,24 @@ export interface HospitalNode {
   status: "online" | "syncing";
 }
 
+const getLocalizedNodeName = (node: HospitalNode, t: (k: string) => string) => {
+  const key = `topo_${node.id.replace("-", "")}_name`;
+  const translated = t(key);
+  return translated !== key ? translated : node.name;
+};
+
+const getLocalizedNodeLocation = (node: HospitalNode, t: (k: string) => string) => {
+  const key = `topo_${node.id.replace("-", "")}_loc`;
+  const translated = t(key);
+  return translated !== key ? translated : node.location;
+};
+
+const getLocalizedNodeScanner = (node: HospitalNode, t: (k: string) => string) => {
+  const key = `topo_${node.id.replace("-", "")}_scanner`;
+  const translated = t(key);
+  return translated !== key ? translated : node.scanner;
+};
+
 const HOSPITAL_NODES: HospitalNode[] = [
   {
     id: "node-1",
@@ -137,7 +155,7 @@ export default function FederatedConsortiumTopology({
           <div className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse shadow-[0_0_8px_#10b981] shrink-0" />
           <span className="font-mono text-[10px] sm:text-xs font-bold uppercase tracking-wider text-[var(--text-heading)] truncate">
             <span className="hidden sm:inline">{t("topo_badge_title")}</span>
-            <span className="sm:hidden">ENCLAVE</span>
+            <span className="sm:hidden">{t("topo_badge_title_short")}</span>
           </span>
         </div>
 
@@ -340,7 +358,7 @@ export default function FederatedConsortiumTopology({
                 <div className="p-3 rounded-xl bg-[var(--bg-card-inner)] border border-[var(--border-card)]">
                   <div className="flex items-center gap-1.5 text-[10px] font-mono text-[var(--text-muted)] uppercase font-semibold">
                     <FileCheck className="w-3 h-3 text-sky-500" />
-                    <span>{telemetryRounds && telemetryRounds.length > 0 ? "Accuracy" : t("topo_telem_auc_title")}</span>
+                    <span>{telemetryRounds && telemetryRounds.length > 0 ? t("topo_accuracy") : t("topo_telem_auc_title")}</span>
                   </div>
                   <div className="font-mono text-sm font-bold text-sky-600 dark:text-sky-400 mt-1">
                     {telemetryRounds && telemetryRounds.length > 0
@@ -349,7 +367,7 @@ export default function FederatedConsortiumTopology({
                   </div>
                   <div className="text-[10px] text-[var(--text-muted)] mt-0.5">
                     {telemetryRounds && telemetryRounds.length > 0
-                      ? `Live Round ${telemetryRounds.length} Validation`
+                      ? `${t("topo_live_round_prefix")} ${telemetryRounds.length} ${t("topo_validation_suffix")}`
                       : t("topo_telem_auc_desc")}
                   </div>
                 </div>
@@ -359,12 +377,12 @@ export default function FederatedConsortiumTopology({
                 <div className="flex items-center justify-between mb-1.5">
                   <strong className="text-[var(--text-heading)]">
                     {Array.isArray(telemetryRounds) && telemetryRounds.length > 0
-                      ? "Live Round Trajectory"
+                      ? t("topo_telem_live_trajectory")
                       : t("topo_telem_log_title")}
                   </strong>
                   <span className="font-mono text-[10px] text-emerald-600 dark:text-emerald-400 font-semibold">
                     {Array.isArray(telemetryRounds) && telemetryRounds.length > 0
-                      ? `Loss: ${telemetryRounds[telemetryRounds.length - 1].train_loss}`
+                      ? `${t("topo_loss_prefix")} ${telemetryRounds[telemetryRounds.length - 1].train_loss}`
                       : t("topo_telem_loss")}
                   </span>
                 </div>
@@ -416,10 +434,10 @@ export default function FederatedConsortiumTopology({
               </div>
               <div className="min-w-0 flex items-center gap-1 sm:gap-1.5 flex-wrap">
                 <span className="font-display font-bold text-[var(--text-heading)] text-[11px] sm:text-xs truncate max-w-[140px] xs:max-w-[180px] sm:max-w-none">
-                  {selectedNode.name}
+                  {getLocalizedNodeName(selectedNode, t)}
                 </span>
                 <span className="text-[9px] sm:text-[10px] font-mono px-1.5 sm:px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 shrink-0">
-                  {selectedNode.location}
+                  {getLocalizedNodeLocation(selectedNode, t)}
                 </span>
               </div>
             </div>
@@ -448,7 +466,7 @@ export default function FederatedConsortiumTopology({
           {/* Subline: Scanner Hardware & Skew */}
           <div className="mt-2 pt-2 border-t border-[var(--border-card)] flex flex-col sm:flex-row sm:items-center justify-between gap-1.5 text-[10px] font-mono">
             <span className="text-[var(--text-muted)] leading-tight break-words truncate">
-              {selectedNode.scanner}
+              {getLocalizedNodeScanner(selectedNode, t)}
             </span>
             <div className="inline-flex items-center gap-1 text-amber-600 dark:text-amber-300 font-semibold bg-amber-500/10 px-2 py-0.5 rounded-full border border-amber-500/20 text-[10px] w-fit max-w-full">
               <span className="shrink-0">{t("topo_skew_label")}</span>
