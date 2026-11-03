@@ -82,6 +82,7 @@ class DiagnoseRequest(BaseModel):
     image_base64: Optional[str] = None
     opacity: float = Field(default=0.55, ge=0.0, le=1.0)
     colormap: str = Field(default="Hot")
+    language: Optional[str] = Field(default="en")
 
 
 class DiagnoseResponse(BaseModel):

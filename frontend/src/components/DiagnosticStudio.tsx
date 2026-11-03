@@ -17,6 +17,46 @@ interface DiagnosticStudioProps {
 
 const CLASS_COLORS_BAR = ["bg-accent-500", "bg-amber-500", "bg-red-500"];
 
+function formatFindings(text: string | undefined, lang: string): string[] {
+  if (!text) return [];
+  // Strip all markdown bold asterisks completely
+  let cleaned = text.replace(/\*\*/g, "").trim();
+
+  if (lang === "TR") {
+    cleaned = cleaned
+      .replace(/Model prediction:/gi, "Model tahmini:")
+      .replace(/softmax confidence:/gi, "softmax güven skoru:")
+      .replace(/Runner-up class:/gi, "İkinci olası sınıf:")
+      .replace(/margin/gi, "fark:")
+      .replace(/percentage points/gi, "yüzdelik puan")
+      .replace(/Grad-CAM peak relevance lies in the/gi, "Grad-CAM aktivasyon odağı görüntünün")
+      .replace(/part of the image frame;/gi, "bölgesinde yer almaktadır;")
+      .replace(/of pixels exceed 0\.5 normalized relevance\./gi, "piksellerin 0.5 normalize aktivasyon eşiğini aşmaktadır.")
+      .replace(/exceed 0\.5 normalized relevance\./gi, "0.5 normalize eşiğini aşmaktadır.")
+      .replace(/upper-left/gi, "üst-sol")
+      .replace(/upper-right/gi, "üst-sağ")
+      .replace(/upper-center/gi, "üst-orta")
+      .replace(/middle-left/gi, "orta-sol")
+      .replace(/middle-right/gi, "orta-sağ")
+      .replace(/middle-center/gi, "orta-merkez")
+      .replace(/lower-left/gi, "alt-sol")
+      .replace(/lower-right/gi, "alt-sağ")
+      .replace(/lower-center/gi, "alt-orta")
+      .replace(
+        /Decision-support output of a research model\. It is not a clinical diagnosis and requires radiologist review\./gi,
+        "Araştırma modeli klinik karar destek çıktısıdır. Kesin klinik tanı niteliği taşımaz ve uzman hekim incelemesi gerektirir."
+      )
+      .replace(/Basal Cell Carcinoma/gi, "Bazal Hücreli Karsinom")
+      .replace(/Malignant Melanoma/gi, "Malign Melanom")
+      .replace(/Benign Dysplastic Nevus/gi, "Benign Displastik Nevüs")
+      .replace(/Pneumonia/gi, "Pnömoni")
+      .replace(/COVID-19/gi, "COVID-19")
+      .replace(/Normal/gi, "Normal Parankim");
+  }
+
+  return cleaned.split("\n\n").filter(Boolean);
+}
+
 export default function DiagnosticStudio({
   diagnosis,
   onDiagnose,
@@ -24,7 +64,7 @@ export default function DiagnosticStudio({
   isLocked = false,
   onScrollToTraining,
 }: DiagnosticStudioProps) {
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
   const [opacity, setOpacity] = useState(0.55);
   const [colormap, setColormap] = useState("Hot");
   const [targetClass, setTargetClass] = useState<number | undefined>(undefined);
@@ -456,8 +496,12 @@ export default function DiagnosticStudio({
                     );
                   })}
                 </div>
-                <div className="mt-4 pt-3 border-t border-[var(--border-subtle)] text-[11px] text-[var(--text-muted)] leading-relaxed">
-                  {diagnosis.findings}
+                <div className="mt-4 pt-3 border-t border-[var(--border-subtle)] text-[11px] text-[var(--text-muted)] leading-relaxed space-y-1.5">
+                  {formatFindings(diagnosis.findings, language).map((p, idx) => (
+                    <p key={idx} className={idx === 0 ? "font-semibold text-[var(--text-heading)]" : ""}>
+                      {p}
+                    </p>
+                  ))}
                 </div>
                 <div className="mt-3 text-[11px] text-[var(--text-muted)] py-2 text-center rounded-lg bg-[var(--bg-card-inner)] border border-[var(--border-subtle)]">
                   {t("sec3_ground_truth")}:{" "}

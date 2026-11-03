@@ -1483,6 +1483,7 @@ async def perform_diagnosis(req: DiagnoseRequest):
         probabilities=probs.tolist(),
         heatmap=heatmap,
         class_names=active_labels,
+        language=req.language or "en",
     )
 
     state.last_heatmap = heatmap

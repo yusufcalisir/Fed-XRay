@@ -50,7 +50,8 @@ export async function fetchClinicalDiagnosis(
   classIndex?: number,
   opacity: number = 0.55,
   colormap: string = "Hot",
-  imageBase64?: string
+  imageBase64?: string,
+  language: string = "en"
 ): Promise<DiagnosisResult> {
   const url = `${baseUrl.replace(/\/$/, "")}/api/cdss/diagnose`;
   const res = await fetch(url, {
@@ -61,6 +62,7 @@ export async function fetchClinicalDiagnosis(
       image_base64: imageBase64,
       opacity,
       colormap,
+      language,
     }),
   });
   if (!res.ok) {

@@ -193,6 +193,7 @@ def get_explanation_text(
     probabilities: Optional[Sequence[float]] = None,
     heatmap: Optional[np.ndarray] = None,
     class_names: Optional[Dict[int, str]] = None,
+    language: str = "en",
 ) -> str:
     """Summarize only quantities measured from the model output and Grad-CAM map.
 
@@ -200,19 +201,47 @@ def get_explanation_text(
     ``confidence`` and ``probabilities`` are on the [0, 1] scale.
     """
     labels = class_names if class_names is not None else {0: "Normal", 1: "Pneumonia", 2: "COVID-19"}
-    lines = [
-        f"**Model prediction: {labels.get(predicted_class, 'Unknown')}** "
-        f"(softmax confidence: {confidence * 100:.1f}%)"
-    ]
+    is_tr = (language or "en").lower().startswith("tr")
+
+    tr_labels = {
+        "Normal": "Normal Parankim",
+        "Pneumonia": "Pnömoni (Konsolidasyon)",
+        "COVID-19": "COVID-19 (Buzlu Cam)",
+        "Benign Dysplastic Nevus": "Benign Displastik Nevüs",
+        "Malignant Melanoma": "Malign Melanom",
+        "Basal Cell Carcinoma": "Bazal Hücreli Karsinom",
+    }
+
+    pred_name = labels.get(predicted_class, "Unknown")
+    pred_display = tr_labels.get(pred_name, pred_name) if is_tr else pred_name
+
+    if is_tr:
+        lines = [
+            f"Model tahmini: {pred_display} "
+            f"(softmax güven skoru: %{confidence * 100:.1f})"
+        ]
+    else:
+        lines = [
+            f"Model prediction: {pred_display} "
+            f"(softmax confidence: {confidence * 100:.1f}%)"
+        ]
 
     if probabilities is not None and len(probabilities) > 1:
         ranked = sorted(range(len(probabilities)), key=lambda k: -float(probabilities[k]))
         runner = ranked[1]
         margin = (float(probabilities[ranked[0]]) - float(probabilities[runner])) * 100.0
-        lines.append(
-            f"Runner-up class: {labels.get(runner, 'Unknown')} "
-            f"({float(probabilities[runner]) * 100:.1f}%), margin {margin:.1f} percentage points."
-        )
+        runner_name = labels.get(runner, "Unknown")
+        runner_display = tr_labels.get(runner_name, runner_name) if is_tr else runner_name
+        if is_tr:
+            lines.append(
+                f"İkinci olası sınıf: {runner_display} "
+                f"(%{float(probabilities[runner]) * 100:.1f}), fark: {margin:.1f} yüzdelik puan."
+            )
+        else:
+            lines.append(
+                f"Runner-up class: {runner_display} "
+                f"({float(probabilities[runner]) * 100:.1f}%), margin {margin:.1f} percentage points."
+            )
 
     if heatmap is not None:
         h = np.asarray(heatmap, dtype=np.float32)
@@ -221,13 +250,26 @@ def get_explanation_text(
         vertical = "upper" if peak_r < rows / 3 else ("lower" if peak_r >= 2 * rows / 3 else "middle")
         horizontal = "left" if peak_c < cols / 3 else ("right" if peak_c >= 2 * cols / 3 else "center")
         active_pct = float((h >= 0.5).mean() * 100.0)
-        lines.append(
-            f"Grad-CAM peak relevance lies in the {vertical}-{horizontal} part of the image frame; "
-            f"{active_pct:.1f}% of pixels exceed 0.5 normalized relevance."
-        )
+        if is_tr:
+            v_tr = {"upper": "üst", "middle": "orta", "lower": "alt"}.get(vertical, vertical)
+            h_tr = {"left": "sol", "center": "merkez", "right": "sağ"}.get(horizontal, horizontal)
+            lines.append(
+                f"Grad-CAM aktivasyon odağı görüntünün {v_tr}-{h_tr} bölgesinde yer almaktadır; "
+                f"piksellerin %{active_pct:.1f}'i 0.5 normalize eşiği aşmaktadır."
+            )
+        else:
+            lines.append(
+                f"Grad-CAM peak relevance lies in the {vertical}-{horizontal} part of the image frame; "
+                f"{active_pct:.1f}% of pixels exceed 0.5 normalized relevance."
+            )
 
-    lines.append(
-        "Decision-support output of a research model. It is not a clinical diagnosis and "
-        "requires radiologist review."
-    )
+    if is_tr:
+        lines.append(
+            "Araştırma modeli klinik karar destek çıktısıdır. Kesin klinik tanı niteliği taşımaz ve radyolog incelemesi gerektirir."
+        )
+    else:
+        lines.append(
+            "Decision-support output of a research model. It is not a clinical diagnosis and "
+            "requires radiologist review."
+        )
     return "\n\n".join(lines)

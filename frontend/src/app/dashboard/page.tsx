@@ -19,7 +19,7 @@ import { useApi } from "@/context/ApiContext";
 import { AlertCircle } from "lucide-react";
 
 export default function DashboardPage() {
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
   const { apiUrl, isConnected, isChecking, reconnectAttempts } = useApi();
 
   const [numHospitals] = useState(4);
@@ -171,7 +171,14 @@ export default function DashboardPage() {
     setErrorMessage(null);
     try {
       setIsDiagLoading(true);
-      const result = await fetchClinicalDiagnosis(apiUrl, classIndex, opacity, colormap, imageBase64);
+      const result = await fetchClinicalDiagnosis(
+        apiUrl,
+        classIndex,
+        opacity,
+        colormap,
+        imageBase64,
+        language.toLowerCase()
+      );
       setDiagnosis(result);
       try {
         const twinRes = await fetchRagTwins(apiUrl, 2);
