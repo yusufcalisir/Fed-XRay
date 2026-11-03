@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import authenticCohorts from "@/lib/authenticCohortsCompact.json";
 
 export const dynamic = "force-dynamic";
 
@@ -35,6 +36,6 @@ export async function GET() {
     peft_mode: "ffa_lora",
     rounds: [],
     reference_cases: [],
-    cohorts: [],
+    cohorts: authenticCohorts,
   });
 }

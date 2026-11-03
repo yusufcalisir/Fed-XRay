@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import authenticCohorts from "@/lib/authenticCohortsCompact.json";
 
 export const dynamic = "force-dynamic";
 
@@ -44,54 +45,16 @@ export async function POST(request: NextRequest) {
     // Standby fallback
   }
 
-  // Standby Strategy E ISIC 2019 Cohorts
-  const hospitals = [
-    {
-      id: 0,
-      name: "BCN-20000 Skin Cancer Hub (Barcelona)",
-      num_samples: body.samples_per_hospital,
-      class_counts: { "Benign Dysplastic Nevus": 28, "Malignant Melanoma": 14, "Basal Cell Carcinoma": 8 },
-      provenance: "BCN_20000_ISIC2019",
-      scanner_optic: "DermLite DL3N polarized contact immersion",
-      staining_protocol: "Hospital Clinic de Barcelona standardized cross-polarized",
-      sample_images: [],
-    },
-    {
-      id: 1,
-      name: "ViDIR Dermatopathology Institute (Vienna)",
-      num_samples: body.samples_per_hospital,
-      class_counts: { "Benign Dysplastic Nevus": 31, "Malignant Melanoma": 11, "Basal Cell Carcinoma": 8 },
-      provenance: "HAM10000_ViDIR_Vienna",
-      scanner_optic: "MoleMax II dermoscopy immersion camera",
-      staining_protocol: "Medical University of Vienna non-polarized liquid immersion",
-      sample_images: [],
-    },
-    {
-      id: 2,
-      name: "Queensland Oncology Screening Center",
-      num_samples: body.samples_per_hospital,
-      class_counts: { "Benign Dysplastic Nevus": 25, "Malignant Melanoma": 17, "Basal Cell Carcinoma": 8 },
-      provenance: "Queensland_MSK_Dermoscopy",
-      scanner_optic: "Heine Delta 20T polarized LED epiluminescence",
-      staining_protocol: "Brisbane Cancer Care polarized contact dermatoscopy",
-      sample_images: [],
-    },
-    {
-      id: 3,
-      name: "Charite Comprehensive Cancer Center",
-      num_samples: body.samples_per_hospital,
-      class_counts: { "Benign Dysplastic Nevus": 30, "Malignant Melanoma": 12, "Basal Cell Carcinoma": 8 },
-      provenance: "Charite_Berlin_Cohort",
-      scanner_optic: "FotoFinder ATBM Master automated whole-body dermoscopy",
-      staining_protocol: "Charite University Hospital high-magnification contact",
-      sample_images: [],
-    },
-  ];
+  // Adjust sample count in authentic cohorts if requested
+  const adaptedCohorts = authenticCohorts.map((h: any) => ({
+    ...h,
+    num_samples: body.samples_per_hospital || h.num_samples,
+  }));
 
   return NextResponse.json({
     success: true,
-    num_hospitals: hospitals.length,
+    num_hospitals: adaptedCohorts.length,
     dataset: "isic2019",
-    hospitals,
+    hospitals: adaptedCohorts,
   });
 }
