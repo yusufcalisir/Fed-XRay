@@ -67,51 +67,73 @@ export default function DashboardPage() {
     }
   };
 
-  // Load state when backend connection is verified
+  // Load state when backend is available
   useEffect(() => {
-    if (isConnected) {
-      const cleanUrl = apiUrl.replace(/\/+$/, "");
-      fetch(`${cleanUrl}/api/state`)
-        .then((res) => (res.ok ? res.json() : null))
-        .then(async (data) => {
-          if (!data) return;
+    let isCancelled = false;
 
-          // Hydrate cohorts from cohorts field or hospitals field
-          const rawCohorts = (data.cohorts && Array.isArray(data.cohorts) && data.cohorts.length > 0)
-            ? data.cohorts
-            : (data.hospitals && Array.isArray(data.hospitals) && data.hospitals[0]?.sample_images)
-            ? data.hospitals
-            : null;
+    const syncState = async () => {
+      const candidates = [apiUrl, "", "http://127.0.0.1:8000", "http://localhost:8000"]
+        .filter((c, idx, arr) => arr.indexOf(c) === idx);
 
-          if (rawCohorts && rawCohorts.length > 0) {
-            setHospitals(rawCohorts);
-          } else {
-            // Auto-load authentic Strategy E cohorts if backend has not loaded them yet
-            try {
-              const res = await fetchHospitalCohorts(apiUrl, 4, 40);
-              if (res.success && res.hospitals) {
-                setHospitals(res.hospitals);
-              }
-            } catch {
-              // Graceful: keep existing or empty without wiping state
-            }
-          }
+      let fetchedData: any = null;
+      let workingBase = apiUrl;
 
-          setIsTrained(Boolean(data.model_trained));
-          if (data.rounds && Array.isArray(data.rounds) && data.rounds.length > 0) {
-            setHistory(data.rounds);
-            setCurrentRound(data.rounds.length);
+      for (const cand of candidates) {
+        try {
+          const cleanUrl = cand.replace(/\/+$/, "");
+          const endpoint = cleanUrl ? `${cleanUrl}/api/state` : "/api/state";
+          const res = await fetch(endpoint, { cache: "no-store" });
+          if (res.ok) {
+            fetchedData = await res.json();
+            workingBase = cand;
+            break;
           }
-          if (data.reference_cases && Array.isArray(data.reference_cases)) {
-            setRagTwins(data.reference_cases);
+        } catch {
+          // Probe next candidate
+        }
+      }
+
+      if (isCancelled || !fetchedData) return;
+
+      // Hydrate cohorts from cohorts field or hospitals field
+      const rawCohorts = (fetchedData.cohorts && Array.isArray(fetchedData.cohorts) && fetchedData.cohorts.length > 0)
+        ? fetchedData.cohorts
+        : (fetchedData.hospitals && Array.isArray(fetchedData.hospitals) && fetchedData.hospitals[0]?.sample_images)
+        ? fetchedData.hospitals
+        : null;
+
+      if (rawCohorts && rawCohorts.length > 0) {
+        setHospitals(rawCohorts);
+      } else {
+        // Auto-load authentic Strategy E cohorts if backend has not loaded them yet
+        try {
+          const res = await fetchHospitalCohorts(workingBase, 4, 50);
+          if (!isCancelled && res.success && res.hospitals) {
+            setHospitals(res.hospitals);
           }
-          if (data.model_type) setActiveModel(data.model_type);
-          if (data.peft_mode) setActivePeft(data.peft_mode);
-        })
-        .catch((err) => {
-          console.warn("Dashboard state sync error:", err);
-        });
-    }
+        } catch {
+          // Graceful: keep existing without wiping state
+        }
+      }
+
+      if (isCancelled) return;
+      setIsTrained(Boolean(fetchedData.model_trained));
+      if (fetchedData.rounds && Array.isArray(fetchedData.rounds) && fetchedData.rounds.length > 0) {
+        setHistory(fetchedData.rounds);
+        setCurrentRound(fetchedData.rounds.length);
+      }
+      if (fetchedData.reference_cases && Array.isArray(fetchedData.reference_cases)) {
+        setRagTwins(fetchedData.reference_cases);
+      }
+      if (fetchedData.model_type) setActiveModel(fetchedData.model_type);
+      if (fetchedData.peft_mode) setActivePeft(fetchedData.peft_mode);
+    };
+
+    syncState();
+
+    return () => {
+      isCancelled = true;
+    };
   }, [apiUrl, isConnected]);
 
   const handleStartTraining = async (config?: {

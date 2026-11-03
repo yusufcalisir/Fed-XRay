@@ -34,8 +34,9 @@ const ApiContext = createContext<ApiContextType | undefined>(undefined);
 
 export function ApiProvider({ children }: { children: React.ReactNode }) {
   const envUrl = process.env.NEXT_PUBLIC_API_URL?.trim().replace(/\/$/, "") || "";
-  // Do not initialize with known dead or unresolvable tunnel URLs
-  const initialUrl = isEphemeralTunnel(envUrl) ? "http://127.0.0.1:8000" : envUrl || "http://127.0.0.1:8000";
+  // In the browser, prioritize the relative Next.js rewrite proxy "" (/api/*)
+  // to eliminate cross-origin and private network access restrictions.
+  const initialUrl = typeof window !== "undefined" ? "" : (isEphemeralTunnel(envUrl) ? "http://127.0.0.1:8000" : envUrl || "http://127.0.0.1:8000");
 
   const [apiUrl, setApiUrlState] = useState<string>(initialUrl);
   const [isConnected, setIsConnected] = useState<boolean>(false);
@@ -159,11 +160,14 @@ export function ApiProvider({ children }: { children: React.ReactNode }) {
 
     const envUrlClean = process.env.NEXT_PUBLIC_API_URL?.trim().replace(/\/+$/, "");
     const saved = typeof window !== "undefined" ? localStorage.getItem("fedxray_api_url")?.trim().replace(/\/+$/, "") : null;
-    const prioritized = envUrlClean && !deadTunnelsRef.current.has(envUrlClean)
-      ? [envUrlClean, ...candidates.filter((c) => c !== envUrlClean)]
-      : saved && !deadTunnelsRef.current.has(saved)
-      ? [saved, ...candidates.filter((c) => c !== saved)]
-      : candidates;
+    // In browser runtime, prioritize relative proxy "" first for seamless zero-CORS proxying,
+    // followed by envUrlClean, saved preference, and loopback endpoints.
+    const prioritized = Array.from(new Set([
+      "",
+      ...(envUrlClean && !deadTunnelsRef.current.has(envUrlClean) ? [envUrlClean] : []),
+      ...(saved && !deadTunnelsRef.current.has(saved) ? [saved] : []),
+      ...candidates,
+    ]));
 
     for (const cand of prioritized) {
       if (deadTunnelsRef.current.has(cand)) continue;
