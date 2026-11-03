@@ -19,10 +19,11 @@ const CLASS_COLORS_BAR = ["bg-accent-500", "bg-amber-500", "bg-red-500"];
 
 function formatFindings(text: string | undefined, lang: string): string[] {
   if (!text) return [];
-  // Strip all markdown bold asterisks completely
-  let cleaned = text.replace(/\*\*/g, "").trim();
+  // Strip all markdown bold and emphasis asterisks/underscores
+  let cleaned = text.replace(/\*\*/g, "").replace(/\*/g, "").trim();
 
-  if (lang === "TR") {
+  const isTurkish = (lang || "").toUpperCase() === "TR";
+  if (isTurkish) {
     cleaned = cleaned
       .replace(/Model prediction:/gi, "Model tahmini:")
       .replace(/softmax confidence:/gi, "softmax güven skoru:")
@@ -271,17 +272,17 @@ export default function DiagnosticStudio({
         <>
           {/* Diagnostic Target & Scan Ingestion Toolbar */}
           <div className="card p-3 sm:p-3.5 mb-3.5 sm:mb-4 flex flex-col md:flex-row md:items-center justify-between gap-3">
-            <div className="flex flex-wrap items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2 w-full md:w-auto">
               <span className="text-xs text-[var(--text-muted)] font-medium mr-1 hidden sm:inline">
                 {t("sec3_results_header")}:
               </span>
-              {/* Target Pathology Filter Chips */}
-              <div className="flex flex-wrap items-center gap-1 bg-[var(--bg-card-inner)] border border-[var(--border-subtle)] p-1 rounded-lg text-xs">
+              {/* Target Pathology Filter Chips - Full width touch layout on mobile */}
+              <div className="flex flex-wrap items-center gap-1 bg-[var(--bg-card-inner)] border border-[var(--border-subtle)] p-1 rounded-lg text-xs w-full sm:w-auto">
                 <button
                   type="button"
                   onClick={() => setTargetClass(undefined)}
                   disabled={isLoading}
-                  className={`px-2.5 py-1 rounded-md font-medium transition-all ${
+                  className={`flex-1 sm:flex-none px-2.5 py-1 rounded-md font-medium text-center transition-all ${
                     targetClass === undefined
                       ? "bg-purple-500/20 text-purple-600 dark:text-purple-300 font-bold"
                       : "text-[var(--text-muted)] hover:text-[var(--text-heading)]"
@@ -293,7 +294,7 @@ export default function DiagnosticStudio({
                   type="button"
                   onClick={() => setTargetClass(0)}
                   disabled={isLoading}
-                  className={`px-2.5 py-1 rounded-md font-medium transition-all ${
+                  className={`flex-1 sm:flex-none px-2.5 py-1 rounded-md font-medium text-center transition-all ${
                     targetClass === 0
                       ? "bg-emerald-500/20 text-emerald-600 dark:text-emerald-300 font-bold"
                       : "text-[var(--text-muted)] hover:text-[var(--text-heading)]"
@@ -305,7 +306,7 @@ export default function DiagnosticStudio({
                   type="button"
                   onClick={() => setTargetClass(1)}
                   disabled={isLoading}
-                  className={`px-2.5 py-1 rounded-md font-medium transition-all ${
+                  className={`flex-1 sm:flex-none px-2.5 py-1 rounded-md font-medium text-center transition-all ${
                     targetClass === 1
                       ? "bg-amber-500/20 text-amber-600 dark:text-amber-300 font-bold"
                       : "text-[var(--text-muted)] hover:text-[var(--text-heading)]"
@@ -317,7 +318,7 @@ export default function DiagnosticStudio({
                   type="button"
                   onClick={() => setTargetClass(2)}
                   disabled={isLoading}
-                  className={`px-2.5 py-1 rounded-md font-medium transition-all ${
+                  className={`flex-1 sm:flex-none px-2.5 py-1 rounded-md font-medium text-center transition-all ${
                     targetClass === 2
                       ? "bg-rose-500/20 text-rose-600 dark:text-rose-300 font-bold"
                       : "text-[var(--text-muted)] hover:text-[var(--text-heading)]"
@@ -329,7 +330,7 @@ export default function DiagnosticStudio({
             </div>
 
             {/* Custom Scan File Input */}
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 w-full md:w-auto">
               <input
                 type="file"
                 ref={fileInputRef}
@@ -341,7 +342,7 @@ export default function DiagnosticStudio({
                 type="button"
                 onClick={() => fileInputRef.current?.click()}
                 disabled={isLoading}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-[var(--border-card)] bg-[var(--bg-card-inner)] hover:bg-black/5 dark:hover:bg-white/5 text-xs font-semibold text-[var(--text-heading)] transition-all cursor-pointer"
+                className="flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg border border-[var(--border-card)] bg-[var(--bg-card-inner)] hover:bg-black/5 dark:hover:bg-white/5 text-xs font-semibold text-[var(--text-heading)] transition-all cursor-pointer w-full md:w-auto"
                 title={t("sec3_upload_tooltip")}
               >
                 <Upload className="w-3.5 h-3.5 text-purple-500 shrink-0" />
@@ -403,12 +404,12 @@ export default function DiagnosticStudio({
                   </span>
                   <span className="font-display text-sm font-bold text-[var(--text-heading)]">{t("lung3d_title")}</span>
                 </div>
-                <div className="flex items-center gap-1 rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-card-inner)] p-1">
+                <div className="flex items-center gap-1 rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-card-inner)] p-1 w-full sm:w-auto">
                   <button
                     type="button"
                     onClick={() => setViewMode("anatomy")}
                     disabled={false}
-                    className={`px-3 py-1 rounded-md text-[11px] font-semibold transition-all disabled:opacity-40 ${
+                    className={`flex-1 sm:flex-none px-2.5 sm:px-3 py-1 rounded-md text-[11px] font-semibold text-center transition-all disabled:opacity-40 ${
                       viewMode === "anatomy"
                         ? "bg-emerald-500 text-white shadow"
                         : "text-[var(--text-muted)] hover:text-[var(--text-heading)]"
@@ -420,7 +421,7 @@ export default function DiagnosticStudio({
                     type="button"
                     onClick={() => setViewMode("scan")}
                     disabled={false}
-                    className={`px-3 py-1 rounded-md text-[11px] font-semibold transition-all disabled:opacity-40 ${
+                    className={`flex-1 sm:flex-none px-2.5 sm:px-3 py-1 rounded-md text-[11px] font-semibold text-center transition-all disabled:opacity-40 ${
                       viewMode === "scan"
                         ? "bg-emerald-500 text-white shadow"
                         : "text-[var(--text-muted)] hover:text-[var(--text-heading)]"
@@ -432,7 +433,7 @@ export default function DiagnosticStudio({
                     type="button"
                     onClick={() => setViewMode("gradcam")}
                     disabled={!heatAvailable}
-                    className={`px-3 py-1 rounded-md text-[11px] font-semibold transition-all disabled:opacity-40 ${
+                    className={`flex-1 sm:flex-none px-2.5 sm:px-3 py-1 rounded-md text-[11px] font-semibold text-center transition-all disabled:opacity-40 ${
                       viewMode === "gradcam"
                         ? "bg-emerald-500 text-white shadow"
                         : "text-[var(--text-muted)] hover:text-[var(--text-heading)]"
@@ -442,7 +443,7 @@ export default function DiagnosticStudio({
                   </button>
                 </div>
               </div>
-              <div className="lung-viewer relative h-[400px] sm:h-[520px]">
+              <div className="lung-viewer relative h-[320px] sm:h-[440px] lg:h-[520px]">
                 <LungViewer3D
                   className="absolute inset-0"
                   rawImage={diagnosis.raw_image}

@@ -205,15 +205,15 @@ export function ApiProvider({ children }: { children: React.ReactNode }) {
 
   // Background Heartbeat & Auto-Reconnect Loop with Exponential Backoff
   useEffect(() => {
-    // When offline, stop polling after 5 consecutive attempts to avoid flooding network console
-    if (!isConnected && reconnectAttempts >= 5) {
+    // When offline, stop polling after 3 consecutive attempts to avoid flooding network console
+    if (!isConnected && reconnectAttempts >= 3) {
       return;
     }
 
-    // Exponential backoff: 4s -> 6s -> 9s -> 13.5s -> 20s when offline; 15s when connected
+    // Exponential backoff: 5s -> 10s -> 20s when offline; 20s when connected
     const delayMs = isConnected
-      ? 15000
-      : Math.min(25000, Math.round(4000 * Math.pow(1.5, Math.min(reconnectAttempts, 4))));
+      ? 20000
+      : Math.min(25000, Math.round(5000 * Math.pow(2.0, Math.min(reconnectAttempts, 2))));
 
     const timer = setTimeout(async () => {
       if (!isConnectedRef.current) {
@@ -231,9 +231,14 @@ export function ApiProvider({ children }: { children: React.ReactNode }) {
     return () => clearTimeout(timer);
   }, [isConnected, reconnectAttempts, autoDiscoverApi]);
 
-  // Re-verify on window focus and network online events
+  // Re-verify on window focus and network online events (throttled to max once per 15s)
   useEffect(() => {
+    let lastFocusCheck = 0;
     const handleRecheck = () => {
+      const now = Date.now();
+      if (now - lastFocusCheck < 15000) return;
+      lastFocusCheck = now;
+
       if (!isConnectedRef.current) {
         autoDiscoverApi();
       } else {

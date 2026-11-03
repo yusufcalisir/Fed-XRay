@@ -103,8 +103,8 @@ export default function HospitalStudio({ hospitals, onGenerate, isLoading }: Hos
       <div className="card p-3.5 sm:p-5">
         {hospitals.length > 0 && active ? (
           <>
-            {/* Hospital Tabs */}
-            <div className="grid grid-cols-4 gap-1.5 sm:gap-2 mb-4 w-full">
+            {/* Hospital Tabs - 2 cols on mobile for legible names, 4 cols on tablet/desktop */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5 sm:gap-2 mb-4 w-full">
               {hospitals.map((h, idx) => (
                 <button
                   key={h.hospital_id}
@@ -115,7 +115,7 @@ export default function HospitalStudio({ hospitals, onGenerate, isLoading }: Hos
                       : "text-slate-500 hover:text-[var(--text-heading)] border border-transparent hover:bg-black/5 dark:hover:bg-white/5"
                   }`}
                 >
-                  <Building2 className="w-3.5 h-3.5 shrink-0 hidden sm:inline" />
+                  <Building2 className="w-3.5 h-3.5 shrink-0" />
                   <span className="truncate">{h.name.split(" ")[0]}</span>
                   <span className="font-mono text-[10px] opacity-75">#{h.hospital_id}</span>
                 </button>

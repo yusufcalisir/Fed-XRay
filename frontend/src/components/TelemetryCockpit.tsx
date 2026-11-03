@@ -115,11 +115,13 @@ export default function TelemetryCockpit({
         <>
           {/* Hyperparameter & Defense Toolbar */}
           <div className="card p-3 sm:p-3.5 mb-3.5 sm:mb-4 flex flex-col md:flex-row md:items-center justify-between gap-3">
-            <div className="flex flex-wrap items-center gap-2.5 sm:gap-3">
+            <div className="flex flex-col sm:flex-row flex-wrap items-stretch sm:items-center gap-2.5 sm:gap-3 w-full md:w-auto">
               {/* Model Architecture Selector */}
-              <div className="flex items-center gap-2 bg-[var(--bg-card-inner)] border border-[var(--border-subtle)] px-2.5 py-1.5 rounded-lg text-xs">
-                <Cpu className="w-3.5 h-3.5 text-blue-500 shrink-0" />
-                <span className="text-[var(--text-muted)] font-medium">{t("sec2_model_label")}</span>
+              <div className="flex items-center justify-between sm:justify-start gap-2 bg-[var(--bg-card-inner)] border border-[var(--border-subtle)] px-2.5 py-1.5 rounded-lg text-xs w-full sm:w-auto">
+                <div className="flex items-center gap-2">
+                  <Cpu className="w-3.5 h-3.5 text-blue-500 shrink-0" />
+                  <span className="text-[var(--text-muted)] font-medium">{t("sec2_model_label")}</span>
+                </div>
                 <select
                   value={modelType}
                   onChange={(e) => setModelType(e.target.value)}
@@ -132,9 +134,11 @@ export default function TelemetryCockpit({
               </div>
 
               {/* FL Optimizer Selector */}
-              <div className="flex items-center gap-2 bg-[var(--bg-card-inner)] border border-[var(--border-subtle)] px-2.5 py-1.5 rounded-lg text-xs">
-                <SlidersHorizontal className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
-                <span className="text-[var(--text-muted)] font-medium">{t("sec2_algo_label")}</span>
+              <div className="flex items-center justify-between sm:justify-start gap-2 bg-[var(--bg-card-inner)] border border-[var(--border-subtle)] px-2.5 py-1.5 rounded-lg text-xs w-full sm:w-auto">
+                <div className="flex items-center gap-2">
+                  <SlidersHorizontal className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
+                  <span className="text-[var(--text-muted)] font-medium">{t("sec2_algo_label")}</span>
+                </div>
                 <select
                   value={algorithm}
                   onChange={(e) => setAlgorithm(e.target.value)}
@@ -149,7 +153,7 @@ export default function TelemetryCockpit({
             </div>
 
             {/* Byzantine Attack Simulation Toggle */}
-            <label className={`flex items-center gap-2 px-3 py-1.5 rounded-lg border text-xs font-semibold cursor-pointer select-none transition-all ${
+            <label className={`flex items-center justify-center sm:justify-start gap-2 px-3 py-1.5 rounded-lg border text-xs font-semibold cursor-pointer select-none transition-all w-full md:w-auto ${
               simulateAttack
                 ? "bg-rose-500/10 border-rose-500/30 text-rose-600 dark:text-rose-400 shadow-sm"
                 : "bg-[var(--bg-card-inner)] border-[var(--border-subtle)] text-[var(--text-muted)] hover:text-[var(--text-heading)]"
@@ -192,7 +196,7 @@ export default function TelemetryCockpit({
               <div className="h-48 sm:h-56 w-full flex-1 min-h-[190px]">
                 {history.length > 0 ? (
                   <ResponsiveContainer width="100%" height="100%">
-                    <LineChart data={history} margin={{ top: 5, right: 5, left: -25, bottom: 0 }}>
+                    <LineChart data={history} margin={{ top: 5, right: 10, left: -15, bottom: 0 }}>
                       <CartesianGrid strokeDasharray="3 3" stroke="rgba(148, 163, 184, 0.2)" />
                       <XAxis dataKey="round_num" stroke="#64748b" tick={{ fontSize: 10 }} />
                       <YAxis yAxisId="acc" domain={[0, 100]} stroke="#64748b" tick={{ fontSize: 10 }} />

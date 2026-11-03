@@ -216,7 +216,7 @@ export default function FederatedConsortiumTopology({
                     {node.name}
                   </div>
                   <div className="text-[10px] font-mono text-[var(--text-muted)] truncate mt-0.5">
-                    {t(node.modalityKey)} · {node.scans.toLocaleString("en-US")} {t("topo_studies")}
+                    {t(node.modalityKey)} · {(node.scans ?? 0).toLocaleString("en-US")} {t("topo_studies")}
                   </div>
                 </button>
               ))}
@@ -261,7 +261,7 @@ export default function FederatedConsortiumTopology({
                     {node.name}
                   </div>
                   <div className="text-[10px] font-mono text-[var(--text-muted)] truncate mt-0.5">
-                    {t(node.modalityKey)} · {node.scans.toLocaleString("en-US")} {t("topo_studies")}
+                    {t(node.modalityKey)} · {(node.scans ?? 0).toLocaleString("en-US")} {t("topo_studies")}
                   </div>
                 </button>
               ))}
@@ -405,18 +405,18 @@ export default function FederatedConsortiumTopology({
               <div className="mt-3 p-3 rounded-lg bg-[var(--bg-card)] border border-[var(--border-subtle)] text-[11px] leading-relaxed text-[var(--text-muted)]">
                 <div className="flex items-center justify-between mb-1.5">
                   <strong className="text-[var(--text-heading)]">
-                    {telemetryRounds && telemetryRounds.length > 0
+                    {Array.isArray(telemetryRounds) && telemetryRounds.length > 0
                       ? "Live Round Trajectory"
                       : t("topo_telem_log_title")}
                   </strong>
                   <span className="font-mono text-[10px] text-emerald-500 font-semibold">
-                    {telemetryRounds && telemetryRounds.length > 0
+                    {Array.isArray(telemetryRounds) && telemetryRounds.length > 0
                       ? `Loss: ${telemetryRounds[telemetryRounds.length - 1].train_loss}`
                       : t("topo_telem_loss")}
                   </span>
                 </div>
                 <div className="flex flex-wrap items-center gap-1.5 font-mono text-[10px]">
-                  {telemetryRounds && telemetryRounds.length > 0 ? (
+                  {Array.isArray(telemetryRounds) && telemetryRounds.length > 0 ? (
                     telemetryRounds.map((rd) => (
                       <span
                         key={rd.round_num}

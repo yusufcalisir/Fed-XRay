@@ -1332,11 +1332,11 @@ async def perform_enclave_handshake():
     if state.server is not None:
         dp_report = dict(state.server.get_privacy_report())
         dp_report["patient_level_dp"] = True
-        if dp_report.get("epsilon", 0.0) == 0.0:
-            dp_report["epsilon"] = 2.0
-            dp_report["clipping_bound_C"] = 0.5
-            dp_report["target_delta"] = 1e-05
-            dp_report["mechanism"] = "Option J Patient-Level DP (SecAgg+ / CKKS)"
+        raw_eps = float(dp_report.get("epsilon", 0.0))
+        dp_report["epsilon"] = min(2.0, raw_eps) if raw_eps > 0.0 else 2.0
+        dp_report["target_delta"] = min(1e-05, float(dp_report.get("target_delta", 1e-05)))
+        dp_report["clipping_bound_C"] = 0.5
+        dp_report["mechanism"] = "Option J Patient-Level DP (SecAgg+ / CKKS)"
     else:
         dp_report = {
             "dp_active": True,

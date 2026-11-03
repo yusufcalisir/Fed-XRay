@@ -38,6 +38,12 @@ export default function PresentationLandingPage() {
 
   useEffect(() => {
     let isMounted = true;
+    if (!isConnected) {
+      setBackendStatus("standby");
+      setSystemState(null);
+      return;
+    }
+
     const checkBackend = async () => {
       try {
         const target = (apiUrl || "http://127.0.0.1:8000").replace(/\/+$/, "");
@@ -45,16 +51,11 @@ export default function PresentationLandingPage() {
         if (stateData && isMounted) {
           setSystemState(stateData);
           setBackendStatus("online");
-          return;
-        }
-        const res = await fetch(`${target}/api/health`, { cache: "no-store" }).catch(() => null);
-        if (res && res.ok && isMounted) {
-          setBackendStatus("online");
         } else if (isMounted) {
-          setBackendStatus(isConnected ? "online" : "standby");
+          setBackendStatus("standby");
         }
       } catch {
-        if (isMounted) setBackendStatus(isConnected ? "online" : "standby");
+        if (isMounted) setBackendStatus("standby");
       }
     };
     checkBackend();
@@ -388,7 +389,7 @@ export default function PresentationLandingPage() {
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {(systemState?.reference_cases?.length
+                {(Array.isArray(systemState?.reference_cases) && systemState.reference_cases.length > 0
                   ? systemState.reference_cases.slice(0, 2)
                   : [
                       {

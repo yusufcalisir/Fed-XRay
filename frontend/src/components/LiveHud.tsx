@@ -43,7 +43,7 @@ export default function LiveHud({
     : t("live_hud_model");
 
   return (
-    <div className="card-inner flex flex-wrap items-center justify-between gap-x-4 sm:gap-x-6 gap-y-2 px-3.5 sm:px-5 py-2.5 sm:py-3 mb-5 sm:mb-6 text-[10px] sm:text-[11px] font-medium text-[var(--text-muted)]">
+    <div className="card-inner grid grid-cols-2 sm:flex sm:flex-wrap sm:items-center sm:justify-between gap-2.5 sm:gap-x-6 sm:gap-y-2 px-3.5 sm:px-5 py-2.5 sm:py-3 mb-5 sm:mb-6 text-[10px] sm:text-[11px] font-medium text-[var(--text-muted)]">
       <div className="flex items-center gap-1.5 sm:gap-2">
         <span className="pulse-dot" />
         <span className="text-[var(--text-heading)] font-semibold" suppressHydrationWarning>{t("live_hud_active")}</span>
