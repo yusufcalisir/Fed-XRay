@@ -218,6 +218,11 @@ class VisionTransformer(nn.Module):
         self.norm = nn.LayerNorm(embed_dim, eps=1e-6)
         self.head = nn.Linear(embed_dim, num_classes) if num_classes > 0 else nn.Identity()
 
+        # Weight authenticity & provenance tracking (Rule 12, MOD-02)
+        self.is_pretrained: bool = False
+        self.checkpoint_provenance: str = "uninitialized_scratch_weights"
+        self.checkpoint_hash: Optional[str] = None
+
         self._init_weights()
 
     def _init_weights(self) -> None:
@@ -273,20 +278,41 @@ def load_pretrained_vit_weights(
     - 2D bicubic grid interpolation for position embeddings (supporting 28x28, 224x224, etc.)
     - Direct loading into q_proj, k_proj, v_proj, and out_proj layers
     """
+    import hashlib
+    import logging
+    logger = logging.getLogger("fed_xray.models")
+
     try:
         state: Dict[str, torch.Tensor]
+        provenance: str
         if checkpoint_path is not None:
             p = Path(checkpoint_path)
             if not p.exists():
-                if strict:
-                    raise RuntimeError(f"VisionTransformer checkpoint not found at: {checkpoint_path}")
-                return False
+                model.is_pretrained = False
+                model.checkpoint_provenance = "uninitialized_scratch_weights"
+                model.checkpoint_hash = None
+                raise RuntimeError(f"VisionTransformer checkpoint not found at: {checkpoint_path}")
             state = torch.load(p, map_location="cpu", weights_only=True)
+            provenance = f"local_checkpoint:{checkpoint_path}"
         else:
-            import torchvision.models as models
+            try:
+                import torchvision.models as models
 
-            weights = models.ViT_B_16_Weights.DEFAULT
-            state = weights.get_state_dict(progress=False)
+                weights = models.ViT_B_16_Weights.DEFAULT
+                state = weights.get_state_dict(progress=False)
+                provenance = "official_torchvision_vit_b16"
+            except Exception as exc:
+                model.is_pretrained = False
+                model.checkpoint_provenance = "uninitialized_scratch_weights"
+                model.checkpoint_hash = None
+                if strict:
+                    raise RuntimeError(f"Failed to load official torchvision ViT_B_16 weights: {exc}") from exc
+                logger.warning(
+                    "Could not load official ViT_B_16 weights from torchvision: %s. "
+                    "Model running with scratch weights (strict=False).",
+                    exc,
+                )
+                return False
 
         dim = model.embed_dim
 
@@ -384,10 +410,17 @@ def load_pretrained_vit_weights(
             model.norm.weight.data.copy_(state["encoder.ln.weight"][:dim])
             model.norm.bias.data.copy_(state["encoder.ln.bias"][:dim])
 
+        model.is_pretrained = True
+        model.checkpoint_provenance = provenance
+        model.checkpoint_hash = hashlib.sha256(model.patch_embed.proj.weight.data.cpu().numpy().tobytes()).hexdigest()[:16]
         return True
     except Exception as exc:
+        model.is_pretrained = False
+        model.checkpoint_provenance = "uninitialized_scratch_weights"
+        model.checkpoint_hash = None
         if strict:
             raise RuntimeError(f"Failed to load pretrained ViT weights: {exc}") from exc
+        logger.warning("Failed to load pretrained ViT weights: %s", exc)
         return False
 
 
@@ -403,6 +436,7 @@ def create_medical_vit(
     num_classes: int = 3,
     pretrained: bool = True,
     checkpoint_path: Optional[str] = None,
+    strict_checkpoint: bool = False,
 ) -> VisionTransformer:
     """Factory helper to build scaled Vision Transformers suited for medical benchmarks."""
     configs = {
@@ -421,5 +455,13 @@ def create_medical_vit(
         num_heads=cfg["num_heads"],
     )
     if pretrained:
-        load_pretrained_vit_weights(model, checkpoint_path=checkpoint_path)
+        success = load_pretrained_vit_weights(
+            model,
+            checkpoint_path=checkpoint_path,
+            strict=strict_checkpoint,
+        )
+        if not success and strict_checkpoint:
+            raise RuntimeError(
+                f"Failed to initialize {model_type} with authenticated pretrained weights in strict mode."
+            )
     return model

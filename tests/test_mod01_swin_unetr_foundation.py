@@ -86,3 +86,4 @@ def test_swin_unetr_strict_checkpoint_honest_failure():
             checkpoint_path="nonexistent_checkpoint/monai_swin_5050.pt",
         )
     assert "Swin UNETR foundation checkpoint not found" in str(excinfo.value)
+

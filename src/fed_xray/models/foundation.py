@@ -59,6 +59,11 @@ class UNIFoundationBackbone(nn.Module):
         self.norm = nn.LayerNorm(embed_dim, eps=1e-6)
         self.head = nn.Linear(embed_dim, num_classes)
 
+        # Weight authenticity & provenance tracking (Rule 12, MOD-02)
+        self.is_pretrained: bool = False
+        self.checkpoint_provenance: str = "uninitialized_scratch_weights"
+        self.checkpoint_hash: Optional[str] = None
+
         if pretrained:
             self._load_pretrained_weights()
 
@@ -67,6 +72,11 @@ class UNIFoundationBackbone(nn.Module):
         for blk in self.blocks:
             blk.requires_grad_(False)
         self.norm.requires_grad_(False)
+
+    def _compute_weights_hash(self) -> str:
+        """Compute SHA-256 fingerprint of the backbone projection tensor (MOD-02)."""
+        import hashlib
+        return hashlib.sha256(self.patch_proj.weight.data.cpu().numpy().tobytes()).hexdigest()[:16]
 
     @staticmethod
     def _copy_subspace(target: torch.Tensor, source: torch.Tensor) -> None:
@@ -93,9 +103,14 @@ class UNIFoundationBackbone(nn.Module):
             if p.exists():
                 state = torch.load(p, map_location="cpu", weights_only=True)
                 self.load_state_dict(state, strict=False)
+                self.is_pretrained = True
+                self.checkpoint_provenance = f"local_checkpoint:{self.checkpoint_path}"
+                self.checkpoint_hash = self._compute_weights_hash()
                 return
-            if self.strict_checkpoint:
-                raise RuntimeError(f"UNI foundation checkpoint not found at: {self.checkpoint_path}")
+            self.is_pretrained = False
+            self.checkpoint_provenance = "uninitialized_scratch_weights"
+            self.checkpoint_hash = None
+            raise RuntimeError(f"UNI foundation checkpoint not found at: {self.checkpoint_path}")
 
         cache_paths = [
             os.environ.get("UNI_CHECKPOINT_PATH"),
@@ -106,9 +121,15 @@ class UNIFoundationBackbone(nn.Module):
             if cp and Path(cp).exists():
                 state = torch.load(cp, map_location="cpu", weights_only=True)
                 self.load_state_dict(state, strict=False)
+                self.is_pretrained = True
+                self.checkpoint_provenance = f"cached_checkpoint:{cp}"
+                self.checkpoint_hash = self._compute_weights_hash()
                 return
 
         if self.strict_checkpoint:
+            self.is_pretrained = False
+            self.checkpoint_provenance = "uninitialized_scratch_weights"
+            self.checkpoint_hash = None
             raise RuntimeError(
                 "MahmoodLab UNI foundation checkpoint not mounted. "
                 "Set UNI_CHECKPOINT_PATH or provide checkpoint_path."
@@ -162,8 +183,22 @@ class UNIFoundationBackbone(nn.Module):
             if "encoder.ln.weight" in state:
                 self._copy_subspace(self.norm.weight, state["encoder.ln.weight"])
                 self._copy_subspace(self.norm.bias, state["encoder.ln.bias"])
-        except Exception:
-            pass
+
+            self.is_pretrained = True
+            self.checkpoint_provenance = "torchvision_vit_b16_distilled"
+            self.checkpoint_hash = self._compute_weights_hash()
+        except Exception as exc:
+            self.is_pretrained = False
+            self.checkpoint_provenance = "uninitialized_scratch_weights"
+            self.checkpoint_hash = None
+            if self.strict_checkpoint:
+                raise RuntimeError(f"Failed to load fallback pretrained weights for UNI: {exc}") from exc
+            import logging
+            logging.getLogger("fed_xray.models").warning(
+                "Could not load official foundation weights for UNIFoundationBackbone: %s. "
+                "Model running with scratch weights (strict_checkpoint=False).",
+                exc,
+            )
 
     def extract_features(self, x: torch.Tensor) -> torch.Tensor:
         p = self.patch_proj(x).flatten(2).transpose(1, 2)  # [B, N, embed_dim]
@@ -227,6 +262,11 @@ class SwinUNETRRadiologyBackbone(nn.Module):
         self.norm = nn.LayerNorm(embed_dim, eps=1e-6)
         self.head = nn.Linear(embed_dim, num_classes)
 
+        # Weight authenticity & provenance tracking (Rule 12, MOD-02)
+        self.is_pretrained: bool = False
+        self.checkpoint_provenance: str = "uninitialized_scratch_weights"
+        self.checkpoint_hash: Optional[str] = None
+
         if pretrained or checkpoint_path:
             self._load_pretrained_weights()
 
@@ -238,6 +278,11 @@ class SwinUNETRRadiologyBackbone(nn.Module):
                 param.requires_grad = False
         self.norm.requires_grad_(False)
 
+    def _compute_weights_hash(self) -> str:
+        """Compute SHA-256 fingerprint of the Swin stem projection tensor (MOD-02)."""
+        import hashlib
+        return hashlib.sha256(self.swin.features[0][0].weight.data.cpu().numpy().tobytes()).hexdigest()[:16]
+
     def _load_pretrained_weights(self) -> None:
         """Load authentic radiological MONAI checkpoint or official Swin-T weights."""
         if self.checkpoint_path is not None:
@@ -247,9 +292,14 @@ class SwinUNETRRadiologyBackbone(nn.Module):
                 if "state_dict" in state:
                     state = state["state_dict"]
                 self.load_state_dict(state, strict=False)
+                self.is_pretrained = True
+                self.checkpoint_provenance = f"local_checkpoint:{self.checkpoint_path}"
+                self.checkpoint_hash = self._compute_weights_hash()
                 return
-            if self.strict_checkpoint:
-                raise RuntimeError(f"Swin UNETR foundation checkpoint not found at: {self.checkpoint_path}")
+            self.is_pretrained = False
+            self.checkpoint_provenance = "uninitialized_scratch_weights"
+            self.checkpoint_hash = None
+            raise RuntimeError(f"Swin UNETR foundation checkpoint not found at: {self.checkpoint_path}")
 
         cache_paths = [
             os.environ.get("SWIN_UNETR_CHECKPOINT_PATH"),
@@ -263,9 +313,15 @@ class SwinUNETRRadiologyBackbone(nn.Module):
                 if "state_dict" in state:
                     state = state["state_dict"]
                 self.load_state_dict(state, strict=False)
+                self.is_pretrained = True
+                self.checkpoint_provenance = f"cached_checkpoint:{cp}"
+                self.checkpoint_hash = self._compute_weights_hash()
                 return
 
         if self.strict_checkpoint:
+            self.is_pretrained = False
+            self.checkpoint_provenance = "uninitialized_scratch_weights"
+            self.checkpoint_hash = None
             raise RuntimeError(
                 "Swin UNETR foundation checkpoint not found. "
                 "Set SWIN_UNETR_CHECKPOINT_PATH or provide checkpoint_path."
@@ -277,10 +333,21 @@ class SwinUNETRRadiologyBackbone(nn.Module):
 
             pretrained_swin = models.swin_t(weights=models.Swin_T_Weights.DEFAULT)
             self.swin.load_state_dict(pretrained_swin.state_dict(), strict=False)
+            self.is_pretrained = True
+            self.checkpoint_provenance = "official_torchvision_swin_t"
+            self.checkpoint_hash = self._compute_weights_hash()
         except Exception as exc:
+            self.is_pretrained = False
+            self.checkpoint_provenance = "uninitialized_scratch_weights"
+            self.checkpoint_hash = None
             if self.strict_checkpoint:
                 raise RuntimeError(f"Failed to load Swin-T foundation weights: {exc}") from exc
-            nn.init.kaiming_normal_(self.conv_stem.weight)
+            import logging
+            logging.getLogger("fed_xray.models").warning(
+                "Could not load official foundation weights for SwinUNETRRadiologyBackbone: %s. "
+                "Model running with scratch weights (strict_checkpoint=False).",
+                exc,
+            )
 
     def extract_features(self, x: torch.Tensor) -> torch.Tensor:
         """Extract invariant foundation representations from 2D slices or 3D multi-slice volumes."""

@@ -188,6 +188,9 @@ class AppState:
             )
             saved_weights = torch.load(model_path, map_location=self.device)
             server.global_model.load_state_dict(saved_weights)
+            base_m = getattr(server.global_model, "base_model", server.global_model)
+            base_m.is_pretrained = True
+            base_m.checkpoint_provenance = f"restored_disk_checkpoint:{model_path}"
             self.server = server
             self.model_trained = True
 
@@ -533,6 +536,7 @@ async def get_state():
         "reference_cases": reference_cases,
         "is_live": is_live,
         "telemetry_source": "live_runtime" if is_live else "reference_benchmark",
+        "model_provenance": state.server.get_model_provenance() if state.server else None,
     }
 
 
@@ -753,6 +757,7 @@ async def stream_federated_training(
     pretrained: bool = Query(default=True),
     dp_mode: str = Query(default="distributed"),
     dp_clipping_bound: float = Query(default=1.0),
+    strict_checkpoint: bool = Query(default=False),
 ):
     """Server-Sent Events (SSE) streaming federated ViT training in real time."""
     active_dataloaders, active_global_test_set = require_cohort()
@@ -783,6 +788,7 @@ async def stream_federated_training(
                     pretrained=pretrained,
                     dp_mode=dp_mode,
                     dp_clipping_bound=dp_clipping_bound,
+                    strict_checkpoint=strict_checkpoint,
                 )
                 clts = [
                     HospitalClient(
@@ -803,6 +809,7 @@ async def stream_federated_training(
                         dp_clipping_bound=dp_clipping_bound,
                         dp_noise_multiplier=privacy_noise,
                         dp_mode=dp_mode,
+                        strict_checkpoint=strict_checkpoint,
                     )
                     for i in range(len(active_dataloaders))
                 ]
@@ -893,6 +900,7 @@ async def stream_federated_training(
                     "privacy_report": state.server.get_privacy_report() if state.server else {},
                     "uplink_bytes_per_client": int(metrics["uplink_bytes_per_client"]),
                     "full_model_bytes": int(metrics["full_model_bytes"]),
+                    "model_provenance": state.server.get_model_provenance() if state.server else {},
                 }
 
                 if round_num >= num_rounds:
@@ -944,6 +952,7 @@ async def start_training_background(
     pretrained: bool = Query(default=True),
     dp_mode: str = Query(default="distributed"),
     dp_clipping_bound: float = Query(default=1.0),
+    strict_checkpoint: bool = Query(default=False),
 ):
     """Launch federated training as a background thread (Render SSE proxy fallback)."""
     require_cohort()
@@ -981,6 +990,7 @@ async def start_training_background(
                 pretrained=pretrained,
                 dp_mode=dp_mode,
                 dp_clipping_bound=dp_clipping_bound,
+                strict_checkpoint=strict_checkpoint,
             )
             state.server = srv
 
@@ -1003,6 +1013,7 @@ async def start_training_background(
                     dp_clipping_bound=dp_clipping_bound,
                     dp_noise_multiplier=privacy_noise,
                     dp_mode=dp_mode,
+                    strict_checkpoint=strict_checkpoint,
                 )
                 for i in range(len(dataloaders))
             ]
@@ -1054,6 +1065,7 @@ async def start_training_background(
                     "privacy_report": srv.get_privacy_report(),
                     "uplink_bytes_per_client": int(metrics["uplink_bytes_per_client"]),
                     "full_model_bytes": int(metrics["full_model_bytes"]),
+                    "model_provenance": state.server.get_model_provenance() if state.server else {},
                 }
                 state.task_rounds.append(round_data)
                 state.task_current_round = round_num
@@ -1105,6 +1117,7 @@ async def start_flower_training_background(
     pretrained: bool = Query(default=True),
     dp_mode: str = Query(default="distributed"),
     dp_clipping_bound: float = Query(default=1.0),
+    strict_checkpoint: bool = Query(default=False),
 ):
     """Launch federated training via Flower orchestration protocol as a background thread."""
     require_cohort()
@@ -1141,6 +1154,7 @@ async def start_flower_training_background(
                 pretrained=pretrained,
                 dp_mode=dp_mode,
                 dp_clipping_bound=dp_clipping_bound,
+                strict_checkpoint=strict_checkpoint,
             )
             state.server = srv
 
@@ -1163,6 +1177,7 @@ async def start_flower_training_background(
                     dp_clipping_bound=dp_clipping_bound,
                     dp_noise_multiplier=privacy_noise,
                     dp_mode=dp_mode,
+                    strict_checkpoint=strict_checkpoint,
                 )
                 for i in range(len(dataloaders))
             ]

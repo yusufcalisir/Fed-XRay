@@ -74,6 +74,7 @@ class CentralServer:
         foundation_checkpoint: Optional[str] = None,
         dp_mode: str = "distributed",  # "distributed", "local", "central", "off"
         dp_clipping_bound: float = 1.0,
+        strict_checkpoint: bool = False,
     ) -> None:
         self.device = device or torch.device("cpu")
         self.privacy_noise = privacy_noise
@@ -89,6 +90,7 @@ class CentralServer:
         self.foundation_checkpoint = foundation_checkpoint
         self.dp_mode = dp_mode
         self.dp_clipping_bound = dp_clipping_bound
+        self.strict_checkpoint = strict_checkpoint
 
         self.img_size = img_size or 28
         self.patch_size = patch_size or (16 if self.img_size == 224 else 4)
@@ -172,6 +174,7 @@ class CentralServer:
                 num_classes=3,
                 pretrained=self.pretrained,
                 checkpoint_path=self.foundation_checkpoint,
+                strict_checkpoint=self.strict_checkpoint,
             )
             if self.peft_mode:
                 inject_lora_to_model(
@@ -189,6 +192,7 @@ class CentralServer:
                 patch_size=self.patch_size,
                 pretrained=self.pretrained,
                 checkpoint_path=self.foundation_checkpoint,
+                strict_checkpoint=self.strict_checkpoint,
             )
             if self.peft_mode:
                 inject_lora_to_model(
@@ -205,6 +209,7 @@ class CentralServer:
                 num_classes=3,
                 pretrained=self.pretrained,
                 checkpoint_path=self.foundation_checkpoint,
+                strict_checkpoint=self.strict_checkpoint,
             )
             if self.peft_mode:
                 inject_lora_to_model(
@@ -216,6 +221,19 @@ class CentralServer:
                 )
             return model
         return create_cnn_model()
+
+    def get_model_provenance(self) -> Dict[str, Any]:
+        """Audit report of global model weight provenance and authenticity (MOD-02)."""
+        m = self.global_model
+        base = getattr(m, "base_model", m)
+        return {
+            "model_type": self.model_type,
+            "is_pretrained": getattr(base, "is_pretrained", getattr(m, "is_pretrained", False)),
+            "checkpoint_provenance": getattr(base, "checkpoint_provenance", getattr(m, "checkpoint_provenance", "uninitialized_scratch_weights")),
+            "checkpoint_hash": getattr(base, "checkpoint_hash", getattr(m, "checkpoint_hash", None)),
+            "strict_checkpoint": self.strict_checkpoint,
+            "peft_mode": self.peft_mode,
+        }
 
     def get_global_weights(self) -> Dict[str, torch.Tensor]:
         """Get current global model or PEFT adapter weights."""
