@@ -2,7 +2,7 @@
 
 import React, { createContext, useContext, useState, useEffect, useRef, useCallback } from "react";
 
-interface ApiContextType {
+export interface ApiContextType {
   apiUrl: string;
   setApiUrl: (url: string) => void;
   isConnected: boolean;
@@ -11,41 +11,66 @@ interface ApiContextType {
   autoDiscoverApi: () => Promise<string | null>;
   lastError: string | null;
   reconnectAttempts: number;
+  isTunnelExpired: boolean;
 }
+
+export const isEphemeralTunnel = (url: string): boolean => {
+  try {
+    if (!url) return false;
+    const lower = url.toLowerCase();
+    return (
+      lower.includes(".trycloudflare.com") ||
+      lower.includes(".loca.lt") ||
+      lower.includes(".ngrok-free.app") ||
+      lower.includes(".serveo.net") ||
+      lower.includes("globe-celebration-poems-shakira")
+    );
+  } catch {
+    return false;
+  }
+};
 
 const ApiContext = createContext<ApiContextType | undefined>(undefined);
 
 export function ApiProvider({ children }: { children: React.ReactNode }) {
-  const defaultUrl = process.env.NEXT_PUBLIC_API_URL?.trim().replace(/\/$/, "") || "http://127.0.0.1:8000";
-  const [apiUrl, setApiUrlState] = useState<string>(defaultUrl);
+  const envUrl = process.env.NEXT_PUBLIC_API_URL?.trim().replace(/\/$/, "") || "";
+  // Do not initialize with known dead or unresolvable tunnel URLs
+  const initialUrl = isEphemeralTunnel(envUrl) ? "http://127.0.0.1:8000" : envUrl || "http://127.0.0.1:8000";
+
+  const [apiUrl, setApiUrlState] = useState<string>(initialUrl);
   const [isConnected, setIsConnected] = useState<boolean>(false);
   const [isChecking, setIsChecking] = useState<boolean>(true);
   const [lastError, setLastError] = useState<string | null>(null);
   const [reconnectAttempts, setReconnectAttempts] = useState<number>(0);
+  const [isTunnelExpired, setIsTunnelExpired] = useState<boolean>(false);
 
   const apiUrlRef = useRef<string>(apiUrl);
   apiUrlRef.current = apiUrl;
   const isConnectedRef = useRef<boolean>(isConnected);
   isConnectedRef.current = isConnected;
+  const deadTunnelsRef = useRef<Set<string>>(new Set());
 
   // Build ordered candidate URLs based on environment and network configuration
   const getCandidateUrls = useCallback((): string[] => {
     const candidates: string[] = [];
 
-    // 1. Next.js Public Environment Variable (authoritative configuration)
-    if (process.env.NEXT_PUBLIC_API_URL) {
-      candidates.push(process.env.NEXT_PUBLIC_API_URL.trim().replace(/\/$/, ""));
-    }
-
-    // 2. Saved preference in localStorage
+    // 1. Saved preference in localStorage (if not in dead tunnels)
     if (typeof window !== "undefined") {
       try {
-        const saved = localStorage.getItem("fedxray_api_url");
-        if (saved && saved.trim()) {
-          candidates.push(saved.trim().replace(/\/$/, ""));
+        const saved = localStorage.getItem("fedxray_api_url")?.trim().replace(/\/$/, "");
+        if (saved && !deadTunnelsRef.current.has(saved)) {
+          candidates.push(saved);
         }
       } catch {
         // Ignore localStorage access restrictions
+      }
+    }
+
+    // 2. Next.js Public Environment Variable (authoritative configuration)
+    if (process.env.NEXT_PUBLIC_API_URL) {
+      const env = process.env.NEXT_PUBLIC_API_URL.trim().replace(/\/$/, "");
+      if (env && !deadTunnelsRef.current.has(env)) {
+        candidates.push(env);
       }
     }
 
@@ -64,7 +89,7 @@ export function ApiProvider({ children }: { children: React.ReactNode }) {
     // 5. Relative URL (leveraging Next.js rewrites proxy: /api/* -> backend)
     candidates.push("");
 
-    return Array.from(new Set(candidates));
+    return Array.from(new Set(candidates.filter(Boolean)));
   }, []);
 
   // Ping a single endpoint with strict timeout and clean failure handling
@@ -105,11 +130,16 @@ export function ApiProvider({ children }: { children: React.ReactNode }) {
       setIsChecking(false);
       setLastError(null);
       setReconnectAttempts(0);
+      setIsTunnelExpired(false);
       return true;
     } else {
       setIsConnected(false);
       setIsChecking(false);
       setLastError("Connection failed or backend offline");
+      if (isEphemeralTunnel(target)) {
+        deadTunnelsRef.current.add(target);
+        setIsTunnelExpired(true);
+      }
       return false;
     }
   }, []);
@@ -119,18 +149,20 @@ export function ApiProvider({ children }: { children: React.ReactNode }) {
     const candidates = getCandidateUrls();
     setIsChecking(true);
 
-    const envUrl = process.env.NEXT_PUBLIC_API_URL?.trim().replace(/\/+$/, "");
-    const saved = typeof window !== "undefined" ? localStorage.getItem("fedxray_api_url") : null;
-    const prioritized = envUrl
-      ? [envUrl, ...candidates.filter((c) => c !== envUrl)]
-      : saved
-      ? [saved.trim().replace(/\/+$/, ""), ...candidates.filter((c) => c !== saved.trim().replace(/\/+$/, ""))]
+    const envUrlClean = process.env.NEXT_PUBLIC_API_URL?.trim().replace(/\/+$/, "");
+    const saved = typeof window !== "undefined" ? localStorage.getItem("fedxray_api_url")?.trim().replace(/\/+$/, "") : null;
+    const prioritized = envUrlClean && !deadTunnelsRef.current.has(envUrlClean)
+      ? [envUrlClean, ...candidates.filter((c) => c !== envUrlClean)]
+      : saved && !deadTunnelsRef.current.has(saved)
+      ? [saved, ...candidates.filter((c) => c !== saved)]
       : candidates;
 
     for (const cand of prioritized) {
+      if (deadTunnelsRef.current.has(cand)) continue;
       const ok = await pingEndpoint(cand, 2000);
       if (ok) {
         setApiUrlState(cand);
+        setIsTunnelExpired(false);
         if (typeof window !== "undefined") {
           try {
             localStorage.setItem("fedxray_api_url", cand);
@@ -144,17 +176,23 @@ export function ApiProvider({ children }: { children: React.ReactNode }) {
         setReconnectAttempts(0);
         return cand;
       } else {
-        // If the candidate in localStorage is dead, prune it to prevent endless DNS polling
-        if (typeof window !== "undefined" && saved && cand === saved.trim().replace(/\/+$/, "")) {
-          try {
-            localStorage.removeItem("fedxray_api_url");
-          } catch {
-            // Ignore storage error
+        // If an ephemeral tunnel domain failed, blacklist it and prune from localStorage
+        if (isEphemeralTunnel(cand)) {
+          deadTunnelsRef.current.add(cand);
+          setIsTunnelExpired(true);
+          if (typeof window !== "undefined") {
+            try {
+              localStorage.removeItem("fedxray_api_url");
+            } catch {
+              // Ignore storage error
+            }
           }
         }
       }
     }
 
+    // Crucial fallback: ensure apiUrl does not remain set to a dead third-party domain
+    setApiUrlState("http://127.0.0.1:8000");
     setIsConnected(false);
     setIsChecking(false);
     setLastError("Unable to reach FastAPI backend on candidate ports");
@@ -164,6 +202,8 @@ export function ApiProvider({ children }: { children: React.ReactNode }) {
   // Set URL manually (e.g. from UI modal)
   const setApiUrl = (url: string) => {
     const cleanUrl = url.trim().replace(/\/$/, "");
+    deadTunnelsRef.current.delete(cleanUrl);
+    setIsTunnelExpired(false);
     setApiUrlState(cleanUrl);
     if (typeof window !== "undefined") {
       try {
@@ -266,6 +306,7 @@ export function ApiProvider({ children }: { children: React.ReactNode }) {
         autoDiscoverApi,
         lastError,
         reconnectAttempts,
+        isTunnelExpired,
       }}
     >
       {children}
@@ -286,6 +327,7 @@ export function useApi(): ApiContextType {
       autoDiscoverApi: async () => null,
       lastError: null,
       reconnectAttempts: 0,
+      isTunnelExpired: false,
     };
   }
   return context;

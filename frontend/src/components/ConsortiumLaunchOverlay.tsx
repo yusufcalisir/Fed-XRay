@@ -31,7 +31,7 @@ export default function ConsortiumLaunchOverlay({
 }: ConsortiumLaunchOverlayProps) {
   const router = useRouter();
   const { t } = useLanguage();
-  const { apiUrl, setApiUrl, autoDiscoverApi } = useApi();
+  const { apiUrl, setApiUrl, autoDiscoverApi, isTunnelExpired } = useApi();
   const [attestationData, setAttestationData] = useState<EnclaveHandshakeResponse | null>(null);
   const [progress, setProgress] = useState(0);
   const [activeStage, setActiveStage] = useState(0);
@@ -412,6 +412,13 @@ export default function ConsortiumLaunchOverlay({
                 <div className="text-[11px] text-[var(--text-muted)] mt-0.5 leading-relaxed font-mono">
                   {error}
                 </div>
+
+                {isTunnelExpired && (
+                  <div className="mt-2 p-1.5 rounded-md bg-amber-500/10 border border-amber-500/30 text-amber-500 dark:text-amber-400 text-[11px] font-sans flex items-center gap-1.5">
+                    <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
+                    <span>Configured cloud tunnel has expired. Switched to local backend (http://127.0.0.1:8000).</span>
+                  </div>
+                )}
 
                 {/* Quick Action Buttons */}
                 <div className="flex flex-wrap items-center gap-1.5 mt-2.5">
