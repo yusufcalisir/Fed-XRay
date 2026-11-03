@@ -9,8 +9,10 @@ import {
   AlertTriangle,
   TrendingDown,
   FileCheck,
+  Zap,
 } from "lucide-react";
 import { useLanguage } from "@/context/LanguageContext";
+import Consortium3DCanvas from "@/components/Consortium3DCanvas";
 
 export interface HospitalNode {
   id: string;
@@ -103,9 +105,27 @@ export default function FederatedConsortiumTopology({
   const { t } = useLanguage();
   const [activeView, setActiveView] = useState<"topology" | "crypto" | "telemetry">("topology");
   const [selectedNodeId, setSelectedNodeId] = useState<string>("node-1");
+  const [is3DMode, setIs3DMode] = useState<boolean>(true);
+  const [isSimulatingRound, setIsSimulatingRound] = useState<boolean>(false);
+  const [mouseTilt, setMouseTilt] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
+  const [isHovered, setIsHovered] = useState<boolean>(false);
+  const [roundNotification, setRoundNotification] = useState<string | null>(null);
 
   const nodeList = hospitals && hospitals.length > 0 ? hospitals : HOSPITAL_NODES;
   const selectedNode = nodeList.find((n) => n.id === selectedNodeId) || nodeList[0];
+
+  const triggerConsensusRound = () => {
+    if (isSimulatingRound) return;
+    setIsSimulatingRound(true);
+    setRoundNotification(t("topo_simulating_round"));
+    setTimeout(() => {
+      setRoundNotification(t("topo_round_synced"));
+      setTimeout(() => {
+        setRoundNotification(null);
+        setIsSimulatingRound(false);
+      }, 2000);
+    }, 2200);
+  };
 
   return (
     <div className="card relative min-h-[520px] sm:min-h-[530px] lg:h-[560px] flex flex-col justify-between overflow-hidden p-3.5 sm:p-5 select-none border border-[var(--border-card)] bg-[var(--bg-card)] shadow-xl rounded-2xl">
@@ -118,153 +138,257 @@ export default function FederatedConsortiumTopology({
           </span>
         </div>
 
-        {/* Console View Switcher */}
-        <div className="grid grid-cols-3 sm:flex items-center p-0.5 rounded-lg bg-[var(--bg-card-inner)] border border-[var(--border-card)] text-[10px] sm:text-[11px] font-semibold w-full sm:w-auto">
-          <button
-            type="button"
-            onClick={() => setActiveView("topology")}
-            className={`px-2 sm:px-2.5 py-1 text-center rounded-md transition-all whitespace-nowrap ${
-              activeView === "topology"
-                ? "bg-emerald-500 text-white shadow-sm font-bold"
-                : "text-[var(--text-muted)] hover:text-[var(--text-heading)]"
-            }`}
-          >
-            {t("topo_tab_map")}
-          </button>
-          <button
-            type="button"
-            onClick={() => setActiveView("crypto")}
-            className={`px-2 sm:px-2.5 py-1 text-center rounded-md transition-all whitespace-nowrap ${
-              activeView === "crypto"
-                ? "bg-emerald-500 text-white shadow-sm font-bold"
-                : "text-[var(--text-muted)] hover:text-[var(--text-heading)]"
-            }`}
-          >
-            {t("topo_tab_crypto")}
-          </button>
-          <button
-            type="button"
-            onClick={() => setActiveView("telemetry")}
-            className={`px-2 sm:px-2.5 py-1 text-center rounded-md transition-all whitespace-nowrap ${
-              activeView === "telemetry"
-                ? "bg-emerald-500 text-white shadow-sm font-bold"
-                : "text-[var(--text-muted)] hover:text-[var(--text-heading)]"
-            }`}
-          >
-            {t("topo_tab_telemetry")}
-          </button>
+        {/* Console Controls: 3D Toggle, Action Button, View Switcher */}
+        <div className="flex flex-wrap items-center gap-1.5 sm:gap-2 w-full sm:w-auto justify-between sm:justify-end">
+          {activeView === "topology" && (
+            <div className="flex items-center gap-1">
+              {/* 3D Mode Toggle Button */}
+              <button
+                type="button"
+                onClick={() => setIs3DMode((prev) => !prev)}
+                className={`px-2 py-1 rounded-md text-[10px] font-mono font-bold transition-all border ${
+                  is3DMode
+                    ? "bg-emerald-500/15 border-emerald-500/40 text-emerald-600 dark:text-emerald-400 shadow-xs"
+                    : "bg-[var(--bg-card-inner)] border-[var(--border-card)] text-[var(--text-muted)] hover:text-[var(--text-heading)]"
+                }`}
+                title={is3DMode ? t("topo_view_2d") : t("topo_view_3d")}
+              >
+                {is3DMode ? "3D" : "2D"}
+              </button>
+
+              {/* Trigger Encrypted Consensus Round */}
+              <button
+                type="button"
+                onClick={triggerConsensusRound}
+                disabled={isSimulatingRound}
+                className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-[10px] font-mono font-bold bg-emerald-600 hover:bg-emerald-500 text-white shadow-xs transition-all disabled:opacity-50 active:scale-95"
+              >
+                <Zap className={`w-3 h-3 ${isSimulatingRound ? "animate-spin text-amber-300" : ""}`} />
+                <span className="hidden sm:inline">
+                  {isSimulatingRound ? t("topo_simulating_round") : t("topo_trigger_round")}
+                </span>
+                <span className="sm:hidden">
+                  {isSimulatingRound ? "Sync..." : "Round"}
+                </span>
+              </button>
+            </div>
+          )}
+
+          {/* Console View Switcher */}
+          <div className="grid grid-cols-3 sm:flex items-center p-0.5 rounded-lg bg-[var(--bg-card-inner)] border border-[var(--border-card)] text-[10px] sm:text-[11px] font-semibold w-full sm:w-auto">
+            <button
+              type="button"
+              onClick={() => setActiveView("topology")}
+              className={`px-2 sm:px-2.5 py-1 text-center rounded-md transition-all whitespace-nowrap ${
+                activeView === "topology"
+                  ? "bg-emerald-500 text-white shadow-sm font-bold"
+                  : "text-[var(--text-muted)] hover:text-[var(--text-heading)]"
+              }`}
+            >
+              {t("topo_tab_map")}
+            </button>
+            <button
+              type="button"
+              onClick={() => setActiveView("crypto")}
+              className={`px-2 sm:px-2.5 py-1 text-center rounded-md transition-all whitespace-nowrap ${
+                activeView === "crypto"
+                  ? "bg-emerald-500 text-white shadow-sm font-bold"
+                  : "text-[var(--text-muted)] hover:text-[var(--text-heading)]"
+              }`}
+            >
+              {t("topo_tab_crypto")}
+            </button>
+            <button
+              type="button"
+              onClick={() => setActiveView("telemetry")}
+              className={`px-2 sm:px-2.5 py-1 text-center rounded-md transition-all whitespace-nowrap ${
+                activeView === "telemetry"
+                  ? "bg-emerald-500 text-white shadow-sm font-bold"
+                  : "text-[var(--text-muted)] hover:text-[var(--text-heading)]"
+              }`}
+            >
+              {t("topo_tab_telemetry")}
+            </button>
+          </div>
         </div>
       </div>
 
       {/* Main Interactive Stage */}
       <div className="relative flex-1 w-full my-2 flex items-center justify-center overflow-hidden">
-        {/* VIEW 1: FEDERATED TOPOLOGY MAP */}
+        {/* VIEW 1: FEDERATED TOPOLOGY MAP (3D PERSPECTIVE + ENCRYPTED CANVAS) */}
         {activeView === "topology" && (
-          <div className="relative w-full h-full flex flex-col justify-between py-1">
-            {/* SVG Connecting Enclave Tunnels */}
-            <svg className="absolute inset-0 w-full h-full pointer-events-none" xmlns="http://www.w3.org/2000/svg">
-              <defs>
-                <linearGradient id="streamGrad1" x1="0%" y1="0%" x2="50%" y2="50%">
-                  <stop offset="0%" stopColor="#10b981" stopOpacity="0.5" />
-                  <stop offset="100%" stopColor="#06b6d4" stopOpacity="0.1" />
-                </linearGradient>
-                <linearGradient id="streamGrad2" x1="100%" y1="0%" x2="50%" y2="50%">
-                  <stop offset="0%" stopColor="#10b981" stopOpacity="0.5" />
-                  <stop offset="100%" stopColor="#06b6d4" stopOpacity="0.1" />
-                </linearGradient>
-                <linearGradient id="streamGrad3" x1="0%" y1="100%" x2="50%" y2="50%">
-                  <stop offset="0%" stopColor="#10b981" stopOpacity="0.5" />
-                  <stop offset="100%" stopColor="#06b6d4" stopOpacity="0.1" />
-                </linearGradient>
-                <linearGradient id="streamGrad4" x1="100%" y1="100%" x2="50%" y2="50%">
-                  <stop offset="0%" stopColor="#10b981" stopOpacity="0.5" />
-                  <stop offset="100%" stopColor="#06b6d4" stopOpacity="0.1" />
-                </linearGradient>
-              </defs>
+          <div
+            className="relative w-full h-full flex flex-col justify-between py-1"
+            style={{ perspective: "1100px" }}
+            onMouseMove={(e) => {
+              if (!is3DMode) return;
+              const rect = e.currentTarget.getBoundingClientRect();
+              const x = (e.clientX - rect.left) / rect.width - 0.5;
+              const y = (e.clientY - rect.top) / rect.height - 0.5;
+              setMouseTilt({ x, y });
+            }}
+            onMouseEnter={() => setIsHovered(true)}
+            onMouseLeave={() => {
+              setIsHovered(false);
+              setMouseTilt({ x: 0, y: 0 });
+            }}
+          >
+            {/* 3D Encrypted Canvas Engine */}
+            <Consortium3DCanvas
+              is3DMode={is3DMode}
+              isSimulatingRound={isSimulatingRound}
+              selectedNodeId={selectedNodeId}
+              mouseTilt={mouseTilt}
+              onSimulationComplete={() => setIsSimulatingRound(false)}
+            />
 
-              {/* Connecting Tunnels */}
-              <line x1="22%" y1="20%" x2="50%" y2="50%" stroke="url(#streamGrad1)" strokeWidth="2" strokeDasharray="4 4" />
-              <line x1="78%" y1="20%" x2="50%" y2="50%" stroke="url(#streamGrad2)" strokeWidth="2" strokeDasharray="4 4" />
-              <line x1="22%" y1="80%" x2="50%" y2="50%" stroke="url(#streamGrad3)" strokeWidth="2" strokeDasharray="4 4" />
-              <line x1="78%" y1="80%" x2="50%" y2="50%" stroke="url(#streamGrad4)" strokeWidth="2" strokeDasharray="4 4" />
+            {/* Notification Toast during consensus synchronization */}
+            {roundNotification && (
+              <div className="absolute top-2 left-1/2 -translate-x-1/2 z-30 px-3 py-1 rounded-full text-[10px] font-mono font-bold bg-emerald-500/20 text-emerald-600 dark:text-emerald-300 border border-emerald-500/40 backdrop-blur-md shadow-lg animate-in fade-in flex items-center gap-1.5 whitespace-nowrap">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping shrink-0" />
+                <span>{roundNotification}</span>
+              </div>
+            )}
 
-              {/* Aggregation Center Glow Rings */}
-              <circle cx="50%" cy="50%" r="58" fill="none" stroke="#10b981" strokeWidth="1" strokeOpacity="0.2" />
-              <circle cx="50%" cy="50%" r="76" fill="none" stroke="#06b6d4" strokeWidth="1" strokeOpacity="0.12" strokeDasharray="6 6" />
-            </svg>
+            {/* 3D Perspective Stage Container */}
+            <div
+              className="relative w-full h-full flex flex-col justify-between"
+              style={{
+                transform: is3DMode
+                  ? `rotateX(${13 + mouseTilt.y * 14}deg) rotateY(${mouseTilt.x * 12}deg)`
+                  : "none",
+                transformStyle: "preserve-3d",
+                transition: isHovered
+                  ? "transform 0.08s ease-out"
+                  : "transform 0.6s cubic-bezier(0.2, 0.8, 0.2, 1)",
+              }}
+            >
+              {/* Top Row: Nodes 1 & 2 */}
+              <div className="grid grid-cols-2 gap-2 sm:gap-3 z-10" style={{ transformStyle: "preserve-3d" }}>
+                {nodeList.slice(0, 2).map((node) => {
+                  const isSelected = selectedNodeId === node.id;
+                  return (
+                    <button
+                      type="button"
+                      key={node.id}
+                      onClick={() => setSelectedNodeId(node.id)}
+                      style={{
+                        transform: is3DMode
+                          ? isSelected
+                            ? "translateZ(38px)"
+                            : "translateZ(20px)"
+                          : "none",
+                        transition: "all 0.3s cubic-bezier(0.2, 0.8, 0.2, 1)",
+                      }}
+                      className={`text-left p-2 sm:p-2.5 lg:p-3 rounded-xl border backdrop-blur-md transition-all ${
+                        isSelected
+                          ? "bg-[var(--bg-card)]/95 border-emerald-500 shadow-xl shadow-emerald-500/10 ring-2 ring-emerald-500/40"
+                          : "bg-[var(--bg-card-inner)]/85 hover:bg-[var(--bg-card)] border-[var(--border-subtle)] hover:border-emerald-500/40"
+                      }`}
+                    >
+                      <div className="flex items-center justify-between mb-1">
+                        <span className="font-mono text-[10px] font-bold text-emerald-600 dark:text-emerald-400 truncate pr-1">
+                          {node.location}
+                        </span>
+                        <div className="flex items-center gap-1.5 shrink-0">
+                          {isSelected && (
+                            <span className="text-[9px] font-mono uppercase px-1 py-0.2 rounded bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 font-bold border border-emerald-500/30">
+                              Active
+                            </span>
+                          )}
+                          <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+                        </div>
+                      </div>
+                      <div className="font-display text-xs font-bold text-[var(--text-heading)] truncate">
+                        {node.name}
+                      </div>
+                      <div className="text-[10px] font-mono text-[var(--text-muted)] truncate mt-0.5 flex items-center justify-between">
+                        <span>{t(node.modalityKey)} · {(node.scans ?? 0).toLocaleString("en-US")} {t("topo_studies")}</span>
+                        <span className="text-emerald-600/70 dark:text-emerald-400/70 font-mono text-[9px] hidden sm:inline">
+                          ε={node.dpEpsilon}
+                        </span>
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
 
-            {/* Top Row: Nodes 1 & 2 */}
-            <div className="grid grid-cols-2 gap-2 sm:gap-3 z-10">
-              {nodeList.slice(0, 2).map((node) => (
-                <button
-                  type="button"
-                  key={node.id}
-                  onClick={() => setSelectedNodeId(node.id)}
-                  className={`text-left p-2 sm:p-2.5 lg:p-3 rounded-xl border transition-all ${
-                    selectedNodeId === node.id
-                      ? "bg-[var(--bg-card)] border-emerald-500 shadow-md ring-1 ring-emerald-500/30"
-                      : "bg-[var(--bg-card-inner)] hover:bg-[var(--bg-card)] border-[var(--border-subtle)]"
-                  }`}
-                >
-                  <div className="flex items-center justify-between mb-1">
-                    <span className="font-mono text-[10px] font-bold text-emerald-600 dark:text-emerald-400 truncate pr-1">
-                      {node.location}
-                    </span>
-                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 shrink-0" />
+              {/* Central Aggregation Vault in 3D */}
+              <div
+                className="z-10 self-center text-center my-1"
+                style={{
+                  transform: is3DMode ? "translateZ(54px)" : "none",
+                  transformStyle: "preserve-3d",
+                  transition: "transform 0.4s ease-out",
+                }}
+              >
+                <div className="relative inline-flex flex-col items-center p-3 sm:p-4 rounded-2xl bg-[var(--bg-card)]/95 border border-emerald-500/50 shadow-2xl backdrop-blur-lg ring-1 ring-emerald-500/20 group">
+                  <div className="flex items-center gap-1.5 text-emerald-600 dark:text-emerald-400 font-mono text-[10px] font-bold uppercase tracking-wider mb-0.5">
+                    <ShieldCheck className="w-4 h-4 shrink-0" />
+                    <span>{t("topo_aggregator_badge")}</span>
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse ml-0.5" />
                   </div>
-                  <div className="font-display text-xs font-bold text-[var(--text-heading)] truncate">
-                    {node.name}
+                  <div className="font-display text-xs sm:text-sm font-extrabold text-[var(--text-heading)]">
+                    {t("topo_aggregator_title")}
                   </div>
-                  <div className="text-[10px] font-mono text-[var(--text-muted)] truncate mt-0.5">
-                    {t(node.modalityKey)} · {(node.scans ?? 0).toLocaleString("en-US")} {t("topo_studies")}
+                  <div className="text-[10px] font-mono text-[var(--text-muted)] mt-0.5">
+                    {t("topo_aggregator_sub")}
                   </div>
-                </button>
-              ))}
-            </div>
-
-            {/* Central Aggregation Ring */}
-            <div className="z-10 self-center text-center my-1">
-              <div className="inline-flex flex-col items-center p-2.5 sm:p-3.5 rounded-2xl bg-[var(--bg-card)] border border-emerald-500/40 shadow-xl backdrop-blur-md">
-                <div className="flex items-center gap-1.5 text-emerald-600 dark:text-emerald-400 font-mono text-[10px] font-bold uppercase tracking-wider mb-0.5">
-                  <ShieldCheck className="w-3.5 h-3.5" />
-                  <span>{t("topo_aggregator_badge")}</span>
-                </div>
-                <div className="font-display text-xs sm:text-sm font-extrabold text-[var(--text-heading)]">
-                  {t("topo_aggregator_title")}
-                </div>
-                <div className="text-[10px] font-mono text-[var(--text-muted)] mt-0.5">
-                  {t("topo_aggregator_sub")}
+                  <div className="mt-1.5 text-[9px] font-mono text-emerald-600 dark:text-emerald-400 px-2 py-0.5 rounded-full bg-emerald-500/10 border border-emerald-500/20">
+                    {t("topo_stream_active")}
+                  </div>
                 </div>
               </div>
-            </div>
 
-            {/* Bottom Row: Nodes 3 & 4 */}
-            <div className="grid grid-cols-2 gap-2 sm:gap-3 z-10">
-              {nodeList.slice(2, 4).map((node) => (
-                <button
-                  type="button"
-                  key={node.id}
-                  onClick={() => setSelectedNodeId(node.id)}
-                  className={`text-left p-2 sm:p-2.5 lg:p-3 rounded-xl border transition-all ${
-                    selectedNodeId === node.id
-                      ? "bg-[var(--bg-card)] border-emerald-500 shadow-md ring-1 ring-emerald-500/30"
-                      : "bg-[var(--bg-card-inner)] hover:bg-[var(--bg-card)] border-[var(--border-subtle)]"
-                  }`}
-                >
-                  <div className="flex items-center justify-between mb-1">
-                    <span className="font-mono text-[10px] font-bold text-emerald-600 dark:text-emerald-400 truncate pr-1">
-                      {node.location}
-                    </span>
-                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 shrink-0" />
-                  </div>
-                  <div className="font-display text-xs font-bold text-[var(--text-heading)] truncate">
-                    {node.name}
-                  </div>
-                  <div className="text-[10px] font-mono text-[var(--text-muted)] truncate mt-0.5">
-                    {t(node.modalityKey)} · {(node.scans ?? 0).toLocaleString("en-US")} {t("topo_studies")}
-                  </div>
-                </button>
-              ))}
+              {/* Bottom Row: Nodes 3 & 4 */}
+              <div className="grid grid-cols-2 gap-2 sm:gap-3 z-10" style={{ transformStyle: "preserve-3d" }}>
+                {nodeList.slice(2, 4).map((node) => {
+                  const isSelected = selectedNodeId === node.id;
+                  return (
+                    <button
+                      type="button"
+                      key={node.id}
+                      onClick={() => setSelectedNodeId(node.id)}
+                      style={{
+                        transform: is3DMode
+                          ? isSelected
+                            ? "translateZ(38px)"
+                            : "translateZ(20px)"
+                          : "none",
+                        transition: "all 0.3s cubic-bezier(0.2, 0.8, 0.2, 1)",
+                      }}
+                      className={`text-left p-2 sm:p-2.5 lg:p-3 rounded-xl border backdrop-blur-md transition-all ${
+                        isSelected
+                          ? "bg-[var(--bg-card)]/95 border-emerald-500 shadow-xl shadow-emerald-500/10 ring-2 ring-emerald-500/40"
+                          : "bg-[var(--bg-card-inner)]/85 hover:bg-[var(--bg-card)] border-[var(--border-subtle)] hover:border-emerald-500/40"
+                      }`}
+                    >
+                      <div className="flex items-center justify-between mb-1">
+                        <span className="font-mono text-[10px] font-bold text-emerald-600 dark:text-emerald-400 truncate pr-1">
+                          {node.location}
+                        </span>
+                        <div className="flex items-center gap-1.5 shrink-0">
+                          {isSelected && (
+                            <span className="text-[9px] font-mono uppercase px-1 py-0.2 rounded bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 font-bold border border-emerald-500/30">
+                              Active
+                            </span>
+                          )}
+                          <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+                        </div>
+                      </div>
+                      <div className="font-display text-xs font-bold text-[var(--text-heading)] truncate">
+                        {node.name}
+                      </div>
+                      <div className="text-[10px] font-mono text-[var(--text-muted)] truncate mt-0.5 flex items-center justify-between">
+                        <span>{t(node.modalityKey)} · {(node.scans ?? 0).toLocaleString("en-US")} {t("topo_studies")}</span>
+                        <span className="text-emerald-600/70 dark:text-emerald-400/70 font-mono text-[9px] hidden sm:inline">
+                          ε={node.dpEpsilon}
+                        </span>
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
             </div>
           </div>
         )}
@@ -480,7 +604,10 @@ export default function FederatedConsortiumTopology({
               {onLaunchDemo && (
                 <button
                   type="button"
-                  onClick={onLaunchDemo}
+                  onClick={() => {
+                    triggerConsensusRound();
+                    if (onLaunchDemo) onLaunchDemo();
+                  }}
                   className="px-2.5 py-1 rounded-md bg-emerald-500 hover:bg-emerald-600 text-white font-bold text-[10px] sm:text-[11px] transition-all shadow-sm"
                 >
                   {t("topo_simulate")}
