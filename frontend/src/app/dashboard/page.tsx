@@ -30,6 +30,8 @@ export default function DashboardPage() {
   const [hospitals, setHospitals] = useState<HospitalCohort[]>([]);
   const [isCohortLoading, setIsCohortLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [isHydrating, setIsHydrating] = useState(true);
+  const [activeSection, setActiveSection] = useState<string>("section-ingestion");
 
   const [isTraining, setIsTraining] = useState(false);
   const [currentRound, setCurrentRound] = useState(0);
@@ -58,6 +60,7 @@ export default function DashboardPage() {
 
   const handleGenerateCohorts = async () => {
     setErrorMessage(null);
+    setActiveSection("section-ingestion");
     try {
       setIsCohortLoading(true);
       const res = await fetchHospitalCohorts(apiUrl, numHospitals, samplesPerHospital);
@@ -106,7 +109,10 @@ export default function DashboardPage() {
         }
       }
 
-      if (isCancelled || !fetchedData) return;
+      if (isCancelled || !fetchedData) {
+        if (!isCancelled) setIsHydrating(false);
+        return;
+      }
 
       // Hydrate cohorts from cohorts field or hospitals field
       const rawCohorts = (fetchedData.cohorts && Array.isArray(fetchedData.cohorts) && fetchedData.cohorts.length > 0)
@@ -148,6 +154,7 @@ export default function DashboardPage() {
       }
       if (fetchedData.model_type) setActiveModel(fetchedData.model_type);
       if (fetchedData.peft_mode) setActivePeft(fetchedData.peft_mode);
+      if (!isCancelled) setIsHydrating(false);
     };
 
     syncState();
@@ -157,6 +164,41 @@ export default function DashboardPage() {
     };
   }, [apiUrl, isConnected]);
 
+  // Track active section in viewport so the workflow stepper highlights the current stage
+  useEffect(() => {
+    if (typeof window === "undefined" || !("IntersectionObserver" in window)) return;
+
+    const sectionIds = ["section-ingestion", "section-training", "section-diagnosis", "section-cdss"];
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        const intersecting = entries.filter((e) => e.isIntersecting);
+        if (intersecting.length > 0) {
+          intersecting.sort((a, b) => {
+            return Math.abs(a.boundingClientRect.top) - Math.abs(b.boundingClientRect.top);
+          });
+          const best = intersecting[0];
+          if (best && best.target.id) {
+            setActiveSection(best.target.id);
+          }
+        }
+      },
+      {
+        rootMargin: "-60px 0px -40% 0px",
+        threshold: [0.1, 0.25, 0.5],
+      }
+    );
+
+    sectionIds.forEach((id) => {
+      const el = document.getElementById(id);
+      if (el) observer.observe(el);
+    });
+
+    return () => {
+      observer.disconnect();
+    };
+  }, [hospitals.length, history.length, diagnosis]);
+
   const handleStartTraining = async (config?: {
     modelType: string;
     algorithm: string;
@@ -164,6 +206,7 @@ export default function DashboardPage() {
   }) => {
     setErrorMessage(null);
     setIsTraining(true);
+    setActiveSection("section-training");
     setHistory([]);
     setCurrentRound(0);
 
@@ -219,6 +262,7 @@ export default function DashboardPage() {
       return;
     }
     setErrorMessage(null);
+    setActiveSection("section-diagnosis");
     try {
       setIsDiagLoading(true);
       const result = await fetchClinicalDiagnosis(
@@ -230,6 +274,7 @@ export default function DashboardPage() {
         language.toLowerCase()
       );
       setDiagnosis(result);
+      setActiveSection("section-cdss");
       try {
         const twinRes = await fetchRagTwins(apiUrl, 2);
         if (twinRes?.matched_cases) setRagTwins(twinRes.matched_cases);
@@ -248,6 +293,7 @@ export default function DashboardPage() {
   };
 
   const scrollToSection = (id: string) => {
+    setActiveSection(id);
     const el = document.getElementById(id);
     if (el) {
       el.scrollIntoView({ behavior: "smooth", block: "start" });
@@ -315,6 +361,8 @@ export default function DashboardPage() {
                 isTraining={isTraining}
                 isTrained={isTrainingDone}
                 hasDiagnosis={isTrainingDone && diagnosis !== null}
+                activeSection={activeSection}
+                isHydrating={isHydrating}
                 onScrollToStep={scrollToSection}
               />
 
