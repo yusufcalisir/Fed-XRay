@@ -18,10 +18,10 @@
   <img src="https://img.shields.io/badge/Next.js-14.2+-black?logo=next.js" alt="Next.js">
   <img src="https://img.shields.io/badge/FastAPI-0.110+-teal?logo=fastapi" alt="FastAPI">
   <img src="https://img.shields.io/badge/Privacy-DP_%2B_CKKS_(Simulated)_%2B_SecAgg%2B-indigo" alt="Privacy">
-  <img src="https://img.shields.io/badge/PEFT-FFA--LoRA_%7C_FedSA--LoRA_%7C_FedAS--LoRA-purple" alt="PEFT">
+  <img src="https://img.shields.io/badge/PEFT-FFA--LoRA_%7C_FedSA--LoRA_%7C_MedSAM_%7C_FedMedCLIP-purple" alt="PEFT">
   <img src="https://img.shields.io/badge/Flower_FL-Supported-green?logo=flower" alt="Flower FL">
   <img src="https://img.shields.io/badge/Localization-EN%20%7C%20TR-blue" alt="Bilingual">
-  <img src="https://img.shields.io/badge/Tests-240_Passed_(186_Backend_%2B_54_Frontend)-brightgreen" alt="Tests">
+  <img src="https://img.shields.io/badge/Tests-326_Passed_(246_Backend_%2B_80_Frontend)-brightgreen" alt="Tests">
   <img src="https://img.shields.io/badge/License-MIT-yellow" alt="License">
 </p>
 
@@ -50,7 +50,7 @@
 - [13. Multi-Platform Interfaces](#13-multi-platform-interfaces)
 - [14. Flower Protocol Federation Bridge](#14-flower-protocol-federation-bridge)
 - [15. REST and Streaming API Reference](#15-rest-and-streaming-api-reference)
-- [16. Test Suite Matrix (240 Tests)](#16-test-suite-matrix-240-tests)
+- [16. Test Suite Matrix (326 Tests)](#16-test-suite-matrix-326-tests)
 - [17. Repository Directory Structure](#17-repository-directory-structure)
 - [18. Installation and Quick Start](#18-installation-and-quick-start)
 - [19. Scientific Anchors and Citations](#19-scientific-anchors-and-citations)
@@ -89,37 +89,48 @@ Naive federated learning approaches that train large Vision Transformers (ViTs) 
 
 ## 3. Implementation Status
 
-The table below distinguishes what is actually coded and exercised in this repository, what is approximated or simulated, and what remains a research target.
+The table below distinguishes what is actually coded and exercised in this repository, what is approximated or simulated, and what remains an active research target.
 
 | Component | Status | Notes |
 | :--- | :--- | :--- |
-| ViT-Tiny (192-dim, 5.7M params) | **Implemented** | Fully integrated into training, CDSS, and tests |
-| ViT-Base (768-dim, 85M params) | **Implemented** | Integrated with FFA-LoRA adapter injection |
-| XRayClassifier CNN baseline | **Implemented** | Used in benchmarking and CDSS |
-| FFA-LoRA adapter injection | **Implemented** | Bilinear error elimination verified in tests |
-| FedSA-LoRA / FedAS-LoRA | **Implemented** | Routing logic and aggregation implemented |
-| FedDyn optimizer | **Implemented** | Dynamic state tracking in `server.py` |
-| FedOpt / FedAdam server momentum | **Implemented** | Server-side momentum in `server.py` |
-| SCAFFOLD control variates | **Implemented** | Client and server state updates implemented |
-| MOON contrastive regularization | **Implemented** | Cosine contrastive loss integrated |
-| Patient-level DP clipping | **Implemented** | Gradient clipping at patient level |
-| Rényi DP accounting | **Implemented** | Composition tracking in `privacy.py` |
-| FedProto dispersion-weighted synthesis | **Implemented** | Covariance-trace weighting in `prototypes.py` |
-| DAFL, BSM, LDAM, repel losses | **Implemented** | Numerical stability tested |
-| Grad-CAM (CNN and ViT) | **Implemented** | Hook-based; explicit error if unavailable |
-| HNSW dynamic-dim RAG retrieval | **Implemented** | Dimension auto-detection in `similarity.py` |
-| PDF diagnostic report engine | **Implemented** | `fpdf2`-based with SHA-256 integrity hash |
-| Bilingual voice dictation (EN/TR) | **Implemented** | Async `gTTS` with disk cache |
-| Byzantine detection (cosine + loss deviance) | **Implemented (plaintext phase)** | Runs before CKKS encryption; see Section 4.2 |
+| ViT-Tiny (192-dim, 5.7M params) | **Implemented** | Fully integrated into training, CDSS, and automated tests |
+| ViT-Base (768-dim, 85M params) | **Implemented** | Integrated with FFA-LoRA and FedSA-LoRA adapter injection |
+| Swin UNETR Radiology Backbone | **Implemented** | Hierarchical Shifted Window Attention, patch merging, 2D/3D volumetric support, official Swin-T or MONAI weights |
+| UNI Foundation Backbone | **Implemented** | Transfer-adapted pathology features, SHA-256 weight fingerprinting, strict checkpoint verification |
+| MedSAM Client Adapter (FCA) | **Implemented** | Bottleneck residual scaling integrated into `peft.py` and `client.py` for volumetric segmentation |
+| FedMedCLIP Multimodal Module | **Implemented** | Masked FAM + Clinical Text Semantic Anchors + private MLP + mutual KL distillation in `server.py` and `client.py` |
+| FedCola Modality Bridge | **Implemented** | Cross-modal projection layers bridging digital pathology and chest X-rays without paired patient data |
+| FedDAT Dual-Adapter Cross-Attention | **Implemented** | Dual vision-language bottleneck adapters with mutual cross-attention alignment |
+| Text Semantic Anchors | **Implemented** | Frozen `Bio_ClinicalBERT` canonical oncology coordinate system (`TextSemanticAnchor`) |
+| XRayClassifier CNN baseline | **Implemented** | Used in benchmarking, Grad-CAM hooks, and comparative evaluation |
+| FFA-LoRA adapter injection | **Implemented** | Bilinear error elimination verified in mathematical consistency tests |
+| FedSA-LoRA / FedAS-LoRA | **Implemented** | Factor-wise asymmetric adaptation, rank-aware shared subspace routing |
+| FlexLoRA SVD reconstruction | **Implemented** | Truncated SVD parameter reconstruction for heterogeneous client budgets |
+| FedPerfix parallel plugin | **Implemented** | Attention-decoupled personalization targeting deep attention projections |
+| FedDyn optimizer | **Implemented** | Dynamic state tracking and regularization in `server.py` |
+| FedOpt / FedAdam server momentum | **Implemented** | Adaptive server-side first and second momentum tracking in `server.py` |
+| SCAFFOLD control variates | **Implemented** | Dual client and server state updates correcting drift on PEFT weights |
+| MOON contrastive regularization | **Implemented** | Representation-level model-contrastive loss against global and prior local state |
+| Patient-level DP clipping | **Implemented** | Honest patient-level gradient clipping preventing gigapixel privacy collapse |
+| Rényi DP accounting | **Implemented** | Subsampled Gaussian mechanism composition tracking in `privacy.py` |
+| FedProto dispersion-weighted synthesis | **Implemented** | Covariance-trace intra-class weighting in `prototypes.py` |
+| DAFL, BSM, LDAM, repel losses | **Implemented** | Dynamic imbalance loss suite with verified numerical stability |
+| Grad-CAM (CNN and ViT) | **Implemented** | Multi-layer PyTorch hooks; raises `GradCAMUnavailableError` if gradients fail |
+| Structured CDSS XAI (Zero Asterisks) | **Implemented** | Asterisk-free clinical assessment, quadrant spatial localization, bilingual consistency |
+| HNSW dynamic-dim RAG retrieval | **Implemented** | Auto-detects 128-dim to 1024-dim latents; matches biopsy-confirmed twins |
+| ACID Persistent State Store | **Implemented** | SQLite WAL mode (`PersistentStateStore`) surviving process restarts across 5 relational tables |
+| Network Routing & Tunnel Resilience | **Implemented** | Dynamic ephemeral tunnel detection, dead domain blacklisting, automatic loopback fallback |
+| Browser Runtime Shield | **Implemented** | Client-side interception of extension collisions (`useCache`, `content.js`), port drop isolation |
+| React Subtree Resilience | **Implemented** | Next.js `app/error.tsx`, `app/global-error.tsx`, and `ClinicalErrorBoundary` with bilingual recovery |
+| PDF diagnostic report engine | **Implemented** | `fpdf2`-based with embedded scan, Grad-CAM, RAG twins, and SHA-256 hash |
+| Bilingual voice dictation (EN/TR) | **Implemented** | Asynchronous `gTTS` speech synthesis with persistent disk cache |
+| Byzantine detection (cosine + deviance) | **Implemented (plaintext phase)** | Runs before simulated CKKS encryption; see Section 4.2 |
 | SecAgg+ ECDH zero-sum masking | **Simulated** | In-process Python simulation, not a real multi-party network protocol |
 | CKKS HE aggregation (TenSEAL) | **Simulated** | Single server-held key, aggregation-only depth; see Section 4.3 |
-| Flower protocol bridge | **Implemented** | `NumPyClient` wrapping with `InProcessClientProxy` |
-| UNI (ViT-L/16, 1B+ params) | **Planned** | Referenced as target; not loaded or downloaded |
+| Flower protocol bridge | **Implemented** | `NumPyClient` wrapping with `InProcessClientProxy` and `StrategyEHospitalStrategy` |
 | Virchow2 (ViT-H/14, 632M params) | **Planned** | Referenced as target; not loaded or downloaded |
-| Swin UNETR 3D volumetric encoder | **Planned** | Referenced as target; not loaded or downloaded |
-| FedMedCLIP (FAM + Bio_ClinicalBERT) | **Planned** | Architecture described; not integrated end-to-end |
+| Prov-GigaPath (1.3B params) | **Planned** | Referenced as target; not loaded or downloaded |
 | True threshold multi-party CKKS | **Planned** | Requires distributed key generation; active research target |
-| FlexLoRA SVD reconstruction | **Implemented (partial)** | SVD logic present; end-to-end benchmark not finalized |
 
 ---
 
@@ -211,22 +222,24 @@ The following neural architectures are implemented, loaded, and integrated end-t
 
 | Model | Parameters | Embedding Dim | Implementation File | Status |
 | :--- | :--- | :--- | :--- | :--- |
-| **ViT-Tiny** | 5.7M | 192 | `src/fed_xray/models/vit.py` | Fully implemented |
-| **ViT-Base** | 85M | 768 | `src/fed_xray/models/vit.py` | Implemented with FFA-LoRA |
-| **XRayClassifier (CNN)** | ~2M | 128 | `src/fed_xray/models/cnn.py` | Fully implemented |
+| **ViT-Tiny** | 5.7M | 192 | `src/fed_xray/models/vit.py` | Fully implemented and trained |
+| **ViT-Base** | 85M | 768 | `src/fed_xray/models/vit.py` | Implemented with FFA-LoRA and FedSA-LoRA |
+| **Swin UNETR Radiology Backbone** | ~28M to 62M | 768 / 384 | `src/fed_xray/models/foundation.py` | Hierarchical Shifted Window Attention, patch merging, 2D/3D volumetric support, official Swin-T or MONAI weights |
+| **UNI Foundation Backbone** | ~304M | 1024 / 512 | `src/fed_xray/models/foundation.py` | Pathology foundation model, transfer features, SHA-256 weight hash, strict checkpoint loading |
+| **FedMedCLIP Multimodal Model** | ~10M to 95M | 512 | `src/fed_xray/models/foundation.py` | Couples vision backbone with FAM, frozen clinical text anchors, and private MLP |
+| **XRayClassifier (CNN)** | ~2M | 128 | `src/fed_xray/models/cnn.py` | Fully implemented convolutional baseline |
 
-The following are referenced as **target foundation models** in `src/fed_xray/models/foundation.py` but are NOT downloaded, instantiated, or used in any training or inference path:
+The following are referenced as **planned high-capacity foundation models** for multi-billion parameter Whole Slide Imaging (WSI) deployments:
 
-| Target Model | Params | Status |
-| :--- | :--- | :--- |
-| UNI (ViT-L/16) | ~307M | Planned - not loaded |
-| Virchow2 (ViT-H/14) | ~632M | Planned - not loaded |
-| Prov-GigaPath | ~1.3B | Planned - not loaded |
-| Swin UNETR 3D | ~62M | Planned - not loaded |
-| Bio_ClinicalBERT | ~110M | Planned - not loaded |
+| Target Model | Params | Role in Literature | Status |
+| :--- | :--- | :--- | :--- |
+| Virchow2 (ViT-H/14) | ~632M | Pan-cancer pathology foundation encoder | Planned target |
+| Prov-GigaPath | ~1.3B | Whole-slide gigapixel pathology transformer | Planned target |
 
 > [!NOTE]
-> **Benchmark table clarification:** The communication economics table in Section 11 references "Full Foundation ViT-H/14" at 2,430 MB and "Full ViT-B" at approximately 340 MB. These sizes correspond to ViT-H/14 (~632M params) and ViT-B/16 (~85M params) weight tensors respectively, used as theoretical baselines. The implemented ViT-Tiny (5.7M) and ViT-Base (85M) models are used in actual runs. Communication savings figures for PEFT methods are computed relative to the full ViT-B baseline.
+> **Weight Authenticity and Checkpoint Integrity (Rule 12):** All foundation backbones compute SHA-256 cryptographic digests of projection weight matrices and enforce honest exception raising on missing or corrupted weights. Silent swallowing of checkpoint load failures (`except Exception: pass`) is prohibited.
+>
+> **Benchmark table clarification:** The communication economics table in Section 11 references "Full Foundation ViT-H/14" at 2,430 MB and "Full ViT-B" at approximately 340 MB. These sizes correspond to ViT-H/14 (~632M params) and ViT-B/16 (~85M params) weight tensors respectively, used as theoretical baselines. The implemented ViT-Tiny (5.7M), ViT-Base (85M), and Swin UNETR models are used in actual runs. Communication savings figures for PEFT methods are computed relative to the full ViT-B baseline.
 
 ---
 
@@ -238,7 +251,7 @@ $$
 \bar{\Delta W}_{\text{effective}} = \left(\sum_{k=1}^K p_k B_k\right)\left(\sum_{k=1}^K p_k A_k\right) = \bar{B}\bar{A} \neq \sum_{k=1}^K p_k (B_k A_k) = \bar{\Delta W}_{\text{ideal}}
 $$
 
-Fed-XRay deploys factor-wise asymmetric adaptation to eliminate this distortion:
+Fed-XRay deploys factor-wise asymmetric adaptation to eliminate this distortion, alongside specialized multimodal adapters:
 
 | Method | Matrix A Protocol | Matrix B Protocol | Aggregation Formula | Benefit |
 | :--- | :--- | :--- | :--- | :--- |
@@ -247,6 +260,10 @@ Fed-XRay deploys factor-wise asymmetric adaptation to eliminate this distortion:
 | **FedAS-LoRA** | Adaptive Routing | Adaptive Routing | Rank-Aware Shared Subspace (RSS) | Dynamically toggles Share-A/Local-B (covariate shift) vs Share-B/Local-A (label skew). |
 | **FlexLoRA** | Locally Trained | Locally Trained | $U_r \Sigma_r V_r^\top = \sum p_k B_k A_k$ | Reconstructs full weight updates via Truncated SVD to synthesize balanced $\bar{A}, \bar{B}$. |
 | **FedPerfix** | Frozen Shallow Layers ($1 \dots L-4$) | MHSA Adapted | MHSA ($W_Q, W_V$) in Layers $L-3 \dots L$ | Targets deep attention projections; reduces payload by over 99.8% (under 2.36 MB/round). |
+| **MedSAM Client Adapter (FCA)** | Frozen Backbone ($W_0$) | Bottleneck Residual Scaling | Local $W_{\text{down}}, W_{\text{up}}$ Aggregated | Tailors foundation encoders for volumetric CT/MRI segmentation with minimal trainable parameters. |
+| **FedMedCLIP FAM** | Frozen Image Backbone + Frozen Text Anchor | Trainable Feature Adaptation Module | Aggregated FAM + Private MLP Head | Mutual KL divergence distillation prevents text-to-vision alignment collapse under label skew. |
+| **FedCola Modality Bridge** | Shared Latent Space | Linear Cross-Modal Projections | Global Cross-Modal Alignment | Enables cross-institutional knowledge transfer between pathology and chest X-rays without paired data. |
+| **FedDAT Dual-Adapter** | Vision-Language Bottlenecks | Cross-Attention Alignment | Aggregated Dual Adapters | Mutual cross-attention tuning aligning image representations with clinical report semantics. |
 
 ---
 
@@ -440,15 +457,21 @@ The `src/fed_xray/cdss/similarity.py` HNSW engine dynamically detects and indexe
 
 - ViT-Tiny: 192-dimensional latent embeddings
 - ViT-Base: 768-dimensional latent embeddings
+- Swin UNETR: 384-dimensional or 768-dimensional volumetric latent embeddings
+- UNI Foundation Backbone: 512-dimensional or 1024-dimensional pathology embeddings
+- FedMedCLIP: 512-dimensional multimodal latent embeddings
 - CNN Baseline: 128-dimensional latent embeddings
 
-*(UNI 1024-dim and larger are planned targets, not yet active.)*
+Query vectors must strictly match the active index dimension; mismatches produce explicit diagnostic feedback rather than silent zero-padding. Matches are retrieved from biopsy-confirmed Strategy E reference cohorts.
 
-Query vectors must strictly match the active index dimension; mismatches produce explicit diagnostic feedback rather than silent zero-padding.
-
-### Grad-CAM Explainable AI (XAI)
+### Structured Explainable AI (XAI) and Grad-CAM Hotspots
 
 Forward and backward PyTorch tensor hooks (`register_full_backward_hook`) compute gradient-weighted class activation maps. CNN convolutional layers and ViT layer-norm multi-head self-attention projections are targeted automatically.
+
+- **Zero-Markdown-Asterisk Policy:** Diagnostic explanations are rendered in clean, structured clinical text without raw markdown asterisks (`**`), ensuring readability across clinical HUDs and exported PDF reports.
+- **Quadrant Spatial Localization:** Automatically maps relevance peak activation centers to clinical quadrants (Upper Left, Upper Right, Lower Left, Lower Right, or Central Perihilar region).
+- **Multimodal Terminology Adaptation:** Differentiates diagnostic phrasing based on modality (dermoscopic atypical pigment networks / melanocytic lesions vs radiological consolidation / pleural opacities).
+- **Persistent Forensic Audit Trail:** Every performed diagnosis, predicted class probabilities, Grad-CAM metrics, and clinician findings are committed to the SQLite WAL `diagnostic_audits` table and queryable via `GET /api/diagnose/audit-trail`.
 
 > [!NOTE]
 > **Grad-CAM limitations:** Grad-CAM and attention-based saliency methods are approximations. For Vision Transformers, the relationship between attention maps and model decisions is not straightforward. Saliency maps should be interpreted as model inspection tools, not as precise localizations of pathology. Clinical localization requires dedicated segmentation or detection models validated on annotated datasets. If hooks are unavailable or gradients fail to flow, the engine raises an explicit `GradCAMUnavailableError`. Synthetic Gaussian blur blobs are prohibited.
@@ -466,11 +489,13 @@ Forward and backward PyTorch tensor hooks (`register_full_backward_hook`) comput
 
 Built with React 18, TypeScript, Tailwind CSS, and Next.js 14 App Router:
 
-- **Landing Page (`/`):** Consortium topology, security governance overview, and backend connection verification.
-- **Consortium Launch Enclave Modal:** Executes 4-stage cryptographic enclave handshakes via `/api/fl/enclave-handshake`, rendering ECDH fingerprints and attestation digests.
+- **Landing Page (`/`):** Consortium topology, security governance overview, 5 verifiable KPI metrics, interactive results showcase tabs, and backend connection verification.
+- **Consortium Launch Enclave Modal:** Executes 4-stage cryptographic enclave handshakes via `/api/fl/enclave-handshake`, rendering ECDH fingerprints and SHA-256 attestation digests.
 - **Telemetry Dashboard (`/dashboard`):** Real-time SSE streaming and polling HUD displaying round loss, accuracy, client drift, and Byzantine threat status.
 - **Diagnostic Studio:** Upload scans, view Grad-CAM heatmaps, inspect RAG digital twins, listen to audio briefings, and download PDF reports.
-- **Universal Responsiveness:** Tested across Mobile (<768px), Tablet (768-1024px), Laptop (1024-1440px), and Desktop/4K viewports.
+- **Browser Runtime Shield (`runtimeShield.ts`):** Intercepts noisy third-party Chrome/Edge browser extension errors (e.g. `useCache`, `content.js`), isolates service worker port closures (`message channel closed`), and deduplicates console warnings.
+- **React Subtree Resilience & Error Boundaries:** Route segment error containment via `app/error.tsx` and `app/global-error.tsx`, paired with `ClinicalErrorBoundary` encapsulating critical dashboard stages and landing tabs with bilingual recovery controls. All array operations implement defensive guards against nullable payloads.
+- **Universal Responsiveness:** Tested across Mobile (<768px), Tablet (768-1024px), Laptop (1024-1440px), and Desktop/4K (>=1440px) viewports without horizontal clipping.
 
 ### Streamlit Scientific Benchmark UI (`app.py`)
 
@@ -515,79 +540,101 @@ FastAPI endpoints: `POST /api/fl/flower-start` and `GET /api/fl/flower-info`.
 
 | Method | Endpoint | Description |
 | :--- | :--- | :--- |
-| `GET` | `/api/health` | System health, PyTorch device, and CUDA status. |
-| `GET` | `/api/state` | Active federation state, node counts, and model status. |
-| `GET` | `/api/fl/enclave-handshake` | Cryptographic enclave attestation: X25519 fingerprints, SHA-256 digest. |
-| `POST` | `/api/cohorts/generate` | Partition Strategy E cohorts under Scenarios A-G. |
-| `POST` | `/api/fl/train-start` | Initiate asynchronous federated training. |
-| `GET` | `/api/fl/train-status` | Poll training progress, round telemetry, Byzantine reports. |
-| `GET` | `/api/fl/train-stream` | SSE stream: per-round loss, accuracy, and drift telemetry. |
-| `GET` | `/api/fl/privacy-status` | DP bounds, Rényi DP accounting, and CKKS parameters. |
-| `POST` | `/api/fl/flower-start` | Launch Flower protocol federation. |
-| `GET` | `/api/fl/flower-info` | Flower availability, strategies, and runtime metrics. |
-| `POST` | `/api/cdss/diagnose` | Forward pass inference and Grad-CAM heatmaps. |
-| `GET` | `/api/cdss/rag-similar` | Top-k biopsy-confirmed digital twins from HNSW index. |
-| `POST` | `/api/cdss/report` | Compile and stream a PDF diagnostic report. |
-| `POST` | `/api/cdss/voice` | Synthesize diagnostic briefing audio (EN/TR). |
+| `GET` | `/` | Root API information, service status, and documentation pointers. |
+| `GET` | `/api/health` | System health, PyTorch execution device, and CUDA status. |
+| `GET` | `/api/state` | Active federation state, node counts, persistence status, and model parameters. |
+| `GET` | `/api/state/history` | Full persistent round telemetry history retrieved from SQLite WAL storage. |
+| `POST` | `/api/state/reset` | Resets persistent SQLite state store and clears active consortium session. |
+| `POST` | `/api/state/save` | Explicitly persists trained weights, metadata, cohorts, and history to disk/SQLite. |
+| `POST` | `/api/state/restore` | Restores trained weights, metadata, cohorts, and history from disk/SQLite. |
+| `POST` | `/api/cohorts/generate` | Partitions Strategy E clinical cohorts across Scenarios A through G. |
+| `GET` | `/api/cohorts/verify-authenticity` | Forensic audit of staged cohort provenance, patient isolation, and authenticity. |
+| `POST` | `/api/cohorts/stage-real-isic` | Stages authentic multi-center ISIC 2019 dermoscopy cohorts. |
+| `GET` | `/api/fl/enclave-handshake` | Cryptographic enclave attestation: X25519 fingerprints, SHA-256 certificate digest. |
+| `POST` | `/api/fl/train-start` | Launches asynchronous federated optimization background worker. |
+| `GET` | `/api/fl/train-status` | Polls training progress, round telemetry, and Byzantine threat reports. |
+| `GET` | `/api/fl/train-stream` | Server-Sent Events (SSE) stream: real-time round metrics, loss, and client drift. |
+| `GET` | `/api/fl/privacy-status` | Differential Privacy bounds, Rényi DP accounting budget, and CKKS parameters. |
+| `POST` | `/api/fl/flower-start` | Initiates multi-hospital federation via official Flower framework bridge. |
+| `GET` | `/api/fl/flower-info` | Reports Flower framework bridge status, strategies, and runtime metrics. |
+| `POST` | `/api/cdss/diagnose` | Forward pass classification, structured XAI explanation, and Grad-CAM heatmap. |
+| `GET` | `/api/diagnose/audit-trail` | Forensic audit trail of historical clinical diagnoses committed to SQLite. |
+| `GET` | `/api/cdss/rag-similar` | Retrieves top-k biopsy-confirmed digital twins from HNSW vector index. |
+| `GET` | `/api/cdss/voice` | Streams synthesized bilingual diagnostic audio briefing (EN/TR). |
+| `GET` | `/api/cdss/report-pdf` | Compiles and streams cryptographic vector PDF diagnostic report with SHA-256 hash. |
 
 All request/response schemas are defined in `api/schemas.py` as Pydantic v2 models.
 
 ---
 
-## 16. Test Suite Matrix (240 Tests)
+## 16. Test Suite Matrix (326 Tests)
 
-Fed-XRay maintains 240 automated tests (186 Python Pytest backend + 54 TypeScript Vitest frontend), all passing at 100%.
+Fed-XRay maintains 326 automated tests (246 Python Pytest backend + 80 TypeScript Vitest frontend), all passing at 100%.
 
-### Backend Pytest Suites (26 Test Files, 186 Tests)
+### Backend Pytest Suites (36 Test Files, 246 Tests)
 
 | Subsystem | Test File | Count | Scope |
 | :--- | :--- | :--- | :--- |
-| Baseline and Models | `test_all.py` | 7 | Baseline model creation, Grad-CAM hooks, aggregation consistency. |
-| API Endpoints | `test_api_endpoints.py` | 6 | REST routing, health, cohort partitioning, diagnostic responses. |
-| API Exhaustive | `test_api_deep_suite.py` | 27 | Parameter permutations, SSE bounds, error recovery, path traversal blocks. |
-| Pydantic Contracts | `test_api_schemas_contracts.py` | 5 | Pydantic v2 validation, boundary conditions, serialization integrity. |
-| Asymmetric PEFT | `test_asymmetric_foundation_peft.py` | 10 | FlexLoRA SVD, FedAS-LoRA RSS routing, HetLoRA rank slicing, FedPerfix. |
-| Benchmark Engine | `test_benchmarking_engine.py` | 1 | Foundation PEFT empirical benchmark execution. |
-| PDF Reporting | `test_cdss_report.py` | 8 | PDF compilation, image overlays, SHA-256 digests, empty state handling. |
-| RAG and Similarity | `test_cdss_similarity.py` | 5 | HNSW indexing (128 to 768 dims), biopsy twin search. |
-| Voice Dictation | `test_cdss_voice.py` | 3 | Async speech synthesis, disk caching, bilingual audio fallbacks. |
-| Explainable AI | `test_cdss_xai.py` | 5 | Multi-layer Grad-CAM, forward/backward hooks, explicit error exceptions. |
-| Imbalance Losses | `test_core_imbalance_losses.py` | 4 | DAFL, BSM, LDAM, repel loss numerical stability. |
-| Cryptographic HE | `test_crypto_privacy_optimizers.py` | 8 | TenSEAL CKKS, SecAgg+ zero-sum masking, distributed DP noise. |
-| E2E Lifecycle | `test_e2e_full_federated_pipeline.py` | 2 | End-to-end ingestion to training to RAG to PDF report. |
+| Baseline and Models | `test_all.py` | 7 | Baseline model creation, Grad-CAM hooks, aggregation consistency, and Byzantine defense. |
+| API Exhaustive | `test_api_deep_suite.py` | 27 | Parameter permutations, SSE bounds, error recovery, path traversal blocks, and schema bounds. |
+| API Core Routing | `test_api_endpoints.py` | 5 | REST routing, health, cohort partitioning, diagnostic responses, and PDF streaming. |
+| Pydantic Contracts | `test_api_schemas_contracts.py` | 5 | Pydantic v2 validation, boundary conditions, serialization integrity, and opacity clamping. |
+| Asymmetric PEFT | `test_asymmetric_foundation_peft.py` | 10 | FlexLoRA SVD, FedAS-LoRA RSS routing, HetLoRA rank slicing, FedPerfix, and foundation integration. |
+| Benchmark Engine | `test_benchmarking_engine.py` | 1 | Foundation PEFT empirical benchmark execution and metric logging. |
+| Browser Runtime Shield | `test_browser_runtime_shield_and_extension_isolation.py` | 4 | Interception of extension errors, port closures, console deduplication, and boundary contracts. |
+| CDSS Explainability | `test_cdss_explainability_and_localization.py` | 6 | Zero-markdown-asterisk invariant, structured clinical formatting, quadrant spatial localization. |
+| PDF Reporting | `test_cdss_report.py` | 11 | PDF compilation, image overlays, SHA-256 digests, empty state handling, and vector rendering. |
+| RAG and Similarity | `test_cdss_similarity.py` | 12 | Dynamic HNSW indexing (128 to 1024 dims), biopsy twin search, cosine distance verification. |
+| Voice Dictation | `test_cdss_voice.py` | 4 | Async speech synthesis, disk caching, and bilingual audio fallbacks. |
+| Explainable AI | `test_cdss_xai.py` | 3 | Multi-layer Grad-CAM, forward/backward hooks, and explicit exception raising. |
+| Client Subtree Resilience | `test_client_subtree_resilience_and_error_boundaries.py` | 4 | Next.js app error boundaries, granular component containment, defensive array access. |
+| Clinical Cohort Staging | `test_clinical_cohort_authenticity_and_staging.py` | 7 | Real-world dataset staging, forensic cohort authenticity auditing, honest non-clinical tagging. |
+| Consortium Cryptography | `test_consortium_cryptography_and_zero_plaintext.py` | 3 | RLWE 128-bit CKKS encryption, SecAgg+ zero-sum masking, Byzantine defense under ciphertext. |
+| Persistent State Store | `test_consortium_persistent_state_store.py` | 9 | SQLite WAL persistence, relational tables, restart state hydration, history and reset endpoints. |
+| Imbalance Losses | `test_core_imbalance_losses.py` | 6 | DAFL, BSM, LDAM, and missing-class repel loss numerical stability. |
+| Cryptographic Privacy | `test_crypto_privacy_optimizers.py` | 11 | TenSEAL CKKS ciphertext addition, SecAgg+ zero-sum masking, distributed DP Gaussian noise. |
+| E2E Lifecycle | `test_e2e_full_federated_pipeline.py` | 2 | End-to-end ingestion, federated training, RAG digital twins, and PDF report compilation. |
 | Enclave Attestation | `test_enclave_handshake.py` | 1 | Enclave handshake, X25519 fingerprint verification, SHA-256 certificates. |
-| CDSS Grounding | `test_evidence_grounded_cdss.py` | 3 | Grad-CAM spatial peak relevance, authentic RAG case retrieval. |
-| Flower Protocol | `test_flower_and_sota_enhancements.py` | 4 | Flower bridge, InProcessProxy, NumPy parameter roundtrips. |
-| Foundation Privacy | `test_foundation_privacy.py` | 8 | FedMedCLIP alignment (architecture only), CKKS scaling, Rényi DP. |
-| Strategy E Generator | `test_generator_strategy_e.py` | 12 | 224x224 scaling, 196 ViT patch tokens, robust XRayDataset, loaders. |
-| Numerical Stability | `test_numerical_stability_losses.py` | 6 | Boundary conditions, extreme imbalance limits, high-dim stability. |
-| Prototypes and Losses | `test_prototypes.py` | 7 | FedProto dispersion weighting, covariance traces, centroid synthesis. |
-| Real-World Scenarios | `test_real_world_data_scenarios.py` | 8 | DiskMedicalDataset manifests, Scenarios A-G, SHA-256 deduplication. |
-| Robustness and Byzantine | `test_robustness_and_adversarial.py` | 5 | Byzantine poisoning mitigation, NaN gradient resilience, free-rider rejection. |
-| State Persistence | `test_state_persistence.py` | 4 | AppState save/restore roundtrips, endpoint persistence consistency. |
-| Strategy E Ingestion | `test_strategy_e_real_ingestion.py` | 7 | ISIC API v2 ingestion, file staging, leak-free patient isolation. |
-| ViT PEFT Optimizers | `test_vit_peft_optimizers.py` | 4 | ViT-Base FFA-LoRA zero bilinear error, FedDyn, SCAFFOLD, MOON. |
-| ViT-Tiny FFA-LoRA | `test_vit_tiny_ffa_lora.py` | 4 | ViT-Tiny 224x224 FFA-LoRA injection, runtime efficiency, state dict roundtrips. |
+| CDSS Grounding | `test_evidence_grounded_cdss.py` | 3 | Grad-CAM spatial peak relevance, genuine RAG case retrieval, and honest failure modes. |
+| Flower Protocol | `test_flower_and_sota_enhancements.py` | 7 | Flower bridge, InProcessProxy, NumPy parameter serialization roundtrips. |
+| Checkpoint Integrity | `test_foundation_checkpoint_integrity_and_provenance.py` | 10 | Zero-silent-pass policy, honest exception raising on missing weights, SHA-256 weight fingerprinting. |
+| Foundation Privacy | `test_foundation_privacy.py` | 16 | Multimodal semantic anchoring, CKKS vector scaling, and Rényi Differential Privacy composition bounds. |
+| Strategy E Generator | `test_generator_strategy_e.py` | 12 | 224x224 input resolution, 196 ViT patch tokens, robust PyTorch DataLoader pipelines. |
+| Multimodal PEFT Adapters | `test_multimodal_foundation_peft_adapters.py` | 5 | Runtime integration of MedSAM, FedMedCLIP, FedCola, and FedDAT dual-attention adapters. |
+| Network Routing | `test_network_routing_and_tunnel_resilience.py` | 6 | Dynamic ephemeral tunnel detection, dead domain blacklisting, automatic loopback fallback, open CORS. |
+| Numerical Stability | `test_numerical_stability_losses.py` | 6 | Boundary conditions, extreme class imbalance limits, and high-dimensional vector stability. |
+| Prototypes and Losses | `test_prototypes.py` | 7 | FedProto dispersion weighting, covariance traces, centroid synthesis, and prototype rounds. |
+| Real-World Scenarios | `test_real_world_data_scenarios.py` | 8 | DiskMedicalDataset manifests, Non-IID Scenarios A through G, SHA-256 image deduplication. |
+| Robustness and Adversarial | `test_robustness_and_adversarial.py` | 5 | Byzantine gradient poisoning mitigation, NaN/Inf gradient resilience, free-rider rejection. |
+| State Persistence | `test_state_persistence.py` | 4 | AppState save and restore roundtrips, persistence endpoint verification. |
+| Strategy E Ingestion | `test_strategy_e_real_ingestion.py` | 7 | ISIC Archive API v2 ingestion, file staging, and leak-free patient isolation invariants. |
+| Swin UNETR Backbone | `test_swin_unetr_radiology_backbone.py` | 4 | Authentic hierarchical Shifted Window Attention, patch merging, 2D/3D volumetric support, and PEFT adaptation. |
+| ViT PEFT Optimizers | `test_vit_peft_optimizers.py` | 4 | ViT-Base FFA-LoRA zero bilinear error, FedDyn, SCAFFOLD, and MOON optimization. |
+| ViT-Tiny FFA-LoRA | `test_vit_tiny_ffa_lora.py` | 4 | ViT-Tiny 224x224 FFA-LoRA injection, CPU runtime efficiency, state dict roundtrips. |
 
-### Frontend Vitest Suites (15 Test Files, 54 Tests)
+### Frontend Vitest Suites (19 Test Files, 80 Tests)
 
 | Component / Utility | Test File | Count | Scope |
 | :--- | :--- | :--- | :--- |
-| API Client | `api.test.ts` | 5 | Dual SSE streaming, polling fallbacks, honest error parsing. |
-| Localization | `translations.test.ts` | 4 | Complete key parity across EN and TR dictionaries. |
-| Geometry Utilities | `lungGeometry.test.ts` | 6 | Anatomical lung SVG boundary calculations and coordinate scaling. |
-| RAG Digital Twins | `RagDigitalTwins.test.tsx` | 2 | Digital twin rendering, confidence bars, biopsy metadata tags. |
-| Live HUD | `LiveHud.test.tsx` | 3 | Attestation digest badge, telemetry status indicators. |
-| Voice Assistant | `VoiceAssistant.test.tsx` | 2 | Speech audio player, bilingual toggle, loading states. |
-| Hero Component | `Hero.test.tsx` | 3 | Headline rendering, connection status, quick actions. |
-| Workflow Stepper | `WorkflowStepper.test.tsx` | 3 | 4-step workflow navigation, step completion locking. |
-| Report Download | `ReportDownload.test.tsx` | 1 | PDF report card, encoded download URL generation. |
-| Diagnostic Studio | `DiagnosticStudio.test.tsx` | 3 | Pre-training locked state, forward pass inference, Grad-CAM overlays. |
-| Enclave Overlay | `ConsortiumLaunchOverlay.test.tsx` | 5 | 4-stage enclave handshake, fingerprints, attestation badges. |
-| Navigation | `Navbar.test.tsx` | 6 | Bilingual toggle (EN/TR), dark/light mode, responsive menu. |
-| Presentation Page | `LandingPage.test.tsx` | 5 | KPI metrics, results showcase tabs, enclave launch triggers. |
+| API Client | `api.test.ts` | 6 | Dual SSE streaming, polling fallbacks, honest error parsing, and timeout resilience. |
+| Clinical Error Boundary | `ClinicalErrorBoundary.test.tsx` | 3 | Catches rendering errors, renders bilingual recovery controls, reset callbacks. |
+| Enclave Overlay | `ConsortiumLaunchOverlay.test.tsx` | 5 | 4-stage cryptographic enclave handshake, ECDH fingerprints, attestation badges. |
+| Diagnostic Studio | `DiagnosticStudio.test.tsx` | 5 | Pre-training locked state, forward pass inference, Grad-CAM overlays, audio briefing, PDF trigger. |
+| Hero Component | `Hero.test.tsx` | 3 | Headline rendering, consortium status badge, quick launch actions. |
 | Hospital Studio | `HospitalStudio.test.tsx` | 3 | Multi-hospital tabs, demographic breakdown, Non-IID distribution charts. |
-| Telemetry Cockpit | `TelemetryCockpit.test.tsx` | 3 | Convergence graphs, Byzantine threat notifications, round trackers. |
+| Presentation Page | `LandingPage.test.tsx` | 5 | Verifiable KPI metrics, interactive results showcase tabs, enclave launch trigger. |
+| Live HUD | `LiveHud.test.tsx` | 3 | Attestation digest badge, real-time telemetry indicators, pulse status. |
+| Geometry Utilities | `lungGeometry.test.ts` | 6 | Anatomical lung SVG boundary calculations and coordinate scaling. |
+| 3D Volumetric Lung Scene | `LungViewer3D.test.tsx` | 3 | Three.js 3D volumetric lung container rendering and cleanup. |
+| Navigation | `Navbar.test.tsx` | 6 | Bilingual language toggle (EN/TR), dark/light mode toggle, responsive mobile navigation. |
+| RAG Digital Twins | `RagDigitalTwins.test.tsx` | 2 | Biopsy-confirmed digital twin rendering, confidence bars, clinical metadata tags. |
+| Report Download | `ReportDownload.test.tsx` | 3 | PDF report card rendering, encoded download link generation, disabled states. |
+| Browser Runtime Shield | `runtimeShield.test.ts` | 9 | Interception of extension errors, port drop isolation, console deduplication. |
+| Subtree Isolation | `subtreeIsolation.test.tsx` | 5 | Fault containment across null/undefined sample images, twin lists, and telemetry arrays. |
+| Telemetry Cockpit | `TelemetryCockpit.test.tsx` | 3 | Loss and accuracy convergence graphs, client drift tracking, Byzantine threat alerts. |
+| Localization | `translations.test.ts` | 4 | Complete key parity and translation completeness across English and Turkish dictionaries. |
+| Voice Assistant | `VoiceAssistant.test.tsx` | 2 | Audio player controls, bilingual voice toggle, synthesization loading indicators. |
+| Workflow Stepper | `WorkflowStepper.test.tsx` | 4 | 4-step workflow navigation, step completion locking, interactive advancement. |
 
 ---
 
@@ -596,16 +643,16 @@ Fed-XRay maintains 240 automated tests (186 Python Pytest backend + 54 TypeScrip
 ```text
 Fed-XRay/
 |-- api/                               # FastAPI Async Backend
-|   |-- main.py                        # REST, SSE, Enclave, and CDSS Routes
+|   |-- main.py                        # REST, SSE, Enclave, Persistence, and CDSS Routes
 |   `-- schemas.py                     # Pydantic v2 Request/Response Contracts
 |-- frontend/                          # Next.js 14 Clinical SaaS Web App
 |   |-- src/
-|   |   |-- app/                       # App Router Pages
-|   |   |-- components/                # Cockpit Panels, SVG Topology, HUD
+|   |   |-- app/                       # App Router Pages, Error Boundaries (error.tsx, global-error.tsx)
+|   |   |-- components/                # ClinicalErrorBoundary, Cockpit Panels, SVG Topology, HUD
 |   |   |-- context/                   # Language (EN/TR) and API Connection Providers
-|   |   |-- lib/                       # API Client, Translations, Utilities
+|   |   |-- lib/                       # API Client, Runtime Shield, Translations, Utilities
 |   |   |-- types/                     # TypeScript Strict Interface Definitions
-|   |   `-- __tests__/                 # Vitest Component and Integration Tests (54)
+|   |   `-- __tests__/                 # Vitest Component and Integration Tests (80 Tests)
 |   |-- package.json
 |   `-- tailwind.config.js             # Clinical SaaS HSL Design Token System
 |-- scripts/
@@ -613,32 +660,35 @@ Fed-XRay/
 |-- src/
 |   `-- fed_xray/                      # Core Python Package
 |       |-- core/                      # Federated Optimization Core
-|       |   |-- client.py              # HospitalClient (PEFT, FedDyn, SCAFFOLD, MOON, DP)
-|       |   |-- server.py              # CentralServer (FedAdam, FedDyn, Byzantine Detection)
+|       |   |-- client.py              # HospitalClient (PEFT, FedDyn, SCAFFOLD, MOON, DP, MedSAM, FedMedCLIP)
+|       |   |-- server.py              # CentralServer (FedAdam, FedDyn, Byzantine Detection, Asymmetric PEFT)
 |       |   |-- privacy.py             # Option J: TenSEAL CKKS HE, SecAgg+ ECDH, Rényi DP
 |       |   |-- prototypes.py          # FedProto Dispersion-Weighted Synthesis
 |       |   |-- imbalance_losses.py    # DAFL, Balanced Softmax, LDAM, Missing-Class Repel
 |       |   `-- metrics.py             # Telemetry Trackers and Anomaly Reports
+|       |-- storage/
+|       |   `-- state_store.py         # ACID PersistentStateStore (SQLite WAL Mode across 5 Relational Tables)
 |       |-- federation/
 |       |   `-- flower_protocol_bridge.py  # Flower (flwr) Client Proxy and Strategy
 |       |-- models/
-|       |   |-- vit.py                 # Vision Transformer (MHSA, PatchEmbedding)
-|       |   |-- peft.py                # LoRA, FFA-LoRA, FedSA-LoRA, FedAS-LoRA, FedPerfix
-|       |   |-- foundation.py          # Target Foundation Model References (Planned)
+|       |   |-- vit.py                 # Vision Transformer (MHSA, PatchEmbedding, create_medical_vit)
+|       |   |-- peft.py                # FFA-LoRA, FedSA-LoRA, FedAS-LoRA, FlexLoRA, FedPerfix, MedSAM FCA
+|       |   |-- foundation.py          # Swin UNETR 3D, UNI Backbone, FedMedCLIP, FedCola, FedDAT
+|       |   |-- precomputed_clinical_anchors.pt # Verified Bio_ClinicalBERT Semantic Embeddings
 |       |   `-- cnn.py                 # XRayClassifier Baseline
 |       |-- data/
 |       |   |-- real_world.py          # DiskMedicalDataset, Scenarios A-G, SHA-256 Deduplication
-|       |   |-- ingest_real_world.py   # ISIC Archive API v2 Downloader
+|       |   |-- ingest_real_world.py   # Strategy E Dataset Staging and In-Silico Calibration Suite
 |       |   `-- generator.py           # Multi-Resolution 224x224 ViT-Compatible Generator
 |       `-- cdss/
-|           |-- xai.py                 # Grad-CAM Heatmaps and Activation Overlays
-|           |-- similarity.py          # Dynamic HNSW Digital Twin Retrieval
-|           |-- report.py              # PDF Report Engine (fpdf2)
-|           |-- voice.py               # Speech Dictation Engine (Async gTTS)
-|           `-- i18n.py                # Bilingual Localization (EN/TR)
+|           |-- xai.py                 # Grad-CAM Heatmaps and Activation Overlays (Structured, Zero-Asterisks)
+|           |-- similarity.py          # Dynamic HNSW Digital Twin Retrieval (128 to 1024 dims)
+|           |-- report.py              # Cryptographic Vector PDF Report Engine (fpdf2 + SHA-256 Digest)
+|           |-- voice.py               # Speech Dictation Engine (Async gTTS with Disk Cache)
+|           `-- i18n.py                # Bilingual Clinical Localization (EN/TR)
 |-- benchmarks/
 |   `-- benchmark_foundation_peft.py   # Foundation PEFT Comparative Benchmark Suite
-|-- tests/                             # Pytest Test Suites (186 Tests)
+|-- tests/                             # Pytest Test Suites (36 Files, 246 Tests)
 |-- research/                          # Canonical Scientific Research Foundations (6 Papers)
 |   |-- federated_vision_transformers_for_oncology.md
 |   |-- federated_foundation_models_for_cancer.md
@@ -677,10 +727,10 @@ pip install -r requirements.txt
 ### 18.2 Automated Test Execution
 
 ```bash
-# Execute all 186 Python backend tests
+# Execute all 246 Python backend tests
 python -m pytest tests/ -v
 
-# Execute all 54 Next.js frontend tests
+# Execute all 80 Next.js frontend tests
 cd frontend
 npm install
 npm test -- --run
