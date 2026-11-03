@@ -110,7 +110,10 @@ export function ApiProvider({ children }: { children: React.ReactNode }) {
       }
     }
 
-    // 5. Relative URL (leveraging Next.js rewrite proxy or gateway: /api/* -> backend)
+    // 5. Cloud Production Backend (Render HTTPS)
+    candidates.push("https://fed-xray-api.onrender.com");
+
+    // 6. Relative URL (leveraging Next.js rewrite proxy or gateway: /api/* -> backend)
     candidates.push("");
 
     const uniqueList = Array.from(new Set(candidates.filter((c) => c !== undefined && c !== null)));

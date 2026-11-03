@@ -12,7 +12,11 @@ export async function GET() {
       envUrl.includes("placeholder")
     )
   );
-  const targetBackend = isDead || !envUrl ? "http://127.0.0.1:8000" : envUrl;
+  const defaultBackend =
+    process.env.NODE_ENV === "production"
+      ? "https://fed-xray-api.onrender.com"
+      : "http://127.0.0.1:8000";
+  const targetBackend = isDead || !envUrl ? defaultBackend : envUrl;
 
   try {
     const controller = new AbortController();

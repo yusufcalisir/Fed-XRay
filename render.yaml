@@ -5,7 +5,7 @@ services:
     region: frankfurt
     plan: free
     buildCommand: pip install -r requirements.txt
-    # Single worker — Render free tier has 512 MB RAM.
+    # Single worker: Render free tier has 512 MB RAM.
     # ViT-Tiny + PyTorch ~400 MB; multiple workers would OOM.
     # --timeout-keep-alive 75 keeps SSE connections alive past Render's 60s proxy timeout.
     startCommand: uvicorn api.main:app --host 0.0.0.0 --port $PORT --workers 1 --timeout-keep-alive 75 --no-access-log

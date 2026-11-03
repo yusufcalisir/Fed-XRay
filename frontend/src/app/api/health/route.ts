@@ -11,7 +11,11 @@ export async function GET() {
       envUrl.includes("placeholder")
     )
   );
-  const targetBackend = isDead || !envUrl ? "http://127.0.0.1:8000" : envUrl;
+  const defaultBackend =
+    process.env.NODE_ENV === "production"
+      ? "https://fed-xray-api.onrender.com"
+      : "http://127.0.0.1:8000";
+  const targetBackend = isDead || !envUrl ? defaultBackend : envUrl;
 
   // Attempt to forward request to active Python backend
   try {
@@ -41,3 +45,4 @@ export async function GET() {
     version: "2.1.0",
   });
 }
+

@@ -12,7 +12,11 @@ export async function POST(request: NextRequest) {
       envUrl.includes("placeholder")
     )
   );
-  const targetBackend = isDead || !envUrl ? "http://127.0.0.1:8000" : envUrl;
+  const defaultBackend =
+    process.env.NODE_ENV === "production"
+      ? "https://fed-xray-api.onrender.com"
+      : "http://127.0.0.1:8000";
+  const targetBackend = isDead || !envUrl ? defaultBackend : envUrl;
 
   let body = { num_hospitals: 4, samples_per_hospital: 50 };
   try {
