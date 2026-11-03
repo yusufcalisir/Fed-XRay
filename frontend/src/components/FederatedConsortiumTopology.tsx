@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, Suspense } from "react";
+import React, { useState } from "react";
 import {
   Lock,
   Activity,
@@ -11,11 +11,7 @@ import {
   Zap,
 } from "lucide-react";
 import { useLanguage } from "@/context/LanguageContext";
-
-// Lazy-load the WebGL 3D scene to avoid blocking initial render
-const Consortium3DScene = React.lazy(
-  () => import("@/components/Consortium3DScene"),
-);
+import FederatedTopologyMap from "@/components/FederatedTopologyMap";
 
 export interface HospitalNode {
   id: string;
@@ -208,24 +204,13 @@ export default function FederatedConsortiumTopology({
             onMouseMove={handleMouseMove}
             onMouseLeave={() => setMouseTilt({ x: 0, y: 0 })}
           >
-            {/* WebGL 3D consortium scene: transparent, sits on top of page background grid */}
-            <Suspense
-              fallback={
-                <div className="flex items-center justify-center w-full h-full">
-                  <span className="text-xs text-[var(--text-muted)] font-mono animate-pulse">
-                    Loading 3D Scene...
-                  </span>
-                </div>
-              }
-            >
-              <Consortium3DScene
-                isSimulatingRound={isSimulatingRound}
-                selectedNodeId={selectedNodeId}
-                mouseTilt={mouseTilt}
-                onSelectNode={(id) => setSelectedNodeId(id)}
-                onSimulationComplete={() => setIsSimulatingRound(false)}
-              />
-            </Suspense>
+            {/* Enterprise Architectural Topology Map */}
+            <FederatedTopologyMap
+              selectedNodeId={selectedNodeId}
+              isSimulatingRound={isSimulatingRound}
+              onSelectNode={(id) => setSelectedNodeId(id)}
+              onSimulationComplete={() => setIsSimulatingRound(false)}
+            />
 
             {/* Notification Toast during consensus round */}
             {roundNotification && (
