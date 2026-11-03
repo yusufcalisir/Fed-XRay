@@ -11,6 +11,7 @@ export interface HospitalCohort {
   sample_images: number[][][];
   sample_labels: number[];
   provenance?: string;
+  is_authentic_clinical?: boolean;
 }
 
 export interface TelemetryRound {
@@ -87,6 +88,9 @@ export interface BackendSystemState {
   peft_mode: string;
   persisted_on_disk: boolean;
   data_source: string;
+  data_provenance?: string;
+  is_authentic_clinical?: boolean;
+  strict_real_data?: boolean;
   privacy: {
     dp_active: boolean;
     dp_mode: string;

@@ -19,6 +19,10 @@ class CohortGenerateRequest(BaseModel):
     image_size: Optional[int] = Field(
         default=None, ge=28, le=512, description="Target image dimension (defaults to 224 for Strategy E disk manifests)."
     )
+    strict_real_data: bool = Field(
+        default=False,
+        description="Enforce authentic clinical data only; prohibits fallback to procedural calibration phantoms.",
+    )
 
 
 class HospitalCohortInfo(BaseModel):
@@ -30,6 +34,10 @@ class HospitalCohortInfo(BaseModel):
     sample_images: List[List[List[float]]]
     sample_labels: List[int]
     provenance: Optional[str] = None
+    is_authentic_clinical: bool = Field(
+        default=True,
+        description="Whether this hospital cohort consists of genuine physical clinical patient scans.",
+    )
 
 
 class CohortGenerateResponse(BaseModel):
@@ -38,6 +46,10 @@ class CohortGenerateResponse(BaseModel):
     total_samples: int
     data_source: str
     provenance: Optional[str] = None
+    is_authentic_clinical: bool = Field(
+        default=True,
+        description="Whether the partitioned cohort is verified authentic clinical data.",
+    )
     hospitals: List[HospitalCohortInfo]
 
 

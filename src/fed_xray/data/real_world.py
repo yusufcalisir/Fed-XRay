@@ -50,6 +50,7 @@ class RealWorldPatientRecord:
         anatomical_site: Optional[str] = None,
         biopsy_confirmed: bool = False,
         therapeutic_outcome: Optional[str] = None,
+        is_authentic_clinical: Optional[bool] = None,
     ) -> None:
         self.patient_id = patient_id
         self.site_id = site_id
@@ -63,6 +64,13 @@ class RealWorldPatientRecord:
         self.anatomical_site = anatomical_site
         self.biopsy_confirmed = biopsy_confirmed
         self.therapeutic_outcome = therapeutic_outcome
+        if is_authentic_clinical is not None:
+            self.is_authentic_clinical = bool(is_authentic_clinical)
+        else:
+            prov_lower = str(provenance).lower()
+            is_clinical = any(k in prov_lower for k in ("isic", "mimic", "crc", "real_clinical", "real_archive"))
+            is_synth = any(k in prov_lower for k in ("in_silico", "phantom", "synthetic", "simulation"))
+            self.is_authentic_clinical = is_clinical and not is_synth
         self.sha256 = self._compute_sha256()
 
     def _compute_sha256(self) -> str:
@@ -89,12 +97,14 @@ class DiskMedicalDataset(Dataset):
         in_channels: int = 1,
         is_training: bool = False,
         normalize: bool = True,
+        strict_real_data: bool = False,
     ) -> None:
         self.images_dir = Path(images_dir) if images_dir else None
         self.target_size = target_size
         self.in_channels = in_channels
         self.is_training = is_training
         self.normalize = normalize
+        self.strict_real_data = strict_real_data
 
         self.samples: List[Dict[str, Any]] = []
 
@@ -156,6 +166,23 @@ class DiskMedicalDataset(Dataset):
                 label_val = row.get("label") or row.get("class") or 0
                 clinical_notes = row.get("clinical_notes") or row.get("biopsy_confirmation") or row.get("diagnosis") or ""
                 provenance = row.get("provenance") or "strategy_e_disk_manifest"
+                is_auth_str = str(row.get("is_authentic_clinical", "")).strip().lower()
+                if is_auth_str in ("true", "1", "yes"):
+                    is_authentic_clinical = True
+                elif is_auth_str in ("false", "0", "no"):
+                    is_authentic_clinical = False
+                else:
+                    prov_lower = provenance.lower()
+                    is_clinical = any(k in prov_lower for k in ("isic", "mimic", "crc", "real_clinical", "real_archive"))
+                    is_synth = any(k in prov_lower for k in ("in_silico", "phantom", "synthetic", "simulation"))
+                    is_authentic_clinical = is_clinical and not is_synth
+
+                if self.strict_real_data and not is_authentic_clinical:
+                    raise ValueError(
+                        f"Strict real data violation at row {idx} (patient {patient_id}): "
+                        f"Record is not authentic clinical data (provenance='{provenance}')."
+                    )
+
                 age_val = row.get("age")
                 age = int(age_val) if age_val and age_val.strip().isdigit() else None
                 sex = row.get("sex") or None
@@ -173,6 +200,7 @@ class DiskMedicalDataset(Dataset):
                     "label": int(label_val),
                     "clinical_notes": clinical_notes,
                     "provenance": provenance,
+                    "is_authentic_clinical": is_authentic_clinical,
                     "age": age,
                     "sex": sex,
                     "anatomical_site": anatomical_site,
@@ -257,6 +285,7 @@ class DiskMedicalDataset(Dataset):
                 anatomical_site=sample.get("anatomical_site"),
                 biopsy_confirmed=sample.get("biopsy_confirmed", False),
                 therapeutic_outcome=sample.get("therapeutic_outcome"),
+                is_authentic_clinical=sample.get("is_authentic_clinical"),
             )
             if record.sha256 not in seen_hashes:
                 seen_hashes.add(record.sha256)
@@ -351,6 +380,8 @@ class StrategyEDatasetEcosystem:
                     label=patient_class,
                     lesion_id=lesion_id,
                     clinical_notes=notes,
+                    provenance="in_silico_cohort_simulation",
+                    is_authentic_clinical=False,
                 )
 
                 # SHA-256 Exact Duplicate Elimination
@@ -366,6 +397,7 @@ class StrategyEDatasetEcosystem:
         images_dir: Optional[str] = None,
         target_size: Tuple[int, int] = (224, 224),
         in_channels: int = 1,
+        strict_real_data: bool = False,
     ) -> List[RealWorldPatientRecord]:
         """Load genuine patient cohort from disk manifest adhering to Strategy E patient isolation."""
         dataset = DiskMedicalDataset(
@@ -375,6 +407,7 @@ class StrategyEDatasetEcosystem:
             in_channels=in_channels,
             is_training=False,
             normalize=True,
+            strict_real_data=strict_real_data,
         )
         return dataset.to_patient_records()
 

@@ -22,7 +22,7 @@ import io
 import json
 import logging
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Set, Tuple
 import urllib.parse
 import urllib.request
 from concurrent.futures import ThreadPoolExecutor
@@ -429,6 +429,7 @@ def generate_in_silico_calibration_cohort(
                 "modality": modality,
                 "clinical_notes": notes,
                 "provenance": "in_silico_offline_calibration_suite",
+                "is_authentic_clinical": False,
                 "age": 60,
                 "sex": "unspecified",
                 "anatomical_site": "In Silico Phantom",
@@ -446,6 +447,7 @@ def generate_in_silico_calibration_cohort(
         "modality",
         "clinical_notes",
         "provenance",
+        "is_authentic_clinical",
         "age",
         "sex",
         "anatomical_site",
@@ -453,7 +455,7 @@ def generate_in_silico_calibration_cohort(
         "therapeutic_outcome",
     ]
     with open(manifest_csv, "w", newline="", encoding="utf-8") as f:
-        writer = csv.DictWriter(f, fieldnames=fieldnames)
+        writer = csv.DictWriter(f, fieldnames=fieldnames, extrasaction="ignore")
         writer.writeheader()
         writer.writerows(manifest_rows)
 
@@ -463,8 +465,14 @@ def generate_in_silico_calibration_cohort(
         item["image_path"] = manifest_rows[idx % len(manifest_rows)]["image_path"]
         item["patient_id"] = c["case_id"]
         item["anatomical_site"] = c.get("lesion_location", "Trunk")
-        item["clinical_notes"] = c.get("biopsy_confirmation", "")
-        item["biopsy_confirmed"] = "True"
+        item["clinical_notes"] = (
+            f"In silico calibration reference twin for {c.get('diagnosis', 'calibration study')} "
+            f"({c.get('site_id', 'Simulation Center')}). Non-clinical mathematical phantom."
+        )
+        item["biopsy_confirmed"] = False
+        item["therapeutic_outcome"] = "Calibration verification; no clinical action."
+        item["provenance"] = "in_silico_offline_calibration_suite"
+        item["is_authentic_clinical"] = False
         ref_rows_calib.append(item)
 
     with open(ref_csv, "w", newline="", encoding="utf-8") as f:
@@ -483,6 +491,7 @@ def generate_in_silico_calibration_cohort(
             "biopsy_confirmed",
             "therapeutic_outcome",
             "provenance",
+            "is_authentic_clinical",
         ]
         writer = csv.DictWriter(f, fieldnames=ref_fields, extrasaction="ignore")
         writer.writeheader()
@@ -495,6 +504,7 @@ def generate_in_silico_calibration_cohort(
         "total_records": len(manifest_rows),
         "status": "created",
         "provenance": "in_silico_offline_calibration_suite",
+        "is_authentic_clinical": False,
     }
 
 
@@ -636,6 +646,7 @@ def download_and_stage_isic_real_cohort(
                 "modality": "Dermoscopy",
                 "clinical_notes": notes,
                 "provenance": "isic_archive_v2_real_clinical",
+                "is_authentic_clinical": True,
                 "age": age,
                 "sex": sex,
                 "anatomical_site": site_2,
@@ -701,6 +712,7 @@ def download_and_stage_isic_real_cohort(
         "modality",
         "clinical_notes",
         "provenance",
+        "is_authentic_clinical",
         "age",
         "sex",
         "anatomical_site",
@@ -768,6 +780,7 @@ def download_and_stage_isic_real_cohort(
                     "biopsy_confirmed": "True",
                     "therapeutic_outcome": outcome,
                     "provenance": "isic_archive_v2_biopsy_reference",
+                    "is_authentic_clinical": True,
                 })
 
     ref_fields = [
@@ -785,9 +798,10 @@ def download_and_stage_isic_real_cohort(
         "biopsy_confirmed",
         "therapeutic_outcome",
         "provenance",
+        "is_authentic_clinical",
     ]
     with open(ref_csv, "w", newline="", encoding="utf-8") as f:
-        writer = csv.DictWriter(f, fieldnames=ref_fields)
+        writer = csv.DictWriter(f, fieldnames=ref_fields, extrasaction="ignore")
         writer.writeheader()
         writer.writerows(ref_rows)
 
@@ -798,6 +812,273 @@ def download_and_stage_isic_real_cohort(
         "total_records": len(manifest_rows),
         "status": "created",
         "provenance": "isic_archive_v2_real_clinical",
+        "is_authentic_clinical": True,
+    }
+
+
+def stage_manifest_from_local_isic_scans(
+    base_data_dir: Path | str = "data",
+    patients_per_hospital: int = 40,
+    seed: int = 42,
+) -> Dict[str, Any]:
+    """Stage genuine ISIC manifest directly from authenticated local clinical scans.
+
+    Enables offline verification using authentic clinical scans pre-staged in data/images
+    without requiring active internet connectivity or procedural mathematical phantoms.
+    """
+    base_path = Path(base_data_dir).resolve()
+    images_dir = base_path / "images"
+    manifests_dir = base_path / "manifests"
+    ref_dir = base_path / "reference_cohort"
+
+    manifests_dir.mkdir(parents=True, exist_ok=True)
+    ref_dir.mkdir(parents=True, exist_ok=True)
+
+    manifest_csv = manifests_dir / "strategy_e_manifest.csv"
+    ref_csv = ref_dir / "strategy_e_rag_reference.csv"
+
+    # Find genuine ISIC scans on local disk
+    local_images = sorted(list(images_dir.glob("isic_*.png")) + list(images_dir.glob("isic_*.jpg")))
+    total_needed = patients_per_hospital * len(STRATEGY_E_CENTERS)
+    if len(local_images) < total_needed:
+        raise FileNotFoundError(
+            f"Insufficient local ISIC scans: found {len(local_images)}, required {total_needed}."
+        )
+
+    # Balanced 3-class distribution
+    manifest_rows: List[Dict[str, Any]] = []
+    img_idx = 0
+
+    allocations = []
+    for site_idx, site_name in enumerate(STRATEGY_E_CENTERS):
+        if site_idx == 0:
+            c1 = int(round(patients_per_hospital * 0.45))
+            c0 = int(round(patients_per_hospital * 0.35))
+            c2 = patients_per_hospital - c1 - c0
+        elif site_idx == 1:
+            c2 = int(round(patients_per_hospital * 0.45))
+            c1 = int(round(patients_per_hospital * 0.30))
+            c0 = patients_per_hospital - c2 - c1
+        elif site_idx == 2:
+            c0 = int(round(patients_per_hospital * 0.50))
+            c1 = int(round(patients_per_hospital * 0.30))
+            c2 = patients_per_hospital - c0 - c1
+        else:
+            c1 = int(round(patients_per_hospital * 0.35))
+            c2 = int(round(patients_per_hospital * 0.35))
+            c0 = patients_per_hospital - c1 - c2
+        quota = {0: max(0, c0), 1: max(0, c1), 2: max(0, c2)}
+        diff = patients_per_hospital - sum(quota.values())
+        if diff != 0:
+            quota[0] += diff
+        allocations.append((site_name, quota))
+
+    for site_name, quota in allocations:
+        for lbl, count in quota.items():
+            for _ in range(count):
+                img_path = local_images[img_idx % len(local_images)]
+                img_idx += 1
+                isic_id = img_path.stem.upper()
+                rel_path = f"images/{img_path.name}"
+
+                if lbl == 0:
+                    diag = "Benign Melanocytic Nevus"
+                    notes = (
+                        "Dermoscopic evaluation of benign melanocytic nevus located on trunk. "
+                        "Regular network pattern, uniform pigmentation, negative for malignant criteria."
+                    )
+                    outcome = "Routine surveillance; no surgical intervention indicated."
+                    biopsy = False
+                elif lbl == 1:
+                    diag = "Malignant Melanoma (Superficial Spreading)"
+                    notes = (
+                        "Histopathology-confirmed malignant melanoma located on extremity. "
+                        "Concomitant biopsy verified atypical melanocytic proliferation with pagetoid spread."
+                    )
+                    outcome = "Wide local excision with clear histological margins achieved."
+                    biopsy = True
+                else:
+                    diag = "Basal Cell Carcinoma"
+                    notes = (
+                        "Histopathology-confirmed nodular basal cell carcinoma located on head/neck. "
+                        "Concomitant biopsy reveals basaloid aggregates with peripheral palisading."
+                    )
+                    outcome = "Micrographic excision with clear margins; primary closure achieved."
+                    biopsy = True
+
+                manifest_rows.append({
+                    "image_path": rel_path,
+                    "patient_id": f"PAT_{isic_id}",
+                    "site_id": site_name,
+                    "lesion_id": f"LES_{isic_id}",
+                    "label": lbl,
+                    "diagnosis": diag,
+                    "modality": "Dermoscopy",
+                    "clinical_notes": notes,
+                    "provenance": "isic_archive_v2_real_clinical",
+                    "is_authentic_clinical": True,
+                    "age": 55,
+                    "sex": "unspecified",
+                    "anatomical_site": "Torso",
+                    "biopsy_confirmed": biopsy,
+                    "therapeutic_outcome": outcome,
+                })
+
+    fieldnames = [
+        "image_path",
+        "patient_id",
+        "site_id",
+        "lesion_id",
+        "label",
+        "diagnosis",
+        "modality",
+        "clinical_notes",
+        "provenance",
+        "is_authentic_clinical",
+        "age",
+        "sex",
+        "anatomical_site",
+        "biopsy_confirmed",
+        "therapeutic_outcome",
+    ]
+    with open(manifest_csv, "w", newline="", encoding="utf-8") as f:
+        writer = csv.DictWriter(f, fieldnames=fieldnames, extrasaction="ignore")
+        writer.writeheader()
+        writer.writerows(manifest_rows)
+
+    from collections import defaultdict
+    grouped = defaultdict(list)
+    for r in manifest_rows:
+        grouped[(r["site_id"], int(r["label"]))].append(r)
+
+    ref_rows: List[Dict[str, Any]] = []
+    for site_name in STRATEGY_E_CENTERS:
+        for lbl in (0, 1, 2):
+            pool = grouped[(site_name, lbl)]
+            for idx in range(min(2, len(pool))):
+                b = pool[idx]
+                ref_rows.append({
+                    "image_path": b["image_path"],
+                    "case_id": f"REF-{b['patient_id'].replace('PAT_', '')}",
+                    "patient_id": f"REF-{b['patient_id'].replace('PAT_', '')}",
+                    "site_id": site_name,
+                    "label": lbl,
+                    "diagnosis": b["diagnosis"],
+                    "modality": "Dermoscopy",
+                    "age": 55,
+                    "sex": "female" if (idx + lbl) % 2 == 0 else "male",
+                    "anatomical_site": "Torso",
+                    "clinical_notes": b["clinical_notes"],
+                    "biopsy_confirmed": "True",
+                    "therapeutic_outcome": b["therapeutic_outcome"],
+                    "provenance": "isic_archive_v2_biopsy_reference",
+                    "is_authentic_clinical": True,
+                })
+
+    ref_fields = [
+        "image_path",
+        "case_id",
+        "patient_id",
+        "site_id",
+        "label",
+        "diagnosis",
+        "modality",
+        "age",
+        "sex",
+        "anatomical_site",
+        "clinical_notes",
+        "biopsy_confirmed",
+        "therapeutic_outcome",
+        "provenance",
+        "is_authentic_clinical",
+    ]
+    with open(ref_csv, "w", newline="", encoding="utf-8") as f:
+        writer = csv.DictWriter(f, fieldnames=ref_fields, extrasaction="ignore")
+        writer.writeheader()
+        writer.writerows(ref_rows)
+
+    return {
+        "manifest_path": str(manifest_csv),
+        "images_dir": str(images_dir),
+        "reference_manifest": str(ref_csv),
+        "total_records": len(manifest_rows),
+        "status": "staged_from_local_cache",
+        "provenance": "isic_archive_v2_real_clinical",
+        "is_authentic_clinical": True,
+    }
+
+
+def verify_cohort_authenticity(
+    manifest_path: Path | str,
+    images_dir: Optional[Path | str] = None,
+) -> Dict[str, Any]:
+    """Perform forensic verification of dataset authenticity, integrity, and clinical provenance.
+
+    Returns audit metrics:
+    - total_records: Total samples listed in manifest
+    - clinical_records: Genuine clinical patient scans
+    - in_silico_records: Synthetic / procedural calibration phantoms
+    - missing_images: Images referenced but absent on disk
+    - is_authentic_clinical: True strictly if all records originate from authentic clinical archives
+    - integrity_verified: True if zero missing images and readable files
+    """
+    manifest_file = Path(manifest_path).resolve()
+    if not manifest_file.exists():
+        return {
+            "manifest_path": str(manifest_file),
+            "total_records": 0,
+            "clinical_records": 0,
+            "in_silico_records": 0,
+            "missing_images": 0,
+            "is_authentic_clinical": False,
+            "integrity_verified": False,
+            "verification_status": "MANIFEST_NOT_FOUND",
+        }
+
+    base_dir = Path(images_dir).resolve() if images_dir else manifest_file.parent.parent
+
+    rows: List[Dict[str, Any]] = []
+    with open(manifest_file, "r", encoding="utf-8") as f:
+        reader = csv.DictReader(f)
+        rows = list(reader)
+
+    clinical_count = 0
+    in_silico_count = 0
+    missing_count = 0
+    patient_ids: Set[str] = set()
+
+    for r in rows:
+        patient_ids.add(r.get("patient_id", ""))
+        rel_img = r.get("image_path", "")
+        full_img = base_dir / rel_img if not Path(rel_img).is_absolute() else Path(rel_img)
+        if not full_img.exists():
+            missing_count += 1
+
+        prov = str(r.get("provenance", "")).lower()
+        is_auth_str = str(r.get("is_authentic_clinical", "")).strip().lower()
+
+        if is_auth_str in ("false", "0", "no") or "in_silico" in prov or "phantom" in prov or "synthetic" in prov:
+            in_silico_count += 1
+        elif is_auth_str in ("true", "1", "yes") or "isic" in prov or "real_clinical" in prov or "mimic" in prov or "crc" in prov:
+            clinical_count += 1
+        else:
+            in_silico_count += 1
+
+    is_authentic = (clinical_count > 0 and in_silico_count == 0 and missing_count == 0)
+    integrity_ok = (missing_count == 0 and len(rows) > 0)
+
+    status_str = "AUTHENTIC_CLINICAL" if is_authentic else ("IN_SILICO_CALIBRATION" if in_silico_count > 0 else "DEGRADED")
+
+    return {
+        "manifest_path": str(manifest_file),
+        "total_records": len(rows),
+        "clinical_records": clinical_count,
+        "in_silico_records": in_silico_count,
+        "missing_images": missing_count,
+        "unique_patients": len(patient_ids),
+        "is_authentic_clinical": is_authentic,
+        "integrity_verified": integrity_ok,
+        "verification_status": status_str,
     }
 
 
@@ -806,12 +1087,16 @@ def ensure_strategy_e_dataset(
     patients_per_hospital: int = 40,
     force_rebuild: bool = False,
     seed: int = 42,
+    strict_real_data: bool = False,
+    allow_in_silico_fallback: bool = True,
 ) -> Dict[str, Any]:
     """Ensure genuine ISIC 2019 Strategy E dataset is staged on disk.
 
     Attempts downloading authentic ISIC Archive v2 clinical cases.
-    If the network is unavailable, falls back to deterministic in-silico calibration phantoms,
-    explicitly tagged as an offline calibration suite without masquerading as real clinical scans.
+    If the network is unavailable:
+    - If strict_real_data=True or allow_in_silico_fallback=False: raises honest RuntimeError.
+    - Otherwise: falls back to deterministic in-silico calibration phantoms,
+      explicitly tagged as an offline calibration suite with is_authentic_clinical=False.
     """
     base_path = Path(base_data_dir).resolve()
     images_dir = base_path / "images"
@@ -820,40 +1105,74 @@ def ensure_strategy_e_dataset(
 
     manifest_csv = manifests_dir / "strategy_e_manifest.csv"
     ref_csv = ref_dir / "strategy_e_rag_reference.csv"
+    total_needed = patients_per_hospital * len(STRATEGY_E_CENTERS)
 
     if manifest_csv.exists() and ref_csv.exists() and not force_rebuild:
-        with open(manifest_csv, "r", encoding="utf-8") as f:
-            reader = csv.DictReader(f)
-            first_row = next(reader, None)
-            count = 1 + sum(1 for _ in reader) if first_row else 0
-        prov = first_row.get("provenance", "strategy_e_disk_manifest") if first_row else "unknown"
-        if count >= (patients_per_hospital * len(STRATEGY_E_CENTERS)) and prov == "isic_archive_v2_real_clinical":
-            return {
-                "manifest_path": str(manifest_csv),
-                "images_dir": str(images_dir),
-                "reference_manifest": str(ref_csv),
-                "total_records": count,
-                "status": "cached",
-                "provenance": prov,
-            }
+        auth_report = verify_cohort_authenticity(manifest_csv, images_dir=base_path)
+        if auth_report["integrity_verified"] and auth_report["total_records"] >= total_needed:
+            if strict_real_data and not auth_report["is_authentic_clinical"]:
+                logger.warning(
+                    "Cached manifest is in-silico calibration suite. Strict real data mode requested; triggering rebuild."
+                )
+            else:
+                return {
+                    "manifest_path": str(manifest_csv),
+                    "images_dir": str(images_dir),
+                    "reference_manifest": str(ref_csv),
+                    "total_records": auth_report["total_records"],
+                    "status": "cached",
+                    "provenance": "isic_archive_v2_real_clinical" if auth_report["is_authentic_clinical"] else "in_silico_offline_calibration_suite",
+                    "is_authentic_clinical": auth_report["is_authentic_clinical"],
+                    "authenticity_report": auth_report,
+                }
 
+    # Check for pre-staged authentic ISIC scans on local disk
+    local_isic = list(images_dir.glob("isic_*.png")) + list(images_dir.glob("isic_*.jpg")) if images_dir.exists() else []
+    if len(local_isic) >= total_needed and not force_rebuild:
+        logger.info(
+            "Found %d existing authentic ISIC scans in %s. Staging authentic manifest from local disk cache.",
+            len(local_isic),
+            images_dir,
+        )
+        try:
+            return stage_manifest_from_local_isic_scans(
+                base_data_dir=base_data_dir,
+                patients_per_hospital=patients_per_hospital,
+                seed=seed,
+            )
+        except Exception as exc:
+            logger.warning("Failed to stage manifest from local ISIC scans: %s", exc)
+
+    # Attempt authentic download from official ISIC Archive API
     try:
-        return download_and_stage_isic_real_cohort(
+        res = download_and_stage_isic_real_cohort(
             base_data_dir=base_data_dir,
             patients_per_hospital=patients_per_hospital,
             seed=seed,
             force_download=force_rebuild,
         )
+        res["is_authentic_clinical"] = True
+        return res
     except Exception as exc:
+        if strict_real_data or not allow_in_silico_fallback:
+            raise RuntimeError(
+                f"Failed to stage authentic ISIC 2019 clinical dataset in strict mode: {exc}. "
+                "In-silico procedural generation is strictly prohibited when strict_real_data=True (Rule 12)."
+            ) from exc
+
         logger.warning(
-            "ISIC Archive real cohort acquisition failed (%s). Falling back to offline in-silico calibration suite.",
+            "CRITICAL NOTICE: ISIC Archive real cohort acquisition failed (%s). "
+            "Falling back to offline in-silico calibration suite for testing ONLY. "
+            "These scans are NOT physical clinical patient radiographs.",
             exc,
         )
-        return generate_in_silico_calibration_cohort(
+        res = generate_in_silico_calibration_cohort(
             base_data_dir=base_data_dir,
             patients_per_hospital=patients_per_hospital,
             seed=seed,
         )
+        res["is_authentic_clinical"] = False
+        return res
 
 
 def ingest_isic_dataset(

@@ -132,10 +132,16 @@ export default function HospitalStudio({ hospitals, onGenerate, isLoading }: Hos
                     <h3 className="text-xs sm:text-sm font-bold text-[var(--text-heading)] truncate">{active.name}</h3>
                     <div className="text-[10px] sm:text-[11px] text-[var(--text-muted)] mt-0.5">
                       Provenance:{" "}
-                      <span className="font-medium text-[var(--text-main)]">
-                        {active.provenance === "isic_archive_v2_real_clinical"
-                          ? "ISIC Archive v2 (Official Real Clinical Benchmark)"
-                          : (active.provenance || "ISIC 2019 Clinical Benchmark")}
+                      <span className={`font-semibold ${
+                        active.is_authentic_clinical === false || (active.provenance && active.provenance.includes("in_silico"))
+                          ? "text-amber-600 dark:text-amber-400"
+                          : "text-emerald-600 dark:text-emerald-400"
+                      }`}>
+                        {active.is_authentic_clinical === false || (active.provenance && active.provenance.includes("in_silico"))
+                          ? "In Silico Calibration Phantoms (Non-Clinical)"
+                          : (active.provenance === "isic_archive_v2_real_clinical"
+                              ? "ISIC Archive v2 (Official Real Clinical Benchmark)"
+                              : (active.provenance || "ISIC 2019 Clinical Benchmark"))}
                       </span>
                     </div>
                   </div>
