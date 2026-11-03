@@ -170,16 +170,16 @@ export default function PresentationLandingPage() {
 
           {/* Key Metrics Strip */}
           <div className="mt-12 sm:mt-16">
-            <div className="flex items-center justify-between mb-2.5 px-1">
-              <div className="flex items-center gap-2">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1.5 mb-3 px-1">
+              <div className="flex items-start sm:items-center gap-2">
                 <span
-                  className={`w-2 h-2 rounded-full ${
+                  className={`w-2 h-2 rounded-full mt-1 sm:mt-0 shrink-0 ${
                     systemState?.is_live && systemState?.rounds && systemState.rounds.length > 0
                       ? "bg-emerald-500 animate-pulse shadow-[0_0_8px_#10b981]"
                       : "bg-sky-500"
                   }`}
                 />
-                <span className="font-mono text-[11px] font-bold uppercase tracking-wider text-[var(--text-heading)]">
+                <span className="font-mono text-[10px] sm:text-[11px] font-bold uppercase tracking-wider text-[var(--text-heading)] leading-snug">
                   {systemState?.is_live && systemState?.rounds && systemState.rounds.length > 0
                     ? `Live Consortium Telemetry (Active Session · ${systemState.history_rounds} Rounds · ${systemState.model_type.toUpperCase()})`
                     : "Strategy E Reference Benchmark Target (Option J Baseline)"}
@@ -192,25 +192,28 @@ export default function PresentationLandingPage() {
               </span>
             </div>
 
-            <div className="grid grid-cols-2 sm:grid-cols-5 gap-px border border-[var(--border-card)] rounded-2xl overflow-hidden bg-[var(--border-card)]">
+            <div className="grid grid-cols-2 sm:grid-cols-5 gap-px border border-[var(--border-card)] rounded-2xl overflow-hidden bg-[var(--border-card)] shadow-xs">
               {[
                 {
                   value: systemState?.hospitals?.length ? String(systemState.hospitals.length) : "4",
                   label: t("landing_metric_nodes"),
                   sub: systemState?.is_live ? "Connected Clinical Cohorts" : t("landing_metric_nodes_sub"),
                   icon: Server,
+                  accentColor: "text-emerald-500",
                 },
                 {
                   value: "0 B",
                   label: t("landing_metric_leakage"),
                   sub: t("landing_metric_leakage_sub"),
                   icon: Lock,
+                  accentColor: "text-emerald-500",
                 },
                 {
                   value: "128-Bit",
                   label: t("landing_metric_crypto"),
                   sub: t("landing_metric_crypto_sub"),
                   icon: Cpu,
+                  accentColor: "text-sky-500",
                 },
                 {
                   value:
@@ -226,6 +229,7 @@ export default function PresentationLandingPage() {
                       ? `Round ${systemState.rounds.length} (${systemState.peft_mode ? systemState.peft_mode.toUpperCase() : "Full"})`
                       : t("landing_metric_auc_sub"),
                   icon: Activity,
+                  accentColor: "text-emerald-500",
                 },
                 {
                   value:
@@ -238,14 +242,30 @@ export default function PresentationLandingPage() {
                       ? "Rényi DP Accountant Budget"
                       : t("landing_metric_dp_sub"),
                   icon: ShieldCheck,
+                  accentColor: "text-indigo-500",
                 },
-              ].map((m, i) => (
-                <div key={i} className="bg-[var(--bg-app)] p-4 sm:p-5 text-center sm:text-left">
-                  <div className="font-display text-xl sm:text-2xl font-extrabold text-[var(--text-heading)] mb-0.5">{m.value}</div>
-                  <div className="text-[11px] font-semibold text-[var(--text-heading)]">{m.label}</div>
-                  <div className="text-[10px] text-[var(--text-muted)]">{m.sub}</div>
-                </div>
-              ))}
+              ].map((m, i) => {
+                const IconComponent = m.icon;
+                return (
+                  <div
+                    key={i}
+                    className={`bg-[var(--bg-app)] p-3.5 sm:p-5 transition-colors hover:bg-[var(--bg-card-inner)] flex flex-col justify-between ${
+                      i === 4
+                        ? "col-span-2 sm:col-span-1 text-center sm:text-left items-center sm:items-start"
+                        : "text-center sm:text-left items-center sm:items-start"
+                    }`}
+                  >
+                    <div className="flex items-center gap-1.5 mb-1.5">
+                      <IconComponent className={`w-3.5 h-3.5 ${m.accentColor}`} />
+                      <span className="text-[11px] font-semibold text-[var(--text-heading)]">{m.label}</span>
+                    </div>
+                    <div className="font-display text-xl sm:text-2xl font-extrabold text-[var(--text-heading)] mb-0.5 tracking-tight">
+                      {m.value}
+                    </div>
+                    <div className="text-[10px] text-[var(--text-muted)] font-mono">{m.sub}</div>
+                  </div>
+                );
+              })}
             </div>
           </div>
         </section>
