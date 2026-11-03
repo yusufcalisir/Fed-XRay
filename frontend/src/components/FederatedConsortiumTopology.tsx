@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, Suspense } from "react";
 import {
   Lock,
   Activity,
@@ -11,7 +11,11 @@ import {
   Zap,
 } from "lucide-react";
 import { useLanguage } from "@/context/LanguageContext";
-import Consortium3DCanvas from "@/components/Consortium3DCanvas";
+
+// Lazy-load the WebGL 3D scene to avoid blocking initial render
+const Consortium3DScene = React.lazy(
+  () => import("@/components/Consortium3DScene"),
+);
 
 export interface HospitalNode {
   id: string;
@@ -203,14 +207,24 @@ export default function FederatedConsortiumTopology({
             onMouseMove={handleMouseMove}
             onMouseLeave={() => setMouseTilt({ x: 0, y: 0 })}
           >
-            {/* 3D Geometric Canvas: Transparent, sits directly on top of page background grid */}
-            <Consortium3DCanvas
-              isSimulatingRound={isSimulatingRound}
-              selectedNodeId={selectedNodeId}
-              mouseTilt={mouseTilt}
-              onSelectNode={(id) => setSelectedNodeId(id)}
-              onSimulationComplete={() => setIsSimulatingRound(false)}
-            />
+            {/* WebGL 3D consortium scene: transparent, sits on top of page background grid */}
+            <Suspense
+              fallback={
+                <div className="flex items-center justify-center w-full h-full">
+                  <span className="text-xs text-[var(--text-muted)] font-mono animate-pulse">
+                    Loading 3D Scene...
+                  </span>
+                </div>
+              }
+            >
+              <Consortium3DScene
+                isSimulatingRound={isSimulatingRound}
+                selectedNodeId={selectedNodeId}
+                mouseTilt={mouseTilt}
+                onSelectNode={(id) => setSelectedNodeId(id)}
+                onSimulationComplete={() => setIsSimulatingRound(false)}
+              />
+            </Suspense>
 
             {/* Notification Toast during consensus round */}
             {roundNotification && (
