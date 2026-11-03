@@ -1,7 +1,7 @@
-"""UI-01 Forensic Remediation Integrity Test Suite.
+"""Browser Runtime Shield and Extension Isolation Verification Suite.
 
-Verifies product-grade isolation against third-party browser extension collisions,
-service worker port drop noise, unhandled promise rejections, and DOM mutations.
+Verifies client-side interception of third-party extension noise, port drops,
+unhandled useCache rejections, console deduplication, and ClinicalErrorBoundary contracts.
 """
 
 from __future__ import annotations
@@ -14,7 +14,7 @@ def test_runtime_shield_source_and_pattern_integrity():
     assert shield_path.exists(), "frontend/src/lib/runtimeShield.ts must exist"
     code = shield_path.read_text(encoding="utf-8")
 
-    # Observed errors in UI-01 audit finding:
+    # Observed third-party browser extension error patterns:
     # 1. content.js reading 'useCache'
     assert "usecache" in code.lower()
     assert "content.js" in code

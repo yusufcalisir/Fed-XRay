@@ -1,11 +1,7 @@
-"""Test suite verifying API-02 remediation: Network Routing & Tunnel Resilience.
+"""Network Routing and Dynamic Tunnel Resilience Verification Suite.
 
-Verifies:
-1. Backend health endpoint contract and cross-origin CORS headers.
-2. Enclave handshake accessibility from multi-origin cloud frontends.
-3. Complete eradication of stale ephemeral tunnel hostnames from repository artifacts.
-4. Ephemeral tunnel pattern recognition and fallback logic.
-5. Next.js rewrite configuration sanitization against dead tunnel domains.
+Verifies ephemeral tunnel pattern detection, dead domain blacklisting,
+loopback auto-fallback, open CORS contracts, and notebook artifact sanitization.
 """
 
 from __future__ import annotations

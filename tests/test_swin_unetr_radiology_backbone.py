@@ -1,11 +1,7 @@
-"""Product-grade verification of MOD-01: Authentic Swin UNETR Radiology Foundation Backbone.
+"""Swin UNETR Hierarchical Radiology Foundation Backbone Verification Suite.
 
-Verifies:
-1. Authentic Hierarchical Architecture: Uses genuine ShiftedWindowAttention and patch merging stages.
-2. Representation Space: Exposes invariant 768-dim (or target embed_dim) representations.
-3. Multi-Dimensional Input Support: Processes 2D slices and 3D volumetric CT/MRI tensors.
-4. PEFT Adaptation: Successfully injects and adapts via LoRA and FedSA-LoRA.
-5. Checkpoint Verification: Fails honestly when strict checkpoint is missing (Rule 12).
+Validates 12 ShiftedWindowAttention blocks, window shift mechanics, patch merging,
+PEFT parameter extraction, and 2D/3D volumetric tensor support for medical imaging.
 """
 
 from __future__ import annotations

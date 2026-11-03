@@ -1,16 +1,7 @@
-"""Test suite for DAT-01: Real-World Dataset Staging, Provenance, and Authenticity Guardrails.
+"""Clinical Cohort Authenticity and Strategy E Data Staging Verification Suite.
 
-Verifies:
-1. Complete elimination of silent procedural substitution: in-silico phantoms are strictly isolated
-   and explicitly tagged with provenance='in_silico_offline_calibration_suite' and is_authentic_clinical=False.
-2. In-silico reference cases honestly disclose non-clinical simulation status (biopsy_confirmed=False).
-3. Stage manifest from local authentic ISIC scans generates genuine clinical records with is_authentic_clinical=True.
-4. verify_cohort_authenticity performs forensic audit of image existence, dimensions, and provenance.
-5. Strict real data enforcement (strict_real_data=True) raises honest RuntimeError on acquisition failure
-   and ValueError in DiskMedicalDataset on encountering non-clinical records.
-6. RealWorldPatientRecord auto-derives and preserves authenticity status.
-7. FastAPI endpoints (/api/state, /api/cohorts/verify-authenticity, /api/cohorts/generate) expose
-   is_authentic_clinical and data_provenance across telemetry.
+Verifies strict real-world data isolation, forensic cohort authenticity auditing,
+genuine patient metadata derivation, and honest non-clinical tagging on calibration suites.
 """
 
 from __future__ import annotations

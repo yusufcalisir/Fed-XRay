@@ -1,8 +1,7 @@
-"""Test MOD-03: Advanced Multimodal Foundation and PEFT Adapter Integration.
+"""Multimodal Foundation PEFT Adapters Runtime Integration Verification Suite.
 
-Verifies that MedSAMClientAdapter, FedMedCLIPModule, FedColaModalityBridge,
-and FedDATDualAdapter are actively integrated into CentralServer, HospitalClient,
-peft.py, and federated training routines with zero dormant or disconnected code.
+Verifies end-to-end integration and parameter aggregation for MedSAM, FedMedCLIP,
+FedCola Modality Bridge, and FedDAT Dual Attention Adapters.
 """
 
 from __future__ import annotations

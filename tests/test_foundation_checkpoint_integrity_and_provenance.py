@@ -1,9 +1,7 @@
-"""Test MOD-02: Model Checkpoint Authenticity and Provenance Tracking.
+"""Foundation Model Checkpoint Integrity and Weight Provenance Verification Suite.
 
-Verifies that checkpoint loading never silently swallows failures with
-'except Exception: pass', that non-existent checkpoint paths fail honestly,
-that strict_checkpoint enforcement functions as expected, and that all
-models provide auditable provenance metadata.
+Verifies zero-silent-pass policy, honest exception raising on missing or corrupted weights,
+SHA-256 weight fingerprinting, and runtime provenance telemetry exposure.
 """
 
 from __future__ import annotations

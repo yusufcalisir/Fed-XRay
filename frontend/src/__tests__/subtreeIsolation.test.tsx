@@ -8,7 +8,7 @@ import RootRouteError from "../app/error";
 import GlobalError from "../app/global-error";
 import { AllTheProviders } from "../test/test-utils";
 
-describe("UI-02 Subtree Isolation and Defensive Rendering Suite", () => {
+describe("Client Subtree Isolation and Defensive Rendering Suite", () => {
   it("renders HospitalStudio without crashing when sample_images is null, undefined, or empty", () => {
     const malformedHospitals = [
       {

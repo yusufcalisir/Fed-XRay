@@ -1,11 +1,7 @@
-"""Product-grade verification of SEC-01: Cryptographic Isolation and Option J Privacy.
+"""Consortium Cryptography and Zero-Plaintext Aggregation Verification Suite.
 
-Verifies:
-1. Key Separation: CentralServer holds strictly public CKKS context; direct server decryption raises PermissionError.
-2. In-Transit Encryption: HospitalClient encrypts parameters into authentic EncryptedTensor ciphertexts.
-3. Zero-Plaintext Aggregation: CentralServer homomorphically aggregates client ciphertexts without secret key.
-4. Quorum Decryption: Only ConsortiumKeyEnclave decrypts the aggregated model.
-5. Zero-Snooping Byzantine Defense: Clients generate enclave attestations locally; trusted cohort masks client-side.
+Validates Option J dual-layer privacy: client-side CKKS Homomorphic Encryption,
+Consortium Key Enclave public/secret key separation, and Byzantine defense via enclave attestations.
 """
 
 from __future__ import annotations

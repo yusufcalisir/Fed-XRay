@@ -1,12 +1,7 @@
-"""Test suite verifying CDSS-01 remediation: Explainability & Localization Integrity.
+"""CDSS Diagnostic Explainability and Spatial Localization Verification Suite.
 
-Verifies:
-1. Complete eradication of raw markdown asterisks (**) from XAI explanation generators.
-2. Bilingual clinical localization consistency across Turkish and English.
-3. Multi-modal domain vocabulary adaptation (digital pathology/dermoscopy vs radiology).
-4. Spatial quadrant localization of Grad-CAM relevance hotspots.
-5. Synchronization of explainability findings with the medical PDF report generator.
-6. Language negotiation in the FastAPI /api/cdss/diagnose endpoint.
+Verifies zero-markdown-asterisk invariant, structured clinical assessment formatting,
+multimodal terminology adaptation (pathology vs radiology), and bilingual parity.
 """
 
 from __future__ import annotations

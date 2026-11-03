@@ -1,7 +1,7 @@
-"""UI-02 Forensic Remediation Integrity Test Suite.
+"""React Client Subtree Resilience and Error Boundaries Verification Suite.
 
-Verifies product-grade React subtree containment, defensive array access guards,
-Next.js route segment error boundaries (app/error.tsx), and global layout guards (app/global-error.tsx).
+Verifies Next.js app/error.tsx and app/global-error.tsx fault containment,
+granular section error boundaries, and defensive array access across nullable payloads.
 """
 
 from __future__ import annotations
@@ -79,3 +79,4 @@ def test_defensive_telemetry_and_rag_array_handling():
     rag_code = rag_path.read_text(encoding="utf-8")
 
     assert "!Array.isArray(twins)" in rag_code
+

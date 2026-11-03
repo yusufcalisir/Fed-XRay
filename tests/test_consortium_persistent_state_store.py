@@ -1,11 +1,7 @@
-"""Test suite verifying API-01 remediation: ACID Persistent State Storage.
+"""ACID Consortium Persistent State Store Verification Suite.
 
-Verifies:
-1. SQLite WAL mode initialization and table creation.
-2. Relational persistence of system state, training rounds, hospital cohorts,
-   diagnostic audits, and model checkpoints.
-3. Transparent state hydration across simulated process restarts.
-4. FastAPI endpoints for state history, diagnostic audit trail, and state reset.
+Verifies SQLite WAL mode, write-through persistence across cohort generation,
+federated training rounds, diagnostic audits, and restart state hydration.
 """
 
 from __future__ import annotations

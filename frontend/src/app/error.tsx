@@ -60,3 +60,4 @@ export default function RootRouteError({ error, reset }: ErrorProps) {
     </div>
   );
 }
+
