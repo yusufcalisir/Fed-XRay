@@ -638,7 +638,7 @@ export const TRANSLATIONS: Record<Language, Record<string, string>> = {
     sec1_empty_state_title: "Çok Merkezli Veri Kabulü Gerekli",
     sec1_empty_state_desc: "4 bağımsız hastane merkezine Non-IID hasta kohortlarını yüklemek ve izole etmek için aşağıdaki butona tıklayın.",
 
-    // Bağlantı ve Motor Durumu
+    // Connection and Engine Status
     offline_banner_title: "Sunucu Bağlantısı Kurulamadı",
     offline_banner_reconnecting: "Arka uç servisine bağlanılıyor:",
     offline_banner_hint: "FastAPI servisinin (uvicorn api.main:app) aktif olduğundan emin olunuz.",
@@ -655,7 +655,7 @@ export const TRANSLATIONS: Record<Language, Record<string, string>> = {
     engine_cancel: "İptal",
     engine_apply_url: "URL Kaydet",
 
-    // Gezinti & Platform Sunumu
+    // Navigation and Platform Showcase
     nav_architecture: "Sistem Mimarisi",
     nav_results: "Klinik Kanıtlar",
     nav_security: "Güvenlik ve Gizlilik",
@@ -665,7 +665,7 @@ export const TRANSLATIONS: Record<Language, Record<string, string>> = {
     nav_overview_short: "Genel Bakış",
     nav_dashboard_overview: "Konsorsiyum Kontrol Paneli",
 
-    // Ana Tanıtım Bölümü
+    // Landing Hero
     landing_hero_badge: "Mahremiyet Korumalı Federe Öğrenme (PPFL)",
     landing_hero_title: "Çok Merkezli Medikal Yapay Zeka İçin Mahremiyet Korumalı Federe Öğrenme",
     landing_hero_desc: "Çok merkezli kanser görüntüleme için iş birlikli federe öğrenme platformu. Dağıtık hastane düğümleri, ham hasta verilerini merkezileştirmeden yerel klinik kohortlar üzerinde parametre verimli FFA-LoRA adaptörleri eğitir. Dağıtık modeller; hasta düzeyinde diferansiyel gizlilik ve RLWE 128-bit CKKS homomorfik şifreleme ile kurumlar arası dağılım kaymasını (non-IID) aşarak güvenle yakınsar.",
@@ -732,7 +732,7 @@ export const TRANSLATIONS: Record<Language, Record<string, string>> = {
     landing_metric_efficiency: "Bant Genişliği Verimliliği",
     landing_metric_efficiency_sub: "FFA-LoRA %99.6 PEFT",
 
-    // Sonuçlar ve Kanıtlar
+    // Landing Results Showcase
     landing_sec_results_badge: "Klinik Doğrulama ve Çıkarım",
     landing_showcase_spec_badge: "Mimari Spesifikasyon ve Kıyaslama Referans Protokolü",
     landing_showcase_spec_desc: "Bu etkileşimli gösterim; CDSS açıklanabilirlik şemasını, çok modlu vaka eşleştirme formatını ve yakınsama telemetrisini tanıtır. Canlı model çıkarımı yapmak veya yeni vaka yüklemek için Klinik Kokpit'e geçiniz.",
@@ -753,7 +753,7 @@ export const TRANSLATIONS: Record<Language, Record<string, string>> = {
     landing_tab_convergence: "Eğitim Monitörü",
     landing_tab_report: "Klinik Raporlama",
 
-    // Sonuçlar Sekme 1: Grad-CAM XAI
+    // Results Tab 1: Grad-CAM XAI
     landing_tab1_finding: "Birincil Teşhis: Pnömoni",
     landing_tab1_patient_ref: "Protokol No: #P-8821",
     landing_tab1_headline: "Hava Bronkogramı İçeren Bilateral Alveolar Konsolidasyon",
@@ -765,7 +765,7 @@ export const TRANSLATIONS: Record<Language, Record<string, string>> = {
     landing_tab1_assessment_label: "Radyolojik Değerlendirme:",
     landing_tab1_assessment_text: "Sağ alt lob parankiminde hava bronkogramları içeren, apikal segmentleri koruyan fokal konsolidasyon alanı.",
 
-    // Sonuçlar Sekme 2: RAG İkizleri
+    // Results Tab 2: RAG Twins
     landing_tab2_badge: "Doğrulanmış Biyopsi Eşleşmeleri",
     landing_tab2_c1_sim: "%96.4 Kosinüs Benzerliği",
     landing_tab2_c1_diag: "Malign Melanom (Yüzeysel Yayılan Tip, Evre IIA)",
@@ -776,7 +776,7 @@ export const TRANSLATIONS: Record<Language, Record<string, string>> = {
     landing_tab2_c2_desc: "Transbronşiyal biyopsi diffüz alveolar hasar ve intra-alveolar fibrin organizasyonunu gösterdi. RT-PCR SARS-CoV-2 pozitif. Kontrol grafisinde opasitelerde belirgin regresyon izlendi.",
     landing_tab2_c2_meta: "Kaynak Merkez: Beth Israel Deaconess Tıp Merkezi (Boston) · Seyir: Klinik ve Radyolojik Düzelme",
 
-    // Sonuçlar Sekme 3: Yakınsama Telemetrisi
+    // Results Tab 3: Convergence Telemetry
     landing_tab3_title: "Çok Merkezli Yakınsama ve Optimizasyon Kayıtları",
     landing_tab3_desc: "FedDyn dinamik hedef hizalaması altında 5 tur boyunca ölçülen test kümesi doğrulama göstergeleri.",
     landing_tab3_status: "Federe Konsensüs Sağlandı",
@@ -793,7 +793,7 @@ export const TRANSLATIONS: Record<Language, Record<string, string>> = {
     landing_tab3_comm_summary: "Toplam İletişim: 5 turda 21.0 MB (Full ViT için gereken 1.3 GB yerine)",
     landing_tab3_savings: "%98.4 Bant Genişliği Tasarrufu",
 
-    // Sonuçlar Sekme 4: Resmi Rapor ve Ses
+    // Results Tab 4: Official Report and Audio
     landing_tab4_pdf_title: "Klinik Karar Destek ve Radyoloji Raporu (A4)",
     landing_tab4_pdf_desc: "Orijinal toraks radyografisi ve Grad-CAM aktivasyon haritası, kalibre edilmiş olasılık dağılımı ve SHA-256 veri bütünlük kodunu içeren tek sayfa klinik rapor.",
     landing_tab4_pdf_btn: "Klinik Kokpitte Rapor Üret",
@@ -801,7 +801,7 @@ export const TRANSLATIONS: Record<Language, Record<string, string>> = {
     landing_tab4_voice_desc: "Ameliyathane ve girişimsel radyoloji ortamları için otomatik ses sentezi. Birincil patolojiyi, güven skorunu ve odak lokalizasyonunu seslendirir.",
     landing_tab4_voice_btn: "Klinik Kokpitte Dinle",
 
-    // Güvenlik ve Gizlilik
+    // Landing Security
     landing_sec_security_badge: "Mahremiyet ve Güvenlik Mimarisi",
     landing_security_title: "Tasarım Gereği Mahremiyet (Privacy-by-Design)",
     landing_security_subtitle: "Medikal veri egemenliğini korumak için çok katmanlı kriptografik ve istatistiksel mahremiyet mekanizmaları uygulanmıştır.",
@@ -818,7 +818,7 @@ export const TRANSLATIONS: Record<Language, Record<string, string>> = {
     landing_p3_tag: "CKKS RLWE (~128-Bit Eşdeğeri Güvenlik)",
     landing_p4_tag: "Kosinüs Uzaklığı ve Kırpılmış Ortalama Filtresi",
 
-    // Mimari İş Akışı
+    // Landing Architecture
     landing_sec_arch_badge: "Sistem Mimarisi ve Protokolü",
     landing_arch_title: "Uçtan Uca Federe Sistem Mimarisi",
     landing_arch_subtitle: "Hastane uç düğümünden hasta başı klinik karar desteğine kadar mahremiyet korumalı zekayı yöneten 5 aşamalı protokol.",
@@ -834,7 +834,7 @@ export const TRANSLATIONS: Record<Language, Record<string, string>> = {
     landing_arch_s5_title: "5. Açıklanabilir Klinik Karar Desteği (CDSS)",
     landing_arch_s5_desc: "Grad-CAM lezyon odak haritaları, federe RAG vaka eşleme, sesli klinik özet ve tek sayfa A4 PDF raporlama.",
 
-    // Kıyaslama Matrisi
+    // Landing Benchmarks
     landing_sec_bench_badge: "Literatür Kıyaslama Hedefleri",
     landing_bench_title: "Performans ve Mahremiyet Karşılaştırması",
     landing_bench_subtitle: "Benzer klinik veri kümeleri üzerinde federe öğrenme literatüründen derlenen referans değerler. Demo ortamı hızlı doğrulama amacıyla hastane başına 40 örnek kullanır; tabloda sunulan AUC değerleri literatürdeki tam ölçekli çalışmalara dayanır.",
@@ -859,7 +859,7 @@ export const TRANSLATIONS: Record<Language, Record<string, string>> = {
     bench_val_high_aligned: "Yüksek (Ortak LoRA Altuzayı)",
     bench_val_trimmed_active: "Kırpılmış Ortalama Filtresi Aktif",
 
-    // Başlatma Penceresi
+    // Launch Modal
     launch_modal_title: "Federe Konsorsiyum Güvenli İletişim Hattı Kuruluyor",
     launch_modal_desc: "4 bağımsız hastane merkezi arasında kriptografik iletişim protokolü ve şifreli kanallar tesis ediliyor...",
     launch_modal_step1: "Hastane Düğüm Güvenlik Kanalları Doğrulandı (4/4 Düğüm Çevrimiçi)",
@@ -877,7 +877,7 @@ export const TRANSLATIONS: Record<Language, Record<string, string>> = {
     launch_fl_phase2: "Kriptografik Güvenli Toplama: CKKS 128-Bit Homomorfik Güncellemeler",
     launch_fl_phase3: "Konsorsiyum Senkronizasyonu: Küresel Konsensüs Modeli Dağıtıldı",
 
-    // Tanıtım Sonu Şeridi
+    // Landing Banner
     landing_banner_title: "Dağıtık Klinik Yapay Zekayı Yönetmeye Hazır mısınız?",
     landing_banner_desc: "Çok merkezli veri kabulünü simüle etmek, federe eğitim turlarını yürütmek ve açıklanabilir klinik tanılar üretmek için canlı orkestrasyon kokpitini başlatın.",
     landing_banner_btn: "Orkestrasyon Kokpitini Başlat",

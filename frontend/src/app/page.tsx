@@ -73,7 +73,7 @@ export default function PresentationLandingPage() {
   };
 
   return (
-    <div className="min-h-screen flex flex-col bg-[var(--bg-app)] text-[var(--text-main)] overflow-x-hidden selection:bg-emerald-500/20">
+    <div className="min-h-screen flex flex-col text-[var(--text-main)] overflow-x-hidden selection:bg-emerald-500/20">
       <Navbar mode="landing" onLaunchDemo={openLaunchModal} />
 
       <ConsortiumLaunchOverlay
@@ -238,7 +238,7 @@ export default function PresentationLandingPage() {
                 return (
                   <div
                     key={i}
-                    className="bg-[var(--bg-app)] p-3.5 sm:p-5 transition-colors hover:bg-[var(--bg-card-inner)] flex flex-col justify-between text-left items-start"
+                    className="bg-[var(--bg-card)]/80 backdrop-blur-sm p-3.5 sm:p-5 transition-colors hover:bg-[var(--bg-card-inner)] flex flex-col justify-between text-left items-start"
                   >
                     <div className="flex items-center gap-1.5 mb-1.5">
                       <IconComponent className={`w-3.5 h-3.5 ${m.accentColor}`} />
@@ -259,7 +259,7 @@ export default function PresentationLandingPage() {
             SECTION 2: HOW IT WORKS
             3-step horizontal pipeline. Simple, clean, no cards.
             ================================================================ */}
-        <section className="border-y border-[var(--border-card)] bg-[var(--bg-card-inner)]">
+        <section className="border-y border-[var(--border-card)] bg-[var(--bg-card-inner)]/60 backdrop-blur-sm">
           <div className="max-w-[1200px] mx-auto px-4 sm:px-6 py-12 sm:py-16">
             <div className="text-center mb-10">
               <div className="text-[11px] font-bold uppercase tracking-widest text-emerald-600 dark:text-emerald-400 mb-2">
@@ -687,7 +687,7 @@ export default function PresentationLandingPage() {
         {/* ================================================================
             SECTION 4: SECURITY (Compact, icon-based, not verbose cards)
             ================================================================ */}
-        <section id="security" className="scroll-mt-20 border-y border-[var(--border-card)] bg-[var(--bg-card-inner)]">
+        <section id="security" className="scroll-mt-20 border-y border-[var(--border-card)] bg-[var(--bg-card-inner)]/60 backdrop-blur-sm">
           <div className="max-w-[1200px] mx-auto px-4 sm:px-6 py-12 sm:py-16">
             <div className="text-center mb-10">
               <div className="text-[11px] font-bold uppercase tracking-widest text-emerald-600 dark:text-emerald-400 mb-1">
@@ -708,7 +708,7 @@ export default function PresentationLandingPage() {
                 { icon: Lock, title: t("landing_pillar_3_title"), desc: t("landing_pillar_3_desc"), tag: t("landing_p3_tag"), accent: "emerald" },
                 { icon: AlertTriangle, title: t("landing_pillar_4_title"), desc: t("landing_pillar_4_desc"), tag: t("landing_p4_tag"), accent: "amber" },
               ].map((pillar, i) => (
-                <div key={i} className="bg-[var(--bg-app)] rounded-xl p-5 border border-[var(--border-card)]">
+                <div key={i} className="bg-[var(--bg-card)]/80 backdrop-blur-sm rounded-xl p-5 border border-[var(--border-card)]">
                   <div className={`w-10 h-10 rounded-xl flex items-center justify-center mb-3 ${
                     pillar.accent === "emerald" ? "bg-emerald-500/10 text-emerald-500" :
                     pillar.accent === "blue" ? "bg-blue-500/10 text-blue-500" :
@@ -833,7 +833,7 @@ export default function PresentationLandingPage() {
         {/* ================================================================
             SECTION 7: FINAL CTA
             ================================================================ */}
-        <section className="border-t border-[var(--border-card)] bg-[var(--bg-card-inner)]">
+        <section className="border-t border-[var(--border-card)] bg-[var(--bg-card-inner)]/60 backdrop-blur-sm">
           <div className="max-w-[1200px] mx-auto px-4 sm:px-6 py-14 sm:py-20 text-center">
             <h2 className="font-display text-2xl sm:text-3xl font-bold text-[var(--text-heading)] mb-3">
               {t("landing_banner_title")}
