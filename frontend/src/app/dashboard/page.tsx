@@ -73,8 +73,14 @@ export default function DashboardPage() {
         .then((res) => (res.ok ? res.json() : null))
         .then((data) => {
           if (data && data.hospitals && Array.isArray(data.hospitals) && data.hospitals.length > 0) {
-            setHospitals(data.hospitals);
-            setIsTrained(Boolean(data.model_trained));
+            // Only set hospitals if they contain full cohort sample images
+            if (data.hospitals[0]?.sample_images && Array.isArray(data.hospitals[0].sample_images)) {
+              setHospitals(data.hospitals);
+              setIsTrained(Boolean(data.model_trained));
+            } else {
+              setHospitals([]);
+              setIsTrained(false);
+            }
             if (data.rounds && Array.isArray(data.rounds) && data.rounds.length > 0) {
               setHistory(data.rounds);
               setCurrentRound(data.rounds.length);

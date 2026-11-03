@@ -67,10 +67,10 @@ export function ApiProvider({ children }: { children: React.ReactNode }) {
     return Array.from(new Set(candidates));
   }, []);
 
-  // Ping a single endpoint with strict timeout
-  const pingEndpoint = async (targetUrl: string, timeoutMs = 3000): Promise<boolean> => {
+  // Ping a single endpoint with strict timeout and clean failure handling
+  const pingEndpoint = async (targetUrl: string, timeoutMs = 2500): Promise<boolean> => {
     try {
-      const clean = targetUrl.replace(/\/$/, "");
+      const clean = targetUrl.replace(/\/+$/, "");
       const fullUrl = clean ? `${clean}/api/health` : "/api/health";
       const controller = new AbortController();
       const timer = setTimeout(() => controller.abort(), timeoutMs);
@@ -79,12 +79,13 @@ export function ApiProvider({ children }: { children: React.ReactNode }) {
         method: "GET",
         signal: controller.signal,
         headers: { Accept: "application/json" },
-      });
+        cache: "no-store",
+      }).catch(() => null);
       clearTimeout(timer);
 
-      if (res.ok) {
+      if (res && res.ok) {
         const data = await res.json().catch(() => null);
-        return data && (data.status === "healthy" || data.status === "ok" || res.status === 200);
+        return Boolean(data && (data.status === "healthy" || data.status === "ok" || res.status === 200));
       }
       return false;
     } catch {
@@ -118,16 +119,16 @@ export function ApiProvider({ children }: { children: React.ReactNode }) {
     const candidates = getCandidateUrls();
     setIsChecking(true);
 
-    const envUrl = process.env.NEXT_PUBLIC_API_URL?.trim().replace(/\/$/, "");
+    const envUrl = process.env.NEXT_PUBLIC_API_URL?.trim().replace(/\/+$/, "");
     const saved = typeof window !== "undefined" ? localStorage.getItem("fedxray_api_url") : null;
     const prioritized = envUrl
       ? [envUrl, ...candidates.filter((c) => c !== envUrl)]
       : saved
-      ? [saved.trim().replace(/\/$/, ""), ...candidates.filter((c) => c !== saved.trim().replace(/\/$/, ""))]
+      ? [saved.trim().replace(/\/+$/, ""), ...candidates.filter((c) => c !== saved.trim().replace(/\/+$/, ""))]
       : candidates;
 
     for (const cand of prioritized) {
-      const ok = await pingEndpoint(cand, 2500);
+      const ok = await pingEndpoint(cand, 2000);
       if (ok) {
         setApiUrlState(cand);
         if (typeof window !== "undefined") {
@@ -142,12 +143,21 @@ export function ApiProvider({ children }: { children: React.ReactNode }) {
         setLastError(null);
         setReconnectAttempts(0);
         return cand;
+      } else {
+        // If the candidate in localStorage is dead, prune it to prevent endless DNS polling
+        if (typeof window !== "undefined" && saved && cand === saved.trim().replace(/\/+$/, "")) {
+          try {
+            localStorage.removeItem("fedxray_api_url");
+          } catch {
+            // Ignore storage error
+          }
+        }
       }
     }
 
     setIsConnected(false);
     setIsChecking(false);
-    setLastError("Unable to reach FastAPI backend on any local or candidate port");
+    setLastError("Unable to reach FastAPI backend on candidate ports");
     return null;
   }, [getCandidateUrls]);
 
@@ -193,25 +203,33 @@ export function ApiProvider({ children }: { children: React.ReactNode }) {
     };
   }, [autoDiscoverApi]);
 
-  // Background Heartbeat & Auto-Reconnect Loop
+  // Background Heartbeat & Auto-Reconnect Loop with Exponential Backoff
   useEffect(() => {
-    const intervalMs = isConnected ? 12000 : 3500;
+    // When offline, stop polling after 5 consecutive attempts to avoid flooding network console
+    if (!isConnected && reconnectAttempts >= 5) {
+      return;
+    }
 
-    const timer = setInterval(async () => {
+    // Exponential backoff: 4s -> 6s -> 9s -> 13.5s -> 20s when offline; 15s when connected
+    const delayMs = isConnected
+      ? 15000
+      : Math.min(25000, Math.round(4000 * Math.pow(1.5, Math.min(reconnectAttempts, 4))));
+
+    const timer = setTimeout(async () => {
       if (!isConnectedRef.current) {
         setReconnectAttempts((prev) => prev + 1);
         await autoDiscoverApi();
       } else {
-        const healthy = await pingEndpoint(apiUrlRef.current, 3000);
+        const healthy = await pingEndpoint(apiUrlRef.current, 2500);
         if (!healthy) {
           setIsConnected(false);
           await autoDiscoverApi();
         }
       }
-    }, intervalMs);
+    }, delayMs);
 
-    return () => clearInterval(timer);
-  }, [isConnected, autoDiscoverApi]);
+    return () => clearTimeout(timer);
+  }, [isConnected, reconnectAttempts, autoDiscoverApi]);
 
   // Re-verify on window focus and network online events
   useEffect(() => {

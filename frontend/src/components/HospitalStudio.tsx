@@ -239,32 +239,39 @@ export default function HospitalStudio({ hospitals, onGenerate, isLoading }: Hos
                 </div>
 
                 <div className="grid grid-cols-3 gap-2 sm:gap-2.5">
-                  {active.sample_images.map((imgData, i) => (
-                    <div key={i} className="xray-frame group hover:ring-2 hover:ring-accent-500/40 transition-all aspect-square rounded-xl overflow-hidden shadow-sm">
-                      <canvas
-                        ref={(canvas) => {
-                          if (!canvas) return;
-                          const ctx = canvas.getContext("2d");
-                          if (!ctx) return;
-                          const size = imgData.length;
-                          canvas.width = size;
-                          canvas.height = size;
-                          const img = ctx.createImageData(size, size);
-                          for (let r = 0; r < size; r++) {
-                            for (let c = 0; c < size; c++) {
-                              const val = Math.floor(imgData[r][c] * 255);
-                              const idx = (r * size + c) * 4;
-                              img.data[idx] = val;
-                              img.data[idx + 1] = val;
-                              img.data[idx + 2] = val;
-                              img.data[idx + 3] = 255;
+                  {active?.sample_images && Array.isArray(active.sample_images) && active.sample_images.length > 0 ? (
+                    active.sample_images.map((imgData, i) => (
+                      <div key={i} className="xray-frame group hover:ring-2 hover:ring-accent-500/40 transition-all aspect-square rounded-xl overflow-hidden shadow-sm">
+                        <canvas
+                          ref={(canvas) => {
+                            if (!canvas || !imgData || !Array.isArray(imgData) || !imgData.length) return;
+                            const ctx = canvas.getContext("2d");
+                            if (!ctx) return;
+                            const size = imgData.length;
+                            canvas.width = size;
+                            canvas.height = size;
+                            const img = ctx.createImageData(size, size);
+                            for (let r = 0; r < size; r++) {
+                              if (!imgData[r]) continue;
+                              for (let c = 0; c < size; c++) {
+                                const val = Math.floor((imgData[r][c] ?? 0) * 255);
+                                const idx = (r * size + c) * 4;
+                                img.data[idx] = val;
+                                img.data[idx + 1] = val;
+                                img.data[idx + 2] = val;
+                                img.data[idx + 3] = 255;
+                              }
                             }
-                          }
-                          ctx.putImageData(img, 0, 0);
-                        }}
-                      />
+                            ctx.putImageData(img, 0, 0);
+                          }}
+                        />
+                      </div>
+                    ))
+                  ) : (
+                    <div className="col-span-3 text-center py-6 text-xs text-[var(--text-muted)] font-mono">
+                      No thumbnail samples available
                     </div>
-                  ))}
+                  )}
                 </div>
 
                 <div className="pt-2 border-t border-[var(--border-subtle)] text-[10px] text-[var(--text-muted)] text-center font-mono truncate">

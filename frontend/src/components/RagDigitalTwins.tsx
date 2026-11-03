@@ -22,7 +22,8 @@ export default function RagDigitalTwins({ twins }: RagDigitalTwinsProps) {
       <p className="text-[10px] sm:text-[11px] text-[var(--text-muted)] mb-3 sm:mb-4">{t("sec3_rag_desc")}</p>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-        {twins.map((c) => (
+        {twins && Array.isArray(twins) && twins.length > 0 ? (
+          twins.map((c) => (
           <div key={c.case_id} className="p-3 sm:p-4 rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-app)] flex flex-col justify-between">
             <div>
               <div className="flex items-center justify-between mb-2">
@@ -59,7 +60,12 @@ export default function RagDigitalTwins({ twins }: RagDigitalTwinsProps) {
               </div>
             )}
           </div>
-        ))}
+        ))
+        ) : (
+          <div className="col-span-2 text-center py-4 text-xs text-[var(--text-muted)] font-mono">
+            No digital twin cases available.
+          </div>
+        )}
       </div>
     </div>
   );
