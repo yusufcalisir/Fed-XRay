@@ -22,6 +22,7 @@ export const isEphemeralTunnel = (url: string): boolean => {
       lower.includes(".trycloudflare.com") ||
       lower.includes(".loca.lt") ||
       lower.includes(".ngrok-free.app") ||
+      lower.includes(".ngrok.io") ||
       lower.includes(".serveo.net") ||
       lower.includes("globe-celebration-poems-shakira")
     );
@@ -51,16 +52,36 @@ export function ApiProvider({ children }: { children: React.ReactNode }) {
   isConnectedRef.current = isConnected;
   const deadTunnelsRef = useRef<Set<string>>(new Set());
 
-  // Build ordered candidate URLs based on environment and network configuration
-  const getCandidateUrls = useCallback((): string[] => {
-    const candidates: string[] = [];
-
-    // 1. Saved preference in localStorage (if not in dead tunnels)
+  // Cleanup lingering ephemeral tunnels from localStorage on mount
+  useEffect(() => {
     if (typeof window !== "undefined") {
       try {
         const saved = localStorage.getItem("fedxray_api_url")?.trim().replace(/\/$/, "");
-        if (saved && !deadTunnelsRef.current.has(saved)) {
-          candidates.push(saved);
+        if (saved && isEphemeralTunnel(saved)) {
+          localStorage.removeItem("fedxray_api_url");
+        }
+      } catch {
+        // Ignore storage error
+      }
+    }
+  }, []);
+
+  // Build ordered candidate URLs based on environment and network configuration
+  const getCandidateUrls = useCallback((): string[] => {
+    const candidates: string[] = [];
+    const isHttps = typeof window !== "undefined" && window.location?.protocol === "https:";
+    const host = typeof window !== "undefined" ? window.location?.hostname : "";
+
+    // 1. Saved preference in localStorage (if not in dead tunnels and not ephemeral)
+    if (typeof window !== "undefined") {
+      try {
+        const saved = localStorage.getItem("fedxray_api_url")?.trim().replace(/\/$/, "");
+        if (saved && isEphemeralTunnel(saved)) {
+          localStorage.removeItem("fedxray_api_url");
+        } else if (saved && !deadTunnelsRef.current.has(saved)) {
+          if (!isHttps || saved.startsWith("https://")) {
+            candidates.push(saved);
+          }
         }
       } catch {
         // Ignore localStorage access restrictions
@@ -70,32 +91,33 @@ export function ApiProvider({ children }: { children: React.ReactNode }) {
     // 2. Next.js Public Environment Variable (authoritative configuration)
     if (process.env.NEXT_PUBLIC_API_URL) {
       const env = process.env.NEXT_PUBLIC_API_URL.trim().replace(/\/$/, "");
-      if (env && !deadTunnelsRef.current.has(env)) {
-        candidates.push(env);
+      if (env && !deadTunnelsRef.current.has(env) && !isEphemeralTunnel(env)) {
+        if (!isHttps || env.startsWith("https://")) {
+          candidates.push(env);
+        }
       }
     }
 
-    // 3. Loopback IP and Localhost standards
-    candidates.push("http://127.0.0.1:8000");
-    candidates.push("http://localhost:8000");
+    // 3. Loopback IP and Localhost standards (only valid over HTTP locally to prevent Mixed Content)
+    if (!isHttps) {
+      candidates.push("http://127.0.0.1:8000");
+      candidates.push("http://localhost:8000");
 
-    // 4. Dynamic hostname if running on LAN / local network IP
-    if (typeof window !== "undefined" && window.location?.hostname) {
-      const host = window.location.hostname;
-      if (host !== "localhost" && host !== "127.0.0.1") {
+      // 4. Dynamic hostname if running on LAN / local network IP
+      const isLocalIp = /^192\.168\.|^10\.|^172\.(1[6-9]|2[0-9]|3[0-1])\.|^127\.|localhost|\.local$/.test(host || "");
+      if (isLocalIp && host !== "localhost" && host !== "127.0.0.1") {
         candidates.push(`http://${host}:8000`);
       }
     }
 
-    // 5. Relative URL (leveraging Next.js rewrites proxy: /api/* -> backend)
+    // 5. Relative URL (leveraging Next.js rewrite proxy or gateway: /api/* -> backend)
     candidates.push("");
 
     const uniqueList = Array.from(new Set(candidates.filter((c) => c !== undefined && c !== null)));
     // Prioritize relative proxy and 127.0.0.1 loopback for rapid local handshake
     const sorted = [
       "",
-      "http://127.0.0.1:8000",
-      "http://localhost:8000",
+      ...(!isHttps ? ["http://127.0.0.1:8000", "http://localhost:8000"] : []),
       ...uniqueList.filter((c) => c !== "" && c !== "http://127.0.0.1:8000" && c !== "http://localhost:8000"),
     ];
     return Array.from(new Set(sorted));
@@ -160,14 +182,17 @@ export function ApiProvider({ children }: { children: React.ReactNode }) {
 
     const envUrlClean = process.env.NEXT_PUBLIC_API_URL?.trim().replace(/\/+$/, "");
     const saved = typeof window !== "undefined" ? localStorage.getItem("fedxray_api_url")?.trim().replace(/\/+$/, "") : null;
+    const isHttps = typeof window !== "undefined" && window.location?.protocol === "https:";
+
     // In browser runtime, prioritize relative proxy "" first for seamless zero-CORS proxying,
-    // followed by envUrlClean, saved preference, and loopback endpoints.
-    const prioritized = Array.from(new Set([
+    // followed by validated secure public endpoints, saved preference, and candidates.
+    const candidateList = [
       "",
-      ...(envUrlClean && !deadTunnelsRef.current.has(envUrlClean) ? [envUrlClean] : []),
-      ...(saved && !deadTunnelsRef.current.has(saved) ? [saved] : []),
+      ...(envUrlClean && !deadTunnelsRef.current.has(envUrlClean) && !isEphemeralTunnel(envUrlClean) && (!isHttps || envUrlClean.startsWith("https://")) ? [envUrlClean] : []),
+      ...(saved && !deadTunnelsRef.current.has(saved) && !isEphemeralTunnel(saved) && (!isHttps || saved.startsWith("https://")) ? [saved] : []),
       ...candidates,
-    ]));
+    ];
+    const prioritized = Array.from(new Set(candidateList.filter((c) => typeof c === "string")));
 
     for (const cand of prioritized) {
       if (deadTunnelsRef.current.has(cand)) continue;
@@ -203,8 +228,8 @@ export function ApiProvider({ children }: { children: React.ReactNode }) {
       }
     }
 
-    // Crucial fallback: ensure apiUrl does not remain set to a dead third-party domain
-    setApiUrlState("http://127.0.0.1:8000");
+    // Crucial fallback: preserve relative route on HTTPS to avoid Mixed Content errors
+    setApiUrlState(isHttps ? "" : "http://127.0.0.1:8000");
     setIsConnected(false);
     setIsChecking(false);
     setLastError("Unable to reach FastAPI backend on candidate ports");
@@ -227,7 +252,7 @@ export function ApiProvider({ children }: { children: React.ReactNode }) {
     checkConnection(cleanUrl);
   };
 
-  // Initial startup: progressive discovery with rapid retries for cold start / reload
+  // Initial startup: progressive discovery with single rapid retry for cold start
   useEffect(() => {
     let isMounted = true;
 
@@ -236,13 +261,7 @@ export function ApiProvider({ children }: { children: React.ReactNode }) {
       const found = await autoDiscoverApi();
       if (found || !isMounted) return;
 
-      // 2. Retry at 1s if initial attempt failed (backend starting up)
-      await new Promise((r) => setTimeout(r, 1000));
-      if (!isMounted) return;
-      const found2 = await autoDiscoverApi();
-      if (found2 || !isMounted) return;
-
-      // 3. Final rapid retry at 2.5s
+      // 2. Single retry at 1.5s
       await new Promise((r) => setTimeout(r, 1500));
       if (!isMounted) return;
       await autoDiscoverApi();
@@ -257,8 +276,8 @@ export function ApiProvider({ children }: { children: React.ReactNode }) {
 
   // Background Heartbeat & Auto-Reconnect Loop with Exponential Backoff
   useEffect(() => {
-    // When offline, stop polling after 3 consecutive attempts to avoid flooding network console
-    if (!isConnected && reconnectAttempts >= 3) {
+    // When offline, stop polling after 2 consecutive attempts to avoid flooding network console
+    if (!isConnected && reconnectAttempts >= 2) {
       return;
     }
 
