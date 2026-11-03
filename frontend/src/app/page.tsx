@@ -131,15 +131,15 @@ export default function PresentationLandingPage() {
               <div className="flex flex-col gap-2 text-[12px] text-[var(--text-muted)]">
                 <div className="flex items-center gap-2">
                   <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
-                  <span>Zero patient data egress - scans stay inside hospital firewalls</span>
+                  <span>Decentralized Node Training: Raw patient scans never leave local hospital firewalls</span>
                 </div>
                 <div className="flex items-center gap-2">
                   <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
-                  <span>CKKS 128-bit homomorphic encryption with Patient-Level DP (&epsilon; &le; 2.0)</span>
+                  <span>Dual Privacy Defense: RLWE 128-bit CKKS homomorphic encryption + Patient-Level DP (&epsilon; &le; 2.0)</span>
                 </div>
                 <div className="flex items-center gap-2">
                   <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
-                  <span>FFA-LoRA PEFT at 99.6% parameter efficiency across non-IID hospital cohorts</span>
+                  <span>Parameter-Efficient Consensus: FFA-LoRA adapters reduce communication payloads by 99.6%</span>
                 </div>
               </div>
             </div>

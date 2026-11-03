@@ -30,21 +30,21 @@ describe("PresentationLandingPage Component", () => {
   it("renders hero headline, badge, and all 5 verifiable KPI metrics", () => {
     renderLandingPage();
 
-    expect(screen.getByText("Federated Medical AI Platform")).toBeInTheDocument();
-    expect(screen.getByText("Train AI Models Across Hospitals Without Sharing Patient Data")).toBeInTheDocument();
+    expect(screen.getByText("Privacy-Preserving Federated Learning (PPFL)")).toBeInTheDocument();
+    expect(screen.getByText("Privacy-Preserving Federated Learning for Multi-Hospital Medical AI")).toBeInTheDocument();
 
     // 5 KPI Metrics
     expect(screen.getByText("4")).toBeInTheDocument();
-    expect(screen.getByText("Hospital Nodes")).toBeInTheDocument();
+    expect(screen.getByText("Federated Nodes")).toBeInTheDocument();
 
     expect(screen.getByText("0 B")).toBeInTheDocument();
-    expect(screen.getByText("Patient Data Shared")).toBeInTheDocument();
+    expect(screen.getByText("Raw Data Transferred")).toBeInTheDocument();
 
     expect(screen.getByText("128-Bit")).toBeInTheDocument();
-    expect(screen.getByText("Encryption")).toBeInTheDocument();
+    expect(screen.getByText("Homomorphic Encryption")).toBeInTheDocument();
 
     expect(screen.getByText("98.4%")).toBeInTheDocument();
-    expect(screen.getAllByText("Diagnostic AUC")[0]).toBeInTheDocument();
+    expect(screen.getAllByText("Consensus Model AUC")[0]).toBeInTheDocument();
 
     expect(screen.getByText("ε ≤ 2.0")).toBeInTheDocument();
     expect(screen.getByText("Privacy Budget")).toBeInTheDocument();
