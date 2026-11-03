@@ -15,13 +15,6 @@ import numpy as np
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from sklearn.metrics import (  # pyrefly: ignore[missing-source-for-stubs]
-    accuracy_score,
-    confusion_matrix,
-    f1_score,
-    precision_score,
-    recall_score,
-)
 
 from ..models.cnn import create_model as create_cnn_model
 from ..models.vit import create_medical_vit
@@ -679,14 +672,35 @@ class CentralServer:
                 all_preds.extend(predicted.cpu().numpy().tolist())
                 all_labels.extend(batch_labels.cpu().numpy().tolist())
 
-        all_preds_arr = np.array(all_preds)
-        all_labels_arr = np.array(all_labels)
+        all_preds_arr = np.array(all_preds, dtype=np.int64)
+        all_labels_arr = np.array(all_labels, dtype=np.int64)
 
-        accuracy = accuracy_score(all_labels_arr, all_preds_arr)
-        precision = precision_score(all_labels_arr, all_preds_arr, average="macro", zero_division=0)
-        recall = recall_score(all_labels_arr, all_preds_arr, average="macro", zero_division=0)
-        f1 = f1_score(all_labels_arr, all_preds_arr, average="macro", zero_division=0)
-        conf_matrix = confusion_matrix(all_labels_arr, all_preds_arr)
+        # Pure NumPy multiclass evaluation (zero PyArrow/sklearn crash overhead)
+        n_eval = len(all_labels_arr)
+        if n_eval > 0:
+            accuracy = float(np.mean(all_labels_arr == all_preds_arr))
+            conf_matrix = np.zeros((3, 3), dtype=np.int64)
+            for t_val, p_val in zip(all_labels_arr, all_preds_arr):
+                if 0 <= t_val < 3 and 0 <= p_val < 3:
+                    conf_matrix[t_val, p_val] += 1
+            precisions, recalls, f1s = [], [], []
+            for c in range(3):
+                tp = conf_matrix[c, c]
+                fp = np.sum(conf_matrix[:, c]) - tp
+                fn = np.sum(conf_matrix[c, :]) - tp
+                p = tp / (tp + fp) if (tp + fp) > 0 else 0.0
+                r = tp / (tp + fn) if (tp + fn) > 0 else 0.0
+                f = (2 * p * r) / (p + r) if (p + r) > 0 else 0.0
+                precisions.append(p)
+                recalls.append(r)
+                f1s.append(f)
+            precision = float(np.mean(precisions))
+            recall = float(np.mean(recalls))
+            f1 = float(np.mean(f1s))
+        else:
+            accuracy, precision, recall, f1 = 0.0, 0.0, 0.0, 0.0
+            conf_matrix = np.zeros((3, 3), dtype=np.int64)
+
         avg_loss = total_loss / max(n_samples, 1)
 
         return EvaluationMetrics(

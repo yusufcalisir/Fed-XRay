@@ -12,10 +12,17 @@ from __future__ import annotations
 import os
 from typing import Any, Dict, List, Optional, Sequence, Union
 import numpy as np
-from sklearn.metrics.pairwise import cosine_similarity  # pyrefly: ignore[missing-source-for-stubs]
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+
+def _compute_cosine_similarity(a: np.ndarray, b: np.ndarray) -> np.ndarray:
+    """Compute cosine similarity via pure NumPy to eliminate heavy sklearn memory footprint."""
+    a_norm = np.linalg.norm(a, axis=1, keepdims=True)
+    b_norm = np.linalg.norm(b, axis=1, keepdims=True)
+    a_safe = np.where(a_norm == 0, 1e-12, a_norm)
+    b_safe = np.where(b_norm == 0, 1e-12, b_norm)
+    return np.dot(a / a_safe, (b / b_safe).T)
 
 try:
     if os.environ.get("DISABLE_HNSW", "0") != "1":
@@ -191,7 +198,7 @@ class FederatedRAGCaseMatcher:
             # In hnswlib with space="cosine", distance = 1 - cosine_sim
             sims = 1.0 - distances[0]
         else:
-            sims_all = cosine_similarity(query_float, self.embeddings_matrix)[0]
+            sims_all = _compute_cosine_similarity(query_float, self.embeddings_matrix)[0]
             top_indices = np.argsort(sims_all)[::-1][:k_val]
             sims = sims_all[top_indices]
 
@@ -263,7 +270,7 @@ class FederatedRAGCaseMatcher:
             top_indices = labels_matched[0]
             sims = 1.0 - distances[0]
         else:
-            sims_all = cosine_similarity(query_float, self.embeddings_matrix)[0]
+            sims_all = _compute_cosine_similarity(query_float, self.embeddings_matrix)[0]
             top_indices = np.argsort(sims_all)[::-1][:k_val]
             sims = sims_all[top_indices]
 

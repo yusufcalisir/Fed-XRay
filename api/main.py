@@ -40,8 +40,6 @@ from src.fed_xray.storage import PersistentStateStore
 from src.fed_xray.core.client import HospitalClient
 from src.fed_xray.core.server import CentralServer, run_federated_round
 from src.fed_xray.core.privacy import SecAggPeer
-from src.fed_xray.federation import run_flower_federated_orchestration
-import flwr as fl
 from src.fed_xray.cdss.xai import GradCAM, GradCAMUnavailableError, get_explanation_text
 from src.fed_xray.cdss.similarity import (
     FederatedRAGCaseMatcher,
@@ -234,8 +232,8 @@ class AppState:
             logger.warning("Failed to persist federated state: %s", exc)
             return False
 
-    def restore_from_disk(self, checkpoint_dir: str = "checkpoints") -> bool:
-        """Restore trained model weights, metadata, cohorts, and history from SQLite and disk."""
+    def restore_from_disk(self, checkpoint_dir: str = "checkpoints", load_weights: bool = False) -> bool:
+        """Restore metadata, cohorts, history, and optional weights from SQLite and disk."""
         restored_any = False
         out_dir = Path(checkpoint_dir)
         model_path = out_dir / "federated_global_model.pt"
@@ -271,7 +269,7 @@ class AppState:
                     s_imgs = c.get("sample_images", [])
                     s_lbls = c.get("sample_labels", [0])
                     self.hospital_samples[hid] = {
-                        "images": np.array(s_imgs) if s_imgs else np.zeros((1, self.image_size, self.image_size)),
+                        "images": np.array(s_imgs, dtype=np.float32) if s_imgs else np.zeros((1, 56, 56), dtype=np.float32),
                         "labels": np.array(s_lbls),
                         "distribution": c.get("distribution", [0.33, 0.33, 0.34]),
                     }
@@ -291,50 +289,42 @@ class AppState:
         except Exception as exc:
             logger.warning("SQLite state hydration encountered warning: %s", exc)
 
-        # 5. Restore PyTorch model weights if file exists
-        if model_path.exists():
-            try:
-                server = CentralServer(
-                    device=self.device,
-                    model_type=self.model_type,
-                    peft_mode=self.peft_mode,
-                    lora_r=8,
-                    lora_alpha=16.0,
-                    deep_layers_only=True,
-                    img_size=self.image_size,
-                )
-                saved_weights = torch.load(model_path, map_location=self.device)
-                server.global_model.load_state_dict(saved_weights)
-                base_m = getattr(server.global_model, "base_model", server.global_model)
-                base_m.is_pretrained = True
-                base_m.checkpoint_provenance = f"restored_disk_checkpoint:{model_path.name}"
-                self.server = server
-                self.model_trained = True
-
-                default_manifest = Path("data/manifests/strategy_e_manifest.csv")
-                if default_manifest.exists():
-                    try:
-                        ecosystem = StrategyEDatasetEcosystem(seed=42)
-                        records = ecosystem.load_from_disk_manifest(
-                            manifest_path=str(default_manifest),
-                            images_dir=str(Path("data")),
-                            target_size=(self.image_size, self.image_size),
-                            in_channels=1,
-                        )
-                        self.reference_records = records
-                        self.rag_matcher = FederatedRAGCaseMatcher(
-                            reference_records=self.reference_records,
-                            model=server.get_model(),
-                        )
-                    except Exception:
-                        pass
-
-                logger.info("Successfully restored federated state and trained weights from %s", out_dir)
-                restored_any = True
-            except Exception as exc:
-                logger.warning("Failed to restore PyTorch model from disk: %s", exc)
+        # 5. Restore PyTorch model weights on-demand if explicitly requested
+        if load_weights and model_path.exists():
+            return self.restore_model_weights(checkpoint_dir=checkpoint_dir) or restored_any
 
         return restored_any
+
+    def restore_model_weights(self, checkpoint_dir: str = "checkpoints") -> bool:
+        """Restore trained PyTorch model weights on-demand to keep idle startup RSS minimal."""
+        if self.server is not None and self.model_trained:
+            return True
+        out_dir = Path(checkpoint_dir)
+        model_path = out_dir / "federated_global_model.pt"
+        if not model_path.exists():
+            return False
+        try:
+            server = CentralServer(
+                device=self.device,
+                model_type=self.model_type,
+                peft_mode=self.peft_mode,
+                lora_r=8,
+                lora_alpha=16.0,
+                deep_layers_only=True,
+                img_size=self.image_size,
+            )
+            saved_weights = torch.load(model_path, map_location=self.device)
+            server.global_model.load_state_dict(saved_weights)
+            base_m = getattr(server.global_model, "base_model", server.global_model)
+            base_m.is_pretrained = True
+            base_m.checkpoint_provenance = f"restored_disk_checkpoint:{model_path.name}"
+            self.server = server
+            self.model_trained = True
+            logger.info("Successfully restored federated state and trained weights from %s", out_dir)
+            return True
+        except Exception as exc:
+            logger.warning("Failed to restore PyTorch model from disk: %s", exc)
+            return False
 
     def ensure_cohort_loaded(self, num_hospitals: int = 4) -> bool:
         """Ensure Strategy E cohorts and PyTorch dataloaders are ready in memory.
@@ -395,7 +385,6 @@ class AppState:
                 loader = ecosystem.records_to_dataloader(part, batch_size=32, shuffle=True)
                 dataloaders_list.append(loader)
 
-                images = np.stack([r.image_tensor.numpy()[0] for r in part])
                 labels = np.array([r.label for r in part])
 
                 c0 = int(np.sum(labels == 0))
@@ -435,7 +424,7 @@ class AppState:
                 )
                 hospitals_info.append(info)
                 self.hospital_samples[h] = {
-                    "images": images,
+                    "images": np.array(sample_imgs, dtype=np.float32) if sample_imgs else np.zeros((1, 56, 56), dtype=np.float32),
                     "labels": labels,
                     "distribution": dist,
                 }
@@ -456,6 +445,8 @@ class AppState:
                 self.store.save_hospital_cohorts([hi.model_dump() for hi in hospitals_info])
             except Exception:
                 pass
+            import gc
+            gc.collect()
             return True
         except Exception as exc:
             logger.warning("ensure_cohort_loaded encountered warning: %s", exc)
@@ -463,8 +454,7 @@ class AppState:
 
 
 state = AppState()
-state.restore_from_disk()
-state.ensure_cohort_loaded()
+state.restore_from_disk(load_weights=False)
 
 
 def require_cohort() -> Tuple[List[Any], Tuple[torch.Tensor, torch.Tensor]]:
@@ -478,7 +468,9 @@ def require_cohort() -> Tuple[List[Any], Tuple[torch.Tensor, torch.Tensor]]:
 
 
 def require_trained_server() -> CentralServer:
-    """Return the trained federated server or fail honestly if uninitialized."""
+    """Return the trained federated server or lazy-restore weights from disk."""
+    if state.server is None:
+        state.restore_model_weights()
     if not state.model_trained or state.server is None:
         raise HTTPException(
             status_code=409,
@@ -662,7 +654,8 @@ def get_default_reference_cases() -> List[Dict[str, Any]]:
 
 @app.get("/api/state")
 async def get_state():
-    state.ensure_cohort_loaded()
+    if not state.hospital_cohort_info:
+        state.ensure_cohort_loaded()
     checkpoint_exists = Path("checkpoints/federated_global_model.pt").exists()
     active_epsilon = (
         float(state.server.get_privacy_spent())
@@ -955,7 +948,6 @@ async def generate_cohorts(req: CohortGenerateRequest):
         loader = ecosystem.records_to_dataloader(part, batch_size=32, shuffle=True)
         dataloaders_list.append(loader)
 
-        images = np.stack([r.image_tensor.numpy()[0] for r in part])
         labels = np.array([r.label for r in part])
 
         c0 = int(np.sum(labels == 0))
@@ -998,7 +990,7 @@ async def generate_cohorts(req: CohortGenerateRequest):
         hospitals_info.append(info)
 
         state.hospital_samples[h] = {
-            "images": images,
+            "images": np.array(sample_imgs, dtype=np.float32) if sample_imgs else np.zeros((1, 56, 56), dtype=np.float32),
             "labels": labels,
             "distribution": dist,
         }
@@ -1038,6 +1030,9 @@ async def generate_cohorts(req: CohortGenerateRequest):
         })
     except Exception as exc:
         logger.warning("Failed to auto-persist generated cohorts to SQLite: %s", exc)
+
+    import gc
+    gc.collect()
 
     return CohortGenerateResponse(
         success=True,
@@ -1611,6 +1606,8 @@ async def start_flower_training_background(
                 except Exception as db_exc:
                     logger.warning("Failed to persist training round %d to SQLite: %s", round_num, db_exc)
 
+            from src.fed_xray.federation import run_flower_federated_orchestration
+
             run_flower_federated_orchestration(
                 server=srv,
                 clients=clients,
@@ -1644,8 +1641,13 @@ async def start_flower_training_background(
 @app.get("/api/fl/flower-info")
 async def get_flower_info():
     """Report Flower gRPC bridge capabilities, version, and supported FL protocols."""
+    try:
+        import flwr as fl
+        flower_version = getattr(fl, "__version__", "1.8.0")
+    except ImportError:
+        flower_version = "1.8.0"
     return {
-        "flower_version": getattr(fl, "__version__", "1.8.0"),
+        "flower_version": flower_version,
         "bridge_available": True,
         "supported_transports": ["in_process_proxy", "grpc"],
         "supported_strategies": ["FlowerFedXRayStrategy"],
