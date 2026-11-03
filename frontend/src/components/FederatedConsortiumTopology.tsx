@@ -130,40 +130,37 @@ export default function FederatedConsortiumTopology({
   };
 
   return (
-    <div className="relative w-full min-h-[500px] sm:min-h-[520px] lg:h-[550px] flex flex-col justify-between select-none bg-transparent">
+    <div className="relative w-full min-h-[500px] sm:min-h-[520px] lg:h-[550px] flex flex-col justify-between select-none rounded-3xl p-3 sm:p-4 bg-[var(--bg-card)]/35 dark:bg-slate-900/40 border border-[var(--border-card)] shadow-xs backdrop-blur-xs">
       {/* Floating Top Console Navigation Bar */}
-      <div className="relative z-30 flex flex-col sm:flex-row sm:items-center justify-between gap-2 p-2 sm:px-3.5 sm:py-2 rounded-2xl bg-[var(--bg-card)]/75 dark:bg-slate-900/75 border border-[var(--border-card)] shadow-xs backdrop-blur-md">
-        <div className="flex items-center gap-2 min-w-0">
-          <div className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse shadow-[0_0_10px_#10b981] shrink-0" />
-          <div className="min-w-0">
-            <span className="font-mono text-[11px] sm:text-xs font-bold uppercase tracking-wider text-[var(--text-heading)] block truncate">
-              {t("topo_badge_title")}
-            </span>
-          </div>
+      <div className="relative z-30 flex items-center justify-between gap-2 p-2 sm:px-3.5 sm:py-2 rounded-2xl bg-[var(--bg-card)]/80 dark:bg-slate-900/80 border border-[var(--border-card)] shadow-xs backdrop-blur-md">
+        <div className="flex items-center gap-2 min-w-0 shrink-0">
+          <div className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse shadow-[0_0_8px_#10b981] shrink-0" />
+          <span className="font-mono text-[11px] sm:text-xs font-bold uppercase tracking-wider text-[var(--text-heading)] whitespace-nowrap">
+            {t("topo_badge_title")}
+          </span>
         </div>
 
         {/* Action Controls & View Switcher */}
-        <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto justify-between sm:justify-end">
+        <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
           {activeView === "topology" && (
             <button
               type="button"
               onClick={triggerConsensusRound}
               disabled={isSimulatingRound}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[11px] font-mono font-bold bg-emerald-600 hover:bg-emerald-500 text-white shadow-xs shadow-emerald-600/20 transition-all disabled:opacity-50 active:scale-95 border border-emerald-500/30"
+              title={t("topo_trigger_round")}
+              aria-label={t("topo_trigger_round")}
+              className="w-7 h-7 sm:w-8 sm:h-8 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white shadow-xs shadow-emerald-600/20 transition-all disabled:opacity-50 active:scale-95 border border-emerald-500/30 flex items-center justify-center shrink-0 cursor-pointer"
             >
-              <Zap className={`w-3.5 h-3.5 ${isSimulatingRound ? "animate-spin text-amber-200" : ""}`} />
-              <span>
-                {isSimulatingRound ? t("topo_simulating_round") : t("topo_trigger_round")}
-              </span>
+              <Zap className={`w-3.5 h-3.5 sm:w-4 sm:h-4 ${isSimulatingRound ? "animate-spin text-amber-200" : "text-white"}`} />
             </button>
           )}
 
           {/* View Mode Switcher */}
-          <div className="grid grid-cols-3 sm:flex items-center p-1 rounded-xl bg-[var(--bg-card-inner)] border border-[var(--border-card)] text-[10px] sm:text-[11px] font-semibold w-full sm:w-auto">
+          <div className="flex items-center p-0.5 sm:p-1 rounded-xl bg-[var(--bg-card-inner)] border border-[var(--border-card)] text-[10px] sm:text-[11px] font-semibold">
             <button
               type="button"
               onClick={() => setActiveView("topology")}
-              className={`px-2.5 py-1 text-center rounded-lg transition-all whitespace-nowrap ${
+              className={`px-2 sm:px-2.5 py-1 text-center rounded-lg transition-all whitespace-nowrap ${
                 activeView === "topology"
                   ? "bg-emerald-600 text-white shadow-xs font-bold"
                   : "text-[var(--text-muted)] hover:text-[var(--text-heading)]"
@@ -174,7 +171,7 @@ export default function FederatedConsortiumTopology({
             <button
               type="button"
               onClick={() => setActiveView("crypto")}
-              className={`px-2.5 py-1 text-center rounded-lg transition-all whitespace-nowrap ${
+              className={`px-2 sm:px-2.5 py-1 text-center rounded-lg transition-all whitespace-nowrap ${
                 activeView === "crypto"
                   ? "bg-emerald-600 text-white shadow-xs font-bold"
                   : "text-[var(--text-muted)] hover:text-[var(--text-heading)]"
@@ -185,7 +182,7 @@ export default function FederatedConsortiumTopology({
             <button
               type="button"
               onClick={() => setActiveView("telemetry")}
-              className={`px-2.5 py-1 text-center rounded-lg transition-all whitespace-nowrap ${
+              className={`px-2 sm:px-2.5 py-1 text-center rounded-lg transition-all whitespace-nowrap ${
                 activeView === "telemetry"
                   ? "bg-emerald-600 text-white shadow-xs font-bold"
                   : "text-[var(--text-muted)] hover:text-[var(--text-heading)]"

@@ -418,10 +418,10 @@ export const TRANSLATIONS: Record<Language, Record<string, string>> = {
     landing_how_s3_desc: "The aggregated global model returns to participating hospital clients for explainable local inference, cross-center validation, and clinical decision support.",
 
     // Federated Consortium Topology
-    topo_badge_title: "Consortium Enclave Network",
+    topo_badge_title: "Consortium Enclave",
     topo_badge_synced: "4/4 Synced",
     topo_tab_map: "Topology",
-    topo_tab_crypto: "Crypto Enclave",
+    topo_tab_crypto: "Crypto",
     topo_tab_telemetry: "Consensus",
     topo_view_3d: "3D View",
     topo_view_2d: "2D Plan",
@@ -893,10 +893,10 @@ export const TRANSLATIONS: Record<Language, Record<string, string>> = {
     landing_how_s3_desc: "Toplanan küresel konsensüs modeli, hastane düğümlerine geri iletilerek açıklanabilir Grad-CAM çıkarımı ve biyopsi doğrulamalı karar desteği sunar.",
 
     // Federated Consortium Topology
-    topo_badge_title: "Konsorsiyum Güvenli İletişim Ağı",
+    topo_badge_title: "Konsorsiyum Güvenli Ağı",
     topo_badge_synced: "4/4 Senkronize",
     topo_tab_map: "Topoloji",
-    topo_tab_crypto: "Kriptografik Güvenlik",
+    topo_tab_crypto: "Kripto",
     topo_tab_telemetry: "Konsensüs",
     topo_view_3d: "3 Boyutlu",
     topo_view_2d: "2 Boyutlu",
