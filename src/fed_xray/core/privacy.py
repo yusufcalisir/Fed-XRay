@@ -10,12 +10,26 @@ Implements:
 """
 
 from __future__ import annotations
+from dataclasses import dataclass
 import math
 from typing import Dict, List, Optional, Tuple
 from cryptography.hazmat.primitives import hashes, serialization
 from cryptography.hazmat.primitives.asymmetric import x25519
 from cryptography.hazmat.primitives.kdf.hkdf import HKDF
 import torch
+
+
+@dataclass
+class ClientAttestation:
+    """Cryptographic enclave attestation emitted by a clinical node before aggregation."""
+
+    client_id: int
+    validation_accuracy: float
+    update_l2_norm: float
+    public_key_bytes: bytes
+    is_malicious: bool = False
+    signature: bytes = b""
+    sample_count: int = 0
 
 
 class EncryptedTensor:
@@ -36,11 +50,12 @@ class EncryptedTensor:
 class CKKSEncryptionEngine:
     """Leveled CKKS homomorphic encryption (RLWE) backed by Microsoft SEAL via TenSEAL.
 
-    Key separation:
-    - The secret context (holds the secret key) belongs to the key holder (clients or a
-      threshold committee) and is used only by ``encrypt_*`` and ``decrypt_*``.
-    - The public context (secret key removed) is the only context used by the
-      aggregation server in ``homomorphic_sum``; the server never observes plaintext.
+    Key separation under Option J standard:
+    - The secret context (holds secret key) belongs to the key holder / consortium enclave
+      and is used only for decrypting aggregated parameters.
+    - The public context (secret key stripped) is distributed to clients for parameter
+      encryption and to the aggregation server for homomorphic sum.
+    - The aggregation server strictly cannot decrypt individual client ciphertexts.
 
     Additive homomorphism with one plaintext-scalar multiplication level:
     ct_global = sum_k w_k * ct_k.
@@ -51,6 +66,8 @@ class CKKSEncryptionEngine:
         poly_modulus_degree: int = 8192,
         scale_bits: int = 40,
         security_level: int = 128,
+        public_only: bool = False,
+        public_context_bytes: Optional[bytes] = None,
     ) -> None:
         try:
             import tenseal as ts
@@ -67,22 +84,52 @@ class CKKSEncryptionEngine:
         self.security_level = security_level
         self.slots = poly_modulus_degree // 2
 
-        self._secret_ctx = ts.context(
-            ts.SCHEME_TYPE.CKKS,
-            poly_modulus_degree=poly_modulus_degree,
-            coeff_mod_bit_sizes=[60, scale_bits, scale_bits, 60],
-        )
-        self._secret_ctx.global_scale = self.scale
-        self._public_ctx = self._secret_ctx.copy()
-        self._public_ctx.make_context_public()
+        if public_context_bytes is not None:
+            self._public_ctx = ts.context_from(public_context_bytes)
+            self._secret_ctx = None
+            self.is_public_only = True
+        elif public_only:
+            temp_ctx = ts.context(
+                ts.SCHEME_TYPE.CKKS,
+                poly_modulus_degree=poly_modulus_degree,
+                coeff_mod_bit_sizes=[60, scale_bits, scale_bits, 60],
+            )
+            temp_ctx.global_scale = self.scale
+            pub = temp_ctx.copy()
+            pub.make_context_public()
+            self._public_ctx = ts.context_from(pub.serialize())
+            self._secret_ctx = None
+            self.is_public_only = True
+        else:
+            self._secret_ctx = ts.context(
+                ts.SCHEME_TYPE.CKKS,
+                poly_modulus_degree=poly_modulus_degree,
+                coeff_mod_bit_sizes=[60, scale_bits, scale_bits, 60],
+            )
+            self._secret_ctx.global_scale = self.scale
+            self._public_ctx = self._secret_ctx.copy()
+            self._public_ctx.make_context_public()
+            self.is_public_only = False
+
+    def export_public_context(self) -> bytes:
+        """Export serialized public context (secret key stripped) for untrusted server distribution."""
+        return self._public_ctx.serialize()
+
+    @classmethod
+    def from_public_bytes(
+        cls, public_bytes: bytes, scale_bits: int = 40
+    ) -> "CKKSEncryptionEngine":
+        """Instantiate a strictly public-only CKKS engine with zero decryption capability."""
+        return cls(scale_bits=scale_bits, public_context_bytes=public_bytes)
 
     def encrypt_vector(self, plain_vector: torch.Tensor) -> EncryptedTensor:
         """Encrypt a float tensor into serialized CKKS ciphertext chunks."""
+        ctx = self._public_ctx if self._secret_ctx is None else self._secret_ctx
         flat = plain_vector.detach().cpu().float().flatten().tolist()
         payload: List[bytes] = []
         for i in range(0, max(len(flat), 1), self.slots):
             chunk = flat[i : i + self.slots] or [0.0]
-            payload.append(self._ts.ckks_vector(self._secret_ctx, chunk).serialize())
+            payload.append(self._ts.ckks_vector(ctx, chunk).serialize())
         return EncryptedTensor(tuple(plain_vector.shape), payload)
 
     def homomorphic_sum(
@@ -106,6 +153,11 @@ class CKKSEncryptionEngine:
 
     def decrypt_vector(self, ciphertext: EncryptedTensor) -> torch.Tensor:
         """Decrypt with the secret key and restore the original tensor shape."""
+        if self._secret_ctx is None:
+            raise PermissionError(
+                "Central aggregation server holds only the public CKKS context and cannot decrypt ciphertexts. "
+                "Decryption must be performed by the key holder or consortium committee."
+            )
         values: List[float] = []
         for blob in ciphertext.payload:
             values.extend(self._ts.ckks_vector_from(self._secret_ctx, blob).decrypt())
@@ -140,6 +192,11 @@ class CKKSEncryptionEngine:
         target_dtypes: Optional[Dict[str, torch.dtype]] = None,
     ) -> Dict[str, torch.Tensor]:
         """Decrypt aggregated ciphertexts into a plaintext parameter dictionary."""
+        if self._secret_ctx is None:
+            raise PermissionError(
+                "Central aggregation server holds only the public CKKS context and cannot decrypt ciphertexts. "
+                "Decryption must be performed by the key holder or consortium committee."
+            )
         decrypted = {}
         for k, ct in encrypted_dict.items():
             plain = self.decrypt_vector(ct)
@@ -147,6 +204,41 @@ class CKKSEncryptionEngine:
                 plain = plain.to(target_dtypes[k])
             decrypted[k] = plain
         return decrypted
+
+
+class ConsortiumKeyEnclave:
+    """Cryptographic consortium key manager maintaining the secret RLWE key.
+
+    In the Option J architecture, the secret key is kept securely inside the consortium
+    trust enclave (or hospital client quorum). The untrusted central aggregation server
+    receives strictly the serialized public context with the secret key stripped.
+    """
+
+    def __init__(
+        self,
+        poly_modulus_degree: int = 8192,
+        scale_bits: int = 40,
+        security_level: int = 128,
+    ) -> None:
+        self.engine = CKKSEncryptionEngine(
+            poly_modulus_degree=poly_modulus_degree,
+            scale_bits=scale_bits,
+            security_level=security_level,
+            public_only=False,
+        )
+
+    @property
+    def public_context_bytes(self) -> bytes:
+        """Export serialized public context with secret key stripped."""
+        return self.engine.export_public_context()
+
+    def decrypt_aggregated_state_dict(
+        self,
+        encrypted_dict: Dict[str, EncryptedTensor],
+        target_dtypes: Optional[Dict[str, torch.dtype]] = None,
+    ) -> Dict[str, torch.Tensor]:
+        """Perform consortium decryption of the final aggregated ciphertext dictionary."""
+        return self.engine.decrypt_state_dict(encrypted_dict, target_dtypes=target_dtypes)
 
 
 class SecAggPeer:
