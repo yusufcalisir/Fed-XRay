@@ -191,7 +191,7 @@ export const TRANSLATIONS: Record<Language, Record<string, string>> = {
     // Landing Hero
     landing_hero_badge: "Federated Medical AI Platform",
     landing_hero_title: "Train AI Models Across Hospitals Without Sharing Patient Data",
-    landing_hero_desc: "Fed-XRay connects hospital imaging departments into a secure federated network. Each hospital trains locally on its own data. Only encrypted model updates are shared. The result: a diagnostic AI trained on diverse, multi-center data that no single institution could access alone.",
+    landing_hero_desc: "Enterprise federated learning platform for multi-hospital oncology and medical imaging. Train state-of-the-art vision models across sovereign hospital enclaves with zero patient data transfers, certified differential privacy, and homomorphic cryptographic consensus.",
     landing_cta_launch: "Launch Live Demo",
     landing_cta_docs: "Explore Technical Architecture",
     landing_metric_nodes: "Hospital Nodes",
@@ -606,7 +606,7 @@ export const TRANSLATIONS: Record<Language, Record<string, string>> = {
     // Ana Tanıtım Bölümü
     landing_hero_badge: "Mahremiyet Korumalı Dağıtık Sağlık Yapay Zekası",
     landing_hero_title: "Federe Medikal Görüntüleme ve Onkoloji Yapay Zekası Konsorsiyumu",
-    landing_hero_desc: "Klinik merkezler arasında ham hasta verisini transfer etmeden ortak medikal yapay zeka modelleri geliştirin. Hasta düzeyinde diferansiyel gizlilik (DP), CKKS homomorfik şifreleme, FFA-LoRA parametre optimizasyonu ve açıklanabilir klinik karar desteği (CDSS).",
+    landing_hero_desc: "Çok merkezli onkoloji ve tıbbi görüntüleme için kurumsal federe öğrenme platformu. Ham hasta verisini transfer etmeden, sertifikalı diferansiyel gizlilik ve homomorfik şifreleme ile egemen hastane ağları arasında yapay zeka modelleri eğitin.",
     landing_cta_launch: "Konsorsiyum Kokpitini Başlat",
     landing_cta_docs: "Teknik Mimariyi İncele",
     landing_metric_nodes: "Hastane Düğümü",
