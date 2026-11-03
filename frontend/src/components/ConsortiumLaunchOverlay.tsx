@@ -208,7 +208,7 @@ export default function ConsortiumLaunchOverlay({
 
   return (
     <div className="fixed inset-0 z-[99999] flex items-center justify-center p-3 sm:p-5 bg-black/80 backdrop-blur-md transition-all">
-      <div className="relative w-full max-w-lg bg-[var(--bg-card)] border border-[var(--border-card)] rounded-2xl p-4 sm:p-6 shadow-2xl overflow-hidden select-none">
+      <div className="relative w-full max-w-lg max-h-[92vh] overflow-y-auto bg-[var(--bg-card)] border border-[var(--border-card)] rounded-2xl p-4 sm:p-6 shadow-2xl select-none">
         {/* Close Button */}
         <button
           onClick={onClose}

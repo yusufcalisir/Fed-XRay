@@ -127,10 +127,10 @@ TRANSLATIONS: Dict[str, Dict[str, str]] = {
         "sec2_metric_recall": "Macro Recall",
 
         # Section 3 Tabs & File Upload
-        "sec3_tab_benchmark": "Verified Benchmark Archive",
-        "sec3_tab_upload": "Upload Patient Radiograph",
+        "sec3_tab_benchmark": "Benchmark Cases",
+        "sec3_tab_upload": "Upload Scan",
         "sec3_select_patient_case": "Select Benchmark Patient Study",
-        "sec3_uploader_label": "Upload Patient Radiograph or Scan (PNG, JPG, NPY)",
+        "sec3_uploader_label": "Upload Patient Radiograph",
         "sec3_uploader_help": "Supports PNG, JPG, JPEG, and NPY array formats (up to 200MB)",
         "sec3_uploader_preview": "Uploaded Scan Preview",
 
@@ -257,10 +257,10 @@ TRANSLATIONS: Dict[str, Dict[str, str]] = {
         "sec2_metric_recall": "Makro Duyarlılık",
 
         # Section 3 Tabs & File Upload
-        "sec3_tab_benchmark": "Doğrulanmış Referans Arşivi",
-        "sec3_tab_upload": "Hasta Radyografisi Yükle",
+        "sec3_tab_benchmark": "Referans Vakalar",
+        "sec3_tab_upload": "Tarama Yükle",
         "sec3_select_patient_case": "Referans Hasta İncelemesini Seçin",
-        "sec3_uploader_label": "Hasta Radyografisi veya Taraması Yükleyin (PNG, JPG, NPY)",
+        "sec3_uploader_label": "Hasta Radyografisi Yükle",
         "sec3_uploader_help": "PNG, JPG, JPEG ve NPY matris formatlarını destekler (200MB'a kadar)",
         "sec3_uploader_preview": "Yüklenen Tarama Önizlemesi",
 

@@ -24,6 +24,7 @@ import {
   AlertTriangle,
   Building2,
   Eye,
+  Zap,
 } from "lucide-react";
 
 import { BackendSystemState } from "@/types";
@@ -117,9 +118,42 @@ export default function PresentationLandingPage() {
                 {t("landing_hero_title")}
               </h1>
 
-              <p className="text-[15px] sm:text-base text-[var(--text-muted)] leading-relaxed mb-6 max-w-lg">
+              <p className="text-[15px] sm:text-base text-[var(--text-muted)] leading-relaxed mb-5 max-w-lg">
                 {t("landing_hero_desc")}
               </p>
+
+              {/* High-Impact Clinical Architecture Highlights */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 mb-6">
+                <div className="p-3 rounded-xl border border-[var(--border-card)] bg-[var(--bg-card-inner)] flex flex-col justify-between">
+                  <div className="flex items-center gap-1.5 text-emerald-600 dark:text-emerald-400 font-bold text-xs">
+                    <Lock className="w-3.5 h-3.5 shrink-0" />
+                    <span>Zero Data Egress</span>
+                  </div>
+                  <p className="text-[11px] text-[var(--text-muted)] mt-1 leading-snug">
+                    Patient scans remain 100% inside local hospital firewalls.
+                  </p>
+                </div>
+
+                <div className="p-3 rounded-xl border border-[var(--border-card)] bg-[var(--bg-card-inner)] flex flex-col justify-between">
+                  <div className="flex items-center gap-1.5 text-sky-600 dark:text-sky-400 font-bold text-xs">
+                    <Cpu className="w-3.5 h-3.5 shrink-0" />
+                    <span>CKKS 128-Bit HE</span>
+                  </div>
+                  <p className="text-[11px] text-[var(--text-muted)] mt-1 leading-snug">
+                    Leveled homomorphic encryption with zero plaintext exposure.
+                  </p>
+                </div>
+
+                <div className="p-3 rounded-xl border border-[var(--border-card)] bg-[var(--bg-card-inner)] flex flex-col justify-between">
+                  <div className="flex items-center gap-1.5 text-indigo-600 dark:text-indigo-400 font-bold text-xs">
+                    <Zap className="w-3.5 h-3.5 shrink-0" />
+                    <span>99.6% PEFT</span>
+                  </div>
+                  <p className="text-[11px] text-[var(--text-muted)] mt-1 leading-snug">
+                    FFA-LoRA low-rank adaptation across heterogeneous nodes.
+                  </p>
+                </div>
+              </div>
 
               <div className="flex flex-wrap items-center gap-3 mb-5">
                 <button
@@ -193,7 +227,7 @@ export default function PresentationLandingPage() {
               </span>
             </div>
 
-            <div className="grid grid-cols-2 sm:grid-cols-5 gap-px border border-[var(--border-card)] rounded-2xl overflow-hidden bg-[var(--border-card)] shadow-xs">
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-px border border-[var(--border-card)] rounded-2xl overflow-hidden bg-[var(--border-card)] shadow-xs">
               {[
                 {
                   value: systemState?.hospitals?.length ? String(systemState.hospitals.length) : "4",
@@ -245,16 +279,19 @@ export default function PresentationLandingPage() {
                   icon: ShieldCheck,
                   accentColor: "text-indigo-500",
                 },
+                {
+                  value: "99.6%",
+                  label: t("landing_metric_efficiency"),
+                  sub: t("landing_metric_efficiency_sub"),
+                  icon: Zap,
+                  accentColor: "text-amber-500",
+                },
               ].map((m, i) => {
                 const IconComponent = m.icon;
                 return (
                   <div
                     key={i}
-                    className={`bg-[var(--bg-app)] p-3.5 sm:p-5 transition-colors hover:bg-[var(--bg-card-inner)] flex flex-col justify-between ${
-                      i === 4
-                        ? "col-span-2 sm:col-span-1 text-center sm:text-left items-center sm:items-start"
-                        : "text-center sm:text-left items-center sm:items-start"
-                    }`}
+                    className="bg-[var(--bg-app)] p-3.5 sm:p-5 transition-colors hover:bg-[var(--bg-card-inner)] flex flex-col justify-between text-left items-start"
                   >
                     <div className="flex items-center gap-1.5 mb-1.5">
                       <IconComponent className={`w-3.5 h-3.5 ${m.accentColor}`} />
@@ -841,7 +878,7 @@ export default function PresentationLandingPage() {
             </p>
             <button
               onClick={openLaunchModal}
-              className="btn-primary text-sm px-8 py-3.5 rounded-xl"
+              className="btn-primary text-sm px-8 py-3.5 rounded-xl w-full sm:w-auto"
             >
               <ShieldCheck className="w-4 h-4" />
               <span>{t("landing_banner_btn")}</span>

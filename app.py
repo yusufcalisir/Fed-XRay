@@ -498,32 +498,32 @@ st.markdown("""
         box-shadow: 0 6px 18px rgba(5, 150, 105, 0.45) !important;
     }
 
-    /* Foolproof File Uploader Fix (Eliminating text overlap and collision) */
+    /* Modern Non-Colliding Responsive File Uploader */
     div[data-testid="stFileUploader"] {
-        background: var(--fed-card-bg-subtle);
-        border: 1.5px dashed rgba(56, 189, 248, 0.35);
-        border-radius: var(--fed-radius-md);
-        padding: 1.1rem 1.4rem;
-        transition: border-color 0.2s ease, background 0.2s ease;
-        margin-top: 0.4rem;
-        margin-bottom: 0.8rem;
+        background: rgba(15, 23, 42, 0.65) !important;
+        border: 1.5px dashed rgba(56, 189, 248, 0.35) !important;
+        border-radius: var(--fed-radius-md) !important;
+        padding: 1.25rem 1.4rem !important;
+        margin-top: 0.5rem !important;
+        margin-bottom: 0.85rem !important;
+        transition: border-color 0.2s ease, background 0.2s ease !important;
     }
 
     div[data-testid="stFileUploader"]:hover {
-        border-color: rgba(56, 189, 248, 0.7);
-        background: rgba(15, 23, 42, 0.85);
+        border-color: rgba(56, 189, 248, 0.7) !important;
+        background: rgba(15, 23, 42, 0.85) !important;
     }
 
     div[data-testid="stFileUploaderDropzone"] {
         border: none !important;
         background: transparent !important;
-        padding: 0.25rem 0 !important;
+        padding: 0.5rem 0 !important;
         display: flex !important;
-        flex-direction: row !important;
+        flex-direction: column !important;
         align-items: center !important;
-        justify-content: space-between !important;
-        gap: 1.25rem !important;
-        flex-wrap: wrap !important;
+        justify-content: center !important;
+        text-align: center !important;
+        gap: 0.75rem !important;
     }
 
     div[data-testid="stFileUploaderDropzone"] [data-testid="stBaseButton-secondary"] {
@@ -531,20 +531,30 @@ st.markdown("""
         color: #FFFFFF !important;
         border: 1px solid rgba(255, 255, 255, 0.15) !important;
         border-radius: 9px !important;
-        padding: 0.52rem 1.3rem !important;
+        padding: 0.55rem 1.5rem !important;
         font-weight: 600 !important;
         font-size: 0.86rem !important;
         box-shadow: 0 4px 12px rgba(2, 132, 199, 0.28) !important;
         width: auto !important;
-        min-width: 120px !important;
-        white-space: nowrap !important;
+        display: inline-flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        margin: 0 auto !important;
     }
 
     div[data-testid="stFileUploaderDropzoneInstructions"] {
         color: var(--fed-text-muted) !important;
         font-size: 0.82rem !important;
-        flex: 1 1 auto !important;
-        text-align: left !important;
+        text-align: center !important;
+        width: 100% !important;
+        margin: 0 !important;
+    }
+
+    div[data-testid="stFileUploaderDropzoneInstructions"] small {
+        color: #64748B !important;
+        font-size: 0.75rem !important;
+        display: block !important;
+        margin-top: 0.35rem !important;
     }
 
     /* Segmented Language Radio Buttons */

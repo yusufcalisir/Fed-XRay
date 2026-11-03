@@ -66,3 +66,4 @@ export default function Footer({ maxWidth = "max-w-[1360px]" }: FooterProps) {
     </footer>
   );
 }
+

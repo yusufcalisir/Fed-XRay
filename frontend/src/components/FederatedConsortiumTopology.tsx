@@ -490,14 +490,14 @@ export default function FederatedConsortiumTopology({
           </div>
 
           {/* Subline: Scanner & Skew Details */}
-          <div className="mt-1.5 pt-1.5 border-t border-[var(--border-subtle)] flex flex-col sm:flex-row sm:items-center justify-between gap-1 text-[10px] font-mono">
-            <span className="text-[var(--text-muted)] truncate">
+          <div className="mt-2 pt-2 border-t border-[var(--border-subtle)] flex flex-col sm:flex-row sm:items-center justify-between gap-1.5 text-[10px] font-mono">
+            <span className="text-[var(--text-muted)] leading-tight break-words">
               {selectedNode.scanner}
             </span>
-            <span className="inline-flex items-center gap-1 text-amber-600 dark:text-amber-400 font-semibold shrink-0 bg-amber-500/10 px-2 py-0.5 rounded border border-amber-500/20 w-fit">
-              <span>{t("topo_skew_label")}</span>
-              <span>{t(selectedNode.skewKey)}</span>
-            </span>
+            <div className="inline-flex items-center gap-1 text-amber-600 dark:text-amber-400 font-semibold bg-amber-500/10 px-2 py-0.5 rounded border border-amber-500/20 text-[10px] w-fit max-w-full">
+              <span className="shrink-0">{t("topo_skew_label")}</span>
+              <span className="break-words">{t(selectedNode.skewKey)}</span>
+            </div>
           </div>
         </div>
       )}

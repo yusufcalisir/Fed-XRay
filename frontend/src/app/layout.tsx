@@ -1,8 +1,14 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import { LanguageProvider } from "@/context/LanguageContext";
 import { ApiProvider } from "@/context/ApiContext";
 import ClientRuntimeShield from "@/components/ClientRuntimeShield";
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 5,
+};
 
 export const metadata: Metadata = {
   title: "Fed-XRay | Decentralized Healthcare AI Infrastructure",

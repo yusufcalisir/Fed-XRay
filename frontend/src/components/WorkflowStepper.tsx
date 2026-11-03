@@ -134,10 +134,10 @@ export default function WorkflowStepper({
                 </div>
               </div>
 
-              <div className="flex items-center justify-between text-[9px] sm:text-[10px] pt-1.5 border-t border-[var(--border-subtle)]">
-                <span className="text-[var(--text-muted)]">{t("workflow_status_col")}</span>
+              <div className="flex items-center justify-between text-[9px] sm:text-[10px] pt-1.5 border-t border-[var(--border-subtle)] gap-1">
+                <span className="text-[var(--text-muted)] shrink-0">{t("workflow_status_col")}</span>
                 <span
-                  className={`font-semibold uppercase tracking-wider ${
+                  className={`font-semibold uppercase tracking-wider truncate text-right ${
                     s.isCompleted
                       ? "text-emerald-600 dark:text-emerald-400 font-bold"
                       : s.isActive

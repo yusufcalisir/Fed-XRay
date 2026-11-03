@@ -204,6 +204,8 @@ export const TRANSLATIONS: Record<Language, Record<string, string>> = {
     landing_metric_auc_sub: "Hold-Out Validation",
     landing_metric_dp: "Privacy Budget",
     landing_metric_dp_sub: "Patient-Level DP",
+    landing_metric_efficiency: "Bandwidth Savings",
+    landing_metric_efficiency_sub: "FFA-LoRA 99.6% PEFT",
 
     // Landing Results Showcase
     landing_sec_results_badge: "Platform Outputs",
@@ -622,6 +624,8 @@ export const TRANSLATIONS: Record<Language, Record<string, string>> = {
     landing_metric_auc_sub: "Literatür Kıyaslama Hedefi",
     landing_metric_dp: "Diferansiyel Gizlilik",
     landing_metric_dp_sub: "Hasta Düzeyinde Bütçe (ε ≤ 2.0)",
+    landing_metric_efficiency: "Bant Genişliği Tasarrufu",
+    landing_metric_efficiency_sub: "FFA-LoRA %99.6 PEFT",
 
     // Sonuçlar ve Kanıtlar
     landing_sec_results_badge: "Klinik Doğrulama ve Çıkarım",
