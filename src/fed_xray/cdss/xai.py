@@ -263,13 +263,15 @@ def get_explanation_text(
                 f"{active_pct:.1f}% of pixels exceed 0.5 normalized relevance."
             )
 
+    is_derm_case = any("melanom" in str(v).lower() or "carcinoma" in str(v).lower() or "nevus" in str(v).lower() for v in labels.values())
     if is_tr:
+        specialist_tr = "uzman hekim veya patoloji incelemesi" if is_derm_case else "uzman hekim veya radyolog incelemesi"
         lines.append(
-            "Araştırma modeli klinik karar destek çıktısıdır. Kesin klinik tanı niteliği taşımaz ve radyolog incelemesi gerektirir."
+            f"Araştırma modeli klinik karar destek çıktısıdır. Kesin klinik tanı niteliği taşımaz ve {specialist_tr} gerektirir."
         )
     else:
+        specialist_en = "specialist physician and pathology review" if is_derm_case else "specialist physician or radiologist review"
         lines.append(
-            "Decision-support output of a research model. It is not a clinical diagnosis and "
-            "requires radiologist review."
+            f"Decision-support output of a research model. It is not a clinical diagnosis and requires {specialist_en}."
         )
     return "\n\n".join(lines)

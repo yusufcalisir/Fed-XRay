@@ -22,6 +22,12 @@ function formatFindings(text: string | undefined, lang: string): string[] {
   // Strip all markdown bold and emphasis asterisks/underscores
   let cleaned = text.replace(/\*\*/g, "").replace(/\*/g, "").trim();
 
+  // Normalize paragraph breaks before known clause headers so sentences never coalesce
+  cleaned = cleaned
+    .replace(/\s+(Runner-up class:|İkinci olası sınıf:)/gi, "\n\n$1")
+    .replace(/\s+(Grad-CAM peak relevance|Grad-CAM aktivasyon)/gi, "\n\n$1")
+    .replace(/\s+(Decision-support output|Araştırma modeli)/gi, "\n\n$1");
+
   const isTurkish = (lang || "").toUpperCase() === "TR";
   if (isTurkish) {
     cleaned = cleaned
@@ -44,7 +50,11 @@ function formatFindings(text: string | undefined, lang: string): string[] {
       .replace(/lower-right/gi, "alt-sağ")
       .replace(/lower-center/gi, "alt-orta")
       .replace(
-        /Decision-support output of a research model\. It is not a clinical diagnosis and requires radiologist review\./gi,
+        /Decision-support output of a research model\. It is not a clinical diagnosis and requires (radiologist|specialist physician) review\./gi,
+        "Araştırma modeli klinik karar destek çıktısıdır. Kesin klinik tanı niteliği taşımaz ve uzman hekim incelemesi gerektirir."
+      )
+      .replace(
+        /Decision-support output of a research model\. It is not a clinical diagnosis and requires specialist physician and pathology review\./gi,
         "Araştırma modeli klinik karar destek çıktısıdır. Kesin klinik tanı niteliği taşımaz ve uzman hekim incelemesi gerektirir."
       )
       .replace(/Basal Cell Carcinoma/gi, "Bazal Hücreli Karsinom")
@@ -53,9 +63,31 @@ function formatFindings(text: string | undefined, lang: string): string[] {
       .replace(/Pneumonia/gi, "Pnömoni")
       .replace(/COVID-19/gi, "COVID-19")
       .replace(/Normal/gi, "Normal Parankim");
+  } else {
+    cleaned = cleaned
+      .replace(/Model tahmini:/gi, "Model prediction:")
+      .replace(/softmax güven skoru:/gi, "softmax confidence:")
+      .replace(/İkinci olası sınıf:/gi, "Runner-up class:")
+      .replace(/fark:/gi, "margin")
+      .replace(/yüzdelik puan/gi, "percentage points")
+      .replace(/Grad-CAM aktivasyon odağı görüntünün/gi, "Grad-CAM peak relevance lies in the")
+      .replace(/bölgesinde yer almaktadır;/gi, "part of the image frame;")
+      .replace(/piksellerin 0\.5 normalize aktivasyon eşiğini aşmaktadır\./gi, "of pixels exceed 0.5 normalized relevance.")
+      .replace(/0\.5 normalize eşiğini aşmaktadır\./gi, "exceed 0.5 normalized relevance.")
+      .replace(/üst-sol/gi, "upper-left")
+      .replace(/üst-sağ/gi, "upper-right")
+      .replace(/orta-sağ/gi, "middle-right")
+      .replace(/orta-sol/gi, "middle-left")
+      .replace(
+        /Araştırma modeli klinik karar destek çıktısıdır\. Kesin klinik tanı niteliği taşımaz ve uzman hekim incelemesi gerektirir\./gi,
+        "Decision-support output of a research model. It is not a clinical diagnosis and requires specialist physician review."
+      )
+      .replace(/Bazal Hücreli Karsinom/gi, "Basal Cell Carcinoma")
+      .replace(/Malign Melanom/gi, "Malignant Melanoma")
+      .replace(/Benign Displastik Nevüs/gi, "Benign Dysplastic Nevus");
   }
 
-  return cleaned.split("\n\n").filter(Boolean);
+  return cleaned.split("\n\n").map((s) => s.trim()).filter(Boolean);
 }
 
 export default function DiagnosticStudio({
@@ -497,12 +529,66 @@ export default function DiagnosticStudio({
                     );
                   })}
                 </div>
-                <div className="mt-4 pt-3 border-t border-[var(--border-subtle)] text-[11px] text-[var(--text-muted)] leading-relaxed space-y-1.5">
-                  {formatFindings(diagnosis.findings, language).map((p, idx) => (
-                    <p key={idx} className={idx === 0 ? "font-semibold text-[var(--text-heading)]" : ""}>
-                      {p}
-                    </p>
-                  ))}
+                <div className="mt-4 pt-3 border-t border-[var(--border-subtle)] space-y-2">
+                  {formatFindings(diagnosis.findings, language).map((paragraph, idx) => {
+                    const isPrimary = idx === 0;
+                    const isDisclaimer =
+                      paragraph.includes("Araştırma modeli") ||
+                      paragraph.includes("Decision-support output");
+                    const isRunnerUp =
+                      paragraph.includes("İkinci olası") ||
+                      paragraph.includes("Runner-up class");
+                    const isGradCam =
+                      paragraph.includes("Grad-CAM") ||
+                      paragraph.includes("aktivasyon odağı");
+
+                    if (isDisclaimer) {
+                      return (
+                        <div
+                          key={idx}
+                          className="mt-2.5 p-2.5 rounded-lg bg-amber-500/10 border border-amber-500/20 text-[10px] text-amber-700 dark:text-amber-300 leading-normal flex items-start gap-2"
+                        >
+                          <ShieldCheck className="w-3.5 h-3.5 shrink-0 mt-0.5 text-amber-600 dark:text-amber-400" />
+                          <span>{paragraph}</span>
+                        </div>
+                      );
+                    }
+
+                    if (isRunnerUp) {
+                      return (
+                        <div
+                          key={idx}
+                          className="p-2 rounded-lg bg-slate-100 dark:bg-white/[0.04] border border-[var(--border-subtle)] text-[11px] text-[var(--text-main)] flex items-center justify-between"
+                        >
+                          <span className="font-medium">{paragraph}</span>
+                        </div>
+                      );
+                    }
+
+                    if (isGradCam) {
+                      return (
+                        <div
+                          key={idx}
+                          className="p-2 rounded-lg bg-sky-500/10 border border-sky-500/20 text-[11px] text-sky-800 dark:text-sky-300"
+                        >
+                          {paragraph}
+                        </div>
+                      );
+                    }
+
+                    return (
+                      <p
+                        key={idx}
+                        className={`text-[11px] leading-relaxed ${
+                          isPrimary
+                            ? "font-semibold text-[var(--text-heading)]"
+                            : "text-[var(--text-muted)]"
+                        }`}
+                      >
+                        {paragraph}
+                      </p>
+                    );
+                  })}
                 </div>
                 <div className="mt-3 text-[11px] text-[var(--text-muted)] py-2 text-center rounded-lg bg-[var(--bg-card-inner)] border border-[var(--border-subtle)]">
                   {t("sec3_ground_truth")}:{" "}

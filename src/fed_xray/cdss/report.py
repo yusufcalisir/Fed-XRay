@@ -469,6 +469,42 @@ def generate_medical_report(
     pdf.set_text_color(51, 65, 85)
 
     clean_text = (explanation or "").replace("**", "").replace("*", "").strip()
+    if is_tr and ("Model prediction:" in clean_text or "Runner-up class:" in clean_text):
+        clean_text = (
+            clean_text.replace("Model prediction:", "Model tahmini:")
+            .replace("softmax confidence:", "softmax guven skoru:")
+            .replace("Runner-up class:", "Ikinci olasi sinif:")
+            .replace("margin", "fark:")
+            .replace("percentage points", "yuzdelik puan")
+            .replace("Grad-CAM peak relevance lies in the", "Grad-CAM aktivasyon odagi goruntunun")
+            .replace("part of the image frame;", "bolgesinde yer almaktadir;")
+            .replace("of pixels exceed 0.5 normalized relevance.", "piksellerin %0.5 normalize esigi asmaktadir.")
+            .replace("exceed 0.5 normalized relevance.", "0.5 normalize esigi asmaktadir.")
+            .replace("upper-left", "ust-sol")
+            .replace("upper-right", "ust-sag")
+            .replace("upper-center", "ust-orta")
+            .replace("middle-left", "orta-sol")
+            .replace("middle-right", "orta-sag")
+            .replace("middle-center", "orta-merkez")
+            .replace("lower-left", "alt-sol")
+            .replace("lower-right", "alt-sag")
+            .replace("lower-center", "alt-orta")
+            .replace(
+                "Decision-support output of a research model. It is not a clinical diagnosis and requires radiologist review.",
+                "Arastirma modeli klinik karar destek ciktisidir. Kesin klinik tani niteligi tasimaz ve uzman hekim incelemesi gerektirir.",
+            )
+            .replace(
+                "Decision-support output of a research model. It is not a clinical diagnosis and requires specialist physician and pathology review.",
+                "Arastirma modeli klinik karar destek ciktisidir. Kesin klinik tani niteligi tasimaz ve uzman hekim incelemesi gerektirir.",
+            )
+            .replace("Basal Cell Carcinoma", "Bazal Hucreli Karsinom")
+            .replace("Malignant Melanoma", "Malign Melanom")
+            .replace("Benign Dysplastic Nevus", "Benign Displastik Nevus")
+            .replace("Pneumonia", "Pnomoni")
+            .replace("COVID-19", "COVID-19")
+            .replace("Normal", "Normal Parankim")
+        )
+
     if not clean_text:
         clean_text = get_diagnosis_explanation(
             diagnosis=diagnosis,
@@ -478,7 +514,49 @@ def generate_medical_report(
             class_names={i: lbl for i, lbl in enumerate(labels)},
             language=lang,
         ).replace("**", "").replace("*", "").strip()
-    pdf.multi_cell(174, 3.7, _sanitize_for_pdf(clean_text)[:650])
+
+    import re
+    clean_text = re.sub(r"\s+(Runner-up class:|Ikinci olasi sinif:|İkinci olası sınıf:)", r"\n\n\1", clean_text, flags=re.IGNORECASE)
+    clean_text = re.sub(r"\s+(Grad-CAM peak relevance|Grad-CAM aktivasyon)", r"\n\n\1", clean_text, flags=re.IGNORECASE)
+    clean_text = re.sub(r"\s+(Decision-support output|Arastirma modeli|Araştırma modeli)", r"\n\n\1", clean_text, flags=re.IGNORECASE)
+
+    paragraphs = [p.strip() for p in clean_text.split("\n\n") if p.strip()]
+    curr_y = y_narr_box + 2.5
+    for p_idx, para in enumerate(paragraphs[:4]):
+        if curr_y > y_narr_box + 30:
+            break
+        pdf.set_xy(18, curr_y)
+        if p_idx == 0:
+            pdf.set_font("Arial", "B", 7.0)
+            pdf.set_text_color(15, 23, 42)
+            lead = "[1] TANI ANALIZI: " if is_tr else "[1] DIAGNOSTIC VERDICT: "
+            text_body = para.replace("Model tahmini: ", "").replace("Model prediction: ", "")
+            pdf.cell(174, 3.8, _sanitize_for_pdf(f"{lead}{text_body}"[:120]), 0, 1)
+            curr_y += 4.5
+        elif "Ikinci olasi" in para or "Runner-up" in para:
+            pdf.set_font("Arial", "", 6.8)
+            pdf.set_text_color(71, 85, 105)
+            lead = "[2] AYIRICI TANI: " if is_tr else "[2] DIFFERENTIAL MARGIN: "
+            text_body = para.replace("Ikinci olasi sinif: ", "").replace("Runner-up class: ", "")
+            pdf.cell(174, 3.8, _sanitize_for_pdf(f"{lead}{text_body}"[:120]), 0, 1)
+            curr_y += 4.2
+        elif "Grad-CAM" in para or "aktivasyon" in para:
+            pdf.set_font("Arial", "", 6.8)
+            pdf.set_text_color(14, 116, 144)
+            lead = "[3] GRAD-CAM SALIENCY: " if is_tr else "[3] GRAD-CAM SALIENCY: "
+            pdf.cell(174, 3.8, _sanitize_for_pdf(f"{lead}{para}"[:120]), 0, 1)
+            curr_y += 4.2
+        elif "Arastirma modeli" in para or "Decision-support" in para:
+            pdf.set_font("Arial", "I", 6.2)
+            pdf.set_text_color(100, 116, 139)
+            lead = "[4] KLINIK PROTOKOL: " if is_tr else "[4] CLINICAL PROTOCOL: "
+            pdf.cell(174, 3.6, _sanitize_for_pdf(f"{lead}{para}"[:130]), 0, 1)
+            curr_y += 4.0
+        else:
+            pdf.set_font("Arial", "", 6.8)
+            pdf.set_text_color(51, 65, 85)
+            pdf.cell(174, 3.6, _sanitize_for_pdf(para[:120]), 0, 1)
+            curr_y += 4.0
 
     # E. Historical Digital Twins (Federated RAG Case Retrieval)
     y_rag = y_narr_box + 38

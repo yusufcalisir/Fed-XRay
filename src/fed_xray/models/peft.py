@@ -88,6 +88,19 @@ class LoRALinear(nn.Module):
             return self.scaling * (self.lora_B @ self.lora_A)
         return torch.zeros(self.out_features, self.in_features, device=self.base_layer.weight.device)
 
+    @property
+    def weight(self) -> torch.Tensor:
+        """Effective parameter weight combining frozen base weight and PEFT adaptation."""
+        if self.r > 0:
+            delta = (self.lora_B @ self.lora_A) * self.scaling
+            return self.base_layer.weight + delta.to(self.base_layer.weight.dtype)
+        return self.base_layer.weight
+
+    @property
+    def bias(self) -> Optional[torch.Tensor]:
+        """Base layer bias tensor."""
+        return self.base_layer.bias
+
 
 class FFALoRALinear(LoRALinear):
     """Federated Freeze-A LoRA: Matrix A is frozen globally; only B is trained & federated."""
@@ -306,7 +319,7 @@ def inject_lora_to_model(
 ) -> Dict[str, Any]:
     """Injects PEFT LoRA adapters or FedPerfix plugins into targeted Vision Transformer layers."""
     if target_modules is None:
-        target_modules = ["q_proj", "v_proj", "query", "value", "to_q", "to_v"]
+        target_modules = ["q_proj", "v_proj", "query", "value", "to_q", "to_v", "qkv"]
 
     adapter_cls: Any = LoRALinear
     if mode == "ffa_lora":

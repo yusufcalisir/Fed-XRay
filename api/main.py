@@ -1646,12 +1646,23 @@ async def download_diagnostic_pdf(
             logging.getLogger("uvicorn.error").warning("RAG case retrieval for PDF failed: %s", exc)
             similar_cases = []
 
+    clean_findings = (findings or "").replace("**", "").replace("*", "").strip()
+    if is_tr and ("Model prediction:" in clean_findings or "Runner-up class:" in clean_findings):
+        clean_findings = get_explanation_text(
+            predicted_class=actual_pred_class,
+            confidence=(actual_confidence / 100.0) if actual_confidence > 1.0 else actual_confidence,
+            probabilities=[p / 100.0 for p in state.last_probabilities] if state.last_probabilities else None,
+            heatmap=state.last_heatmap,
+            class_names=active_labels,
+            language="tr",
+        )
+
     try:
         pdf_bytes = generate_medical_report(
             patient_id=actual_patient_id,
             diagnosis=diag_display,
             confidence=actual_confidence,
-            explanation=findings,
+            explanation=clean_findings,
             heatmap_image=state.last_heatmap,
             original_image=state.last_scan,
             similar_cases=similar_cases,
