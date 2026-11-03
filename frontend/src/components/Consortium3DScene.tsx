@@ -3,9 +3,9 @@
 import React, { useRef, useMemo, useState, useEffect, useCallback } from "react";
 import * as THREE from "three";
 import { Canvas, useFrame } from "@react-three/fiber";
-import { Html, Line } from "@react-three/drei";
+import { Html, Line, RoundedBox, Edges } from "@react-three/drei";
 
-// Detects dark mode via document class mutation observer
+// Hook to detect dark mode via document element class observer
 function useIsDark(): boolean {
   const [isDark, setIsDark] = useState(false);
   useEffect(() => {
@@ -23,7 +23,7 @@ function useIsDark(): boolean {
 }
 
 // ---------------------------------------------------------------------------
-// Types
+// Hospital Node Data Types
 // ---------------------------------------------------------------------------
 interface HospitalNodeData {
   id: string;
@@ -33,6 +33,7 @@ interface HospitalNodeData {
   dpEpsilon: number;
   position: [number, number, number];
   themeColor: string;
+  accentColor: string;
 }
 
 interface Consortium3DSceneProps {
@@ -44,65 +45,57 @@ interface Consortium3DSceneProps {
 }
 
 // ---------------------------------------------------------------------------
-// Hospital node layout and dimensions
+// Network Node Coordinates (Centered & Balanced Layout)
 // ---------------------------------------------------------------------------
 const NODES: HospitalNodeData[] = [
   {
     id: "node-1",
     shortName: "BCN-20000",
-    location: "Barcelona",
+    location: "Barcelona, ES",
     modality: "Dermoscopy",
     dpEpsilon: 1.42,
-    position: [-2.8, 0, -1.6],
+    position: [-2.6, 0, -1.2],
     themeColor: "#10b981",
+    accentColor: "#34d399",
   },
   {
     id: "node-3",
     shortName: "ViDIR",
-    location: "Vienna",
+    location: "Vienna, AT",
     modality: "Histopathology",
     dpEpsilon: 1.55,
-    position: [2.8, 0, -1.6],
+    position: [2.6, 0, -1.2],
     themeColor: "#06b6d4",
+    accentColor: "#38bdf8",
   },
   {
     id: "node-4",
     shortName: "Queensland",
-    location: "Brisbane",
+    location: "Brisbane, AU",
     modality: "Dermoscopy",
     dpEpsilon: 1.48,
-    position: [-2.8, 0, 1.6],
+    position: [-2.6, 0, 1.2],
     themeColor: "#10b981",
+    accentColor: "#34d399",
   },
   {
     id: "node-2",
     shortName: "Beth Israel",
-    location: "Boston",
+    location: "Boston, USA",
     modality: "Chest X-Ray",
     dpEpsilon: 1.38,
-    position: [2.8, 0, 1.6],
-    themeColor: "#38bdf8",
+    position: [2.6, 0, 1.2],
+    themeColor: "#0284c7",
+    accentColor: "#38bdf8",
   },
 ];
 
-// Monolith body
-const MW = 0.85;
-const MH = 1.3;
-const MD = 0.65;
-
-// Server pedestal and tower
-const SBW = 1.1;
-const SBH = 0.4;
-const SBD = 0.9;
-const STW = 0.7;
-const STH = 1.8;
-const STD = 0.6;
-const CRYPTO_Y = 3.0;
-
 // ---------------------------------------------------------------------------
-// HospitalMonolith: 3D building with medical cross, beacon, and label
+// Sub-component: Hospital Node Edge Pod
+// Sleek frosted glass / titanium computing block with rotating holographic
+// diamond crystal, precision glowing bevel edges, and high-contrast badge.
 // ---------------------------------------------------------------------------
-function HospitalMonolith({
+function HospitalNodePod({
   node,
   isSelected,
   isDark,
@@ -113,49 +106,65 @@ function HospitalMonolith({
   isDark: boolean;
   onSelect: (id: string) => void;
 }) {
-  const floatRef = useRef<THREE.Group>(null);
+  const groupRef = useRef<THREE.Group>(null);
+  const crystalRef = useRef<THREE.Mesh>(null);
+  const ringRef = useRef<THREE.Mesh>(null);
   const [hovered, setHovered] = useState(false);
 
   useFrame(({ clock }) => {
-    if (!floatRef.current) return;
     const t = clock.elapsedTime;
-    const lev = isSelected
-      ? Math.sin(t * 3) * 0.12 + 0.35
-      : hovered
-        ? 0.18
-        : Math.sin(t * 2 + node.position[0] * 1.5) * 0.06;
-    floatRef.current.position.y = MH / 2 + lev;
-  });
 
-  const bodyColor = isDark ? "#1a2538" : "#f1f5f9";
-  const emit = isSelected ? 0.28 : hovered ? 0.14 : 0.04;
+    // Subtle breathing elevation for the pod
+    if (groupRef.current) {
+      const lev = isSelected
+        ? Math.sin(t * 3) * 0.08 + 0.16
+        : hovered
+          ? 0.1
+          : Math.sin(t * 2 + node.position[0]) * 0.03;
+      groupRef.current.position.y = lev;
+    }
+
+    // Rotating holographic crystal above the pod
+    if (crystalRef.current) {
+      crystalRef.current.rotation.y = t * 1.2;
+      crystalRef.current.rotation.x = Math.sin(t * 0.8) * 0.2;
+    }
+
+    // Counter-rotating targeting reticle
+    if (ringRef.current) {
+      ringRef.current.rotation.z = -t * 0.6;
+    }
+  });
 
   return (
     <group position={[node.position[0], 0, node.position[2]]}>
-      {/* Ground shadow disc */}
+      {/* Ground Concentric Radar Reticle */}
       <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.005, 0]}>
-        <circleGeometry args={[0.7, 32]} />
+        <ringGeometry args={[0.65, 0.68, 48]} />
         <meshBasicMaterial
           color={node.themeColor}
           transparent
-          opacity={isSelected ? 0.14 : 0.06}
+          opacity={isSelected ? 0.6 : isDark ? 0.25 : 0.35}
         />
       </mesh>
-
-      {/* Targeting ring */}
-      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.012, 0]}>
-        <ringGeometry args={[0.6, 0.66, 48]} />
+      <mesh
+        ref={ringRef}
+        rotation={[-Math.PI / 2, 0, 0]}
+        position={[0, 0.008, 0]}
+      >
+        <ringGeometry args={[0.48, 0.51, 6]} />
         <meshBasicMaterial
           color={node.themeColor}
           transparent
-          opacity={isSelected ? 0.55 : 0.18}
+          opacity={isSelected ? 0.7 : isDark ? 0.3 : 0.4}
         />
       </mesh>
 
-      {/* Floating building group */}
-      <group ref={floatRef}>
-        {/* Main body */}
+      {/* Floating Interactive Computing Pod Group */}
+      <group ref={groupRef}>
+        {/* Main Computing Pod Chassis */}
         <mesh
+          position={[0, 0.35, 0]}
           onClick={(e) => {
             e.stopPropagation();
             onSelect(node.id);
@@ -172,140 +181,142 @@ function HospitalMonolith({
           castShadow
           receiveShadow
         >
-          <boxGeometry args={[MW, MH, MD]} />
+          <RoundedBox args={[0.74, 0.7, 0.74]} radius={0.08} smoothness={4}>
+            <meshPhysicalMaterial
+              color={isDark ? "#0f172a" : "#ffffff"}
+              metalness={isDark ? 0.6 : 0.15}
+              roughness={isDark ? 0.25 : 0.35}
+              clearcoat={0.7}
+              clearcoatRoughness={0.2}
+              transmission={isDark ? 0.3 : 0.6}
+              opacity={isDark ? 0.95 : 0.92}
+              transparent
+              reflectivity={0.9}
+            />
+            {/* Luminous Neon Edges */}
+            <Edges
+              scale={1.002}
+              threshold={15}
+              color={isSelected ? "#ffffff" : node.themeColor}
+            />
+          </RoundedBox>
+        </mesh>
+
+        {/* Laser Emitter Beam to Crystal */}
+        <mesh position={[0, 0.75, 0]}>
+          <cylinderGeometry args={[0.008, 0.008, 0.12, 8]} />
+          <meshBasicMaterial
+            color={node.themeColor}
+            transparent
+            opacity={0.8}
+          />
+        </mesh>
+
+        {/* Holographic Floating Crystal (Octahedron) */}
+        <mesh ref={crystalRef} position={[0, 0.92, 0]}>
+          <octahedronGeometry args={[0.13, 0]} />
           <meshPhysicalMaterial
-            color={bodyColor}
-            metalness={isDark ? 0.35 : 0.05}
-            roughness={isDark ? 0.62 : 0.82}
+            color={node.accentColor}
             emissive={node.themeColor}
-            emissiveIntensity={emit}
-            clearcoat={0.18}
+            emissiveIntensity={isSelected ? 0.8 : 0.4}
+            roughness={0.1}
+            metalness={0.2}
+            clearcoat={1}
+            transparent
+            opacity={0.85}
           />
+          <Edges scale={1.02} color="#ffffff" threshold={1} />
         </mesh>
 
-        {/* Medical cross: vertical bar on front face */}
-        <mesh position={[0, 0.08, MD / 2 + 0.006]}>
-          <planeGeometry args={[0.055, 0.2]} />
-          <meshBasicMaterial
-            color={node.themeColor}
-            transparent
-            opacity={0.75}
-            side={THREE.DoubleSide}
-          />
-        </mesh>
-        {/* Medical cross: horizontal bar on front face */}
-        <mesh position={[0, 0.08, MD / 2 + 0.006]}>
-          <planeGeometry args={[0.2, 0.055]} />
-          <meshBasicMaterial
-            color={node.themeColor}
-            transparent
-            opacity={0.75}
-            side={THREE.DoubleSide}
-          />
-        </mesh>
-
-        {/* Side illumination bands */}
-        <mesh
-          position={[MW / 2 + 0.004, -0.12, 0]}
-          rotation={[0, Math.PI / 2, 0]}
-        >
-          <planeGeometry args={[MD * 0.72, 0.035]} />
-          <meshBasicMaterial
-            color={node.themeColor}
-            transparent
-            opacity={0.4}
-            side={THREE.DoubleSide}
-          />
-        </mesh>
-        <mesh
-          position={[MW / 2 + 0.004, 0.28, 0]}
-          rotation={[0, Math.PI / 2, 0]}
-        >
-          <planeGeometry args={[MD * 0.72, 0.035]} />
-          <meshBasicMaterial
-            color={node.themeColor}
-            transparent
-            opacity={0.4}
-            side={THREE.DoubleSide}
-          />
-        </mesh>
-
-        {/* Beacon tether */}
-        <mesh position={[0, MH / 2 + 0.12, 0]}>
-          <cylinderGeometry args={[0.004, 0.004, 0.24, 4]} />
-          <meshBasicMaterial
-            color={node.themeColor}
-            transparent
-            opacity={0.4}
-          />
-        </mesh>
-
-        {/* Rooftop beacon sphere */}
-        <mesh position={[0, MH / 2 + 0.26, 0]}>
-          <sphereGeometry args={[0.06, 12, 12]} />
-          <meshBasicMaterial color={node.themeColor} />
-        </mesh>
+        {/* Local Soft Glow Light */}
         <pointLight
-          position={[0, MH / 2 + 0.26, 0]}
+          position={[0, 0.92, 0]}
           color={node.themeColor}
-          intensity={isSelected ? 4 : 1.2}
-          distance={2.5}
+          intensity={isSelected ? 3.5 : 1.2}
+          distance={2.2}
           decay={2}
         />
       </group>
 
-      {/* Static label (does not float with the building) */}
+      {/* High-Contrast Floating Metadata Badge */}
       <Html
-        position={[0, -0.08, 0.55]}
+        position={[0, 0.02, 0.78]}
         center
-        zIndexRange={[5, 0]}
+        zIndexRange={[10, 0]}
         style={{ pointerEvents: "none", userSelect: "none" }}
       >
         <div
           style={{
-            textAlign: "center",
             fontFamily: "'JetBrains Mono', monospace",
             whiteSpace: "nowrap",
+            padding: "4px 8px",
+            borderRadius: "8px",
+            background: isDark
+              ? "rgba(15, 23, 42, 0.88)"
+              : "rgba(255, 255, 255, 0.92)",
+            border: isDark
+              ? `1px solid ${isSelected ? node.themeColor : "rgba(51, 65, 85, 0.7)"}`
+              : `1px solid ${isSelected ? node.themeColor : "rgba(226, 232, 240, 0.95)"}`,
+            boxShadow: isDark
+              ? "0 4px 16px rgba(0, 0, 0, 0.55)"
+              : "0 4px 12px rgba(15, 23, 42, 0.08)",
+            backdropFilter: "blur(8px)",
+            textAlign: "center",
+            transform: "translateY(0)",
+            transition: "all 0.2s ease",
           }}
         >
           <div
             style={{
-              fontSize: "10px",
-              fontWeight: 700,
-              color: isDark ? "#e2e8f0" : "#1e293b",
-              letterSpacing: "0.5px",
-              textShadow: isDark
-                ? "0 1px 10px rgba(0,0,0,0.95)"
-                : "0 1px 10px rgba(255,255,255,0.98)",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              gap: "5px",
             }}
           >
-            {node.shortName}
+            <span
+              style={{
+                width: "6px",
+                height: "6px",
+                borderRadius: "50%",
+                backgroundColor: node.themeColor,
+                boxShadow: `0 0 6px ${node.themeColor}`,
+                display: "inline-block",
+              }}
+            />
+            <span
+              style={{
+                fontSize: "10.5px",
+                fontWeight: 700,
+                color: isDark ? "#f8fafc" : "#0f172a",
+                letterSpacing: "0.4px",
+              }}
+            >
+              {node.shortName}
+            </span>
           </div>
-          <div
-            style={{
-              fontSize: "7.5px",
-              color: isDark ? "#94a3b8" : "#64748b",
-              marginTop: "2px",
-              fontFamily: "'Inter', sans-serif",
-              textShadow: isDark
-                ? "0 1px 8px rgba(0,0,0,0.9)"
-                : "0 1px 8px rgba(255,255,255,0.95)",
-            }}
-          >
-            {node.location} : {node.modality}
-          </div>
+
           <div
             style={{
               fontSize: "8px",
-              color: "#10b981",
-              marginTop: "1px",
-              fontFamily: "'JetBrains Mono', monospace",
-              textShadow: isDark
-                ? "0 1px 8px rgba(0,0,0,0.9)"
-                : "0 1px 8px rgba(255,255,255,0.95)",
+              color: isDark ? "#94a3b8" : "#475569",
+              marginTop: "2px",
+              fontFamily: "'Inter', sans-serif",
             }}
           >
-            ε={node.dpEpsilon}
+            {node.location} · {node.modality}
+          </div>
+
+          <div
+            style={{
+              fontSize: "8.5px",
+              fontWeight: 700,
+              color: node.themeColor,
+              marginTop: "2px",
+              letterSpacing: "0.3px",
+            }}
+          >
+            ε = {node.dpEpsilon}
           </div>
         </div>
       </Html>
@@ -314,205 +325,237 @@ function HospitalMonolith({
 }
 
 // ---------------------------------------------------------------------------
-// LEDStrip: Blinking indicator row on the server tower face
+// Sub-component: Central Consortium Aggregator
+// Architectural server pedestal with precision gyroscope rings, glowing
+// icosahedral RLWE CKKS encryption core, and floating status badge.
 // ---------------------------------------------------------------------------
-function LEDStrip({
-  position,
-  color,
-  delay,
-}: {
-  position: [number, number, number];
-  color: string;
-  delay: number;
-}) {
-  const ref = useRef<THREE.Mesh>(null);
-  useFrame(({ clock }) => {
-    if (!ref.current) return;
-    const on = Math.sin(clock.elapsedTime * 4 + delay) > 0;
-    (ref.current.material as THREE.MeshBasicMaterial).opacity = on
-      ? 0.85
-      : 0.12;
-  });
-  return (
-    <mesh ref={ref} position={position} rotation={[0, Math.PI / 2, 0]}>
-      <planeGeometry args={[STD * 0.55, 0.03]} />
-      <meshBasicMaterial
-        color={color}
-        transparent
-        opacity={0.85}
-        side={THREE.DoubleSide}
-      />
-    </mesh>
-  );
-}
-
-// ---------------------------------------------------------------------------
-// CentralServer: Aggregator pedestal, tower, LED rows, and floating
-// cryptographic core with orbit rings
-// ---------------------------------------------------------------------------
-function CentralServer({ isDark }: { isDark: boolean }) {
-  const baseRef = useRef<THREE.Group>(null);
-  const cryptoRef = useRef<THREE.Group>(null);
-  const ring1Ref = useRef<THREE.Mesh>(null);
-  const ring2Ref = useRef<THREE.Mesh>(null);
+function CentralConsortiumCore({ isDark }: { isDark: boolean }) {
+  const gyroRing1Ref = useRef<THREE.Mesh>(null);
+  const gyroRing2Ref = useRef<THREE.Mesh>(null);
+  const gyroRing3Ref = useRef<THREE.Mesh>(null);
   const coreRef = useRef<THREE.Mesh>(null);
+  const columnRef = useRef<THREE.Mesh>(null);
 
   useFrame(({ clock }) => {
     const t = clock.elapsedTime;
-    if (baseRef.current) {
-      baseRef.current.position.y = Math.sin(t * 2.4) * 0.05;
+
+    // Multi-axis gyroscope rotation
+    if (gyroRing1Ref.current) {
+      gyroRing1Ref.current.rotation.x = t * 0.7;
+      gyroRing1Ref.current.rotation.y = t * 0.4;
     }
-    if (cryptoRef.current) {
-      cryptoRef.current.position.y =
-        CRYPTO_Y + Math.sin(t * 3.5) * 0.08;
+    if (gyroRing2Ref.current) {
+      gyroRing2Ref.current.rotation.y = -t * 0.85;
+      gyroRing2Ref.current.rotation.z = t * 0.5;
     }
-    if (ring1Ref.current) {
-      ring1Ref.current.rotation.x = Math.PI / 3.5;
-      ring1Ref.current.rotation.y = t * 0.7;
+    if (gyroRing3Ref.current) {
+      gyroRing3Ref.current.rotation.x = -t * 0.5;
+      gyroRing3Ref.current.rotation.z = -t * 0.75;
     }
-    if (ring2Ref.current) {
-      ring2Ref.current.rotation.x = Math.PI / 2.5;
-      ring2Ref.current.rotation.z = -t * 1.0;
-    }
+
+    // Cryptographic core pulsating breath
     if (coreRef.current) {
-      const s = 1 + Math.sin(t * 3.5) * 0.15;
+      coreRef.current.rotation.y = t * 0.6;
+      coreRef.current.rotation.x = Math.sin(t * 0.8) * 0.3;
+      const s = 1 + Math.sin(t * 3.5) * 0.12;
       coreRef.current.scale.set(s, s, s);
+    }
+
+    // Vertical containment energy pulse
+    if (columnRef.current) {
+      const mat = columnRef.current.material as THREE.MeshBasicMaterial;
+      mat.opacity = 0.08 + Math.sin(t * 2.5) * 0.04;
     }
   });
 
-  const towerColor = isDark ? "#0f172a" : "#e2e8f0";
-
   return (
-    <group>
-      {/* Ground energy pool */}
-      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.006, 0]}>
-        <circleGeometry args={[1.3, 64]} />
+    <group position={[0, 0, 0]}>
+      {/* Ground Concentric Energy Pad */}
+      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.005, 0]}>
+        <circleGeometry args={[1.5, 48]} />
         <meshBasicMaterial
           color="#10b981"
           transparent
-          opacity={isDark ? 0.06 : 0.04}
+          opacity={isDark ? 0.08 : 0.05}
+        />
+      </mesh>
+      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.008, 0]}>
+        <ringGeometry args={[1.1, 1.13, 64]} />
+        <meshBasicMaterial
+          color="#10b981"
+          transparent
+          opacity={isDark ? 0.3 : 0.4}
         />
       </mesh>
 
-      {/* Server body (pedestal + tower) with subtle levitation */}
-      <group ref={baseRef}>
-        {/* Base pedestal */}
-        <mesh position={[0, SBH / 2, 0]} castShadow receiveShadow>
-          <boxGeometry args={[SBW, SBH, SBD]} />
+      {/* Cybernetic Server Base Pedestal */}
+      <mesh position={[0, 0.12, 0]} castShadow receiveShadow>
+        <RoundedBox args={[1.4, 0.24, 1.4]} radius={0.06} smoothness={4}>
           <meshPhysicalMaterial
-            color={towerColor}
-            metalness={0.45}
-            roughness={0.55}
-            emissive="#10b981"
-            emissiveIntensity={0.04}
-          />
-        </mesh>
-
-        {/* Main tower */}
-        <mesh
-          position={[0, SBH + STH / 2, 0]}
-          castShadow
-          receiveShadow
-        >
-          <boxGeometry args={[STW, STH, STD]} />
-          <meshPhysicalMaterial
-            color={towerColor}
-            metalness={0.5}
-            roughness={0.42}
-            emissive="#10b981"
-            emissiveIntensity={0.06}
-            clearcoat={0.25}
-          />
-        </mesh>
-
-        {/* LED indicator strips on tower face */}
-        {[0.35, 0.75, 1.15].map((yOff, i) => (
-          <LEDStrip
-            key={i}
-            position={[STW / 2 + 0.005, SBH + yOff, 0]}
-            color={i % 2 === 0 ? "#10b981" : "#06b6d4"}
-            delay={i * 1.6}
-          />
-        ))}
-      </group>
-
-      {/* Floating cryptographic core assembly */}
-      <group ref={cryptoRef} position={[0, CRYPTO_Y, 0]}>
-        {/* Solid core sphere */}
-        <mesh ref={coreRef}>
-          <sphereGeometry args={[0.2, 24, 24]} />
-          <meshBasicMaterial color="#34d399" transparent opacity={0.75} />
-        </mesh>
-
-        {/* Outer glow shell */}
-        <mesh>
-          <sphereGeometry args={[0.35, 16, 16]} />
-          <meshBasicMaterial
-            color="#10b981"
+            color={isDark ? "#090d16" : "#ffffff"}
+            metalness={isDark ? 0.7 : 0.2}
+            roughness={isDark ? 0.3 : 0.4}
+            clearcoat={0.6}
             transparent
-            opacity={0.1}
+            opacity={0.96}
+          />
+          <Edges scale={1.002} threshold={15} color="#10b981" />
+        </RoundedBox>
+      </mesh>
+
+      {/* Server Column Core */}
+      <mesh position={[0, 0.52, 0]} castShadow receiveShadow>
+        <RoundedBox args={[0.76, 0.56, 0.76]} radius={0.05} smoothness={4}>
+          <meshPhysicalMaterial
+            color={isDark ? "#0f172a" : "#f8fafc"}
+            metalness={isDark ? 0.8 : 0.25}
+            roughness={0.3}
+            clearcoat={0.7}
+          />
+          <Edges scale={1.002} threshold={15} color="#06b6d4" />
+        </RoundedBox>
+      </mesh>
+
+      {/* Cylindrical Containment Field */}
+      <mesh ref={columnRef} position={[0, 1.35, 0]}>
+        <cylinderGeometry args={[0.55, 0.55, 1.1, 32, 1, true]} />
+        <meshBasicMaterial
+          color="#10b981"
+          transparent
+          opacity={0.1}
+          side={THREE.DoubleSide}
+        />
+      </mesh>
+
+      {/* Cryptographic Quantum Enclave Core (Y = 1.35) */}
+      <group position={[0, 1.35, 0]}>
+        {/* Core Icosahedron */}
+        <mesh ref={coreRef}>
+          <icosahedronGeometry args={[0.22, 0]} />
+          <meshPhysicalMaterial
+            color="#34d399"
+            emissive="#10b981"
+            emissiveIntensity={0.9}
+            roughness={0.1}
+            metalness={0.1}
+            clearcoat={1}
+            transparent
+            opacity={0.9}
+          />
+          <Edges scale={1.02} color="#ffffff" threshold={1} />
+        </mesh>
+
+        {/* Gyroscope Orbit Ring 1 (Emerald) */}
+        <mesh ref={gyroRing1Ref}>
+          <torusGeometry args={[0.46, 0.012, 12, 64]} />
+          <meshPhysicalMaterial
+            color="#10b981"
+            emissive="#10b981"
+            emissiveIntensity={0.6}
+            metalness={0.8}
+            roughness={0.2}
           />
         </mesh>
 
-        {/* Core point light */}
+        {/* Gyroscope Orbit Ring 2 (Cyan) */}
+        <mesh ref={gyroRing2Ref}>
+          <torusGeometry args={[0.38, 0.01, 12, 64]} />
+          <meshPhysicalMaterial
+            color="#06b6d4"
+            emissive="#06b6d4"
+            emissiveIntensity={0.6}
+            metalness={0.8}
+            roughness={0.2}
+          />
+        </mesh>
+
+        {/* Gyroscope Orbit Ring 3 (Sky) */}
+        <mesh ref={gyroRing3Ref}>
+          <torusGeometry args={[0.3, 0.008, 12, 64]} />
+          <meshPhysicalMaterial
+            color="#38bdf8"
+            emissive="#38bdf8"
+            emissiveIntensity={0.6}
+            metalness={0.8}
+            roughness={0.2}
+          />
+        </mesh>
+
+        {/* Central Luminous Point Light */}
         <pointLight
           color="#10b981"
-          intensity={6}
-          distance={5}
+          intensity={5}
+          distance={4.5}
           decay={2}
         />
-
-        {/* Orbit ring 1 (emerald) */}
-        <mesh ref={ring1Ref}>
-          <torusGeometry args={[0.55, 0.018, 8, 64]} />
-          <meshBasicMaterial
-            color="#10b981"
-            transparent
-            opacity={0.55}
-          />
-        </mesh>
-
-        {/* Orbit ring 2 (cyan) */}
-        <mesh ref={ring2Ref}>
-          <torusGeometry args={[0.4, 0.014, 8, 64]} />
-          <meshBasicMaterial
-            color="#06b6d4"
-            transparent
-            opacity={0.45}
-          />
-        </mesh>
       </group>
 
-      {/* Server identification label */}
+      {/* High-Contrast Central Aggregator Badge */}
       <Html
-        position={[0, SBH + STH + 0.15, 0.5]}
+        position={[0, 0.02, 1.15]}
         center
-        zIndexRange={[5, 0]}
+        zIndexRange={[10, 0]}
         style={{ pointerEvents: "none", userSelect: "none" }}
       >
-        <div style={{ textAlign: "center", whiteSpace: "nowrap" }}>
+        <div
+          style={{
+            fontFamily: "'JetBrains Mono', monospace",
+            whiteSpace: "nowrap",
+            padding: "5px 12px",
+            borderRadius: "10px",
+            background: isDark
+              ? "rgba(15, 23, 42, 0.92)"
+              : "rgba(255, 255, 255, 0.94)",
+            border: isDark
+              ? "1px solid rgba(16, 185, 129, 0.4)"
+              : "1px solid rgba(16, 185, 129, 0.5)",
+            boxShadow: isDark
+              ? "0 4px 20px rgba(0, 0, 0, 0.65)"
+              : "0 4px 14px rgba(15, 23, 42, 0.1)",
+            backdropFilter: "blur(10px)",
+            textAlign: "center",
+          }}
+        >
           <div
             style={{
-              fontSize: "10px",
-              fontWeight: 700,
-              color: "#e2e8f0",
-              fontFamily: "'JetBrains Mono', monospace",
-              letterSpacing: "0.8px",
-              textShadow: "0 1px 12px rgba(0,0,0,0.95)",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              gap: "6px",
             }}
           >
-            CONSORTIUM AGGREGATOR
+            <span
+              style={{
+                width: "7px",
+                height: "7px",
+                borderRadius: "50%",
+                backgroundColor: "#10b981",
+                boxShadow: "0 0 8px #10b981",
+                display: "inline-block",
+              }}
+            />
+            <span
+              style={{
+                fontSize: "11px",
+                fontWeight: 800,
+                color: isDark ? "#f8fafc" : "#0f172a",
+                letterSpacing: "0.6px",
+              }}
+            >
+              CONSORTIUM AGGREGATOR
+            </span>
           </div>
+
           <div
             style={{
-              fontSize: "7.5px",
-              color: "#94a3b8",
-              fontFamily: "'JetBrains Mono', monospace",
+              fontSize: "8.5px",
+              fontWeight: 600,
+              color: isDark ? "#94a3b8" : "#475569",
               marginTop: "2px",
-              textShadow: "0 1px 8px rgba(0,0,0,0.9)",
+              letterSpacing: "0.2px",
             }}
           >
-            RLWE CKKS 128-Bit : Zero Plaintext
+            RLWE CKKS 128-Bit · Zero Plaintext
           </div>
         </div>
       </Html>
@@ -521,9 +564,9 @@ function CentralServer({ isDark }: { isDark: boolean }) {
 }
 
 // ---------------------------------------------------------------------------
-// PhotonPacket: Animated glowing sphere traveling along a bezier conduit
+// Sub-component: High-Speed Micro-Photon Packet
 // ---------------------------------------------------------------------------
-function PhotonPacket({
+function HighSpeedPhoton({
   curve,
   offset,
   color,
@@ -534,38 +577,29 @@ function PhotonPacket({
   color: string;
   speedMul: number;
 }) {
-  const dotRef = useRef<THREE.Mesh>(null);
-  const glowRef = useRef<THREE.Mesh>(null);
+  const meshRef = useRef<THREE.Mesh>(null);
   const progress = useRef(offset);
 
   useFrame((_, delta) => {
-    progress.current = (progress.current + delta * 0.18 * speedMul) % 1;
-    const p = curve.getPoint(progress.current);
-    if (dotRef.current) dotRef.current.position.copy(p);
-    if (glowRef.current) glowRef.current.position.copy(p);
+    progress.current = (progress.current + delta * 0.28 * speedMul) % 1;
+    const pt = curve.getPoint(progress.current);
+    if (meshRef.current) {
+      meshRef.current.position.copy(pt);
+    }
   });
 
   return (
-    <>
-      {/* Bright center dot */}
-      <mesh ref={dotRef}>
-        <sphereGeometry args={[0.04, 8, 8]} />
-        <meshBasicMaterial color="#ffffff" />
-      </mesh>
-      {/* Colored glow shell */}
-      <mesh ref={glowRef}>
-        <sphereGeometry args={[0.1, 8, 8]} />
-        <meshBasicMaterial color={color} transparent opacity={0.3} />
-      </mesh>
-    </>
+    <mesh ref={meshRef}>
+      <sphereGeometry args={[0.035, 12, 12]} />
+      <meshBasicMaterial color={color} />
+    </mesh>
   );
 }
 
 // ---------------------------------------------------------------------------
-// DataConduit: Bezier curve line with 3 animated photon packets flowing
-// from a hospital node to the central cryptographic core
+// Sub-component: Fiber-Optic Encrypted Conduit
 // ---------------------------------------------------------------------------
-function DataConduit({
+function FiberConduit({
   nodePos,
   color,
   isSimulating,
@@ -578,43 +612,40 @@ function DataConduit({
   isSelected: boolean;
   idx: number;
 }) {
-  const startY = MH + 0.3;
-  const endY = CRYPTO_Y;
-
-  const { curve, linePoints } = useMemo(() => {
-    const s = new THREE.Vector3(nodePos[0], startY, nodePos[2]);
-    const e = new THREE.Vector3(0, endY, 0);
-    const mx = (s.x + e.x) / 2 + (idx % 2 === 0 ? -0.4 : 0.4);
-    const my = Math.max(s.y, e.y) + 1.2;
-    const mz = (s.z + e.z) / 2;
-    const m = new THREE.Vector3(mx, my, mz);
-    const c = new THREE.QuadraticBezierCurve3(s, m, e);
+  const { curve, points } = useMemo(() => {
+    const start = new THREE.Vector3(nodePos[0], 0.92, nodePos[2]);
+    const end = new THREE.Vector3(0, 1.35, 0);
+    const midX = (start.x + end.x) / 2 + (idx % 2 === 0 ? -0.25 : 0.25);
+    const midY = Math.max(start.y, end.y) + 0.6;
+    const midZ = (start.z + end.z) / 2;
+    const mid = new THREE.Vector3(midX, midY, midZ);
+    const c = new THREE.QuadraticBezierCurve3(start, mid, end);
     const pts = c
-      .getPoints(48)
+      .getPoints(36)
       .map((p) => [p.x, p.y, p.z] as [number, number, number]);
-    return { curve: c, linePoints: pts };
-  }, [nodePos, startY, endY, idx]);
+    return { curve: c, points: pts };
+  }, [nodePos, idx]);
 
-  const speedMul = isSimulating ? 3.2 : isSelected ? 1.5 : 1.0;
+  const speedMul = isSimulating ? 3.8 : isSelected ? 1.8 : 1.0;
 
   return (
     <group>
-      {/* Static conduit path */}
+      {/* Sleek Fiber Line */}
       <Line
-        points={linePoints}
+        points={points}
         color={color}
-        lineWidth={1.2}
+        lineWidth={1.5}
         transparent
-        opacity={0.28}
+        opacity={isSelected ? 0.6 : 0.25}
       />
 
-      {/* Three photon packets per conduit */}
+      {/* 3 Streamlined Micro-Photons per Conduit */}
       {[0, 0.33, 0.66].map((off, i) => (
-        <PhotonPacket
+        <HighSpeedPhoton
           key={i}
           curve={curve}
           offset={off}
-          color={color}
+          color="#ffffff"
           speedMul={speedMul}
         />
       ))}
@@ -623,10 +654,9 @@ function DataConduit({
 }
 
 // ---------------------------------------------------------------------------
-// ConsensusShockwave: Expanding dual-ring burst when an encrypted round
-// is triggered, using scale-based animation (no geometry recreation)
+// Sub-component: Consensus Ripple Shockwave
 // ---------------------------------------------------------------------------
-function ConsensusShockwave({
+function ConsensusShockwaveRipple({
   active,
   onComplete,
 }: {
@@ -636,22 +666,22 @@ function ConsensusShockwave({
   const outerRef = useRef<THREE.Mesh>(null);
   const innerRef = useRef<THREE.Mesh>(null);
   const progressRef = useRef(0);
-  const wasActiveRef = useRef(false);
   const runningRef = useRef(false);
+  const prevActive = useRef(false);
 
   useEffect(() => {
-    if (active && !wasActiveRef.current) {
+    if (active && !prevActive.current) {
       runningRef.current = true;
       progressRef.current = 0;
       if (outerRef.current) outerRef.current.visible = true;
       if (innerRef.current) innerRef.current.visible = true;
     }
-    wasActiveRef.current = active;
+    prevActive.current = active;
   }, [active]);
 
   useFrame((_, delta) => {
     if (!runningRef.current) return;
-    progressRef.current += delta * 1.1;
+    progressRef.current += delta * 0.9;
 
     if (progressRef.current >= 1) {
       runningRef.current = false;
@@ -662,19 +692,18 @@ function ConsensusShockwave({
     }
 
     const p = progressRef.current;
-    const scale = 1 + p * 14;
-    const alpha = (1 - p) * 0.5;
+    const s = 1 + p * 12;
+    const alpha = (1 - p) * 0.6;
 
     if (outerRef.current) {
-      outerRef.current.scale.set(scale, scale, 1);
-      (outerRef.current.material as THREE.MeshBasicMaterial).opacity =
-        alpha;
+      outerRef.current.scale.set(s, s, 1);
+      (outerRef.current.material as THREE.MeshBasicMaterial).opacity = alpha;
     }
-    if (innerRef.current && p > 0.08) {
-      const s2 = 1 + (p - 0.08) * 14;
+    if (innerRef.current && p > 0.06) {
+      const s2 = 1 + (p - 0.06) * 12;
       innerRef.current.scale.set(s2, s2, 1);
       (innerRef.current.material as THREE.MeshBasicMaterial).opacity =
-        alpha * 0.65;
+        alpha * 0.7;
     }
   });
 
@@ -683,10 +712,10 @@ function ConsensusShockwave({
       <mesh
         ref={outerRef}
         rotation={[-Math.PI / 2, 0, 0]}
-        position={[0, 0.25, 0]}
+        position={[0, 0.015, 0]}
         visible={false}
       >
-        <ringGeometry args={[0.35, 0.4, 64]} />
+        <ringGeometry args={[0.3, 0.35, 64]} />
         <meshBasicMaterial
           color="#10b981"
           transparent
@@ -697,10 +726,10 @@ function ConsensusShockwave({
       <mesh
         ref={innerRef}
         rotation={[-Math.PI / 2, 0, 0]}
-        position={[0, 0.25, 0]}
+        position={[0, 0.015, 0]}
         visible={false}
       >
-        <ringGeometry args={[0.28, 0.33, 64]} />
+        <ringGeometry args={[0.22, 0.27, 64]} />
         <meshBasicMaterial
           color="#06b6d4"
           transparent
@@ -713,29 +742,25 @@ function ConsensusShockwave({
 }
 
 // ---------------------------------------------------------------------------
-// SceneContents: Composes all 3D elements within the Canvas render tree.
-// All R3F hooks (useFrame, useThree) live here inside the Canvas context.
+// Scene Root: Lighting, Parallax, and Geometry Composition
 // ---------------------------------------------------------------------------
-function SceneContents({
+function SceneRoot({
   isSimulatingRound = false,
   selectedNodeId = "node-1",
   mouseTilt = { x: 0, y: 0 },
   onSelectNode,
   onSimulationComplete,
 }: Consortium3DSceneProps) {
-  const sceneGroupRef = useRef<THREE.Group>(null);
+  const sceneRef = useRef<THREE.Group>(null);
   const isDark = useIsDark();
-  const tiltRef = useRef({ x: 0, y: 0 });
+  const tilt = useRef({ x: 0, y: 0 });
 
-  // Smooth damped tilt interpolation driven by parent mouse position
   useFrame(() => {
-    tiltRef.current.x +=
-      (mouseTilt.x - tiltRef.current.x) * 0.06;
-    tiltRef.current.y +=
-      (mouseTilt.y - tiltRef.current.y) * 0.06;
-    if (sceneGroupRef.current) {
-      sceneGroupRef.current.rotation.y = tiltRef.current.x * 0.18;
-      sceneGroupRef.current.rotation.x = tiltRef.current.y * 0.1;
+    tilt.current.x += (mouseTilt.x - tilt.current.x) * 0.06;
+    tilt.current.y += (mouseTilt.y - tilt.current.y) * 0.06;
+    if (sceneRef.current) {
+      sceneRef.current.rotation.y = tilt.current.x * 0.16;
+      sceneRef.current.rotation.x = tilt.current.y * 0.08;
     }
   });
 
@@ -751,62 +776,48 @@ function SceneContents({
 
   return (
     <>
-      {/* Lighting rig */}
-      <ambientLight intensity={isDark ? 0.25 : 0.55} />
+      {/* Studio Lighting Rig */}
+      <ambientLight intensity={isDark ? 0.35 : 0.8} />
       <directionalLight
-        position={[5, 9, 6]}
-        intensity={isDark ? 1.8 : 2.8}
+        position={[5, 8, 5]}
+        intensity={isDark ? 2.2 : 2.6}
         color="#ffffff"
+        castShadow
       />
       <directionalLight
-        position={[-4, 5, -4]}
-        intensity={isDark ? 0.5 : 0.7}
-        color="#a5d8ff"
+        position={[-5, 5, -5]}
+        intensity={isDark ? 0.8 : 0.9}
+        color="#bae6fd"
       />
       <pointLight
-        position={[0, 5, 0]}
-        intensity={isDark ? 3 : 1.5}
+        position={[0, 4, 0]}
+        intensity={isDark ? 2.5 : 1.2}
         color="#10b981"
-        distance={12}
+        distance={10}
         decay={2}
       />
 
-      {/* Mouse tilt group wraps the entire scene */}
-      <group ref={sceneGroupRef}>
-        {/* Transparent ground disc for spatial reference */}
-        <mesh
-          rotation={[-Math.PI / 2, 0, 0]}
-          position={[0, -0.005, 0]}
-        >
-          <circleGeometry args={[6.5, 64]} />
-          <meshStandardMaterial
-            color={isDark ? "#0c1222" : "#f0f4f8"}
-            transparent
-            opacity={isDark ? 0.3 : 0.2}
-            metalness={0.05}
-            roughness={0.95}
-          />
-        </mesh>
-
-        {/* Concentric depth rings */}
-        {[1.5, 3.0, 4.5].map((r, i) => (
+      {/* Global Parallax Group */}
+      <group ref={sceneRef}>
+        {/* Subtle Cybernetic Floor Reticle */}
+        {[1.8, 3.2, 4.6].map((rad, i) => (
           <mesh
-            key={`ring-${i}`}
+            key={i}
             rotation={[-Math.PI / 2, 0, 0]}
             position={[0, 0.002, 0]}
           >
-            <ringGeometry args={[r - 0.012, r, 64]} />
+            <ringGeometry args={[rad - 0.008, rad, 64]} />
             <meshBasicMaterial
-              color={isDark ? "#1e293b" : "#cbd5e1"}
+              color={isDark ? "#334155" : "#cbd5e1"}
               transparent
-              opacity={0.12}
+              opacity={isDark ? 0.25 : 0.35}
             />
           </mesh>
         ))}
 
-        {/* Hospital monoliths */}
+        {/* 4 Hospital Institutional Computing Pods */}
         {NODES.map((n) => (
-          <HospitalMonolith
+          <HospitalNodePod
             key={n.id}
             node={n}
             isSelected={selectedNodeId === n.id}
@@ -815,12 +826,12 @@ function SceneContents({
           />
         ))}
 
-        {/* Central aggregator server */}
-        <CentralServer isDark={isDark} />
+        {/* Central Consortium Aggregator Server Core */}
+        <CentralConsortiumCore isDark={isDark} />
 
-        {/* Encrypted data conduits from each hospital to the server core */}
+        {/* High-Speed Fiber Conduits */}
         {NODES.map((n, i) => (
-          <DataConduit
+          <FiberConduit
             key={n.id}
             nodePos={n.position}
             color={n.themeColor}
@@ -830,8 +841,8 @@ function SceneContents({
           />
         ))}
 
-        {/* Consensus shockwave burst */}
-        <ConsensusShockwave
+        {/* Consensus Shockwave Animation */}
+        <ConsensusShockwaveRipple
           active={isSimulatingRound}
           onComplete={handleSimDone}
         />
@@ -841,16 +852,14 @@ function SceneContents({
 }
 
 // ---------------------------------------------------------------------------
-// Consortium3DScene: Top-level Canvas wrapper (default export).
-// Configures WebGL renderer with transparent alpha, ACES filmic tone
-// mapping, and an elevated perspective camera aimed at the network center.
+// Consortium3DScene: Exported Canvas Wrapper
 // ---------------------------------------------------------------------------
 export default function Consortium3DScene(props: Consortium3DSceneProps) {
   return (
     <Canvas
       className="w-full h-full"
       dpr={[1, 2]}
-      camera={{ position: [0, 6, 7.5], fov: 38 }}
+      camera={{ position: [0, 5.2, 6.2], fov: 38 }}
       gl={{
         antialias: true,
         alpha: true,
@@ -858,9 +867,9 @@ export default function Consortium3DScene(props: Consortium3DSceneProps) {
         toneMapping: THREE.ACESFilmicToneMapping,
       }}
       onCreated={({ gl, camera, scene }) => {
-        gl.toneMappingExposure = 1.15;
+        gl.toneMappingExposure = 1.1;
         gl.setClearColor(0x000000, 0);
-        camera.lookAt(0, 0.5, 0);
+        camera.lookAt(0, 0.45, 0);
         scene.background = null;
         gl.domElement.addEventListener(
           "webglcontextlost",
@@ -870,7 +879,7 @@ export default function Consortium3DScene(props: Consortium3DSceneProps) {
       }}
       style={{ width: "100%", height: "100%", background: "transparent" }}
     >
-      <SceneContents {...props} />
+      <SceneRoot {...props} />
     </Canvas>
   );
 }
