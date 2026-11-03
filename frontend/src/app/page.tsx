@@ -452,49 +452,51 @@ export default function PresentationLandingPage() {
                 ).map((c, idx) => (
                   <div
                     key={c.case_id}
-                    className={`card-inner p-4 space-y-2.5 border-l-4 ${
+                    className={`card-inner p-4 flex flex-col justify-between border-l-4 ${
                       idx === 0 ? "border-l-emerald-500" : "border-l-blue-500"
                     }`}
                   >
-                    <div className="flex items-center justify-between">
-                      <span
-                        className={`font-mono text-xs font-bold ${
-                          idx === 0
-                            ? "text-emerald-600 dark:text-emerald-400"
-                            : "text-blue-600 dark:text-blue-400"
-                        }`}
-                      >
-                        {c.case_id}
-                      </span>
-                      <span
-                        className={`px-2 py-0.5 rounded text-[10px] font-bold ${
-                          idx === 0
-                            ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
-                            : "bg-blue-500/10 text-blue-600 dark:text-blue-400"
-                        }`}
-                      >
-                        {c.similarity}% {t("landing_rag_match")}
-                      </span>
+                    <div className="space-y-2.5">
+                      <div className="flex items-center justify-between">
+                        <span
+                          className={`font-mono text-xs font-bold ${
+                            idx === 0
+                              ? "text-emerald-600 dark:text-emerald-400"
+                              : "text-blue-600 dark:text-blue-400"
+                          }`}
+                        >
+                          {c.case_id}
+                        </span>
+                        <span
+                          className={`px-2 py-0.5 rounded text-[10px] font-bold ${
+                            idx === 0
+                              ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
+                              : "bg-blue-500/10 text-blue-600 dark:text-blue-400"
+                          }`}
+                        >
+                          {c.similarity}% {t("landing_rag_match")}
+                        </span>
+                      </div>
+                      <div className="text-xs font-semibold text-[var(--text-heading)]">
+                        {language === "TR"
+                          ? c.diagnosis?.toLowerCase().includes("melanoma")
+                            ? "Malign Melanom"
+                            : c.diagnosis?.toLowerCase().includes("basal")
+                            ? "Bazal Hücreli Karsinom"
+                            : c.diagnosis?.toLowerCase().includes("nevus")
+                            ? "Benign Displastik Nevüs"
+                            : c.diagnosis
+                          : c.diagnosis}
+                      </div>
+                      <p className="text-xs text-[var(--text-muted)] leading-relaxed line-clamp-3">
+                        {language === "TR" && (c.case_id.startsWith("PAT_ISIC") || c.clinical_notes?.toLowerCase().includes("melanoma"))
+                          ? idx === 0
+                            ? "Gövde bölgesinde yerleşik, histopatoloji (biyopsi) ile doğrulanmış Malign Melanom. Eksantrik hiperpigmentasyon ve periferik çizgilenmeler mevcut. Geniş lokal eksizyon endikedir."
+                            : "Sırt bölgesinde yerleşik, konkomitant biyopsi ile doğrulanmış yüzeyel yayılan Malign Melanom. Atipik pigmentsel retikülasyon ve lezyon kenarlarında asimetri izlenmektedir."
+                          : c.clinical_notes}
+                      </p>
                     </div>
-                    <div className="text-xs font-semibold text-[var(--text-heading)]">
-                      {language === "TR"
-                        ? c.diagnosis?.toLowerCase().includes("melanoma")
-                          ? "Malign Melanom"
-                          : c.diagnosis?.toLowerCase().includes("basal")
-                          ? "Bazal Hücreli Karsinom"
-                          : c.diagnosis?.toLowerCase().includes("nevus")
-                          ? "Benign Displastik Nevüs"
-                          : c.diagnosis
-                        : c.diagnosis}
-                    </div>
-                    <p className="text-xs text-[var(--text-muted)] leading-relaxed line-clamp-3">
-                      {language === "TR" && (c.case_id.startsWith("PAT_ISIC") || c.clinical_notes?.toLowerCase().includes("melanoma"))
-                        ? idx === 0
-                          ? "Gövde bölgesinde yerleşik, histopatoloji (biyopsi) ile doğrulanmış Malign Melanom. Eksantrik hiperpigmentasyon ve periferik çizgilenmeler mevcut. Geniş lokal eksizyon endikedir."
-                          : "Sırt bölgesinde yerleşik, konkomitant biyopsi ile doğrulanmış yüzeyel yayılan Malign Melanom. Atipik pigmentsel retikülasyon ve lezyon kenarlarında asimetri izlenmektedir."
-                        : c.clinical_notes}
-                    </p>
-                    <div className="text-[10px] font-mono text-[var(--text-muted)] pt-1 border-t border-[var(--border-subtle)] flex items-center justify-between">
+                    <div className="text-[10px] font-mono text-[var(--text-muted)] pt-2 mt-3 border-t border-[var(--border-subtle)] flex items-center justify-between">
                       <span className="truncate">
                         {language === "TR" && c.site_id?.includes("BCN-20000")
                           ? "BCN-20000 Deri Kanseri Merkezi (Barselona)"
@@ -654,39 +656,47 @@ export default function PresentationLandingPage() {
           {/* Tab 4: Reporting */}
           {activeTab === "report" && (
             <div className="card p-4 sm:p-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="card-inner p-5 space-y-3">
-                  <div className="flex items-center gap-2 text-emerald-500">
-                    <FileText className="w-4 h-4" />
-                    <span className="text-xs font-bold uppercase tracking-wider">{t("sec3_report_title")}</span>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-stretch">
+                <div className="card-inner p-5 flex flex-col justify-between">
+                  <div className="space-y-3">
+                    <div className="flex items-center gap-2 text-emerald-500">
+                      <FileText className="w-4 h-4" />
+                      <span className="text-xs font-bold uppercase tracking-wider">{t("sec3_report_title")}</span>
+                    </div>
+                    <h4 className="text-sm font-bold text-[var(--text-heading)]">{t("landing_tab4_pdf_title")}</h4>
+                    <p className="text-xs text-[var(--text-muted)] leading-relaxed">{t("landing_tab4_pdf_desc")}</p>
                   </div>
-                  <h4 className="text-sm font-bold text-[var(--text-heading)]">{t("landing_tab4_pdf_title")}</h4>
-                  <p className="text-xs text-[var(--text-muted)] leading-relaxed">{t("landing_tab4_pdf_desc")}</p>
-                  <button
-                    onClick={openLaunchModal}
-                    className="inline-flex items-center gap-2 px-3.5 py-2 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-emerald-600 dark:text-emerald-400 text-xs font-semibold hover:bg-emerald-500/20 transition-colors"
-                  >
-                    <FileText className="w-3.5 h-3.5" />
-                    <span>{t("landing_tab4_pdf_btn")}</span>
-                    <ArrowRight className="w-3.5 h-3.5" />
-                  </button>
+                  <div className="pt-4">
+                    <button
+                      onClick={openLaunchModal}
+                      className="inline-flex items-center gap-2 px-3.5 py-2 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-emerald-600 dark:text-emerald-400 text-xs font-semibold hover:bg-emerald-500/20 transition-colors w-full sm:w-auto justify-center"
+                    >
+                      <FileText className="w-3.5 h-3.5" />
+                      <span>{t("landing_tab4_pdf_btn")}</span>
+                      <ArrowRight className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
                 </div>
 
-                <div className="card-inner p-5 space-y-3">
-                  <div className="flex items-center gap-2 text-blue-500">
-                    <Volume2 className="w-4 h-4" />
-                    <span className="text-xs font-bold uppercase tracking-wider">{t("sec3_voice_title")}</span>
+                <div className="card-inner p-5 flex flex-col justify-between">
+                  <div className="space-y-3">
+                    <div className="flex items-center gap-2 text-blue-500">
+                      <Volume2 className="w-4 h-4" />
+                      <span className="text-xs font-bold uppercase tracking-wider">{t("sec3_voice_title")}</span>
+                    </div>
+                    <h4 className="text-sm font-bold text-[var(--text-heading)]">{t("landing_tab4_voice_title")}</h4>
+                    <p className="text-xs text-[var(--text-muted)] leading-relaxed">{t("landing_tab4_voice_desc")}</p>
                   </div>
-                  <h4 className="text-sm font-bold text-[var(--text-heading)]">{t("landing_tab4_voice_title")}</h4>
-                  <p className="text-xs text-[var(--text-muted)] leading-relaxed">{t("landing_tab4_voice_desc")}</p>
-                  <button
-                    onClick={openLaunchModal}
-                    className="inline-flex items-center gap-2 px-3.5 py-2 rounded-lg bg-blue-500/10 border border-blue-500/20 text-blue-600 dark:text-blue-400 text-xs font-semibold hover:bg-blue-500/20 transition-colors"
-                  >
-                    <Volume2 className="w-3.5 h-3.5" />
-                    <span>{t("landing_tab4_voice_btn")}</span>
-                    <ArrowRight className="w-3.5 h-3.5" />
-                  </button>
+                  <div className="pt-4">
+                    <button
+                      onClick={openLaunchModal}
+                      className="inline-flex items-center gap-2 px-3.5 py-2 rounded-lg bg-blue-500/10 border border-blue-500/20 text-blue-600 dark:text-blue-400 text-xs font-semibold hover:bg-blue-500/20 transition-colors w-full sm:w-auto justify-center"
+                    >
+                      <Volume2 className="w-3.5 h-3.5" />
+                      <span>{t("landing_tab4_voice_btn")}</span>
+                      <ArrowRight className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
                 </div>
               </div>
             </div>
