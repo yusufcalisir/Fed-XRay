@@ -558,10 +558,17 @@ class CentralServer:
                 target_device = avg_weights[key].device
                 # Server dynamic state: h^{t+1} = h^t - alpha * (1/K) * sum (theta_k - theta_global^t)
                 delta_sum = torch.zeros_like(avg_weights[key])
-                for client_w in client_weights:
-                    cw = client_w[key].to(target_device).float()
+                first_client_w = client_weights[0][key]
+                if isinstance(first_client_w, EncryptedTensor):
+                    # Zero-plaintext homomorphic privacy: individual updates are encrypted.
+                    # By linearity of expectation: sum_{k=1}^K (theta_k - theta_global) = K * (theta_avg - theta_global)
                     gw = current_weights[key].to(target_device).float()
-                    delta_sum += (cw - gw)
+                    delta_sum = float(K) * (avg_weights[key].to(target_device).float() - gw)
+                else:
+                    for client_w in client_weights:
+                        cw = client_w[key].to(target_device).float()
+                        gw = current_weights[key].to(target_device).float()
+                        delta_sum += (cw - gw)
 
                 h_k = self.h_server.get(key, torch.zeros_like(avg_weights[key])).to(target_device)
                 h_k = h_k - (self.feddyn_alpha / K) * delta_sum

@@ -102,6 +102,9 @@ class AppState:
         self.model_trained: bool = False
         self.model_type: str = "vit_tiny"
         self.peft_mode: Optional[str] = "ffa_lora"
+        self.lora_r: int = 16
+        self.lora_alpha: float = 16.0
+        self.deep_layers_only: bool = False
         self.defense_mode: str = "bft_secagg_isolated"
         self.image_size: int = 224
         self.rag_matcher: Optional[FederatedRAGCaseMatcher] = None
@@ -232,11 +235,36 @@ class AppState:
             logger.warning("Failed to persist federated state: %s", exc)
             return False
 
-    def restore_from_disk(self, checkpoint_dir: str = "checkpoints", load_weights: bool = False) -> bool:
+    def restore_from_disk(self, checkpoint_dir: str = "checkpoints", load_weights: bool = True) -> bool:
         """Restore metadata, cohorts, history, and optional weights from SQLite and disk."""
         restored_any = False
         out_dir = Path(checkpoint_dir)
         model_path = out_dir / "federated_global_model.pt"
+        meta_path = out_dir / "federated_state_metadata.json"
+
+        # 0. Hydrate metadata from JSON file if present in checkpoint_dir
+        if meta_path.exists():
+            try:
+                with open(meta_path, "r", encoding="utf-8") as f:
+                    meta = json.load(f)
+                self.model_type = meta.get("model_type", self.model_type)
+                self.peft_mode = meta.get("peft_mode", self.peft_mode)
+                self.lora_r = int(meta.get("lora_r", self.lora_r))
+                self.lora_alpha = float(meta.get("lora_alpha", self.lora_alpha))
+                self.deep_layers_only = bool(meta.get("deep_layers_only", self.deep_layers_only))
+                self.defense_mode = meta.get("defense_mode", self.defense_mode)
+                self.image_size = int(meta.get("image_size", self.image_size))
+                self.data_source = meta.get("data_source", self.data_source)
+                self.data_provenance = meta.get("data_provenance", self.data_provenance)
+                self.is_authentic_clinical = bool(meta.get("is_authentic_clinical", self.is_authentic_clinical))
+                self.strict_real_data = bool(meta.get("strict_real_data", self.strict_real_data))
+                if meta.get("training_history"):
+                    self.training_history = meta["training_history"]
+                if meta.get("model_trained"):
+                    self.model_trained = True
+                restored_any = True
+            except Exception as exc:
+                logger.warning("Failed to load JSON metadata from %s: %s", meta_path, exc)
 
         # 1. Hydrate system state from SQLite
         try:
@@ -308,9 +336,9 @@ class AppState:
                 device=self.device,
                 model_type=self.model_type,
                 peft_mode=self.peft_mode,
-                lora_r=8,
-                lora_alpha=16.0,
-                deep_layers_only=True,
+                lora_r=self.lora_r,
+                lora_alpha=self.lora_alpha,
+                deep_layers_only=self.deep_layers_only,
                 img_size=self.image_size,
             )
             saved_weights = torch.load(model_path, map_location=self.device)
