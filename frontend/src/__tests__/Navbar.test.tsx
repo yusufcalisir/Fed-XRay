@@ -74,4 +74,13 @@ describe("Navbar Component", () => {
 
     expect(screen.getByText("Platform Overview")).toBeInTheDocument();
   });
+
+  it("renders mobile hamburger menu toggle and opens mobile drawer", () => {
+    renderNavbar({ mode: "landing" });
+    const menuBtn = screen.getByLabelText(/Open Navigation Menu/i);
+    expect(menuBtn).toBeInTheDocument();
+    fireEvent.click(menuBtn);
+    expect(screen.getByLabelText(/Close Navigation Menu/i)).toBeInTheDocument();
+    expect(screen.getByText(/Consortium Engine:/i)).toBeInTheDocument();
+  });
 });

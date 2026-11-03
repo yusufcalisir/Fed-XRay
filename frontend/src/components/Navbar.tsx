@@ -4,7 +4,7 @@ import React, { useEffect, useState } from "react";
 import Link from "next/link";
 import { useLanguage } from "@/context/LanguageContext";
 import { useApi } from "@/context/ApiContext";
-import { Sun, Moon, ArrowLeft } from "lucide-react";
+import { Sun, Moon, ArrowLeft, Menu, X, ShieldCheck, ArrowRight } from "lucide-react";
 import FedXRayLogo from "@/components/FedXRayLogo";
 
 interface NavbarProps {
@@ -16,6 +16,7 @@ export default function Navbar({ mode = "landing", onLaunchDemo }: NavbarProps) 
   const { language, setLanguage, t } = useLanguage();
   const { isConnected, isChecking, reconnectAttempts } = useApi();
   const [isDark, setIsDark] = useState(false);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   useEffect(() => {
     let sessionTheme: string | null = null;
@@ -42,6 +43,17 @@ export default function Navbar({ mode = "landing", onLaunchDemo }: NavbarProps) 
     }
   }, []);
 
+  // Close mobile menu on resize to desktop
+  useEffect(() => {
+    const handleResize = () => {
+      if (window.innerWidth >= 1024) {
+        setIsMobileMenuOpen(false);
+      }
+    };
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
+
   const toggleTheme = () => {
     const newDark = !isDark;
     setIsDark(newDark);
@@ -64,16 +76,25 @@ export default function Navbar({ mode = "landing", onLaunchDemo }: NavbarProps) 
     }
   };
 
-  // Engine status dot color only - no text label in navbar
+  const connectionLabel = isConnected
+    ? t("engine_connected")
+    : isChecking
+    ? t("engine_connecting")
+    : reconnectAttempts > 0
+    ? t("engine_reconnecting")
+    : t("engine_offline");
+
+  // Engine status dot color only
   const dotClass = isConnected
-    ? "bg-emerald-500"
+    ? "bg-emerald-500 shadow-[0_0_8px_#10b981]"
     : isChecking
     ? "bg-amber-400 animate-pulse"
     : reconnectAttempts > 0
     ? "bg-amber-400 animate-pulse"
-    : "bg-rose-500";
+    : "bg-rose-500 animate-pulse";
 
   const scrollTo = (id: string) => {
+    setIsMobileMenuOpen(false);
     const el = document.getElementById(id);
     if (el) {
       el.scrollIntoView({ behavior: "smooth", block: "start" });
@@ -81,8 +102,8 @@ export default function Navbar({ mode = "landing", onLaunchDemo }: NavbarProps) 
   };
 
   return (
-    <header className="sticky top-0 z-50 w-full h-14 bg-[var(--navbar-bg)] border-b border-[var(--navbar-border)] transition-colors select-none">
-      <div className="max-w-[1360px] mx-auto px-4 sm:px-6 h-full flex items-center justify-between gap-4">
+    <header className="sticky top-0 z-50 w-full bg-[var(--navbar-bg)] border-b border-[var(--navbar-border)] transition-colors select-none">
+      <div className="max-w-[1360px] mx-auto px-4 sm:px-6 h-14 flex items-center justify-between gap-3">
 
         {/* Brand / Logo */}
         <div className="flex items-center gap-3 shrink-0">
@@ -95,7 +116,7 @@ export default function Navbar({ mode = "landing", onLaunchDemo }: NavbarProps) 
             </span>
           </Link>
 
-          {/* Clinical CDSS tag - always visible on md+ */}
+          {/* Clinical CDSS tag */}
           <span className="hidden md:inline text-[10px] font-semibold uppercase tracking-widest text-[var(--text-muted)] border-l border-[var(--border-subtle)] pl-3">
             Clinical CDSS
           </span>
@@ -111,7 +132,7 @@ export default function Navbar({ mode = "landing", onLaunchDemo }: NavbarProps) 
           )}
         </div>
 
-        {/* Center Navigation - plain links, no pill container */}
+        {/* Center Desktop Navigation */}
         {mode === "landing" && (
           <nav className="hidden lg:flex items-center gap-6" aria-label="Site navigation">
             <button
@@ -146,11 +167,11 @@ export default function Navbar({ mode = "landing", onLaunchDemo }: NavbarProps) 
         )}
 
         {/* Right Controls */}
-        <div className="flex items-center gap-3 shrink-0">
+        <div className="flex items-center gap-2 sm:gap-3 shrink-0">
 
-          {/* Engine status dot - minimal, no label text */}
+          {/* Engine status dot - desktop only */}
           <span
-            title={isConnected ? "Engine Connected" : isChecking ? "Connecting..." : "Engine Offline"}
+            title={connectionLabel}
             className={`hidden sm:block w-1.5 h-1.5 rounded-full shrink-0 ${dotClass}`}
           />
 
@@ -164,8 +185,8 @@ export default function Navbar({ mode = "landing", onLaunchDemo }: NavbarProps) 
             {isDark ? <Sun className="w-4 h-4 text-amber-400" /> : <Moon className="w-4 h-4" />}
           </button>
 
-          {/* Language switcher - plain text, no pill container */}
-          <div className="flex items-center gap-0 text-[12px] font-semibold font-mono">
+          {/* Language switcher */}
+          <div className="flex items-center text-[12px] font-semibold font-mono">
             <button
               type="button"
               onClick={() => setLanguage("EN")}
@@ -191,32 +212,129 @@ export default function Navbar({ mode = "landing", onLaunchDemo }: NavbarProps) 
             </button>
           </div>
 
-          {/* Launch CTA - solid rectangular button */}
+          {/* Desktop Launch CTA */}
           {mode === "landing" && (
             <button
               type="button"
               onClick={onLaunchDemo}
-              className="inline-flex items-center gap-2 px-4 py-2 rounded-md text-[13px] font-semibold bg-emerald-600 hover:bg-emerald-500 text-white transition-colors shrink-0 active:scale-[0.98]"
+              className="hidden sm:inline-flex items-center gap-2 px-4 py-2 rounded-md text-[13px] font-semibold bg-emerald-600 hover:bg-emerald-500 text-white transition-colors shrink-0 active:scale-[0.98]"
             >
-              <span className="hidden sm:inline">{t("nav_launch_demo")}</span>
-              <span className="sm:hidden">{t("nav_demo_short")}</span>
+              <span>{t("nav_launch_demo")}</span>
             </button>
           )}
 
-          {/* Back to Overview (dashboard mode, mobile) */}
+          {/* Dashboard Mode: Desktop Overview Link */}
           {mode === "dashboard" && (
             <Link
               href="/"
-              className="lg:hidden inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium text-[var(--text-muted)] border border-[var(--border-card)] hover:text-[var(--text-heading)] transition-colors"
+              className="hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium text-[var(--text-muted)] border border-[var(--border-card)] hover:text-[var(--text-heading)] transition-colors"
             >
               <ArrowLeft className="w-3.5 h-3.5" />
               <span>{t("nav_overview_short")}</span>
             </Link>
           )}
 
+          {/* Mobile Hamburger Menu Toggle Button */}
+          <button
+            type="button"
+            onClick={() => setIsMobileMenuOpen((prev) => !prev)}
+            aria-label={isMobileMenuOpen ? "Close Navigation Menu" : "Open Navigation Menu"}
+            aria-expanded={isMobileMenuOpen}
+            className="lg:hidden w-8 h-8 flex items-center justify-center text-[var(--text-heading)] rounded-md hover:bg-[var(--bg-card-inner)] border border-[var(--border-card)] transition-colors focus:outline-none"
+          >
+            {isMobileMenuOpen ? <X className="w-4 h-4" /> : <Menu className="w-4 h-4" />}
+          </button>
+
         </div>
 
       </div>
+
+      {/* Mobile Drawer Navigation Menu */}
+      {isMobileMenuOpen && (
+        <div className="lg:hidden w-full border-t border-[var(--border-card)] bg-[var(--navbar-bg)]/98 backdrop-blur-xl px-4 py-4 space-y-3 shadow-lg">
+
+          {/* Navigation Links (Landing Mode) */}
+          {mode === "landing" && (
+            <div className="flex flex-col space-y-1">
+              <button
+                type="button"
+                onClick={() => scrollTo("results")}
+                className="w-full text-left px-3 py-2.5 rounded-md text-sm font-medium text-[var(--text-heading)] hover:bg-[var(--bg-card-inner)] transition-colors flex items-center justify-between"
+              >
+                <span>{t("nav_results")}</span>
+                <ArrowRight className="w-3.5 h-3.5 text-[var(--text-muted)]" />
+              </button>
+              <button
+                type="button"
+                onClick={() => scrollTo("security")}
+                className="w-full text-left px-3 py-2.5 rounded-md text-sm font-medium text-[var(--text-heading)] hover:bg-[var(--bg-card-inner)] transition-colors flex items-center justify-between"
+              >
+                <span>{t("nav_security")}</span>
+                <ArrowRight className="w-3.5 h-3.5 text-[var(--text-muted)]" />
+              </button>
+              <button
+                type="button"
+                onClick={() => scrollTo("architecture")}
+                className="w-full text-left px-3 py-2.5 rounded-md text-sm font-medium text-[var(--text-heading)] hover:bg-[var(--bg-card-inner)] transition-colors flex items-center justify-between"
+              >
+                <span>{t("nav_architecture")}</span>
+                <ArrowRight className="w-3.5 h-3.5 text-[var(--text-muted)]" />
+              </button>
+              <button
+                type="button"
+                onClick={() => scrollTo("benchmarks")}
+                className="w-full text-left px-3 py-2.5 rounded-md text-sm font-medium text-[var(--text-heading)] hover:bg-[var(--bg-card-inner)] transition-colors flex items-center justify-between"
+              >
+                <span>{t("nav_benchmarks")}</span>
+                <ArrowRight className="w-3.5 h-3.5 text-[var(--text-muted)]" />
+              </button>
+            </div>
+          )}
+
+          {/* Navigation Link (Dashboard Mode) */}
+          {mode === "dashboard" && (
+            <Link
+              href="/"
+              onClick={() => setIsMobileMenuOpen(false)}
+              className="w-full px-3 py-2.5 rounded-md text-sm font-medium text-[var(--text-heading)] hover:bg-[var(--bg-card-inner)] transition-colors flex items-center justify-between"
+            >
+              <span>{t("nav_dashboard_overview")}</span>
+              <ArrowLeft className="w-3.5 h-3.5 text-[var(--text-muted)]" />
+            </Link>
+          )}
+
+          {/* Divider */}
+          <div className="h-px w-full bg-[var(--border-subtle)]" />
+
+          {/* Engine Status Bar */}
+          <div className="flex items-center justify-between px-3 py-1.5 text-xs text-[var(--text-muted)]">
+            <span>Consortium Engine:</span>
+            <div className="flex items-center gap-2">
+              <span className={`w-2 h-2 rounded-full ${dotClass}`} />
+              <span className="font-mono text-[11px] font-medium text-[var(--text-heading)]">
+                {connectionLabel}
+              </span>
+            </div>
+          </div>
+
+          {/* Primary Mobile CTA Button */}
+          {mode === "landing" && (
+            <button
+              type="button"
+              onClick={() => {
+                setIsMobileMenuOpen(false);
+                if (onLaunchDemo) onLaunchDemo();
+              }}
+              className="w-full mt-2 py-2.5 px-4 rounded-md text-sm font-semibold bg-emerald-600 hover:bg-emerald-500 text-white transition-colors flex items-center justify-center gap-2 shadow-xs active:scale-[0.99]"
+            >
+              <ShieldCheck className="w-4 h-4" />
+              <span>{t("nav_launch_demo")}</span>
+              <ArrowRight className="w-4 h-4" />
+            </button>
+          )}
+
+        </div>
+      )}
     </header>
   );
 }
