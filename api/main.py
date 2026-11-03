@@ -783,7 +783,7 @@ async def get_state():
         reference_cases = get_default_reference_cases()
 
     has_rounds = len(rounds_list) > 0
-    effective_trained = bool(state.model_trained and has_rounds)
+    effective_trained = state.model_trained and has_rounds
     is_live = effective_trained and len(rounds_list) > 0
 
     return {
