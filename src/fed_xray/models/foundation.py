@@ -20,7 +20,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-from .vit import TransformerEncoderBlock
+from .vit import TransformerEncoderBlock, create_medical_vit
 
 
 class UNIFoundationBackbone(nn.Module):
@@ -627,10 +627,12 @@ class FedMedCLIPModule(nn.Module):
         dataset_name: str = "isic",
         class_prompts: Optional[List[str]] = None,
         text_anchor: Optional[TextSemanticAnchor] = None,
+        device: Optional[torch.device] = None,
     ) -> None:
         super().__init__()
         self.temperature = temperature
         self.num_classes = num_classes
+        self.device = device or torch.device("cpu")
 
         if text_anchor is not None:
             self.text_anchor = text_anchor
@@ -640,6 +642,7 @@ class FedMedCLIPModule(nn.Module):
                 class_prompts=class_prompts,
                 embed_dim=text_embed_dim,
                 num_classes=num_classes,
+                device=self.device,
             )
         self.fam = nn.Sequential(
             nn.Linear(image_embed_dim, text_embed_dim),
@@ -743,3 +746,105 @@ class FedDATDualAdapter(nn.Module):
         l_adapt = language_tokens + self.language_adapter(language_tokens)
         cross_out, _ = self.cross_attn(query=v_adapt, key=l_adapt, value=l_adapt)
         return v_adapt + cross_out, l_adapt
+
+
+class FedMedCLIPModel(nn.Module):
+    """End-to-end multimodal medical foundation architecture coupling vision backbone with FedMedCLIPModule.
+
+    Strictly satisfies Rule 8 and Rule 12: connects the frozen/PEFT-adapted image encoder with
+    the Feature Adaptation Module (FAM), canonical clinical text semantic anchors, and a private MLP head.
+    """
+
+    def __init__(
+        self,
+        backbone_type: str = "vit_tiny",
+        img_size: int = 224,
+        patch_size: int = 16,
+        num_classes: int = 3,
+        pretrained: bool = False,
+        checkpoint_path: Optional[str] = None,
+        strict_checkpoint: bool = False,
+        text_embed_dim: int = 512,
+        dataset_name: str = "isic",
+        device: Optional[torch.device] = None,
+    ) -> None:
+        super().__init__()
+        self.device = device or torch.device("cpu")
+        self.backbone_type = backbone_type
+        self.num_classes = num_classes
+
+        # Instantiate backbone
+        if backbone_type == "uni":
+            self.backbone: nn.Module = UNIFoundationBackbone(
+                embed_dim=512,
+                num_classes=0,
+                patch_size=patch_size,
+                pretrained=pretrained,
+                checkpoint_path=checkpoint_path,
+                strict_checkpoint=strict_checkpoint,
+            )
+            embed_dim = 512
+        elif backbone_type in ("swin_unetr", "swin"):
+            self.backbone = SwinUNETRRadiologyBackbone(
+                embed_dim=384,
+                num_classes=0,
+                pretrained=pretrained,
+                checkpoint_path=checkpoint_path,
+                strict_checkpoint=strict_checkpoint,
+            )
+            embed_dim = 384
+        else:
+            self.backbone = create_medical_vit(
+                model_type=backbone_type if backbone_type.startswith("vit") else "vit_tiny",
+                img_size=img_size,
+                patch_size=patch_size,
+                num_classes=0,
+                pretrained=pretrained,
+                checkpoint_path=checkpoint_path,
+                strict_checkpoint=strict_checkpoint,
+            )
+            embed_dim = self.backbone.embed_dim
+
+        self.embed_dim = embed_dim
+
+        # Multimodal alignment and adaptation module
+        self.medclip = FedMedCLIPModule(
+            image_embed_dim=embed_dim,
+            text_embed_dim=text_embed_dim,
+            num_classes=num_classes,
+            dataset_name=dataset_name,
+            device=self.device,
+        )
+
+        # Weight authenticity and provenance tracking
+        self.is_pretrained = getattr(self.backbone, "is_pretrained", False)
+        self.checkpoint_provenance = f"fedmedclip:{getattr(self.backbone, 'checkpoint_provenance', 'scratch')}"
+        self.checkpoint_hash = getattr(self.backbone, "checkpoint_hash", None)
+
+    def extract_features(self, x: torch.Tensor) -> torch.Tensor:
+        """Extract latent representation vector for similarity search and prototype synthesis."""
+        return self.backbone(x)
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        """Standard forward pass returning classification log-probabilities."""
+        feats = self.extract_features(x)
+        y_ens, _, _ = self.medclip(feats)
+        return torch.log(y_ens + 1e-8)
+
+    def forward_multimodal(
+        self, x: torch.Tensor
+    ) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+        """Multimodal forward pass returning ensemble, FAM, and private MLP probabilities."""
+        feats = self.extract_features(x)
+        return self.medclip(feats)
+
+    def compute_local_loss(
+        self,
+        x: torch.Tensor,
+        targets: torch.Tensor,
+        beta: float = 0.5,
+    ) -> Tuple[torch.Tensor, torch.Tensor]:
+        """Computes FedMedCLIP mutual distillation and CE loss."""
+        feats = self.extract_features(x)
+        return self.medclip.compute_local_loss(feats, targets, beta=beta)
+

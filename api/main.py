@@ -537,6 +537,9 @@ async def get_state():
         "is_live": is_live,
         "telemetry_source": "live_runtime" if is_live else "reference_benchmark",
         "model_provenance": state.server.get_model_provenance() if state.server else None,
+        "available_architectures": ["vit_tiny", "vit_base", "uni", "swin_unetr", "fedmedclip"],
+        "available_peft_modes": ["ffa_lora", "lora", "fedsa_lora", "medsam", "feddat"],
+        "available_optimizers": ["FedDyn", "FedAvg", "FedProx", "FedCola"],
     }
 
 

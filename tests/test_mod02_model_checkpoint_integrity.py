@@ -182,3 +182,4 @@ def test_central_server_and_client_provenance_telemetry():
     assert clt_prov["checkpoint_provenance"] == "uninitialized_scratch_weights"
     assert clt_prov["strict_checkpoint"] is False
     assert clt_prov["peft_mode"] == "ffa_lora"
+

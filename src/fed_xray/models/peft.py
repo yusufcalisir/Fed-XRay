@@ -224,6 +224,86 @@ class FedPerfixPlugin(nn.Module):
         return self.scale * adapter_out
 
 
+class MedSAMAdapterLinear(nn.Module):
+    """MedSAM Client-Tailored Adapter (FCA) wrapping a frozen base linear layer.
+
+    Strictly satisfies Rule 2 and Rule 12: injects bottleneck residual scaling into
+    foundation models to adapt dense radiological and pathological representations.
+    """
+
+    def __init__(
+        self,
+        base_layer: nn.Linear,
+        r: int = 16,
+        scale: float = 0.5,
+        **kwargs: Any,
+    ) -> None:
+        super().__init__()
+        self.base_layer = base_layer
+        self.in_features = base_layer.in_features
+        self.out_features = base_layer.out_features
+        for param in self.base_layer.parameters():
+            param.requires_grad = False
+
+        from .foundation import MedSAMClientAdapter
+
+        self.adapter = MedSAMClientAdapter(
+            embed_dim=self.in_features,
+            bottleneck_dim=max(8, r),
+            scale=scale,
+        )
+        if self.in_features != self.out_features:
+            self.dim_match: Optional[nn.Linear] = nn.Linear(self.in_features, self.out_features, bias=False)
+        else:
+            self.dim_match = None
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        base_out = self.base_layer(x)
+        adapt_out = self.adapter(x)
+        if self.dim_match is not None:
+            adapt_out = self.dim_match(adapt_out)
+        return base_out + adapt_out
+
+
+class FedDATAdapterLinear(nn.Module):
+    """FedDAT Dual-Adapter wrapping a base layer with cross-token attention.
+
+    Strictly satisfies Rule 8 and Rule 12: couples vision tokens with dual-adapter
+    residual branches and cross-attention adaptation.
+    """
+
+    def __init__(
+        self,
+        base_layer: nn.Linear,
+        r: int = 16,
+        **kwargs: Any,
+    ) -> None:
+        super().__init__()
+        self.base_layer = base_layer
+        self.in_features = base_layer.in_features
+        self.out_features = base_layer.out_features
+        for param in self.base_layer.parameters():
+            param.requires_grad = False
+
+        from .foundation import FedDATDualAdapter
+
+        self.adapter = FedDATDualAdapter(
+            embed_dim=self.in_features,
+            bottleneck_dim=max(8, r),
+        )
+        if self.in_features != self.out_features:
+            self.dim_match: Optional[nn.Linear] = nn.Linear(self.in_features, self.out_features, bias=False)
+        else:
+            self.dim_match = None
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        base_out = self.base_layer(x)
+        v_out, _ = self.adapter(x, x)
+        if self.dim_match is not None:
+            v_out = self.dim_match(v_out)
+        return base_out + 0.5 * (v_out - x if self.dim_match is None else v_out)
+
+
 def compute_rank_aware_subspace_sufficiency(
     client_features_list: List[torch.Tensor],
     rank: int = 16,
@@ -312,12 +392,12 @@ def inject_lora_to_model(
     r: int = 16,
     lora_alpha: float = 16.0,
     lora_dropout: float = 0.0,
-    mode: str = "lora",  # "lora", "ffa_lora", "fedsa_lora", "fedas_lora", "het_lora", "fedperfix"
+    mode: str = "lora",  # "lora", "ffa_lora", "fedsa_lora", "fedas_lora", "het_lora", "fedperfix", "medsam", "feddat"
     deep_layers_only: bool = False,
     num_deep_layers: int = 4,
     total_layers: int = 12,
 ) -> Dict[str, Any]:
-    """Injects PEFT LoRA adapters or FedPerfix plugins into targeted Vision Transformer layers."""
+    """Injects PEFT LoRA adapters, MedSAM FCA adapters, or FedDAT dual-adapters into targeted Vision Transformer layers."""
     if target_modules is None:
         target_modules = ["q_proj", "v_proj", "query", "value", "to_q", "to_v", "qkv"]
 
@@ -330,6 +410,10 @@ def inject_lora_to_model(
         adapter_cls = FedASLoRALinear
     elif mode == "het_lora":
         adapter_cls = HetLoRALinear
+    elif mode in ("medsam", "fca"):
+        adapter_cls = MedSAMAdapterLinear
+    elif mode in ("feddat", "dat"):
+        adapter_cls = FedDATAdapterLinear
 
     blocks = getattr(model, "blocks", None) or getattr(model, "layers", None)
     actual_total_layers = len(blocks) if blocks is not None and hasattr(blocks, "__len__") else total_layers

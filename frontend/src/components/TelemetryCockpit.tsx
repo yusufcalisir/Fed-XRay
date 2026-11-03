@@ -130,6 +130,9 @@ export default function TelemetryCockpit({
                 >
                   <option value="vit_base" className="bg-slate-900 text-slate-100">{t("sec2_model_vit_base")}</option>
                   <option value="vit_tiny" className="bg-slate-900 text-slate-100">{t("sec2_model_vit_tiny")}</option>
+                  <option value="uni" className="bg-slate-900 text-slate-100">{t("sec2_model_uni")}</option>
+                  <option value="swin_unetr" className="bg-slate-900 text-slate-100">{t("sec2_model_swin")}</option>
+                  <option value="fedmedclip" className="bg-slate-900 text-slate-100">{t("sec2_model_fedmedclip")}</option>
                 </select>
               </div>
 
@@ -148,6 +151,7 @@ export default function TelemetryCockpit({
                   <option value="FedDyn" className="bg-slate-900 text-slate-100">FedDyn</option>
                   <option value="FedAvg" className="bg-slate-900 text-slate-100">FedAvg</option>
                   <option value="FedProx" className="bg-slate-900 text-slate-100">FedProx</option>
+                  <option value="FedCola" className="bg-slate-900 text-slate-100">FedCola</option>
                 </select>
               </div>
             </div>

@@ -25,7 +25,12 @@ from sklearn.metrics import (  # pyrefly: ignore[missing-source-for-stubs]
 
 from ..models.cnn import create_model as create_cnn_model
 from ..models.vit import create_medical_vit
-from ..models.foundation import UNIFoundationBackbone, SwinUNETRRadiologyBackbone
+from ..models.foundation import (
+    UNIFoundationBackbone,
+    SwinUNETRRadiologyBackbone,
+    FedMedCLIPModel,
+    FedColaModalityBridge,
+)
 from ..models.peft import (
     inject_lora_to_model,
     extract_peft_state_dict,
@@ -94,6 +99,7 @@ class CentralServer:
 
         self.img_size = img_size or 28
         self.patch_size = patch_size or (16 if self.img_size == 224 else 4)
+        self.cola_bridge: Optional[FedColaModalityBridge] = None
 
         # Cryptographic and DP engines under Option J
         if use_ckks:
@@ -220,6 +226,26 @@ class CentralServer:
                     deep_layers_only=self.deep_layers_only,
                 )
             return model
+        elif self.model_type in ("fedmedclip", "medclip"):
+            model = FedMedCLIPModel(
+                backbone_type="vit_tiny",
+                img_size=self.img_size,
+                patch_size=self.patch_size,
+                num_classes=3,
+                pretrained=self.pretrained,
+                checkpoint_path=self.foundation_checkpoint,
+                strict_checkpoint=self.strict_checkpoint,
+                device=self.device,
+            )
+            if self.peft_mode:
+                inject_lora_to_model(
+                    model=model.backbone,
+                    r=self.lora_r,
+                    lora_alpha=self.lora_alpha,
+                    mode=self.peft_mode,
+                    deep_layers_only=self.deep_layers_only,
+                )
+            return model
         return create_cnn_model()
 
     def get_model_provenance(self) -> Dict[str, Any]:
@@ -237,12 +263,18 @@ class CentralServer:
 
     def get_global_weights(self) -> Dict[str, torch.Tensor]:
         """Get current global model or PEFT adapter weights."""
+        weights: Dict[str, torch.Tensor]
         if self.peft_mode:
-            return extract_peft_state_dict(self.global_model, mode=self.peft_mode)
-        return {
-            name: param.clone().detach().cpu()
-            for name, param in self.global_model.state_dict().items()
-        }
+            weights = extract_peft_state_dict(self.global_model, mode=self.peft_mode)
+        else:
+            weights = {
+                name: param.clone().detach().cpu()
+                for name, param in self.global_model.state_dict().items()
+            }
+        if self.cola_bridge is not None:
+            for k, v in self.cola_bridge.state_dict().items():
+                weights[f"cola_bridge.{k}"] = v.clone().detach().cpu()
+        return weights
 
     def get_weights(self) -> Dict[str, torch.Tensor]:
         """Alias for get_global_weights for API symmetry with HospitalClient."""
@@ -588,11 +620,23 @@ class CentralServer:
             # For "distributed" (Option J) or "local" modes, clients have already added calibrated
             # noise at the hospital boundary. Server-side noise addition would double the perturbation.
 
+        # Separate cola_bridge weights if present
+        cola_weights = {k.replace("cola_bridge.", ""): v for k, v in avg_weights.items() if k.startswith("cola_bridge.")}
+        model_weights = {k: v for k, v in avg_weights.items() if not k.startswith("cola_bridge.")}
+
+        if cola_weights:
+            if self.cola_bridge is None:
+                feat_dim = getattr(self.global_model, "embed_dim", 128)
+                self.cola_bridge = FedColaModalityBridge(
+                    image_dim=feat_dim, text_dim=512, shared_dim=256
+                ).to(self.device)
+            self.cola_bridge.load_state_dict({k: v.to(self.device) for k, v in cola_weights.items()})
+
         # Update global model
         if self.peft_mode:
-            load_peft_state_dict(self.global_model, avg_weights, mode=self.peft_mode)
+            load_peft_state_dict(self.global_model, model_weights, mode=self.peft_mode)
         else:
-            model_state = {k: v.to(self.device) for k, v in avg_weights.items()}
+            model_state = {k: v.to(self.device) for k, v in model_weights.items()}
             self.global_model.load_state_dict(model_state)
 
         return avg_weights

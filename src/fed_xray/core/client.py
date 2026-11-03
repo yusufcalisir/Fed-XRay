@@ -19,7 +19,12 @@ from torch.utils.data import DataLoader
 
 from ..models.cnn import create_model as create_cnn_model
 from ..models.vit import create_medical_vit
-from ..models.foundation import UNIFoundationBackbone, SwinUNETRRadiologyBackbone
+from ..models.foundation import (
+    UNIFoundationBackbone,
+    SwinUNETRRadiologyBackbone,
+    FedMedCLIPModel,
+    FedColaModalityBridge,
+)
 from ..models.peft import (
     inject_lora_to_model,
     extract_peft_state_dict,
@@ -123,6 +128,8 @@ class HospitalClient:
         self.secagg_peer = SecAggPeer(client_id=self.client_id)
         # Client-side CKKS homomorphic encryption engine (public context)
         self.ckks_engine: Optional[CKKSEncryptionEngine] = None
+        self.cola_bridge: Optional[FedColaModalityBridge] = None
+        self.text_anchor: Optional[Any] = None
 
     def _create_local_model(self) -> nn.Module:
         """Instantiate backbone and inject PEFT adapters if requested."""
@@ -175,6 +182,26 @@ class HospitalClient:
             if self.peft_mode:
                 inject_lora_to_model(
                     model=model,
+                    r=self.lora_r,
+                    lora_alpha=self.lora_alpha,
+                    mode=self.peft_mode,
+                    deep_layers_only=self.deep_layers_only,
+                )
+            return model
+        elif self.model_type in ("fedmedclip", "medclip"):
+            model = FedMedCLIPModel(
+                backbone_type="vit_tiny",
+                img_size=self.img_size,
+                patch_size=self.patch_size,
+                num_classes=3,
+                pretrained=self.pretrained,
+                checkpoint_path=self.foundation_checkpoint,
+                strict_checkpoint=self.strict_checkpoint,
+                device=self.device,
+            )
+            if self.peft_mode:
+                inject_lora_to_model(
+                    model=model.backbone,
                     r=self.lora_r,
                     lora_alpha=self.lora_alpha,
                     mode=self.peft_mode,
@@ -390,11 +417,23 @@ class HospitalClient:
             metrics: Training telemetry metrics.
             delta_c: Client control variate delta (for SCAFFOLD).
         """
+        # Separate cola_bridge weights if present
+        cola_weights = {k.replace("cola_bridge.", ""): v for k, v in global_weights.items() if k.startswith("cola_bridge.")}
+        model_weights = {k: v for k, v in global_weights.items() if not k.startswith("cola_bridge.")}
+
+        if cola_weights:
+            if self.cola_bridge is None:
+                feat_dim = getattr(self.model, "embed_dim", 128)
+                self.cola_bridge = FedColaModalityBridge(
+                    image_dim=feat_dim, text_dim=512, shared_dim=256
+                ).to(self.device)
+            self.cola_bridge.load_state_dict({k: v.to(self.device) for k, v in cola_weights.items()})
+
         # Load global model / adapter weights
         if self.peft_mode:
-            load_peft_state_dict(self.model, global_weights, mode=self.peft_mode)
+            load_peft_state_dict(self.model, model_weights, mode=self.peft_mode)
         else:
-            self.model.load_state_dict(copy.deepcopy(global_weights))
+            self.model.load_state_dict(copy.deepcopy(model_weights))
         self.model.train()
 
         # Global model reference for MOON / FedProx / FedDyn
@@ -406,6 +445,14 @@ class HospitalClient:
 
         # Optimizer targeting trainable parameters
         trainable_params = [p for p in self.model.parameters() if p.requires_grad]
+        if algorithm.upper() == "FEDCOLA" or loss_fn_name.upper() == "FEDCOLA":
+            if self.cola_bridge is None:
+                feat_dim = getattr(self.model, "embed_dim", 128)
+                self.cola_bridge = FedColaModalityBridge(
+                    image_dim=feat_dim, text_dim=512, shared_dim=256
+                ).to(self.device)
+            trainable_params.extend([p for p in self.cola_bridge.parameters() if p.requires_grad])
+
         optimizer = optim.Adam(trainable_params, lr=self.learning_rate)
         criterion = self._get_loss_function(loss_fn_name, current_round, total_rounds)
         repel_criterion = PrototypeRepelLoss(margin=1.0)
@@ -437,8 +484,32 @@ class HospitalClient:
                     labels = self._flip_labels(labels)
 
                 optimizer.zero_grad()
-                outputs = self.model(images)
-                loss = criterion(outputs, labels)
+                if hasattr(self.model, "compute_local_loss"):
+                    loss, y_ens = self.model.compute_local_loss(images, labels, beta=0.5)
+                    outputs = torch.log(y_ens + 1e-8)
+                else:
+                    outputs = self.model(images)
+                    loss = criterion(outputs, labels)
+
+                if algorithm.upper() == "FEDCOLA" or loss_fn_name.upper() == "FEDCOLA":
+                    if self.cola_bridge is None:
+                        feat_dim = getattr(self.model, "embed_dim", 128)
+                        self.cola_bridge = FedColaModalityBridge(
+                            image_dim=feat_dim, text_dim=512, shared_dim=256
+                        ).to(self.device)
+                    if self.text_anchor is None:
+                        from ..models.foundation import TextSemanticAnchor
+
+                        self.text_anchor = TextSemanticAnchor(
+                            dataset_name="isic",
+                            embed_dim=512,
+                            num_classes=3,
+                            device=self.device,
+                        )
+                    feats = extract_features(self.model, images)
+                    txt_embeds = self.text_anchor(labels)
+                    cola_loss = self.cola_bridge.compute_cross_modal_alignment_loss(feats, txt_embeds)
+                    loss = loss + 0.1 * cola_loss
 
                 # 1. Prototype Metric Alignment Loss
                 if global_prototypes is not None and proto_weight > 0:
@@ -576,6 +647,10 @@ class HospitalClient:
                     updated_weights[name] = (
                         initial_params[name].cpu() + perturbed_deltas[name]
                     ).to(orig_dtype)
+
+        if self.cola_bridge is not None and (algorithm.upper() == "FEDCOLA" or loss_fn_name.upper() == "FEDCOLA"):
+            for k, v in self.cola_bridge.state_dict().items():
+                updated_weights[f"cola_bridge.{k}"] = v.clone().detach().cpu()
 
         metrics = TrainingMetrics(
             loss=avg_loss,
