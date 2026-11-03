@@ -744,7 +744,7 @@ export default function PresentationLandingPage() {
               <tbody className="divide-y divide-[var(--border-subtle)] font-mono">
                 <tr className="bg-emerald-500/[0.05] font-semibold">
                   <td className="py-3 px-3 font-bold text-emerald-600 dark:text-emerald-400 font-sans">Fed-XRay (FFA-LoRA + FedDyn)</td>
-                  <td className="py-3 px-3 text-emerald-600 dark:text-emerald-400 font-bold">0.984</td>
+                  <td className="py-3 px-3 text-emerald-600 dark:text-emerald-400 font-bold">0.984 *</td>
                   <td className="py-3 px-3">4.2 MB / round</td>
                   <td className="py-3 px-3 text-emerald-500 font-sans">Patient DP + CKKS</td>
                   <td className="py-3 px-3 text-emerald-500 font-sans">{t("bench_val_trimmed_active")}</td>
@@ -752,7 +752,7 @@ export default function PresentationLandingPage() {
                 </tr>
                 <tr>
                   <td className="py-2.5 px-3 font-sans text-[var(--text-heading)]">{t("bench_row_centralized")}</td>
-                  <td className="py-2.5 px-3">0.987</td>
+                  <td className="py-2.5 px-3">0.987 *</td>
                   <td className="py-2.5 px-3 text-[var(--text-muted)] font-sans">{t("bench_val_na_centralized")}</td>
                   <td className="py-2.5 px-3 text-rose-500 font-sans">{t("bench_val_leakage_full")}</td>
                   <td className="py-2.5 px-3 text-[var(--text-muted)] font-sans">N/A</td>
@@ -760,7 +760,7 @@ export default function PresentationLandingPage() {
                 </tr>
                 <tr>
                   <td className="py-2.5 px-3 font-sans text-[var(--text-heading)]">{t("bench_row_fedavg")}</td>
-                  <td className="py-2.5 px-3">0.912</td>
+                  <td className="py-2.5 px-3">0.912 *</td>
                   <td className="py-2.5 px-3 text-rose-500">340 MB / round</td>
                   <td className="py-2.5 px-3 text-[var(--text-muted)] font-sans">{t("bench_val_plaintext")}</td>
                   <td className="py-2.5 px-3 text-rose-500 font-sans">{t("bench_val_vulnerable")}</td>
@@ -768,7 +768,7 @@ export default function PresentationLandingPage() {
                 </tr>
                 <tr>
                   <td className="py-2.5 px-3 font-sans text-[var(--text-heading)]">{t("bench_row_standalone")}</td>
-                  <td className="py-2.5 px-3">0.824</td>
+                  <td className="py-2.5 px-3">0.824 *</td>
                   <td className="py-2.5 px-3 text-[var(--text-muted)] font-sans">{t("bench_val_isolated")}</td>
                   <td className="py-2.5 px-3 text-emerald-500 font-sans">{t("bench_val_no_transfer")}</td>
                   <td className="py-2.5 px-3 text-[var(--text-muted)] font-sans">N/A</td>
@@ -776,6 +776,9 @@ export default function PresentationLandingPage() {
                 </tr>
               </tbody>
             </table>
+            <p className="mt-3 text-[10px] text-[var(--text-muted)] leading-relaxed border-t border-[var(--border-subtle)] pt-3">
+              * {t("footer_bench_note")}
+            </p>
           </div>
         </section>
 
@@ -804,15 +807,20 @@ export default function PresentationLandingPage() {
 
       {/* Footer */}
       <footer className="border-t border-[var(--border-card)] py-6 px-4 text-[var(--text-muted)] select-none">
-        <div className="max-w-[1200px] mx-auto flex flex-col sm:flex-row items-center justify-between gap-4">
-          <div className="flex items-center gap-3">
-            <FedXRayLogo size={20} />
-            <span className="font-display font-bold text-xs text-[var(--text-heading)] tracking-tight">
-              Fed<span className="text-emerald-500">-</span>XRay
-            </span>
+        <div className="max-w-[1200px] mx-auto flex flex-col gap-4">
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
+            <div className="flex items-center gap-3">
+              <FedXRayLogo size={20} />
+              <span className="font-display font-bold text-xs text-[var(--text-heading)] tracking-tight">
+                Fed<span className="text-emerald-500">-</span>XRay
+              </span>
+            </div>
+            <div className="text-[11px] text-[var(--text-muted)]">
+              {t("footer_text")}
+            </div>
           </div>
-          <div className="text-[11px] text-[var(--text-muted)]">
-            {t("footer_text")}
+          <div className="text-[10px] text-amber-600 dark:text-amber-400 leading-relaxed border-t border-[var(--border-subtle)] pt-3 text-center sm:text-left">
+            {t("footer_disclaimer")}
           </div>
         </div>
       </footer>

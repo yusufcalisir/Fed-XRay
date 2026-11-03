@@ -197,6 +197,15 @@ export default function DashboardPage() {
       <Navbar mode="dashboard" />
 
       <main className="flex-1 max-w-[1360px] w-full mx-auto px-3 sm:px-5 py-4 sm:py-6">
+        {/* Research Prototype Disclaimer */}
+        <div className="card-inner flex items-start gap-2.5 p-3 mb-4 border-l-4 border-l-amber-400 bg-amber-50/5">
+          <AlertCircle className="w-3.5 h-3.5 text-amber-500 shrink-0 mt-0.5" />
+          <p className="text-[10px] text-[var(--text-muted)] leading-relaxed">
+            <span className="font-semibold text-amber-600 dark:text-amber-400">Research Prototype:</span>{" "}
+            This system is not validated or approved for clinical use. Outputs must not be used for diagnostic or treatment decisions.
+          </p>
+        </div>
+
         {/* Offline Banner */}
         {!isConnected && !isChecking && reconnectAttempts > 2 && (
           <div className="card-inner flex items-start gap-2.5 sm:gap-3 p-3.5 sm:p-4 mb-4 sm:mb-5 border-l-4 border-l-amber-500">
