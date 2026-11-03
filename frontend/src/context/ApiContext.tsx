@@ -89,11 +89,19 @@ export function ApiProvider({ children }: { children: React.ReactNode }) {
     // 5. Relative URL (leveraging Next.js rewrites proxy: /api/* -> backend)
     candidates.push("");
 
-    return Array.from(new Set(candidates.filter(Boolean)));
+    const uniqueList = Array.from(new Set(candidates.filter((c) => c !== undefined && c !== null)));
+    // Prioritize relative proxy and 127.0.0.1 loopback for rapid local handshake
+    const sorted = [
+      "",
+      "http://127.0.0.1:8000",
+      "http://localhost:8000",
+      ...uniqueList.filter((c) => c !== "" && c !== "http://127.0.0.1:8000" && c !== "http://localhost:8000"),
+    ];
+    return Array.from(new Set(sorted));
   }, []);
 
   // Ping a single endpoint with strict timeout and clean failure handling
-  const pingEndpoint = async (targetUrl: string, timeoutMs = 2500): Promise<boolean> => {
+  const pingEndpoint = async (targetUrl: string, timeoutMs = 1200): Promise<boolean> => {
     try {
       const clean = targetUrl.replace(/\/+$/, "");
       const fullUrl = clean ? `${clean}/api/health` : "/api/health";
@@ -124,7 +132,7 @@ export function ApiProvider({ children }: { children: React.ReactNode }) {
     setIsChecking(true);
     setLastError(null);
 
-    const isHealthy = await pingEndpoint(target, 3500);
+    const isHealthy = await pingEndpoint(target, 1500);
     if (isHealthy) {
       setIsConnected(true);
       setIsChecking(false);
@@ -159,7 +167,7 @@ export function ApiProvider({ children }: { children: React.ReactNode }) {
 
     for (const cand of prioritized) {
       if (deadTunnelsRef.current.has(cand)) continue;
-      const ok = await pingEndpoint(cand, 2000);
+      const ok = await pingEndpoint(cand, 1200);
       if (ok) {
         setApiUrlState(cand);
         setIsTunnelExpired(false);

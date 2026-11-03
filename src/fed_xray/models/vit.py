@@ -239,6 +239,13 @@ class VisionTransformer(nn.Module):
 
     def extract_features(self, x: torch.Tensor) -> torch.Tensor:
         """Extract penultimate feature embedding z for prototype alignment and contrastive loss."""
+        if x.shape[-2:] != (self.patch_embed.img_size, self.patch_embed.img_size):
+            x = F.interpolate(
+                x,
+                size=(self.patch_embed.img_size, self.patch_embed.img_size),
+                mode="bilinear",
+                align_corners=False,
+            )
         B = x.shape[0]
         x = self.patch_embed(x)
         cls_tokens = self.cls_token.expand(B, -1, -1)

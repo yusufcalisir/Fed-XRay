@@ -70,40 +70,46 @@ export default function DashboardPage() {
   // Load state when backend connection is verified
   useEffect(() => {
     if (isConnected) {
-      fetch(`${apiUrl.replace(/\/+$/, "")}/api/state`)
+      const cleanUrl = apiUrl.replace(/\/+$/, "");
+      fetch(`${cleanUrl}/api/state`)
         .then((res) => (res.ok ? res.json() : null))
-        .then((data) => {
-          if (data && data.hospitals && Array.isArray(data.hospitals) && data.hospitals.length > 0) {
-            // Only set hospitals if they contain full cohort sample images
-            if (data.hospitals[0]?.sample_images && Array.isArray(data.hospitals[0].sample_images)) {
-              setHospitals(data.hospitals);
-              setIsTrained(Boolean(data.model_trained));
-              if (data.rounds && Array.isArray(data.rounds) && data.rounds.length > 0) {
-                setHistory(data.rounds);
-                setCurrentRound(data.rounds.length);
-              }
-            } else {
-              setHospitals([]);
-              setIsTrained(false);
-              setHistory([]);
-              setCurrentRound(0);
-            }
-            if (data.reference_cases && Array.isArray(data.reference_cases)) {
-              setRagTwins(data.reference_cases);
-            }
-            if (data.model_type) setActiveModel(data.model_type);
-            if (data.peft_mode) setActivePeft(data.peft_mode);
+        .then(async (data) => {
+          if (!data) return;
+
+          // Hydrate cohorts from cohorts field or hospitals field
+          const rawCohorts = (data.cohorts && Array.isArray(data.cohorts) && data.cohorts.length > 0)
+            ? data.cohorts
+            : (data.hospitals && Array.isArray(data.hospitals) && data.hospitals[0]?.sample_images)
+            ? data.hospitals
+            : null;
+
+          if (rawCohorts && rawCohorts.length > 0) {
+            setHospitals(rawCohorts);
           } else {
-            setHospitals([]);
-            setIsTrained(false);
-            setHistory([]);
-            setDiagnosis(null);
-            setRagTwins([]);
+            // Auto-load authentic Strategy E cohorts if backend has not loaded them yet
+            try {
+              const res = await fetchHospitalCohorts(apiUrl, 4, 40);
+              if (res.success && res.hospitals) {
+                setHospitals(res.hospitals);
+              }
+            } catch {
+              // Graceful: keep existing or empty without wiping state
+            }
           }
+
+          setIsTrained(Boolean(data.model_trained));
+          if (data.rounds && Array.isArray(data.rounds) && data.rounds.length > 0) {
+            setHistory(data.rounds);
+            setCurrentRound(data.rounds.length);
+          }
+          if (data.reference_cases && Array.isArray(data.reference_cases)) {
+            setRagTwins(data.reference_cases);
+          }
+          if (data.model_type) setActiveModel(data.model_type);
+          if (data.peft_mode) setActivePeft(data.peft_mode);
         })
-        .catch(() => {
-          setHospitals([]);
-          setIsTrained(false);
+        .catch((err) => {
+          console.warn("Dashboard state sync error:", err);
         });
     }
   }, [apiUrl, isConnected]);

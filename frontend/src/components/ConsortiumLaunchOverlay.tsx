@@ -17,7 +17,7 @@ import {
 } from "lucide-react";
 import { useLanguage } from "@/context/LanguageContext";
 import { useApi } from "@/context/ApiContext";
-import { fetchEnclaveHandshake } from "@/lib/api";
+import { fetchEnclaveHandshake, fetchSystemState, fetchHospitalCohorts } from "@/lib/api";
 import { EnclaveHandshakeResponse } from "@/types";
 
 interface ConsortiumLaunchOverlayProps {
@@ -48,35 +48,62 @@ export default function ConsortiumLaunchOverlay({
     setProgress(15);
     setActiveStage(0);
 
-    let effectiveBase = (manualUrl || apiUrl || process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000")
-      .trim()
-      .replace(/\/+$/, "");
+    const candidates = [
+      manualUrl,
+      apiUrl,
+      "",
+      "http://127.0.0.1:8000",
+      "http://localhost:8000",
+    ].filter((u): u is string => typeof u === "string");
+
+    let effectiveBase = (manualUrl || apiUrl || "").trim().replace(/\/+$/, "");
 
     try {
-      // Step 1: Central Server Enclave Health Attestation
-      let healthRes: Response | null = null;
-      try {
-        healthRes = await fetch(`${effectiveBase}/api/health`, { cache: "no-store" });
-      } catch (netErr) {
-        // If the configured endpoint failed (e.g. expired cloudflare tunnel ERR_NAME_NOT_RESOLVED),
-        // attempt auto-discovery across candidate ports (http://127.0.0.1:8000, http://localhost:8000)
-        console.warn(`Health check failed on ${effectiveBase}. Running auto-discovery...`);
-        const discovered = await autoDiscoverApi();
-        if (discovered && discovered.trim().replace(/\/+$/, "") !== effectiveBase) {
-          effectiveBase = discovered.trim().replace(/\/+$/, "");
-          setApiUrl(effectiveBase);
-          healthRes = await fetch(`${effectiveBase}/api/health`, { cache: "no-store" });
-        } else {
-          throw netErr;
+      // Step 1: Central Server Enclave Health Attestation across candidate endpoints
+      let workingBase: string | null = null;
+      let healthData: any = null;
+
+      for (const cand of candidates) {
+        try {
+          const clean = cand.trim().replace(/\/+$/, "");
+          const testUrl = clean ? `${clean}/api/health` : "/api/health";
+          const controller = new AbortController();
+          const tId = setTimeout(() => controller.abort(), 1200);
+          const res = await fetch(testUrl, { signal: controller.signal, cache: "no-store" });
+          clearTimeout(tId);
+          if (res && res.ok) {
+            const data = await res.json().catch(() => null);
+            if (data && (data.status === "healthy" || data.status === "ok")) {
+              workingBase = clean;
+              healthData = data;
+              break;
+            }
+          }
+        } catch {
+          // Probe next candidate
         }
       }
 
-      if (!healthRes || !healthRes.ok) {
-        throw new Error(`Enclave health check failed (HTTP ${healthRes?.status || "unavailable"})`);
+      if (workingBase !== null) {
+        effectiveBase = workingBase;
+        setApiUrl(workingBase);
+      } else {
+        // Fallback to auto-discovery if direct candidates failed
+        const discovered = await autoDiscoverApi();
+        if (discovered) {
+          effectiveBase = discovered.trim().replace(/\/+$/, "");
+          setApiUrl(effectiveBase);
+          const res = await fetch(`${effectiveBase}/api/health`, { cache: "no-store" });
+          if (res.ok) {
+            healthData = await res.json();
+          }
+        }
       }
-      const healthData = await healthRes.json();
-      if (healthData.status !== "healthy" && healthData.status !== "ok") {
-        throw new Error(`Aggregator reported unhealthy state: ${healthData.status}`);
+
+      if (!healthData || (healthData.status !== "healthy" && healthData.status !== "ok")) {
+        throw new Error(
+          `Consortium server unreachable at ${effectiveBase || "configured endpoints"}. Local backend offline or blocked.`
+        );
       }
 
       await new Promise((r) => setTimeout(r, 260));
@@ -99,10 +126,19 @@ export default function ConsortiumLaunchOverlay({
       setProgress(75);
       setActiveStage(2);
 
-      // Step 3: Cryptographic Parameter & Patient-Level DP Handshake
+      // Step 3: Cryptographic Parameter & Patient-Level DP Handshake + Cohort Hydration Check
       const epsVal = typeof handshake.privacy.epsilon === "number" ? handshake.privacy.epsilon.toFixed(1) : "2.0";
       const cVal = typeof handshake.privacy.clipping_bound_C === "number" ? handshake.privacy.clipping_bound_C : "0.5";
       setPrivacySummary(`CKKS 128-Bit + Patient DP (eps <= ${epsVal}, C = ${cVal})`);
+
+      try {
+        const sysState = await fetchSystemState(effectiveBase);
+        if (!sysState.cohorts || sysState.cohorts.length === 0) {
+          await fetchHospitalCohorts(effectiveBase, 4, 40);
+        }
+      } catch {
+        // Non-blocking: dashboard page also auto-hydrates
+      }
 
       await new Promise((r) => setTimeout(r, 280));
       setProgress(100);
@@ -118,7 +154,7 @@ export default function ConsortiumLaunchOverlay({
       setIsVerifying(false);
       setError(
         err?.message ||
-        `Failed to establish secure enclave handshake with backend at ${effectiveBase}. Ensure local FastAPI backend is active or switch to localhost (127.0.0.1:8000).`
+        `Failed to establish secure enclave handshake with backend at ${effectiveBase}. Ensure local FastAPI backend is active or proceed in standby mode.`
       );
     }
   }, [isOpen, apiUrl, autoDiscoverApi, setApiUrl, router]);
@@ -423,9 +459,17 @@ export default function ConsortiumLaunchOverlay({
                 {/* Quick Action Buttons */}
                 <div className="flex flex-wrap items-center gap-1.5 mt-2.5">
                   <button
+                    onClick={handleSkip}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-[11px] font-bold bg-emerald-600 text-white hover:bg-emerald-500 shadow-sm transition-all"
+                  >
+                    <span>Proceed to Dashboard (Standby Mode)</span>
+                    <ArrowRight className="w-3.5 h-3.5" />
+                  </button>
+
+                  <button
                     onClick={() => runHandshake()}
                     disabled={isVerifying}
-                    className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[11px] font-semibold bg-rose-500 text-white hover:bg-rose-600 transition-colors disabled:opacity-50"
+                    className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-[11px] font-semibold bg-rose-500/80 text-white hover:bg-rose-500 transition-colors disabled:opacity-50"
                   >
                     <RefreshCw className={`w-3 h-3 ${isVerifying ? "animate-spin" : ""}`} />
                     <span>Retry Handshake</span>
@@ -437,24 +481,17 @@ export default function ConsortiumLaunchOverlay({
                       runHandshake("http://127.0.0.1:8000");
                     }}
                     disabled={isVerifying}
-                    className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-[11px] font-semibold bg-emerald-600 text-white hover:bg-emerald-700 transition-colors disabled:opacity-50"
+                    className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-md text-[11px] font-semibold bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 transition-colors disabled:opacity-50"
                   >
                     <span>Connect Localhost (8000)</span>
                   </button>
 
                   <button
                     onClick={() => setShowUrlEditor(!showUrlEditor)}
-                    className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-[11px] font-semibold bg-slate-700/50 hover:bg-slate-700 text-slate-200 transition-colors"
+                    className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-md text-[11px] font-semibold bg-slate-800/60 hover:bg-slate-700 text-slate-300 transition-colors"
                   >
                     <Link2 className="w-3 h-3" />
                     <span>Change API URL</span>
-                  </button>
-
-                  <button
-                    onClick={handleSkip}
-                    className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-[11px] font-semibold text-slate-400 hover:text-slate-200 transition-colors"
-                  >
-                    <span>Proceed in Offline Mode</span>
                   </button>
                 </div>
 

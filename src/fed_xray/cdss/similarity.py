@@ -289,6 +289,10 @@ def extract_embedding(model: Any, image_tensor: torch.Tensor) -> np.ndarray:
     if image_tensor.device != device:
         image_tensor = image_tensor.to(device)
 
+    # Guarantee 4D shape [B, C, H, W]
+    while image_tensor.ndim < 4:
+        image_tensor = image_tensor.unsqueeze(0)
+
     with torch.no_grad():
         if hasattr(model, "extract_features"):
             feats = model.extract_features(image_tensor)
