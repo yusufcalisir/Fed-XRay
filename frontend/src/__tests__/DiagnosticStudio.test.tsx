@@ -88,4 +88,45 @@ describe("DiagnosticStudio Component", () => {
     // Clinical Findings
     expect(screen.getByText(/Localized dense alveolar consolidation/i)).toBeInTheDocument();
   });
+
+  it("strips raw markdown asterisks and cleans diagnostic findings", () => {
+    const customDiagnosis: DiagnosisResult = {
+      ...mockDiagnosis,
+      predicted_name: "Basal Cell Carcinoma",
+      findings: "**Model prediction: Basal Cell Carcinoma** (softmax confidence: 40.0%)\n\nRunner-up class: Malignant Melanoma (36.2%), margin 3.8 percentage points.",
+    };
+
+    render(
+      <DiagnosticStudio
+        diagnosis={customDiagnosis}
+        onDiagnose={vi.fn()}
+        isLoading={false}
+        isLocked={false}
+      />
+    );
+
+    // Assert that raw double asterisks are completely absent from document
+    expect(screen.queryByText(/\*\*Model prediction/)).not.toBeInTheDocument();
+    expect(screen.getByText(/Model prediction: Basal Cell Carcinoma \(softmax confidence: 40\.0%\)/i)).toBeInTheDocument();
+    expect(screen.getByText(/Runner-up class: Malignant Melanoma/i)).toBeInTheDocument();
+  });
+
+  it("renders safely when probabilities array is undefined or empty", () => {
+    const noProbDiagnosis: DiagnosisResult = {
+      ...mockDiagnosis,
+      probabilities: [] as unknown as number[],
+    };
+
+    render(
+      <DiagnosticStudio
+        diagnosis={noProbDiagnosis}
+        onDiagnose={vi.fn()}
+        isLoading={false}
+        isLocked={false}
+      />
+    );
+
+    // The component should render without throwing TypeError: Cannot read properties of undefined
+    expect(screen.getAllByText("Pneumonia").length).toBeGreaterThanOrEqual(1);
+  });
 });

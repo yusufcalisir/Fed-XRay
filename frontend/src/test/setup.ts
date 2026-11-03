@@ -14,6 +14,18 @@ vi.mock("next/navigation", () => ({
   useSearchParams: () => new URLSearchParams(),
 }));
 
+import React from "react";
+
+// Mock Recharts ResponsiveContainer to provide fixed dimensions in JSDOM
+vi.mock("recharts", async () => {
+  const original = await vi.importActual<Record<string, any>>("recharts");
+  return {
+    ...original,
+    ResponsiveContainer: ({ children }: { children: React.ReactNode }) =>
+      React.createElement("div", { className: "recharts-responsive-container", style: { width: 800, height: 400 } }, children),
+  };
+});
+
 // Global ResizeObserver polyfill for Recharts
 class ResizeObserverMock {
   observe() {}

@@ -51,4 +51,18 @@ describe("WorkflowStepper Component", () => {
     fireEvent.click(step1);
     expect(onScrollMock).toHaveBeenCalledWith("section-ingestion");
   });
+
+  it("enforces gating invariant so step 2 cannot complete before data ingestion", () => {
+    render(
+      <WorkflowStepper
+        hasIngested={false}
+        isTraining={false}
+        isTrained={true}
+        hasDiagnosis={false}
+      />
+    );
+
+    // Progress must still be 0 / 4 because ingestion has not occurred
+    expect(screen.getByText(/0 \/ 4/i)).toBeInTheDocument();
+  });
 });

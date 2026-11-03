@@ -7,6 +7,16 @@ import { ApiProvider } from "@/context/ApiContext";
 describe("PresentationLandingPage Component", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    global.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: async () => ({
+        status: "ok",
+        version: "2.1.0",
+        nodes_online: 4,
+        total_nodes: 4,
+      }),
+    } as any);
   });
 
   const renderLandingPage = () => {

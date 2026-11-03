@@ -19,7 +19,8 @@ describe("Frontend API Client Functions", () => {
       95.2,
       "PAT-1234",
       "Bacterial opacity observed.",
-      1
+      1,
+      "en"
     );
 
     expect(url).toContain("http://127.0.0.1:8000/api/cdss/report-pdf");
@@ -27,6 +28,23 @@ describe("Frontend API Client Functions", () => {
     expect(url).toContain("predicted_class=1");
     expect(url).toContain("confidence=95.2");
     expect(url).toContain("findings=Bacterial%20opacity%20observed.");
+    expect(url).toContain("lang=en");
+  });
+
+  it("correctly maps ISIC dermoscopy and Turkish class names in getPdfReportUrl", () => {
+    const urlBcc = getPdfReportUrl("http://127.0.0.1:8000", "Basal Cell Carcinoma", 88.0);
+    expect(urlBcc).toContain("predicted_class=2");
+    expect(urlBcc).toContain("lang=en");
+
+    const urlTrBcc = getPdfReportUrl("http://127.0.0.1:8000", "Bazal Hücreli Karsinom", 88.0, "PAT-01", "", undefined, "tr");
+    expect(urlTrBcc).toContain("predicted_class=2");
+    expect(urlTrBcc).toContain("lang=tr");
+
+    const urlMel = getPdfReportUrl("http://127.0.0.1:8000", "Malignant Melanoma", 72.5);
+    expect(urlMel).toContain("predicted_class=1");
+
+    const urlNev = getPdfReportUrl("http://127.0.0.1:8000", "Benign Displastik Nevüs", 96.0);
+    expect(urlNev).toContain("predicted_class=0");
   });
 
   it("constructs correct voice briefing audio URL", () => {

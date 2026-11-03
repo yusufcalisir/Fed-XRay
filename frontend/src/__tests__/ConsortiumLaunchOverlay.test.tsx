@@ -9,6 +9,26 @@ describe("ConsortiumLaunchOverlay Component", () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    global.fetch = vi.fn().mockImplementation(async (url: any) => {
+      const u = typeof url === "string" ? url : url?.toString() || "";
+      if (u.includes("/api/health")) {
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({ status: "healthy", version: "2.1.0" }),
+        };
+      }
+      return {
+        ok: true,
+        status: 200,
+        json: async () => ({
+          status: "verified",
+          nodes_online: 4,
+          total_nodes: 4,
+          dp_budget: { epsilon: 2.0, delta: 1e-5 },
+        }),
+      };
+    });
     vi.spyOn(nextNavigation, "useRouter").mockReturnValue({
       push: pushMock,
       replace: vi.fn(),
