@@ -289,4 +289,84 @@ def test_flower_in_process_orchestration_lifecycle():
     assert len(rounds_recorded) == 2
     assert summary["privacy_epsilon"] >= 0.0
     assert "eval_metrics" in summary["round_history"][-1]
+    assert "blocked_nodes" in rounds_recorded[0][1]
+
+
+def test_flower_byzantine_blocked_node_identity_authenticity():
+    """Verify that FlowerFedXRayStrategy and orchestration accurately propagate authentic blocked node IDs.
+
+    Guarantees that when Byzantine defenses isolate client node 2 (e.g. malicious gradient scaling attack),
+    FlowerFedXRayStrategy metrics and on_round_end payloads report blocked node 2 rather than
+    fabricating or defaulting to node 1 (DEFECT-11).
+    """
+    import json
+    torch.manual_seed(42)
+    device = torch.device("cpu")
+    server = CentralServer(
+        model_type="vit_tiny",
+        peft_mode="ffa_lora",
+        defense_mode=True,
+        device=device,
+    )
+    test_img = torch.randn(12, 1, 28, 28)
+    test_lbl = torch.randint(0, 3, (12,))
+
+    strategy = FlowerFedXRayStrategy(
+        central_server=server,
+        total_rounds=1,
+        algorithm="FedAvg",
+        min_fit_clients=3,
+        min_available_clients=3,
+        test_images=test_img,
+        test_labels=test_lbl,
+        total_consortium_hospitals=3,
+    )
+
+    # 2 honest clients and 1 malicious client (node 2)
+    x_data = torch.randn(10, 1, 28, 28)
+    y_data = torch.randint(0, 3, (10,))
+    loader = DataLoader(TensorDataset(x_data, y_data), batch_size=5)
+
+    c0 = HospitalClient(client_id=0, dataloader=loader, model_type="vit_tiny", peft_mode="ffa_lora")
+    c1 = HospitalClient(client_id=1, dataloader=loader, model_type="vit_tiny", peft_mode="ffa_lora")
+    c2 = HospitalClient(client_id=2, dataloader=loader, model_type="vit_tiny", peft_mode="ffa_lora", malicious=True)
+
+    fc0 = FlowerHospitalClient(c0)
+    fc1 = FlowerHospitalClient(c1)
+    fc2 = FlowerHospitalClient(c2)
+
+    proxy0 = InProcessClientProxy("0", fc0)
+    proxy1 = InProcessClientProxy("1", fc1)
+    proxy2 = InProcessClientProxy("2", fc2)
+
+    from flwr.common import FitIns, FitRes, ndarrays_to_parameters, parameters_to_ndarrays
+    fit_ins = FitIns(ndarrays_to_parameters(strategy.arrays), {"current_round": 1, "algorithm": "FedAvg"})
+
+    res0 = proxy0.fit(fit_ins)
+    res1 = proxy1.fit(fit_ins)
+    res2 = proxy2.fit(fit_ins)
+
+    # Corrupt res2 parameters to simulate gradient scaling / poison attack
+    arrays2 = parameters_to_ndarrays(res2.parameters)
+    poisoned_arrays = [arr * 15.0 for arr in arrays2]
+    res2_poisoned = FitRes(
+        status=res2.status,
+        parameters=ndarrays_to_parameters(poisoned_arrays),
+        num_examples=res2.num_examples,
+        metrics=res2.metrics,
+    )
+
+    agg_params, metrics = strategy.aggregate_fit(
+        server_round=1,
+        results=[(proxy0, res0), (proxy1, res1), (proxy2, res2_poisoned)],
+        failures=[],
+    )
+
+    assert agg_params is not None
+    assert metrics["participating_clients"] == 3
+    assert metrics["blocked_clients_count"] == 1
+    assert 2 in strategy.last_blocked_nodes
+    assert 1 not in strategy.last_blocked_nodes  # Proves node 1 is not falsely accused
+    assert metrics["blocked_nodes"] == "2"
+    assert json.loads(str(metrics["blocked_nodes_json"])) == [2]
 

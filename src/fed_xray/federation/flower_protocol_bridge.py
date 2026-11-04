@@ -10,9 +10,10 @@ the central aggregator with:
 
 from __future__ import annotations
 from typing import Any, Callable, Dict, List, Optional, Tuple, Union
+import json
+import logging
 import numpy as np
 import torch
-import logging
 import torch.nn as nn
 
 import flwr as fl
@@ -231,6 +232,8 @@ class FlowerFedXRayStrategy(Strategy):
         self.secure_aggregation = secure_aggregation
         self.use_ckks = use_ckks
         self.total_consortium_hospitals = total_consortium_hospitals
+        self.last_blocked_nodes: List[int] = []
+        self.last_security_report: Optional[Any] = None
 
         init_weights = self.central_server.get_global_weights()
         self.arrays, self.param_keys = state_dict_to_flower_parameters(init_weights)
@@ -310,6 +313,7 @@ class FlowerFedXRayStrategy(Strategy):
                 client_subsampling_q=client_q,
             )
             blocked_nodes = sec_report.clients_blocked
+            self.last_security_report = sec_report
         else:
             avg_weights = self.central_server.aggregate(
                 client_weights=client_weights,
@@ -319,6 +323,11 @@ class FlowerFedXRayStrategy(Strategy):
                 client_subsampling_q=client_q,
             )
             blocked_nodes = []
+            self.last_security_report = None
+
+        blocked_nodes_list = [int(b) for b in blocked_nodes]
+        self.last_blocked_nodes = blocked_nodes_list
+        blocked_nodes_serialized = json.dumps(blocked_nodes_list)
 
         self.arrays, _ = state_dict_to_flower_parameters(avg_weights)
 
@@ -342,7 +351,9 @@ class FlowerFedXRayStrategy(Strategy):
             "participating_clients": len(results),
             "train_loss": float(weighted_train_loss),
             "train_accuracy": float(weighted_train_acc),
-            "blocked_clients_count": len(blocked_nodes),
+            "blocked_clients_count": len(blocked_nodes_list),
+            "blocked_nodes_json": blocked_nodes_serialized,
+            "blocked_nodes": ",".join(str(b) for b in blocked_nodes_list),
             "privacy_epsilon": float(self.central_server.get_privacy_spent()),
             "dp_active": (
                 self.central_server.privacy_noise > 0.0
@@ -569,6 +580,8 @@ def run_flower_federated_orchestration(
             "round": rnd,
             "participating_clients": len(results),
             "metrics": agg_metrics,
+            "blocked_nodes": list(getattr(strategy, "last_blocked_nodes", [])),
+            "security_report": getattr(strategy, "last_security_report", None),
         }
 
         # Central evaluation if holdout set is present

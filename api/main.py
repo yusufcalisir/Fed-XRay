@@ -820,6 +820,7 @@ async def get_state():
     test_accs = state.training_history.get("test_accuracy", [])
     f1s = state.training_history.get("f1_score", [])
     threats = state.training_history.get("threat_detected", [])
+    blocked_history = state.training_history.get("blocked_nodes", [])
     for idx, r in enumerate(round_nums):
         train_loss_val = losses[idx] if idx < len(losses) else 0.0
         train_acc_val = accs[idx] if idx < len(accs) else 0.0
@@ -827,6 +828,7 @@ async def get_state():
         test_acc_val = test_accs[idx] if idx < len(test_accs) else train_acc_val
         f1_val = f1s[idx] if idx < len(f1s) else 0.0
         threat_val = threats[idx] if idx < len(threats) else False
+        blocked_val = blocked_history[idx] if idx < len(blocked_history) else []
         rounds_list.append({
             "round_num": r,
             "train_loss": round(float(train_loss_val), 4),
@@ -836,6 +838,7 @@ async def get_state():
             "f1_score": round(float(f1_val), 4) if f1_val <= 1.0 else round(float(f1_val) / 100.0, 4),
             "bandwidth": "67.1 KB" if state.peft_mode in ("ffa_lora", "lora", "fedsa_lora") else "4.2 MB",
             "threat_detected": bool(threat_val),
+            "blocked_nodes": list(blocked_val),
             "status": "completed",
         })
 
@@ -1767,10 +1770,37 @@ async def start_flower_training_background(
                 prec = float(eval_metrics.get("precision", 0.0) * 100.0)
                 rec = float(eval_metrics.get("recall", 0.0) * 100.0)
                 f1 = float(eval_metrics.get("f1_score", 0.0) * 100.0)
-                blocked_count = int(agg_metrics.get("blocked_clients_count", 0))
+
+                # Extract authentic blocked client IDs from round_info or Flower metrics
+                raw_blocked = (
+                    round_info.get("blocked_nodes")
+                    or agg_metrics.get("blocked_nodes_json")
+                    or agg_metrics.get("blocked_nodes")
+                )
+                authentic_blocked_cids: List[int] = []
+                if isinstance(raw_blocked, str):
+                    try:
+                        authentic_blocked_cids = [int(x) for x in json.loads(raw_blocked)]
+                    except Exception:
+                        authentic_blocked_cids = [
+                            int(x.strip()) for x in raw_blocked.split(",") if x.strip().isdigit()
+                        ]
+                elif isinstance(raw_blocked, (list, tuple)):
+                    authentic_blocked_cids = [int(x) for x in raw_blocked]
+
+                blocked_count = len(authentic_blocked_cids) or int(agg_metrics.get("blocked_clients_count", 0))
+                threat_detected = blocked_count > 0
+
+                # Map 0-based client IDs to 1-based consortium hospital numbers for consistent UI telemetry
+                display_blocked_nodes = [cid + 1 for cid in authentic_blocked_cids]
 
                 t_loss = float(agg_metrics.get("train_loss", val_loss))
-                t_acc = float(agg_metrics.get("train_accuracy", val_acc * 0.01)) * 100.0
+                raw_train_acc = agg_metrics.get("train_accuracy")
+                if raw_train_acc is not None:
+                    train_acc_val = float(raw_train_acc)
+                    t_acc = train_acc_val * 100.0 if train_acc_val <= 1.0 else train_acc_val
+                else:
+                    t_acc = val_acc
 
                 for c in clients:
                     if hasattr(c, "get_spent_epsilon"):
@@ -1788,8 +1818,8 @@ async def start_flower_training_background(
                     "precision": round(prec, 2),
                     "recall": round(rec, 2),
                     "f1_score": round(f1, 2),
-                    "threat_detected": blocked_count > 0,
-                    "blocked_nodes": [1] if blocked_count > 0 else [],
+                    "threat_detected": threat_detected,
+                    "blocked_nodes": display_blocked_nodes,
                     "status": "training" if round_num < num_rounds else "complete",
                     "model_type": model_type,
                     "peft_mode": peft_mode,
@@ -1810,11 +1840,13 @@ async def start_flower_training_background(
                 state.training_history.setdefault("precision", []).append(prec)
                 state.training_history.setdefault("recall", []).append(rec)
                 state.training_history.setdefault("f1_score", []).append(f1)
-                state.training_history.setdefault("threat_detected", []).append(blocked_count > 0)
+                state.training_history.setdefault("threat_detected", []).append(threat_detected)
                 state.training_history.setdefault("privacy_epsilon", []).append(float(srv.get_privacy_spent()))
-                state.training_history.setdefault("blocked_nodes", []).append([1] if blocked_count > 0 else [])
-                if blocked_count > 0:
-                    state.training_history["blocked_count"] = state.training_history.get("blocked_count", 0) + blocked_count
+                state.training_history.setdefault("blocked_nodes", []).append(display_blocked_nodes)
+                if display_blocked_nodes:
+                    state.training_history["blocked_count"] = (
+                        state.training_history.get("blocked_count", 0) + len(display_blocked_nodes)
+                    )
 
                 try:
                     state.store.record_training_round({
@@ -1827,8 +1859,8 @@ async def start_flower_training_background(
                         "recall": rec,
                         "f1_score": f1,
                         "privacy_epsilon": float(srv.get_privacy_spent()),
-                        "threat_detected": blocked_count > 0,
-                        "blocked_nodes": [1] if blocked_count > 0 else [],
+                        "threat_detected": threat_detected,
+                        "blocked_nodes": display_blocked_nodes,
                         "status": "training" if round_num < num_rounds else "complete",
                     })
                 except Exception as db_exc:

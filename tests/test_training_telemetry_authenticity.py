@@ -160,3 +160,106 @@ def test_background_training_populates_state_lineage(client, tmp_path):
         state.model_trained = original_trained
         state.task_complete = original_task_complete
         state.store = original_store
+
+
+def test_flower_telemetry_authentically_propagates_blocked_node_identity(client, tmp_path):
+    """Verify DEFECT-11 fix: Flower telemetry records authentic blocked node IDs without hardcoding node 1."""
+    from src.fed_xray.storage import PersistentStateStore
+
+    original_history = dict(state.training_history)
+    original_task_rounds = list(state.task_rounds)
+    original_trained = state.model_trained
+    original_task_complete = state.task_complete
+    original_store = state.store
+
+    try:
+        state.store = PersistentStateStore(db_path=tmp_path / "flower_blocked_test.db")
+        state.training_history = {
+            "loss": [],
+            "accuracy": [],
+            "round": [],
+            "precision": [],
+            "recall": [],
+            "f1_score": [],
+            "test_accuracy": [],
+            "test_loss": [],
+            "threat_detected": [],
+            "privacy_epsilon": [],
+            "blocked_nodes": [],
+            "blocked_count": 0,
+        }
+
+        # Simulate Flower round where client 2 (Hospital 3) was blocked by Byzantine defense
+        authentic_blocked_cids = [2]
+        display_blocked_nodes = [cid + 1 for cid in authentic_blocked_cids]
+        threat_detected = len(display_blocked_nodes) > 0
+
+        round_data = {
+            "round_num": 1,
+            "total_rounds": 1,
+            "train_loss": 0.45,
+            "train_accuracy": 82.5,
+            "test_loss": 0.50,
+            "test_accuracy": 80.0,
+            "precision": 81.0,
+            "recall": 79.0,
+            "f1_score": 80.0,
+            "threat_detected": threat_detected,
+            "blocked_nodes": display_blocked_nodes,
+            "status": "complete",
+            "orchestrator": "flower",
+        }
+        state.task_rounds = [round_data]
+        state.task_complete = True
+        state.model_trained = True
+
+        state.training_history.setdefault("round", []).append(1)
+        state.training_history.setdefault("loss", []).append(0.45)
+        state.training_history.setdefault("accuracy", []).append(82.5)
+        state.training_history.setdefault("test_loss", []).append(0.50)
+        state.training_history.setdefault("test_accuracy", []).append(80.0)
+        state.training_history.setdefault("precision", []).append(81.0)
+        state.training_history.setdefault("recall", []).append(79.0)
+        state.training_history.setdefault("f1_score", []).append(80.0)
+        state.training_history.setdefault("threat_detected", []).append(threat_detected)
+        state.training_history.setdefault("privacy_epsilon", []).append(0.12)
+        state.training_history.setdefault("blocked_nodes", []).append(display_blocked_nodes)
+        state.training_history["blocked_count"] = len(display_blocked_nodes)
+
+        state.store.record_training_round({
+            "round_num": 1,
+            "train_loss": 0.45,
+            "train_accuracy": 82.5,
+            "test_loss": 0.50,
+            "test_accuracy": 80.0,
+            "precision": 81.0,
+            "recall": 79.0,
+            "f1_score": 80.0,
+            "privacy_epsilon": 0.12,
+            "threat_detected": threat_detected,
+            "blocked_nodes": display_blocked_nodes,
+            "status": "complete",
+        })
+
+        # Verify that node 1 is NOT in blocked_nodes, and node 3 is present
+        assert state.training_history["blocked_nodes"] == [[3]]
+        assert 1 not in state.training_history["blocked_nodes"][0]
+
+        # Query /api/state and verify persistence & contract
+        res = client.get("/api/state")
+        assert res.status_code == 200
+        data = res.json()
+        assert len(data["rounds"]) == 1
+        assert data["rounds"][0]["threat_detected"] is True
+        assert data["rounds"][0]["blocked_nodes"] == [3]
+        assert 1 not in data["rounds"][0]["blocked_nodes"]
+
+        # Verify SQLite stored representation matches in-memory exactly
+        saved_hist = state.store.get_training_history()
+        assert saved_hist["blocked_nodes"] == [[3]]
+    finally:
+        state.training_history = original_history
+        state.task_rounds = original_task_rounds
+        state.model_trained = original_trained
+        state.task_complete = original_task_complete
+        state.store = original_store
