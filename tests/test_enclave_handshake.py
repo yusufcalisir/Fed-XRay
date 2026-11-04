@@ -133,8 +133,8 @@ def test_differential_privacy_intermediate_budget_accumulation(client):
 
 def test_enclave_handshake_with_threshold_committee(client):
     """Verify handshake reports process-isolated threshold enclave when threshold committee is active."""
-    original_comm = getattr(state, "threshold_committee", None)
-    original_enclaves = getattr(state, "hospital_threshold_enclaves", None)
+    original_comm = state.threshold_committee
+    original_enclaves = dict(state.hospital_threshold_enclaves)
     try:
         comm, enclaves = state.get_or_create_threshold_committee(num_hospitals=4)
         res = client.get("/api/fl/enclave-handshake")

@@ -82,6 +82,7 @@ def test_client_side_ckks_encryption_and_zero_plaintext_aggregation():
 
     # CentralServer initialized with public context only
     server = CentralServer(model_type="cnn", use_ckks=True)
+    assert server.ckks_engine is not None
     assert server.ckks_engine.is_public_only is True
 
     # Server aggregates ciphertexts
@@ -205,6 +206,7 @@ def test_isolated_process_enclave_memory_space_separation():
             use_ckks=True,
             threshold_committee=isolated,
         )
+        assert server.ckks_engine is not None
         assert server.ckks_engine.is_public_only is True
 
         # Clients encrypt parameters with public context only
@@ -235,6 +237,7 @@ def test_federated_round_with_threshold_committee_and_byzantine_isolation():
         use_ckks=True,
         threshold_committee=committee,
     )
+    assert server.ckks_engine is not None
     assert server.ckks_engine.is_public_only is True
 
     # Hospital clients with their individual threshold enclaves
