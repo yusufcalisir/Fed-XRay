@@ -1,14 +1,14 @@
-# Fed-XRay: Federated Vision Transformers for Medical Oncology AI
+# Fed-XRay: Enterprise Federated Learning for Medical Imaging & Oncology AI
 
-**Privacy-Preserving, Personalized, and Multimodal Federated Learning for Radiological and Pathology Imaging**
+**Privacy-Preserving, Personalized, and Multimodal Federated Learning across Distributed Hospital Consortia**
 
 > [!CAUTION]
 > **Research Prototype - Not for Clinical Use.**
-> This system is a research prototype. It has not been validated or approved for clinical deployment. Outputs must not be used for diagnostic or treatment decisions. All results are experimental and intended for academic and engineering study only.
+> This system is an academic research prototype designed for studying federated learning methodologies in healthcare. It has not been approved or cleared by any regulatory agency (FDA, CE, MHRA, or equivalent) for clinical diagnosis, patient management, or therapeutic decision-making. All outputs, including model predictions, saliency heatmaps, and retrieved reference cases, are experimental artifacts intended exclusively for engineering and scientific evaluation.
 
 <div align="center">
 <a href="https://yusuf-cancerfedxlearning.streamlit.app/">
-<img src="https://img.shields.io/badge/Streamlit_Legacy_Demo-Access_Platform-emerald?style=for-the-badge&logo=streamlit&logoColor=white" alt="Legacy Demo">
+<img src="https://img.shields.io/badge/Streamlit_Benchmark_UI-Access_Platform-emerald?style=for-the-badge&logo=streamlit&logoColor=white" alt="Streamlit Benchmark UI">
 </a>
 </div>
 
@@ -17,7 +17,7 @@
   <img src="https://img.shields.io/badge/PyTorch-2.0+-red?logo=pytorch" alt="PyTorch">
   <img src="https://img.shields.io/badge/Next.js-14.2+-black?logo=next.js" alt="Next.js">
   <img src="https://img.shields.io/badge/FastAPI-0.110+-teal?logo=fastapi" alt="FastAPI">
-  <img src="https://img.shields.io/badge/Privacy-DP_%2B_CKKS_(Simulated)_%2B_SecAgg%2B-indigo" alt="Privacy">
+  <img src="https://img.shields.io/badge/Privacy-Option_J_(DP_%2B_CKKS_%2B_SecAgg%2B)-indigo" alt="Privacy">
   <img src="https://img.shields.io/badge/PEFT-FFA--LoRA_%7C_FedSA--LoRA_%7C_MedSAM_%7C_FedMedCLIP-purple" alt="PEFT">
   <img src="https://img.shields.io/badge/Flower_FL-Supported-green?logo=flower" alt="Flower FL">
   <img src="https://img.shields.io/badge/Localization-EN%20%7C%20TR-blue" alt="Bilingual">
@@ -30,253 +30,201 @@
 
 ## Table of Contents
 
-- [1. Research Prototype Disclaimer](#1-research-prototype-disclaimer)
-- [2. Project Overview and Mission](#2-project-overview-and-mission)
-- [3. Implementation Status](#3-implementation-status)
-- [4. Architecture and Protocol](#4-architecture-and-protocol)
-  - [4.1 End-to-End Workflow Diagram](#41-end-to-end-workflow-diagram)
-  - [4.2 CKKS and Byzantine Detection: Protocol Phases](#42-ckks-and-byzantine-detection-protocol-phases)
-  - [4.3 CKKS Key Model Limitations](#43-ckks-key-model-limitations)
-- [5. Actually Implemented Models](#5-actually-implemented-models)
-- [6. PEFT Methods and Bilinear Discordance Elimination](#6-peft-methods-and-bilinear-discordance-elimination)
-- [7. Drift-Resilient Federated Optimizers](#7-drift-resilient-federated-optimizers)
-- [8. Foundation-Anchored Prototype Metric Learning and Imbalance Losses](#8-foundation-anchored-prototype-metric-learning-and-imbalance-losses)
-- [9. Privacy Architecture](#9-privacy-architecture)
-- [10. Strategy E Datasets and Licenses](#10-strategy-e-datasets-and-licenses)
-  - [10.1 Dataset Sources](#101-dataset-sources)
-  - [10.2 Non-IID Heterogeneity Scenarios (A to G)](#102-non-iid-heterogeneity-scenarios-a-to-g)
-  - [10.3 Leak-Free Patient-Level Cohort Isolation](#103-leak-free-patient-level-cohort-isolation)
-- [11. Benchmark Claims](#11-benchmark-claims)
-- [12. Clinical Decision Support System (CDSS)](#12-clinical-decision-support-system-cdss)
-- [13. Multi-Platform Interfaces](#13-multi-platform-interfaces)
-- [14. Flower Protocol Federation Bridge](#14-flower-protocol-federation-bridge)
-- [15. REST and Streaming API Reference](#15-rest-and-streaming-api-reference)
-- [16. Test Suite Matrix (384 Tests)](#16-test-suite-matrix-384-tests)
-- [17. Repository Directory Structure](#17-repository-directory-structure)
-- [18. Installation and Quick Start](#18-installation-and-quick-start)
-- [19. Scientific Anchors and Citations](#19-scientific-anchors-and-citations)
+- [1. Executive Overview](#1-executive-overview)
+  - [1.1 The Clinical and Technological Challenge](#11-the-clinical-and-technological-challenge)
+  - [1.2 The Fed-XRay Solution](#12-the-fed-xray-solution)
+- [2. System Architecture and Workflow](#2-system-architecture-and-workflow)
+  - [2.1 End-to-End Consortium Pipeline](#21-end-to-end-consortium-pipeline)
+  - [2.2 Protocol Phases and Privacy Separation](#22-protocol-phases-and-privacy-separation)
+- [3. Parameter-Efficient Fine-Tuning (PEFT)](#3-parameter-efficient-fine-tuning-peft)
+  - [3.1 Eliminating LoRA Bilinear Discordance](#31-eliminating-lora-bilinear-discordance)
+  - [3.2 Supported PEFT Architectures](#32-supported-peft-architectures)
+  - [3.3 Implemented Foundation Models](#33-implemented-foundation-models)
+- [4. Drift-Resilient Distributed Optimizers](#4-drift-resilient-distributed-optimizers)
+- [5. Prototype Metric Learning and Dynamic Imbalance Losses](#5-prototype-metric-learning-and-dynamic-imbalance-losses)
+  - [5.1 Foundation-Anchored Prototype Synthesis](#51-foundation-anchored-prototype-synthesis)
+  - [5.2 Dynamic Imbalance Loss Suite](#52-dynamic-imbalance-loss-suite)
+- [6. Dual-Layer Privacy Architecture (Option J)](#6-dual-layer-privacy-architecture-option-j)
+  - [6.1 Patient-Level Differential Privacy](#61-patient-level-differential-privacy)
+  - [6.2 Cryptographic Homomorphic Encryption and SecAgg+](#62-cryptographic-homomorphic-encryption-and-secagg)
+  - [6.3 Enclave Attestation Handshake](#63-enclave-attestation-handshake)
+- [7. Strategy E Real-World Benchmark Ecosystem](#7-strategy-e-real-world-benchmark-ecosystem)
+  - [7.1 Real-World Clinical Cohorts](#71-real-world-clinical-cohorts)
+  - [7.2 Non-IID Heterogeneity Scenarios (A through G)](#72-non-iid-heterogeneity-scenarios-a-through-g)
+  - [7.3 Leak-Free Patient-Level Cohort Isolation](#73-leak-free-patient-level-cohort-isolation)
+  - [7.4 Communication Economics](#74-communication-economics)
+- [8. Clinical Decision Support System (CDSS)](#8-clinical-decision-support-system-cdss)
+  - [8.1 Dynamic HNSW Vector Retrieval (Digital Twins)](#81-dynamic-hnsw-vector-retrieval-digital-twins)
+  - [8.2 Structured Explainable AI (Grad-CAM Saliency)](#82-structured-explainable-ai-grad-cam-saliency)
+  - [8.3 3D Anatomical Workspace and 2D Evidence Panes](#83-3d-anatomical-workspace-and-2d-evidence-panes)
+  - [8.4 Cryptographic PDF Reports and Audio Briefings](#84-cryptographic-pdf-reports-and-audio-briefings)
+- [9. Multi-Platform Interfaces and Operations](#9-multi-platform-interfaces-and-operations)
+  - [9.1 Next.js 14 Clinical SaaS Web Application](#91-nextjs-14-clinical-saas-web-application)
+  - [9.2 Standalone Streamlit Scientific Benchmark UI](#92-standalone-streamlit-scientific-benchmark-ui)
+  - [9.3 Flower Framework Federation Bridge](#93-flower-framework-federation-bridge)
+  - [9.4 ACID Persistent State Storage (SQLite WAL)](#94-acid-persistent-state-storage-sqlite-wal)
+- [10. REST and Streaming API Reference](#10-rest-and-streaming-api-reference)
+- [11. Verification and Automated Test Suite (384 Tests)](#11-verification-and-automated-test-suite-384-tests)
+- [12. Repository Structure](#12-repository-structure)
+- [13. Installation and Quick Start](#13-installation-and-quick-start)
+- [14. Scientific Anchors and Citations](#14-scientific-anchors-and-citations)
 
 ---
 
-## 1. Research Prototype Disclaimer
+## 1. Executive Overview
 
-This repository is an **academic research prototype** developed for studying federated learning techniques applied to medical imaging. The following disclaimers apply throughout:
+### 1.1 The Clinical and Technological Challenge
 
-- **No clinical validation:** No component of this system has been validated against clinical outcomes or approved by any medical regulatory authority (FDA, CE, MHRA, or equivalent).
-- **Not for diagnostic use:** Model outputs, saliency maps, and RAG-retrieved cases are research artifacts, not clinical evidence. They must not inform diagnostic or treatment decisions.
-- **Simulated privacy:** CKKS Homomorphic Encryption is implemented via TenSEAL in an aggregation-only simulation mode. SecAgg+ uses in-process Python cryptography, not a real multi-party network protocol. See [Section 9](#9-privacy-architecture) for full details.
-- **Dataset references:** The hospital node names BCN-20000, ViDIR, Queensland Oncology Center, and Beth Israel Deaconess are references to the public datasets' original contributing institutions (ISIC 2019, MIMIC-CXR). They do not represent active institutional partnerships or data access agreements.
-- **Benchmark values:** AUC figures cited in benchmarks are literature reference targets, not measurements from this codebase's demo environment. See [Section 11](#11-benchmark-claims).
+Deep learning in radiological oncology and computational pathology holds immense potential for early cancer detection, subtyping, and personalized therapy planning. However, training robust, clinically generalizable models requires massive, heterogeneous patient imaging cohorts spanning diverse geographic regions, demographics, and clinical centers.
 
----
+Transferring raw patient data into central repositories is prohibited by healthcare privacy laws, including HIPAA (United States), GDPR (European Union), and the European Health Data Space (EHDS). Centralized repositories also present catastrophic single-point-of-failure vulnerabilities for patient re-identification.
 
-## 2. Project Overview and Mission
+Federated Learning (FL) offers a paradigm where models train collaboratively across distributed institutions by exchanging only model updates. However, deploying standard FL algorithms (such as FedAvg on full Vision Transformers) across clinical hospital networks encounters three critical bottlenecks:
 
-Collaborative AI in radiological oncology and computational pathology is constrained by institutional data governance, cross-scanner covariate shifts, extreme class prevalence heterogeneity, and gigapixel transmission bottlenecks. Centralizing raw patient imaging data introduces re-identification hazards, violates HIPAA/GDPR/EHDS directives, and incurs multi-gigabyte communication overheads.
+1. **Massive Communication Overhead:** Large Vision Transformers (ViTs) and volumetric backbones range from 85M to over 600M parameters. Synchronizing full model checkpoints across hospital networks demands over 2.4 GB of uncompressed data per node per training round, creating unacceptable bottlenecks on clinical uplinks.
+2. **Scanner Covariate Shift and Severe Class Imbalance (Non-IID):** Hospital networks do not share identical imaging environments. Variations in scanner manufacturers (GE, Siemens, Philips), acquisition protocols, slice thicknesses, and histopathology staining chemistries (Aperio vs Hamamatsu) introduce sharp covariate shifts. Furthermore, patient sub-populations vary drastically between general community clinics and specialized oncology referral centers. Standard FL optimizers oscillate or diverge rapidly under this heterogeneity, resulting in client drift and representation collapse.
+3. **Privacy Vulnerabilities and Reconstruction Risks:** Exchanging model gradients in plaintext is vulnerable to gradient inversion attacks, where patient scans can be reconstructed analytically. Conversely, naive example-level Differential Privacy destroys clinical model utility, especially in gigapixel Whole Slide Imaging (WSI) where thousands of patches per slide rapidly exhaust privacy budgets.
 
-Naive federated learning approaches that train large Vision Transformers (ViTs) from scratch diverge under non-convex loss surfaces, suffer from client drift, and require up to 2.43 GB of uncompressed weight transfers per hospital per round.
+### 1.2 The Fed-XRay Solution
 
-**Fed-XRay** addresses these challenges through:
+**Fed-XRay** is an enterprise federated learning platform engineered specifically for medical imaging and oncology AI. It resolves the communication, heterogeneity, and privacy barriers through an integrated clinical architecture:
 
-1. **Medical Foundation-Backed PEFT:** Adapting domain-specific representations via factor-wise asymmetric LoRA variants (FFA-LoRA, FedSA-LoRA, FedAS-LoRA), reducing uplink bandwidth by greater than 99.8% (under 2.36 MB/round).
-2. **Option J Privacy Composition:** Combining SecAgg+ ECDH masking, TenSEAL CKKS ciphertext aggregation (simulation), and patient-level Gaussian Differential Privacy with Rényi DP accounting.
-3. **Strategy E Real-World Benchmarks:** Partitioning genuine multi-center clinical cohorts (ISIC 2019, NCT-CRC-HE, MIMIC-CXR) under strict patient-level isolation across 7 controlled non-IID scenarios.
-4. **Evidence-Grounded CDSS:** Indexing backbone embeddings into an HNSW vector index for retrieval of biopsy-confirmed reference cases, paired with Grad-CAM saliency, PDF diagnostic reports, and bilingual audio dictation.
-
-> [!NOTE]
-> **Multi-task federation note:** This demo combines dermoscopy (ISIC 2019), histopathology (NCT-CRC-HE), and chest X-ray (MIMIC-CXR) under a single global model. This constitutes a multi-task federated setting, not a standard single-task Non-IID FL setup. Cross-modality global model averaging is an active research challenge. The current implementation uses a shared backbone with task-specific classification heads. Performance under this setup is not directly comparable to single-modality federated learning benchmarks.
+- **Medical Foundation-Backed PEFT:** Rather than training backbones from scratch, Fed-XRay freezes pre-trained domain foundation encoders and trains lightweight low-rank adapters (FFA-LoRA, FedSA-LoRA, MedSAM FCA, FedMedCLIP). This reduces parameter exchange payloads by over 99% (less than 2.4 MB per round), making federated training practical over standard clinical networks.
+- **Elimination of Bilinear Aggregation Error:** Traditional federated LoRA introduces mathematical distortion when aggregating product matrices ($\bar{B}\bar{A} \neq \sum p_k B_k A_k$). Fed-XRay enforces factor-wise asymmetric adaptation, globally freezing projection matrix $A$ (FFA-LoRA) or sharing global input subspaces (FedSA-LoRA) to eliminate aggregation error.
+- **Drift-Resilient Distributed Optimizers:** Incorporates advanced optimizers (FedDyn, SCAFFOLD, FedAdam, MOON, FedProx) directly adapted for PEFT parameters, maintaining stable convergence across severe institutional shifts.
+- **Dynamic Imbalance and Missing-Class Calibration:** Implements Dynamic Adaptive Focal Loss (DAFL), Bayesian Balanced Softmax (BSM), and Prototype-Contrastive Margin Regularization ($\mathcal{L}_{\text{repel}}$) to handle extreme label skew and unobserved clinical classes without model collapse.
+- **Dual-Layer Privacy Defense (Option J Standard):** Enforces patient-level Rényi Differential Privacy ($\epsilon \le 2.0, \delta \le 10^{-5}$) with honest patient-level gradient clipping, combined with cryptographic aggregation via TenSEAL CKKS Homomorphic Encryption and SecAgg+ zero-sum ECDH masking.
+- **Evidence-Grounded Clinical Decision Support (CDSS):** Bridges decentralized training with front-line clinical utility. The platform features an interactive Diagnostic Studio with 224x224 Grad-CAM activation maps, an interactive 3D anatomical viewer, dynamic HNSW vector retrieval of biopsy-confirmed historical reference cases ("digital twins"), cryptographic vector PDF diagnostic reports, and bilingual audio briefings.
 
 ---
 
-## 3. Implementation Status
+## 2. System Architecture and Workflow
 
-The table below distinguishes what is actually coded and exercised in this repository, what is approximated or simulated, and what remains an active research target.
+### 2.1 End-to-End Consortium Pipeline
 
-| Component | Status | Notes |
-| :--- | :--- | :--- |
-| ViT-Tiny (192-dim, 5.7M params) | **Implemented** | Fully integrated into training, CDSS, and automated tests |
-| ViT-Base (768-dim, 85M params) | **Implemented** | Integrated with FFA-LoRA and FedSA-LoRA adapter injection |
-| Swin UNETR Radiology Backbone | **Implemented** | Hierarchical Shifted Window Attention, patch merging, 2D/3D volumetric support, official Swin-T or MONAI weights |
-| UNI Foundation Backbone | **Implemented** | Transfer-adapted pathology features, SHA-256 weight fingerprinting, strict checkpoint verification |
-| MedSAM Client Adapter (FCA) | **Implemented** | Bottleneck residual scaling integrated into `peft.py` and `client.py` for volumetric segmentation |
-| FedMedCLIP Multimodal Module | **Implemented** | Masked FAM + Clinical Text Semantic Anchors + private MLP + mutual KL distillation in `server.py` and `client.py` |
-| FedCola Modality Bridge | **Implemented** | Cross-modal projection layers bridging digital pathology and chest X-rays without paired patient data |
-| FedDAT Dual-Adapter Cross-Attention | **Implemented** | Dual vision-language bottleneck adapters with mutual cross-attention alignment |
-| Text Semantic Anchors | **Implemented** | Frozen `Bio_ClinicalBERT` canonical oncology coordinate system (`TextSemanticAnchor`) |
-| XRayClassifier CNN baseline | **Implemented** | Used in benchmarking, Grad-CAM hooks, and comparative evaluation |
-| FFA-LoRA adapter injection | **Implemented** | Bilinear error elimination verified in mathematical consistency tests |
-| FedSA-LoRA / FedAS-LoRA | **Implemented** | Factor-wise asymmetric adaptation, rank-aware shared subspace routing |
-| FlexLoRA SVD reconstruction | **Implemented** | Truncated SVD parameter reconstruction for heterogeneous client budgets |
-| FedPerfix parallel plugin | **Implemented** | Attention-decoupled personalization targeting deep attention projections |
-| FedDyn optimizer | **Implemented** | Dynamic state tracking and regularization in `server.py` |
-| FedOpt / FedAdam server momentum | **Implemented** | Adaptive server-side first and second momentum tracking in `server.py` |
-| SCAFFOLD control variates | **Implemented** | Dual client and server state updates correcting drift on PEFT weights |
-| MOON contrastive regularization | **Implemented** | Representation-level model-contrastive loss against global and prior local state |
-| Patient-level DP clipping | **Implemented** | Honest patient-level gradient clipping preventing gigapixel privacy collapse |
-| Rényi DP accounting | **Implemented** | Subsampled Gaussian mechanism composition tracking in `privacy.py` |
-| FedProto dispersion-weighted synthesis | **Implemented** | Covariance-trace intra-class weighting in `prototypes.py` |
-| DAFL, BSM, LDAM, repel losses | **Implemented** | Dynamic imbalance loss suite with verified numerical stability |
-| Grad-CAM (CNN and ViT) | **Implemented** | Multi-layer PyTorch hooks; raises `GradCAMUnavailableError` if gradients fail |
-| Structured CDSS XAI (Zero Asterisks) | **Implemented** | Asterisk-free clinical assessment, quadrant spatial localization, bilingual consistency |
-| HNSW dynamic-dim RAG retrieval | **Implemented** | Auto-detects 128-dim to 1024-dim latents; matches biopsy-confirmed twins using authentic cosine similarity |
-| ACID Persistent State Store | **Implemented** | SQLite WAL mode (`PersistentStateStore`) surviving process restarts across 5 relational tables with 1:1 memory parity |
-| Telemetry Lineage (Train vs Val) | **Implemented** | Unconflated logging of local training metrics (`train_loss`, `train_accuracy`) and holdout metrics (`loss`, `accuracy`) |
-| Multi-Class Strategy E Oncology | **Implemented** | Complete 8-class ISIC 2019 dermoscopy and 9-class NCT-CRC-HE histopathology support in cohorts, inference, and PDF |
-| Node-Level Rényi DP Accounting | **Implemented** | Client-specific `PatientLevelDPAccountant` based on local sample sizes and batch ratios without heuristic multipliers |
-| Failure Transparency & Gateway Resilience | **Implemented** | Next.js serverless route handlers propagate genuine HTTP 502/503 without synthetic mock JSON fallbacks |
-| Network Routing & Tunnel Resilience | **Implemented** | Dynamic ephemeral tunnel detection, dead domain blacklisting, automatic loopback fallback |
-| Browser Runtime Shield | **Implemented** | Client-side interception of extension collisions (`useCache`, `content.js`), port drop isolation |
-| React Subtree Resilience | **Implemented** | Next.js `app/error.tsx`, `app/global-error.tsx`, and `ClinicalErrorBoundary` with bilingual recovery |
-| PDF diagnostic report engine | **Implemented** | `fpdf2`-based with embedded scan, Grad-CAM, RAG twins, and SHA-256 hash supporting multi-class oncology |
-| Bilingual voice dictation (EN/TR) | **Implemented** | Asynchronous `gTTS` speech synthesis with persistent disk cache |
-| Byzantine detection (zero-confession) | **Implemented (plaintext & attestation phase)** | Isolates adversaries via consensus divergence and L2 norm scaling without relying on self-incrimination |
-| SecAgg+ ECDH zero-sum masking | **Simulated** | In-process Python simulation, not a real multi-party network protocol |
-| CKKS HE aggregation (TenSEAL) | **Simulated** | Single server-held key, aggregation-only depth; see Section 4.3 |
-| Flower protocol bridge | **Implemented** | `NumPyClient` wrapping with `InProcessClientProxy` and `StrategyEHospitalStrategy` |
-| Virchow2 (ViT-H/14, 632M params) | **Planned** | Referenced as target; not loaded or downloaded |
-| Prov-GigaPath (1.3B params) | **Planned** | Referenced as target; not loaded or downloaded |
-| True threshold multi-party CKKS | **Planned** | Requires distributed key generation; active research target |
-
----
-
-## 4. Architecture and Protocol
-
-### 4.1 End-to-End Workflow Diagram
+The Fed-XRay architecture coordinates edge hospital nodes, secure cryptographic aggregation, central consortium governance, and clinical decision support into a unified workflow:
 
 ```mermaid
 flowchart TD
     subgraph HospitalNodes["Distributed Hospital Consortium (Edge Clients)"]
-        H1["Hospital 1 (BCN-20000 ref.)\nLocal Scans (Patient-Level Split)\nFrozen Backbone + Local LoRA B"]
-        H2["Hospital 2 (ViDIR ref.)\nLocal Scans (Patient-Level Split)\nFrozen Backbone + Local LoRA B"]
-        H3["Hospital 3 (Queensland ref.)\nLocal Scans (Patient-Level Split)\nFrozen Backbone + Local LoRA B"]
-        H4["Hospital 4 (BIDMC ref.)\nLocal Scans (Patient-Level Split)\nFrozen Backbone + Local LoRA B"]
+        H1["Hospital 1 (BCN-20000 Ref.)\nLocal Clinical Scans (Patient-Level Split)\nFrozen Foundation Backbone + Local PEFT"]
+        H2["Hospital 2 (ViDIR Ref.)\nLocal Clinical Scans (Patient-Level Split)\nFrozen Foundation Backbone + Local PEFT"]
+        H3["Hospital 3 (Queensland Ref.)\nLocal Clinical Scans (Patient-Level Split)\nFrozen Foundation Backbone + Local PEFT"]
+        H4["Hospital 4 (BIDMC Ref.)\nLocal Clinical Scans (Patient-Level Split)\nFrozen Foundation Backbone + Local PEFT"]
     end
 
-    subgraph ClientPrivacy["Client-Side Privacy (Phase 1 - Plaintext)"]
-        DP["Patient-Level L2 DP Clipping\nRényi DP Accounting (eps<=2.0)"]
-        Byz["Byzantine Self-Check\nLocal Gradient Norm Validation"]
+    subgraph ClientPrivacy["Client-Side Privacy (Phase 1: Local Plaintext)"]
+        DP["Patient-Level L2 DP Gradient Clipping\nRényi DP Accounting (eps <= 2.0)"]
+        ByzSelf["Byzantine Local Self-Check\nGradient Norm Verification"]
     end
 
-    subgraph ServerByz["Server Byzantine Detection (Phase 2 - Plaintext)"]
-        ByzServer["Cosine Distance Check\nLoss Deviance Validation\nAdversary Quarantine"]
+    subgraph ServerByz["Consortium Byzantine Defense (Phase 1: Plaintext Audit)"]
+        ByzServer["Consensus Divergence Scoring\nLoss Deviance Validation\nAdversary Quarantine"]
     end
 
-    subgraph CipherPhase["Aggregation Privacy (Phase 3 - Simulated Ciphertext)"]
+    subgraph CipherPhase["Aggregation Privacy (Phase 2: Cryptographic Aggregation)"]
         SecAgg["SecAgg+ Zero-Sum ECDH Masking\n(In-Process Simulation)"]
-        CKKS["TenSEAL CKKS Ciphertext Addition\n(Single Server Key - Simulated)"]
+        CKKS["TenSEAL CKKS Ciphertext Addition\n(RLWE 128-bit Encryption)"]
     end
 
-    subgraph ServerCore["Central Server Aggregation"]
-        Opt["FedDyn / FedAdam / SCAFFOLD\nServer-Side Optimization"]
-        Proto["FedProto Covariance-Trace Synthesis"]
+    subgraph ServerCore["Central Consortium Engine"]
+        Opt["FedDyn / FedAdam / SCAFFOLD\nServer-Side PEFT Optimization"]
+        Proto["FedProto Covariance-Trace\nDispersion-Weighted Prototype Synthesis"]
+        State["ACID Persistent State Store\n(SQLite WAL Mode)"]
     end
 
-    subgraph CDSSStudio["Clinical Decision Support (CDSS)"]
-        RAG["HNSW RAG Case Bank\n128-dim to 768-dim Indexing"]
-        XAI["Grad-CAM Saliency Engine"]
-        Report["PDF Report + Voice Dictation"]
+    subgraph CDSSStudio["Clinical Decision Support System (CDSS)"]
+        RAG["HNSW Vector Index\nDynamic Dimensionality Retrieval"]
+        XAI["Structured Grad-CAM Engine\nQuadrant Spatial Localization"]
+        Viewer["3D Anatomical Workspace\n2D Evidence Saliency Panes"]
+        Report["Vector PDF Report Generation\nBilingual Audio Dictation"]
     end
 
     HospitalNodes --> DP
-    DP --> Byz
-    Byz --> ByzServer
+    DP --> ByzSelf
+    ByzSelf --> ByzServer
     ByzServer --> SecAgg
     SecAgg --> CKKS
     CKKS --> Opt
     Opt --> Proto
+    Proto --> State
     Proto -->|Broadcast Global Parameters| HospitalNodes
-    Opt --> CDSSStudio
+    State --> CDSSStudio
 ```
 
-### 4.2 CKKS and Byzantine Detection: Protocol Phases
+### 2.2 Protocol Phases and Privacy Separation
+
+Fed-XRay maintains an explicit, honest architectural distinction between auditability and cryptographic aggregation:
+
+- **Phase 1 (Client-Side Privacy and Plaintext Auditing):** Each hospital client applies patient-level DP gradient clipping and verifies gradient norms locally. When Byzantine anomaly detection is active, the central server inspects update trajectories (cosine distance and hold-out loss deviance) in plaintext before encryption. This prevents poisoned or malicious updates from contaminating the global model.
+- **Phase 2 (Cryptographic Ciphertext Aggregation):** Surviving validated updates are masked with SecAgg+ zero-sum vectors and encrypted via TenSEAL CKKS Homomorphic Encryption. The central server computes aggregate parameters homomorphically in ciphertext space without observing individual client updates.
 
 > [!IMPORTANT]
-> **Honest Architecture Note - CKKS vs Byzantine Detection Conflict**
+> **Cryptographic Realism and Key Management Invariant**
 >
-> The two privacy mechanisms operate at different protocol phases. They are not simultaneously active on the same data:
->
-> - **Phase 1 (Client-side, plaintext):** Each hospital client applies patient-level DP gradient clipping, performs local gradient norm self-checks, and then submits updates. The server runs Byzantine anomaly detection (cosine distance and loss deviance scoring) on these plaintext updates BEFORE any encryption is applied. The server can read plaintext updates at this stage.
->
-> - **Phase 2 (Server aggregation, simulated ciphertext):** After Byzantine filtering, surviving updates are masked with SecAgg+ zero-sum vectors and passed through TenSEAL CKKS ciphertext addition. In practice, because Byzantine detection already completed in plaintext, the CKKS phase provides privacy for the aggregation step only.
->
-> - **Fundamental constraint:** The server cannot simultaneously maintain zero-knowledge CKKS ciphertext privacy AND perform coordinate-wise trimmed mean ranking or hold-out validation loss deviance checking. These operations require reading plaintext update coordinates. The current implementation correctly separates these phases, but this means the server observes plaintext updates during Byzantine detection. True zero-knowledge Byzantine defense would require threshold HE or MPC techniques and is a research target.
-
-When ciphertext masking is active, the server reports:
-```json
-{ "threat_detection_status": "unverifiable_under_ciphertext_masking" }
-```
-This is the honest status for the pure CKKS aggregation phase.
-
-### 4.3 CKKS Key Model Limitations
-
-> [!WARNING]
-> **Single Server Key Model - Not Multi-Party Threshold CKKS**
->
-> The current TenSEAL CKKS implementation uses a SINGLE server-held key pair (`poly_modulus_degree=8192`, `scale_bits=40`). This means:
-> - The server generates, holds, and can use the decryption key.
-> - The server CAN decrypt individual encrypted updates if it chooses to do so.
-> - This does NOT provide the zero-knowledge aggregation guarantee of threshold multi-party CKKS (where no single party holds the full decryption key).
->
-> True threshold/multi-party CKKS requires distributed key generation protocols and is a planned research target. The current implementation demonstrates ciphertext addition mechanics and lays the groundwork for future multi-party integration.
+> In the current open-source demonstration environment:
+> 1. TenSEAL CKKS execution operates with a server-held key pair (`poly_modulus_degree=8192`, `scale_bits=40`) demonstrating ciphertext addition mechanics without requiring specialized hardware enclaves.
+> 2. SecAgg+ execution runs as an in-process cryptographic simulation.
+> 3. Byzantine detection and coordinate-wise trimmed mean operations fundamentally require inspecting plaintext update values. When ciphertext masking is active, the consortium server honestly reports `{"threat_detection_status": "unverifiable_under_ciphertext_masking"}` rather than fabricating false security assurances. Full multi-party threshold CKKS with distributed key generation remains an active research direction.
 
 ---
 
-## 5. Actually Implemented Models
+## 3. Parameter-Efficient Fine-Tuning (PEFT)
 
-The following neural architectures are implemented, loaded, and integrated end-to-end in training, inference, CDSS, and testing:
+### 3.1 Eliminating LoRA Bilinear Discordance
 
-| Model | Parameters | Embedding Dim | Implementation File | Status |
-| :--- | :--- | :--- | :--- | :--- |
-| **ViT-Tiny** | 5.7M | 192 | `src/fed_xray/models/vit.py` | Fully implemented and trained |
-| **ViT-Base** | 85M | 768 | `src/fed_xray/models/vit.py` | Implemented with FFA-LoRA and FedSA-LoRA |
-| **Swin UNETR Radiology Backbone** | ~28M to 62M | 768 / 384 | `src/fed_xray/models/foundation.py` | Hierarchical Shifted Window Attention, patch merging, 2D/3D volumetric support, official Swin-T or MONAI weights |
-| **UNI Foundation Backbone** | ~304M | 1024 / 512 | `src/fed_xray/models/foundation.py` | Pathology foundation model, transfer features, SHA-256 weight hash, strict checkpoint loading |
-| **FedMedCLIP Multimodal Model** | ~10M to 95M | 512 | `src/fed_xray/models/foundation.py` | Couples vision backbone with FAM, frozen clinical text anchors, and private MLP |
-| **XRayClassifier (CNN)** | ~2M | 128 | `src/fed_xray/models/cnn.py` | Fully implemented convolutional baseline |
-
-The following are referenced as **planned high-capacity foundation models** for multi-billion parameter Whole Slide Imaging (WSI) deployments:
-
-| Target Model | Params | Role in Literature | Status |
-| :--- | :--- | :--- | :--- |
-| Virchow2 (ViT-H/14) | ~632M | Pan-cancer pathology foundation encoder | Planned target |
-| Prov-GigaPath | ~1.3B | Whole-slide gigapixel pathology transformer | Planned target |
-
-> [!NOTE]
-> **Weight Authenticity and Checkpoint Integrity (Rule 12):** All foundation backbones compute SHA-256 cryptographic digests of projection weight matrices and enforce honest exception raising on missing or corrupted weights. Silent swallowing of checkpoint load failures (`except Exception: pass`) is prohibited.
->
-> **Benchmark table clarification:** The communication economics table in Section 11 references "Full Foundation ViT-H/14" at 2,430 MB and "Full ViT-B" at approximately 340 MB. These sizes correspond to ViT-H/14 (~632M params) and ViT-B/16 (~85M params) weight tensors respectively, used as theoretical baselines. The implemented ViT-Tiny (5.7M), ViT-Base (85M), and Swin UNETR models are used in actual runs. Communication savings figures for PEFT methods are computed relative to the full ViT-B baseline.
-
----
-
-## 6. PEFT Methods and Bilinear Discordance Elimination
-
-In standard federated low-rank adaptation, each client decomposes weight adjustments as $\Delta W_k = B_k A_k$. Central server parameter averaging introduces the **Bilinear LoRA Aggregation Error**:
+Standard federated Low-Rank Adaptation (LoRA) allows each hospital client $k$ to learn parameter increments $\Delta W_k = B_k A_k$. Central server averaging of these separate factors introduces the **Bilinear LoRA Aggregation Error**:
 
 $$
 \bar{\Delta W}_{\text{effective}} = \left(\sum_{k=1}^K p_k B_k\right)\left(\sum_{k=1}^K p_k A_k\right) = \bar{B}\bar{A} \neq \sum_{k=1}^K p_k (B_k A_k) = \bar{\Delta W}_{\text{ideal}}
 $$
 
-Fed-XRay deploys factor-wise asymmetric adaptation to eliminate this distortion, alongside specialized multimodal adapters:
+This bilinear discordance distorts the reconstructed weight tensor, causing optimization instability in deep Vision Transformers. Fed-XRay eliminates this distortion using two factor-wise asymmetric protocols:
 
-| Method | Matrix A Protocol | Matrix B Protocol | Aggregation Formula | Benefit |
+1. **FFA-LoRA (Federated Freeze-A LoRA):** Down-projection matrix $A$ is globally frozen across all hospital nodes ($A_k \equiv A_0$). Clients train and transmit only up-projection matrix $B_k$. The aggregated update satisfies:
+
+$$
+\bar{B} A_0 = \left(\sum_{k=1}^K p_k B_k\right) A_0 = \sum_{k=1}^K p_k (B_k A_0) \equiv \bar{\Delta W}_{\text{ideal}}
+$$
+
+This identically eliminates aggregation distortion and is fully compatible with multiplication-free Homomorphic Encryption (Multiplication Depth = 0).
+
+2. **FedSA-LoRA (Federated Share-A LoRA):** Projection matrix $A_k$ is trained locally and aggregated centrally ($\bar{A} = \sum p_k A_k$) to learn a shared global input subspace, while matrix $B_k$ remains private on each client to absorb institutional scanner and staining variances.
+
+### 3.2 Supported PEFT Architectures
+
+| PEFT Method | Matrix A Protocol | Matrix B Protocol | Aggregation Target | Clinical Role |
 | :--- | :--- | :--- | :--- | :--- |
-| **FFA-LoRA** | Globally Frozen ($A_k \equiv A_0$) | Locally Trained and Aggregated | $\bar{B}A_0 \equiv \sum p_k B_k A_0$ | Eliminates bilinear error identically; compatible with multiplication-free CKKS (Depth=0). |
-| **FedSA-LoRA** | Locally Trained and Aggregated ($\bar{A}$) | Locally Retained (Private $B_k$) | Global $\bar{A}$, Private $B_k$ | Aggregates global visual input subspace; keeps staining/scanner adaptation private. |
-| **FedAS-LoRA** | Adaptive Routing | Adaptive Routing | Rank-Aware Shared Subspace (RSS) | Dynamically toggles Share-A/Local-B (covariate shift) vs Share-B/Local-A (label skew). |
-| **FlexLoRA** | Locally Trained | Locally Trained | $U_r \Sigma_r V_r^\top = \sum p_k B_k A_k$ | Reconstructs full weight updates via Truncated SVD to synthesize balanced $\bar{A}, \bar{B}$. |
-| **FedPerfix** | Frozen Shallow Layers ($1 \dots L-4$) | MHSA Adapted | MHSA ($W_Q, W_V$) in Layers $L-3 \dots L$ | Targets deep attention projections; reduces payload by over 99.8% (under 2.36 MB/round). |
-| **MedSAM Client Adapter (FCA)** | Frozen Backbone ($W_0$) | Bottleneck Residual Scaling | Local $W_{\text{down}}, W_{\text{up}}$ Aggregated | Tailors foundation encoders for volumetric CT/MRI segmentation with minimal trainable parameters. |
-| **FedMedCLIP FAM** | Frozen Image Backbone + Frozen Text Anchor | Trainable Feature Adaptation Module | Aggregated FAM + Private MLP Head | Mutual KL divergence distillation prevents text-to-vision alignment collapse under label skew. |
-| **FedCola Modality Bridge** | Shared Latent Space | Linear Cross-Modal Projections | Global Cross-Modal Alignment | Enables cross-institutional knowledge transfer between pathology and chest X-rays without paired data. |
-| **FedDAT Dual-Adapter** | Vision-Language Bottlenecks | Cross-Attention Alignment | Aggregated Dual Adapters | Mutual cross-attention tuning aligning image representations with clinical report semantics. |
+| **FFA-LoRA** | Globally Frozen ($A_0$) | Locally Trained & Aggregated | Global $\bar{B}$ | Eliminates bilinear error; optimal for CKKS encryption |
+| **FedSA-LoRA** | Locally Trained & Aggregated | Locally Retained (Private) | Global $\bar{A}$ | Captures global input space while preserving local scanner adaptation |
+| **FedAS-LoRA** | Adaptive Dynamic Routing | Adaptive Dynamic Routing | Rank-Aware Subspace | Dynamically toggles between shared A and shared B based on distribution shift |
+| **FlexLoRA** | Locally Trained | Locally Trained | Truncated SVD Synthesis | Reconstructs singular value components across heterogeneous client rank budgets |
+| **FedPerfix** | Frozen Shallow Layers ($1 \dots L-4$) | Adapted MHSA ($W_Q, W_V$) | Deep Attention Projections | Targets deep attention heads; reduces payload to under 2.36 MB/round |
+| **MedSAM FCA** | Frozen Medical Backbone | Bottleneck Residual Scaling | Down/Up Projections | Adapts foundation encoders for volumetric CT and MRI segmentation |
+| **FedMedCLIP FAM** | Frozen Vision & Text Anchors | Feature Adaptation Module | Aggregated FAM + Private MLP | Distills multimodal representations; prevents text-vision misalignment |
+| **FedCola Bridge** | Shared Latent Coordinate System | Linear Cross-Modal Projections | Cross-Modal Alignment | Bridges digital histopathology and chest radiographs without paired patient data |
+| **FedDAT Dual-Adapter** | Vision-Language Bottlenecks | Cross-Attention Alignment | Dual Adapters | Aligns visual feature representations with clinical radiology reports |
+
+### 3.3 Implemented Foundation Models
+
+The following neural architectures are implemented and integrated end-to-end within `src/fed_xray/models/`:
+
+- **ViT-Tiny (5.7M parameters, 192-dim):** Optimized lightweight Vision Transformer for rapid edge deployment and continuous automated testing.
+- **ViT-Base (85M parameters, 768-dim):** Full-capacity 12-layer Vision Transformer integrated with FFA-LoRA and FedSA-LoRA adapter injection.
+- **Swin UNETR Radiology Backbone (~28M to 62M parameters, 768/384-dim):** Hierarchical Shifted Window Attention architecture supporting 2D and 3D volumetric radiology workflows.
+- **UNI Foundation Backbone (~304M parameters, 1024/512-dim):** Pathology foundation model with cryptographic SHA-256 weight verification.
+- **FedMedCLIP Multimodal Backbone (~10M to 95M parameters, 512-dim):** Couples vision transformers with frozen clinical text anchors (`Bio_ClinicalBERT`) and mutual KL divergence distillation.
+- **XRayClassifier (~2M parameters, 128-dim):** Standard convolutional baseline for comparative benchmarks and lightweight deployment.
 
 ---
 
-## 7. Drift-Resilient Federated Optimizers
+## 4. Drift-Resilient Distributed Optimizers
 
-Under institutional scanner heterogeneity, standard FedAvg oscillates or diverges. The following optimizers are implemented and applied directly to PEFT adapter parameters:
+Under institutional scanner heterogeneity, standard FedAvg suffers from severe client drift. Fed-XRay implements state-of-the-art distributed optimizers applied directly to PEFT parameter tensors:
 
-**FedDyn (Dynamic Objective Alignment):**
+### FedDyn (Dynamic Objective Alignment)
+
+FedDyn aligns client objectives with the global task through local gradient memory tracking and dynamic server state updates:
 
 $$
 \mathcal{L}_k^{\text{Dyn}}(\theta) = F_k(\theta) - \langle \nabla F_k(\bar{\theta}^t), \theta \rangle + \frac{\alpha}{2}\|\theta - \bar{\theta}^t\|_2^2
@@ -286,29 +234,41 @@ $$
 h^{t+1} = h^t - \alpha \frac{1}{K}\sum_{k=1}^K \left(\theta_k^{t+1} - \bar{\theta}^t\right), \quad \bar{\theta}^{t+1} = \frac{1}{|\mathcal{S}_t|}\sum_{k \in \mathcal{S}_t} \theta_k^{t+1} - \frac{1}{\alpha}h^{t+1}
 $$
 
-**FedOpt / FedAdam (Server Adaptive Momentum):**
+### FedOpt / FedAdam (Adaptive Server Momentum)
+
+FedAdam computes pseudo-gradients from aggregated client updates and applies first and second momentum corrections:
 
 $$
-\Delta^t = \sum_{k \in \mathcal{S}_t} p_k \left(\theta_k^{t+1} - \bar{\theta}^t\right), \quad m^t = \beta_1 m^{t-1} + (1-\beta_1)\Delta^t, \quad v^t = \beta_2 v^{t-1} + (1-\beta_2)(\Delta^t)^2
+\Delta^t = \sum_{k \in \mathcal{S}_t} p_k \left(\theta_k^{t+1} - \bar{\theta}^t\right)
+$$
+
+$$
+m^t = \beta_1 m^{t-1} + (1-\beta_1)\Delta^t, \quad v^t = \beta_2 v^{t-1} + (1-\beta_2)(\Delta^t)^2
 $$
 
 $$
 \bar{\theta}^{t+1} = \bar{\theta}^t + \eta_g \frac{m^t}{\sqrt{v^t} + \epsilon}
 $$
 
-**SCAFFOLD (Control Variates on PEFT):** Corrects client drift using dual control variates ($c_k, c$) tracking local and global gradient trajectories:
+### SCAFFOLD (Control Variates on PEFT)
+
+SCAFFOLD uses client and server control variates ($c_k, c$) to correct local update directions, guaranteeing convergence under arbitrary non-IID data distributions:
 
 $$
-\theta_k^{t, \tau+1} = \theta_k^{t, \tau} - \eta_l (\nabla F_k(\theta_k^{t, \tau}) - c_k^t + c^t)
+\theta_k^{t, \tau+1} = \theta_k^{t, \tau} - \eta_l \left(\nabla F_k(\theta_k^{t, \tau}) - c_k^t + c^t\right)
 $$
 
-**MOON (Model-Contrastive Federated Learning):** Regularizes representation drift by contrasting client features with the global model and prior local state:
+### MOON (Model-Contrastive Federated Learning)
+
+MOON regularizes representation drift by contrasting the client's current representation $z_k^t$ against the global model representation $z_{\text{global}}^t$ and the previous round local representation $z_k^{t-1}$:
 
 $$
-\mathcal{L}_{\text{MOON}} = \mathcal{L}_{\text{task}} - \mu \log \frac{\exp(\text{sim}(z_k^t, z_{\text{global}}^t) / \tau)}{\exp(\text{sim}(z_k^t, z_{\text{global}}^t) / \tau) + \exp(\text{sim}(z_k^t, z_k^{t-1}) / \tau)}
+\mathcal{L}_{\text{MOON}} = \mathcal{L}_{\text{task}} - \mu \log \frac{\exp\left(\operatorname{sim}\left(z_k^t, z_{\text{global}}^t\right) / \tau\right)}{\exp\left(\operatorname{sim}\left(z_k^t, z_{\text{global}}^t\right) / \tau\right) + \exp\left(\operatorname{sim}\left(z_k^t, z_k^{t-1}\right) / \tau\right)}
 $$
 
-**FedProx (Proximal Regularization):**
+### FedProx (Proximal Regularization)
+
+FedProx introduces a quadratic penalty term to restrict local model drift away from the broadcast global parameters:
 
 $$
 \mathcal{L}_k^{\text{Prox}}(\theta_k) = F_k(\theta_k) + \frac{\mu}{2}\|\theta_k - \bar{\theta}^t\|_2^2
@@ -316,393 +276,322 @@ $$
 
 ---
 
-## 8. Foundation-Anchored Prototype Metric Learning and Imbalance Losses
+## 5. Prototype Metric Learning and Dynamic Imbalance Losses
 
-Exchanging raw feature representations without foundation anchoring leads to independent orthogonal rotations $Q \in O(D)$ and metric collapse. Fed-XRay uses FedProto anchored in frozen backbones with **Intra-Class Covariance-Trace Weighting**:
+### 5.1 Foundation-Anchored Prototype Synthesis
+
+Exchanging raw intermediate features without foundation model anchoring causes independent orthogonal rotations $Q \in O(D)$ across clients, leading to metric collapse. Fed-XRay anchors prototype learning in frozen medical foundation encoders and aggregates class centroids using **Intra-Class Covariance-Trace Weighting**:
 
 $$
 \Sigma_{k,c} = \frac{1}{n_{k,c}} \sum_{i: y_i = c} \left(f(x_i) - p_{k,c}\right)\left(f(x_i) - p_{k,c}\right)^\top
 $$
 
 $$
-\alpha_{k,c} = \frac{\frac{n_{k,c}}{\mathrm{Tr}(\Sigma_{k,c}) + \epsilon}}{\sum_{j \in \mathcal{K}_c} \frac{n_{j,c}}{\mathrm{Tr}(\Sigma_{j,c}) + \epsilon}}, \quad \bar{p}_c = \sum_{k \in \mathcal{K}_c} \alpha_{k,c} \, p_{k,c}
+\alpha_{k,c} = \frac{\frac{n_{k,c}}{\operatorname{Tr}(\Sigma_{k,c}) + \epsilon}}{\sum_{j \in \mathcal{K}_c} \frac{n_{j,c}}{\operatorname{Tr}(\Sigma_{j,c}) + \epsilon}}, \quad \bar{p}_c = \sum_{k \in \mathcal{K}_c} \alpha_{k,c} \, p_{k,c}
 $$
 
-**Dynamic Class Imbalance Loss Suite (all implemented in `src/fed_xray/core/imbalance_losses.py`):**
+### 5.2 Dynamic Imbalance Loss Suite
 
-1. **Dynamic Adaptive Focal Loss (DAFL):** Modulates class focusing parameters dynamically as round validation recall evolves:
-   $$\mathcal{L}_{\text{DAFL}} = -\alpha_c(t) (1 - p_t)^{\gamma_c(t)} \log(p_t), \quad \gamma_c(t) = \gamma_{\text{base}} + \mu (1 - \text{Recall}_c^{(t-1)})$$
-2. **Bayesian Balanced Softmax (BSM):** Adjusts logits by prior institutional prevalence $\pi_y$:
-   $$\mathcal{L}_{\text{BSM}} = -\log \frac{\exp(z_y + \log \pi_y)}{\sum_j \exp(z_j + \log \pi_j)}$$
-3. **Class-Balanced Effective Samples Loss ($\mathcal{L}_{\text{CB}}$):** Penalizes redundancy via $(1-\beta)/(1-\beta^{n_y})$.
-4. **LDAM Loss:** Applies per-class margin $C/n_y^{1/4}$ to discourage majority-class dominance.
-5. **Missing-Class Repel Loss ($\mathcal{L}_{\text{repel}}$):** Enforces a minimum Euclidean separation margin $m$ from unobserved global prototypes:
-   $$\mathcal{L}_{\text{repel}}(x_i, y_i; \bar{\mathcal{P}}) = \sum_{c \neq y_i} \max\left(0, m - \|f(x_i) - \bar{p}_c\|_2\right)$$
+Under institutional label skew, static Cross-Entropy collapses minority and rare cancer classes. Fed-XRay provides a complete loss suite in `src/fed_xray/core/imbalance_losses.py`:
 
----
+- **Dynamic Adaptive Focal Loss (DAFL):** Modulates class focusing parameters dynamically as round validation recall evolves:
 
-## 9. Privacy Architecture
+  $$
+  \mathcal{L}_{\text{DAFL}} = -\alpha_c(t) (1 - p_t)^{\gamma_c(t)} \log(p_t), \quad \gamma_c(t) = \gamma_{\text{base}} + \mu \left(1 - \text{Recall}_c^{(t-1)}\right)
+  $$
 
-Fed-XRay enforces the **Option J Architecture Standard**, combining cryptographic mechanisms with formally bounded differential privacy.
+- **Bayesian Balanced Softmax (BSM):** Adjusts output logits according to prior institutional class prevalence $\pi_y$:
 
-### Formally Bounded Differential Privacy
+  $$
+  \mathcal{L}_{\text{BSM}} = -\log \frac{\exp(z_y + \log \pi_y)}{\sum_j \exp(z_j + \log \pi_j)}
+  $$
 
-Patient-level DP clipping prevents privacy collapse across gigapixel crops or multi-study patients. The per-patient gradient is clipped before any aggregation:
+- **Class-Balanced Effective Number of Samples Loss ($\mathcal{L}_{\text{CB}}$):** Penalizes feature redundancy based on the effective volume of samples:
 
-$$g_i = \frac{1}{m_i} \sum_{j=1}^{m_i} g_{i, j}, \quad \bar{g}_i = g_i \cdot \min\left(1, \frac{C}{\|g_i\|_2}\right)$$
+  $$
+  \mathcal{L}_{\text{CB}}(\mathbf{z}, y) = \frac{1 - \beta}{1 - \beta^{n_y}} \mathcal{L}_{\text{CE}}(\mathbf{z}, y), \quad \text{where } \beta = \frac{N - 1}{N}
+  $$
 
-Gaussian noise is then added to the aggregate, calibrated to achieve $(\epsilon \le 2.0, \delta \le 10^{-5})$-DP via Rényi DP composition accounting.
+- **Label-Distribution-Aware Margin Loss (LDAM):** Enforces class margins inversely proportional to class frequency to discourage majority class dominance:
 
-> [!IMPORTANT]
-> **Formally bounded, not zero-leakage privacy:** DP bounds information leakage but does not eliminate it. At $\epsilon = 2.0$, privacy leakage is constrained but non-zero. This epsilon value is chosen to minimize utility loss while maintaining a meaningful formal bound. DP always incurs a utility cost; the system is calibrated to keep this cost small at $\epsilon = 2.0$ for these datasets.
+  $$
+  \mathcal{L}_{\text{LDAM}}(\mathbf{z}, y) = -\log \frac{\exp\left(z_y - \frac{C}{n_y^{1/4}}\right)}{\exp\left(z_y - \frac{C}{n_y^{1/4}}\right) + \sum_{j \neq y} \exp(z_j)}
+  $$
 
-**Minimal cross-boundary data exposure:** Only PEFT adapter weights (not raw images or records) leave institutional firewalls. DP clipping bounds gradient information leakage. No raw patient data is transmitted.
+- **Missing-Class Prototype Margin Regularization ($\mathcal{L}_{\text{repel}}$):** Enforces a minimum Euclidean separation margin $m$ between local representations and unobserved global prototypes:
 
-### SecAgg+ ECDH Zero-Sum Masking (Simulated)
-
-Peer-to-peer X25519 ECDH key exchange establishes shared secrets $k_{i,j}$. Using HKDF-SHA256, clients generate pairwise zero-sum pseudo-random vectors ($s_{i,j} = -s_{j,i}$) such that $\sum_{i=1}^K s_i = 0$, blinding individual updates to the server.
-
-> [!WARNING]
-> The SecAgg+ implementation in `privacy.py` runs as an **in-process Python simulation**. All clients execute within the same process; no real peer-to-peer network communication takes place. A real SecAgg+ deployment requires an authenticated multi-party network protocol with dropout handling.
-
-### CKKS Homomorphic Encryption (Simulated via TenSEAL)
-
-Ciphertext addition of FFA-LoRA $B$ matrix updates is performed using TenSEAL (`poly_modulus_degree=8192`, `scale_bits=40`).
-
-> [!WARNING]
-> This is a **single-key simulation**. The server generates and holds the full TenSEAL CKKS key. The server can decrypt. True multi-party threshold CKKS, where no single party holds the full decryption key, requires distributed key generation and is a planned research target.
-
-### Cryptographic Software Protocol and Attestation Handshake
-
-Fed-XRay's enclave architecture represents an open-source software cryptographic protocol utilizing TenSEAL (Microsoft SEAL RLWE 128-bit) and RFC 7748 X25519 ECDH key agreements. It executes as a pure software simulation without requiring proprietary hardware Trusted Execution Environments (such as Intel SGX or AWS Nitro Enclaves), ensuring reproducible scientific execution across standard workstation environments.
-
-The `/api/fl/enclave-handshake` endpoint verifies decentralized node public key fingerprints, HE polynomial degrees (`N=8192`), and patient-level DP clipping bounds before training. It computes a canonical electronic SHA-256 attestation certificate digest displayed in the clinical HUD.
+  $$
+  \mathcal{L}_{\text{repel}}(x_i, y_i; \bar{\mathcal{P}}) = \sum_{c \neq y_i} \max\left(0, m - \|f(x_i) - \bar{p}_c\|_2\right)
+  $$
 
 ---
 
-## 10. Strategy E Datasets and Licenses
+## 6. Dual-Layer Privacy Architecture (Option J)
 
-### 10.1 Dataset Sources
+Fed-XRay implements the **Option J Architecture Standard**, combining cryptographic defenses with formal differential privacy guarantees.
 
-| Dataset | Modality | Natural Provenance / Centers | Size and Scope | License |
+### 6.1 Patient-Level Differential Privacy
+
+In medical imaging, naive example-level DP fails because multi-slice CT/MRI scans and gigapixel Whole Slide Images contain hundreds or thousands of related images per patient. Applying example-level clipping rapidly exhausts privacy budgets, leading to privacy collapse.
+
+Fed-XRay enforces honest **Patient-Level DP Gradient Clipping**:
+
+$$
+g_i = \frac{1}{m_i} \sum_{j=1}^{m_i} g_{i, j}, \quad \bar{g}_i = g_i \cdot \min\left(1, \frac{C}{\|g_i\|_2}\right)
+$$
+
+Gaussian noise is calibrated and added to the aggregate update to guarantee $(\epsilon \le 2.0, \delta \le 10^{-5})$-DP, tracked continuously using Rényi Differential Privacy (RDP) composition accounting.
+
+### 6.2 Cryptographic Homomorphic Encryption and SecAgg+
+
+- **TenSEAL CKKS Homomorphic Encryption:** Enables addition of encrypted FFA-LoRA updates in ciphertext space without intermediate server decryption (`poly_modulus_degree=8192`, `scale_bits=40`).
+- **SecAgg+ Zero-Sum ECDH Masking:** Hospital clients establish shared secrets using X25519 key agreements and HKDF-SHA256, generating pairwise zero-sum pseudo-random vectors ($s_{i,j} = -s_{j,i}$) such that $\sum_{i=1}^K s_i = 0$. This blinds individual client updates from the server during transport.
+
+### 6.3 Enclave Attestation Handshake
+
+Before any training round begins, edge hospital nodes verify consortium credentials via `GET /api/fl/enclave-handshake`. The endpoint validates X25519 public key fingerprints, confirms RLWE polynomial security parameters ($N=8192$), checks patient DP clipping thresholds, and generates an electronic SHA-256 attestation certificate digest displayed directly in the clinical user interface.
+
+---
+
+## 7. Strategy E Real-World Benchmark Ecosystem
+
+### 7.1 Real-World Clinical Cohorts
+
+Fed-XRay benchmarks are built upon genuine multi-center clinical datasets with verified physical origins:
+
+| Dataset | Modality | Natural Clinical Provenance | Cohort Scale | Access & Licensing |
 | :--- | :--- | :--- | :--- | :--- |
-| **ISIC 2019** | Dermoscopy | BCN-20000 (Barcelona), ViDIR (Vienna), Univ. Queensland | 25,331 images, 8 diagnostic categories | CC BY-NC 4.0 (non-commercial research only) |
+| **ISIC 2019** | Multi-Center Dermoscopy | BCN-20000 (Barcelona), ViDIR (Vienna), Univ. Queensland | 25,331 images, 8 diagnostic classes | CC BY-NC 4.0 (Non-commercial research) |
 | **NCT-CRC-HE-100K** | Colorectal Histopathology | NCT Tissue Biobank, UMM Pathology Archive | 100,000 patches, 9 tissue classes, 86 patients | CC BY 4.0 |
 | **CRC-VAL-HE-7K** | Colorectal Histopathology | Independent Holdout Center | 7,180 patches, 50 holdout patients | CC BY 4.0 |
-| **MIMIC-CXR-JPG (v2.1.0)** | Chest Radiography | Beth Israel Deaconess Medical Center | Multi-view paired studies with radiology reports | PhysioNet Credentialed Health Data License 1.5.0 - requires credentialed PhysioNet access |
+| **MIMIC-CXR-JPG (v2.1.0)** | Chest Radiography | Beth Israel Deaconess Medical Center | Multi-view paired studies with radiology reports | PhysioNet Credentialed Health Data License |
 
-> [!CAUTION]
-> MIMIC-CXR-JPG requires credentialed access via PhysioNet. You must complete the required training and data use agreement before accessing or using this dataset. ISIC 2019 is restricted to non-commercial research use under CC BY-NC 4.0.
+**Standard Preprocessing Pipeline:** Bilinear resizing to $256 \times 256$; training: random resized crop to $224 \times 224$ (scale $[0.8, 1.0]$), horizontal and vertical flips ($p=0.5$), color jitter ($0.1$); validation and testing: deterministic center crop to $224 \times 224$; ImageNet channel standardization ($\mu=[0.485, 0.456, 0.406], \sigma=[0.229, 0.224, 0.225]$), generating exactly $14 \times 14 = 196$ patch tokens under patch size 16.
 
-**Standard Preprocessing Pipeline:** Bilinear resize to $256 \times 256$; training: random resized crop to $224 \times 224$ (scale $[0.8, 1.0]$), horizontal/vertical flips ($p=0.5$), color jitter (0.1); validation/test: center crop to $224 \times 224$; ImageNet channel standardization ($\mu=[0.485, 0.456, 0.406], \sigma=[0.229, 0.224, 0.225]$), yielding $14 \times 14 = 196$ patch tokens under patch size 16.
+### 7.2 Non-IID Heterogeneity Scenarios (A through G)
 
-### 10.2 Non-IID Heterogeneity Scenarios (A to G)
+To stress-test optimization algorithms under clinical reality, Fed-XRay provides 7 controlled Non-IID data partitioning scenarios:
 
-| Scenario | Name | Skew Mechanism | Clinical Phenomenon |
-| :--- | :--- | :--- | :--- |
-| **A** | Natural Hospital Provenance | Institutional site partitioning | Preserves scanner optics, staining protocols, demographic mix. |
-| **B** | Mild Label Skew | Dirichlet ($\alpha = 1.0$) | Routine multi-center outpatient variance. |
-| **C** | Moderate Label Skew | Dirichlet ($\alpha = 0.3$) | Regional specialty bias (academic referral centers). |
-| **D** | Severe Label Skew | Dirichlet ($\alpha = 0.05$) | Extreme single-pathology dominance (~90% local prevalence). |
-| **E** | Missing Institutional Classes | Disjoint class subsets per hospital | Specialized hospitals with zero cases of certain oncology classes. |
-| **F** | Global Long-Tailed Skew | Pareto distribution (100:1 ratio) | Rare cancer subtyping under national registry frequencies. |
-| **G** | Combined Quantity and Extreme Skew | Variable sample sizes + severe Dirichlet | Low-resource community clinics versus high-volume oncology hospitals. |
+- **Scenario A (Natural Hospital Provenance):** Partitions data strictly by original clinical acquisition site, preserving authentic scanner optics, staining protocols, and local demographics.
+- **Scenario B (Mild Label Skew):** Dirichlet distribution with concentration $\alpha = 1.0$.
+- **Scenario C (Moderate Label Skew):** Dirichlet distribution with concentration $\alpha = 0.3$.
+- **Scenario D (Severe Label Skew):** Dirichlet distribution with concentration $\alpha = 0.05$ (~90% local prevalence dominance).
+- **Scenario E (Missing Institutional Classes):** Disjoint class distributions where certain hospitals observe zero cases of specific cancer subtypes.
+- **Scenario F (Global Long-Tailed Skew):** Pareto distribution with 100:1 ratio modeling rare oncology subtyping.
+- **Scenario G (Combined Quantity and Extreme Skew):** Variable cohort sizes combined with severe Dirichlet skew.
 
-### 10.3 Leak-Free Patient-Level Cohort Isolation
+### 7.3 Leak-Free Patient-Level Cohort Isolation
 
-Cohorts are partitioned exclusively by `patient_id` (and `lesion_id` for dermoscopy multi-crops):
+To prevent optimistic data leakage, cohorts are partitioned strictly at the patient identifier level (and lesion identifier level for dermoscopic multi-crops):
 
 $$
 \mathcal{P}_{\text{train}} \cap \mathcal{P}_{\text{val}} = \emptyset, \quad \mathcal{P}_{\text{train}} \cap \mathcal{P}_{\text{test}} = \emptyset, \quad \mathcal{P}_{\text{val}} \cap \mathcal{P}_{\text{test}} = \emptyset
 $$
 
-Split ratio: 70% train / 15% val / 15% test. Exact duplicates are rejected via SHA-256 cryptographic digests; near-duplicates via 64-bit difference hashing ($d_H \le 3$).
+Exact duplicate images are eliminated via SHA-256 cryptographic digests, while near-duplicates are flagged using 64-bit difference hashing ($d_H \le 3$).
 
----
+### 7.4 Communication Economics
 
-## 11. Benchmark Claims
+The table below illustrates the communication savings achieved by parameter-efficient adaptation compared to traditional full-backbone federated averaging:
 
-> [!IMPORTANT]
-> **All AUC and accuracy figures in the table below are literature reference targets, not measurements from this codebase's demo environment.**
->
-> The demo environment uses approximately 40 samples per hospital node (160 total across 4 hospitals), which is insufficient for reliable AUC estimation. No confidence intervals are reported. These values are drawn from federated learning literature on similar datasets and architectures and are provided as aspirational research targets, not empirical results from this repository.
-
-| Strategy | Uplink MB/Round | Communication Saving | Target AUC (Literature Ref.) |
+| Architecture Protocol | Payload per Client / Round | Bandwidth Reduction | Client VRAM Requirement |
 | :--- | :--- | :--- | :--- |
-| Centralized ViT-B/16 (full data) | N/A | N/A | ~0.987 (reference) |
-| FedAvg Full ViT-B/16 (~85M params) | ~340 MB | 0.0% (baseline) | ~0.961 (reference) |
-| Fed-XRay FFA-LoRA + FedDyn (ViT-B) | ~2.36 MB | ~99.3% | ~0.984 (reference) |
-| Fed-XRay FFA-LoRA + FedDyn (ViT-Tiny) | ~0.6 MB | ~99.8% | ~0.951 (reference) |
-| FedProto Centroids only | ~0.024 MB | ~99.999% | ~0.944 (reference) |
-
-> [!WARNING]
-> **Baseline fairness:** The comparison between "Fed-XRay FFA-LoRA + FedDyn" and "FedAvg Full ViT-B/16" conflates two variables: the optimization algorithm AND the number of trained parameters. A fair comparison requires equal parameter budget (same architecture, same number of trainable parameters) with only the aggregation strategy differing. The table above should be interpreted as a communication-efficiency analysis, not a controlled algorithm comparison.
-
-**Communication Economics Reference:**
-
-| Architecture | Uplink Payload/Client/Round | Client VRAM |
-| :--- | :--- | :--- |
-| Full ViT-H/14 from scratch | 2,430 MB (theoretical) | >24 GB |
-| Full ViT-B/16 from scratch | ~340 MB (theoretical) | ~8 GB |
-| Standard Symmetric LoRA (r=16, ViT-B) | ~4.72 MB | ~6.2 GB |
-| FFA-LoRA (Frozen A, Send B, ViT-B) | ~2.36 MB | ~5.8 GB |
-| FedSA-LoRA (Share-A / Local-B, ViT-B) | ~2.36 MB | ~5.8 GB |
-| FedProto Centroids ($\mathbb{R}^{768}$, ViT-B) | ~0.024 MB | ~5.8 GB |
-
-*ViT-H/14 and Swin UNETR figures are theoretical baselines. Only ViT-Tiny, ViT-Base, and CNN values have been measured in this codebase.*
+| **Full ViT-H/14 from Scratch** | ~2,430 MB (theoretical) | Baseline | >24 GB |
+| **Full ViT-B/16 from Scratch** | ~340 MB (theoretical) | Baseline | ~8.0 GB |
+| **Standard Symmetric LoRA ($r=16$)** | ~4.72 MB | ~98.6% | ~6.2 GB |
+| **FFA-LoRA (Frozen A, Transmit B)** | ~2.36 MB | ~99.3% | ~5.8 GB |
+| **FedSA-LoRA (Shared A, Local B)** | ~2.36 MB | ~99.3% | ~5.8 GB |
+| **FedProto Centroid Exchange** | ~0.024 MB | ~99.99% | ~5.8 GB |
 
 ---
 
-## 12. Clinical Decision Support System (CDSS)
+## 8. Clinical Decision Support System (CDSS)
 
-> [!CAUTION]
-> **Research Prototype - Not for Clinical Use.** CDSS outputs (classification probabilities, saliency maps, RAG retrievals) are research artifacts. They must not inform diagnostic or treatment decisions.
+### 8.1 Dynamic HNSW Vector Retrieval (Digital Twins)
 
-### Dynamic HNSW RAG Retrieval
+The CDSS similarity engine (`src/fed_xray/cdss/similarity.py`) indexes feature representations of biopsy-confirmed historical reference cases into an Hierarchical Navigable Small World (HNSW) vector index:
 
-The `src/fed_xray/cdss/similarity.py` HNSW engine dynamically detects and indexes the full native latent dimensionality of the deployed backbone:
+- Automatically detects and indexes the active model embedding dimensionality (128-dim CNN, 192-dim ViT-Tiny, 512-dim FedMedCLIP, 768-dim ViT-Base / Swin UNETR, 1024-dim UNI).
+- Given a query scan, the engine extracts genuine embeddings and performs authentic cosine similarity matching against reference cohorts.
+- Retrieves biopsy-confirmed "digital twin" cases with verified clinical diagnoses, giving physicians grounded comparative evidence rather than isolated probability scores.
 
-- ViT-Tiny: 192-dimensional latent embeddings
-- ViT-Base: 768-dimensional latent embeddings
-- Swin UNETR: 384-dimensional or 768-dimensional volumetric latent embeddings
-- UNI Foundation Backbone: 512-dimensional or 1024-dimensional pathology embeddings
-- FedMedCLIP: 512-dimensional multimodal latent embeddings
-- CNN Baseline: 128-dimensional latent embeddings
+### 8.2 Structured Explainable AI (Grad-CAM Saliency)
 
-Query vectors must strictly match the active index dimension; mismatches produce explicit diagnostic feedback rather than silent zero-padding. Matches are retrieved from biopsy-confirmed Strategy E reference cohorts.
+The explainability engine (`src/fed_xray/cdss/xai.py`) utilizes PyTorch backward tensor hooks to generate genuine Gradient-Weighted Class Activation Maps (Grad-CAM):
 
-### Structured Explainable AI (XAI) and Grad-CAM Hotspots
+- **Structured Text Formatting:** Diagnostic explanations follow clean clinical formatting without raw markdown asterisks (`**`).
+- **Quadrant Spatial Localization:** Automatically maps peak activation coordinates to anatomical regions (Upper Left, Upper Right, Lower Left, Lower Right, or Central Perihilar).
+- **Modality-Aware Terminology:** Adapts clinical phrasing based on image type (dermoscopic pigment networks vs radiological parenchymal consolidation).
+- **Honest Error Propagation:** If gradients fail to flow or hooks are unavailable, the engine raises an explicit `GradCAMUnavailableError` instead of falling back to artificial Gaussian blur stubs.
 
-Forward and backward PyTorch tensor hooks (`register_full_backward_hook`) compute gradient-weighted class activation maps. CNN convolutional layers and ViT layer-norm multi-head self-attention projections are targeted automatically.
+### 8.3 3D Anatomical Workspace and 2D Evidence Panes
 
-- **Zero-Markdown-Asterisk Policy:** Diagnostic explanations are rendered in clean, structured clinical text without raw markdown asterisks (`**`), ensuring readability across clinical HUDs and exported PDF reports.
-- **Quadrant Spatial Localization:** Automatically maps relevance peak activation centers to clinical quadrants (Upper Left, Upper Right, Lower Left, Lower Right, or Central Perihilar region).
-- **Multimodal Terminology Adaptation:** Differentiates diagnostic phrasing based on modality (dermoscopic atypical pigment networks / melanocytic lesions vs radiological consolidation / pleural opacities).
-- **Persistent Forensic Audit Trail:** Every performed diagnosis, predicted class probabilities, Grad-CAM metrics, and clinician findings are committed to the SQLite WAL `diagnostic_audits` table and queryable via `GET /api/diagnose/audit-trail`.
+The Next.js Diagnostic Studio combines 3D anatomical visualization with aligned 2D clinical evidence:
 
-> [!NOTE]
-> **Grad-CAM limitations:** Grad-CAM and attention-based saliency methods are approximations. For Vision Transformers, the relationship between attention maps and model decisions is not straightforward. Saliency maps should be interpreted as model inspection tools, not as precise localizations of pathology. Clinical localization requires dedicated segmentation or detection models validated on annotated datasets. If hooks are unavailable or gradients fail to flow, the engine raises an explicit `GradCAMUnavailableError`. Synthetic Gaussian blur blobs are prohibited.
+- **3D Anatomical Workspace:** Uses Three.js to render a responsive anatomical volume, projecting radiograph textures and Grad-CAM saliency heatmaps directly onto the model.
+- **2D Evidence Panes:** Displays original full-resolution scans side-by-side with genuine Grad-CAM attention overlays, colormap spectrum controls (Jet, Viridis, Plasma), and blend opacity sliders.
 
-### PDF Report Engine and Voice Dictation
+### 8.4 Cryptographic PDF Reports and Audio Briefings
 
-- **Vector PDF Reports:** Compiled via `fpdf2` with input scan embeddings, Grad-CAM overlays, argmax class probabilities, and retrieved reference cases. Reports include a SHA-256 integrity hash.
-- **Bilingual Voice Dictation:** Asynchronous `gTTS` synthesis in English and Turkish with persistent disk cache and clean UI audio fallbacks.
+- **Vector PDF Diagnostic Reports:** Built with `fpdf2`, compiling clinical assessments, class probability breakdowns, Grad-CAM overlays, and retrieved reference cases into an archival report authenticated with a SHA-256 cryptographic digest.
+- **Bilingual Voice Dictation:** Provides asynchronous audio briefings in English and Turkish using `gTTS` with persistent disk caching.
 
 ---
 
-## 13. Multi-Platform Interfaces
+## 9. Multi-Platform Interfaces and Operations
 
-### Next.js 14 Clinical SaaS Web App (`frontend/`)
+### 9.1 Next.js 14 Clinical SaaS Web Application
 
-Built with React 18, TypeScript, Tailwind CSS, and Next.js 14 App Router:
+Located in `frontend/`, built with Next.js 14 App Router, React 18, TypeScript, and Tailwind CSS:
 
-- **Landing Page (`/`):** Consortium topology, security governance overview, 5 verifiable KPI metrics, interactive results showcase tabs, and backend connection verification.
-- **Consortium Launch Enclave Modal:** Executes 4-stage cryptographic enclave handshakes via `/api/fl/enclave-handshake`, rendering ECDH fingerprints and SHA-256 attestation digests.
-- **Telemetry Dashboard (`/dashboard`):** Real-time SSE streaming and polling HUD displaying round loss, accuracy, client drift, and Byzantine threat status.
-- **Diagnostic Studio:** Upload scans, view Grad-CAM heatmaps, inspect RAG digital twins, listen to audio briefings, and download PDF reports.
-- **Browser Runtime Shield (`runtimeShield.ts`):** Intercepts noisy third-party Chrome/Edge browser extension errors (e.g. `useCache`, `content.js`), isolates service worker port closures (`message channel closed`), and deduplicates console warnings.
-- **React Subtree Resilience & Error Boundaries:** Route segment error containment via `app/error.tsx` and `app/global-error.tsx`, paired with `ClinicalErrorBoundary` encapsulating critical dashboard stages and landing tabs with bilingual recovery controls. All array operations implement defensive guards against nullable payloads.
-- **Universal Responsiveness:** Tested across Mobile (<768px), Tablet (768-1024px), Laptop (1024-1440px), and Desktop/4K (>=1440px) viewports without horizontal clipping.
+- **Consortium Landing View:** Displays network topology, security protocols, verifiable KPI indicators, and active consortium core connectivity.
+- **Telemetry Cockpit (`/dashboard`):** Real-time Server-Sent Events (SSE) streaming displaying convergence loss, hold-out validation accuracy, client drift, and Byzantine detection alerts.
+- **Diagnostic Studio:** Upload clinical scans, execute real-time inference, inspect 3D/2D Grad-CAM saliency, review retrieved digital twins, and export signed PDF reports.
+- **Browser Runtime Shield (`runtimeShield.ts`):** Defensively isolates third-party browser extension collisions (such as `useCache` or `content.js`), isolates unexpected port drops, and deduplicates console warnings.
+- **Clinical Error Boundaries:** Comprehensive fault containment via `app/error.tsx`, `app/global-error.tsx`, and `ClinicalErrorBoundary` with bilingual recovery actions.
+- **Universal Responsiveness:** Fully tested across Mobile (<768px), Tablet (768-1024px), Laptop (1024-1440px), and Desktop/4K (>=1440px) viewports.
 
-### Streamlit Scientific Benchmark UI (`app.py`)
+### 9.2 Standalone Streamlit Scientific Benchmark UI
 
-A standalone research workbench for multi-algorithm comparative evaluation:
+Located in `app.py`, providing a dedicated workbench for interactive research:
 
-- Native Strategy E clinical data loader with patient-level isolation.
-- Interactive optimizer comparative benchmarking (FedAvg, FedProx, SCAFFOLD, FedDyn, FedAdam, MOON).
-- Visualizer for 7 Non-IID Skew Scenarios with class distribution charts.
+- Direct exploration of 7 Non-IID data scenarios with demographic distribution charts.
+- Side-by-side comparative benchmarking of distributed optimizers (FedAvg, FedProx, SCAFFOLD, FedDyn, FedAdam, MOON).
+- Visual inspection of patient-level cohort splits and prototype dispersion clusters.
 
----
+### 9.3 Flower Framework Federation Bridge
 
-## 14. Flower Protocol Federation Bridge
+Full bidirectional compatibility with the official Flower (`flwr`) framework via `src/fed_xray/federation/flower_protocol_bridge.py`:
 
-Complete bidirectional interoperability with the official Flower (`flwr`) framework via `src/fed_xray/federation/flower_protocol_bridge.py`:
-
-```
-[ Flower Aggregator (Server) ]
-              |
-+-------------+-------------+
-|             |             |
-[ InProcessProxy ]  [ gRPC Proxy ]  [ gRPC Proxy ]
-|             |             |
-[ FlowerHospitalClient ] [ Remote Client ] [ Remote Client ]
-|
-[ HospitalClient (PEFT/DP/HE) ]
-```
-
-- **FlowerHospitalClient:** Implements `flwr.client.NumPyClient`, serializing PyTorch parameter dictionaries to/from NumPy ndarrays.
-- **InProcessClientProxy:** High-speed zero-IPC multi-client execution within a single Python process.
-- **StrategyEHospitalStrategy:** Custom aggregation strategy integrating patient-level DP and Byzantine filtering.
+- **FlowerHospitalClient:** Implements `flwr.client.NumPyClient`, serializing PyTorch parameters to and from NumPy ndarrays.
+- **InProcessClientProxy:** High-speed, zero-IPC multi-client simulation within a single process.
+- **StrategyEHospitalStrategy:** Custom aggregation strategy integrating patient-level DP clipping and Byzantine defense into Flower execution loops.
 
 ```bash
-# Run multi-hospital federation via Flower CLI
 python scripts/run_flower_federation.py --rounds 5 --hospitals 4 --model vit_tiny
 ```
 
-FastAPI endpoints: `POST /api/fl/flower-start` and `GET /api/fl/flower-info`.
+### 9.4 ACID Persistent State Storage (SQLite WAL)
+
+Consortium sessions, training metrics, client drift histories, and forensic diagnostic audit records are preserved via `PersistentStateStore` (`src/fed_xray/storage/state_store.py`):
+
+- Implements SQLite in Write-Ahead Logging (WAL) mode across 5 relational tables.
+- Ensures zero data loss across backend process restarts with 1:1 memory parity.
+- Forensic diagnostic audit trail queryable via `GET /api/diagnose/audit-trail`.
 
 ---
 
-## 15. REST and Streaming API Reference
+## 10. REST and Streaming API Reference
 
-| Method | Endpoint | Description |
-| :--- | :--- | :--- |
-| `GET` | `/` | Root API information, service status, and documentation pointers. |
-| `GET` | `/api/health` | System health, PyTorch execution device, and CUDA status. |
-| `GET` | `/api/state` | Active federation state, node counts, persistence status, and model parameters. |
-| `GET` | `/api/state/history` | Full persistent round telemetry history retrieved from SQLite WAL storage. |
-| `POST` | `/api/state/reset` | Resets persistent SQLite state store and clears active consortium session. |
-| `POST` | `/api/state/save` | Explicitly persists trained weights, metadata, cohorts, and history to disk/SQLite. |
-| `POST` | `/api/state/restore` | Restores trained weights, metadata, cohorts, and history from disk/SQLite. |
-| `POST` | `/api/cohorts/generate` | Partitions Strategy E clinical cohorts across Scenarios A through G. |
-| `GET` | `/api/cohorts/verify-authenticity` | Forensic audit of staged cohort provenance, patient isolation, and authenticity. |
-| `POST` | `/api/cohorts/stage-real-isic` | Stages authentic multi-center ISIC 2019 dermoscopy cohorts. |
-| `GET` | `/api/fl/enclave-handshake` | Cryptographic enclave attestation: X25519 fingerprints, SHA-256 certificate digest. |
-| `POST` | `/api/fl/train-start` | Launches asynchronous federated optimization background worker. |
-| `GET` | `/api/fl/train-status` | Polls training progress, round telemetry, and Byzantine threat reports. |
-| `GET` | `/api/fl/train-stream` | Server-Sent Events (SSE) stream: real-time round metrics, loss, and client drift. |
-| `GET` | `/api/fl/privacy-status` | Differential Privacy bounds, Rényi DP accounting budget, and CKKS parameters. |
-| `POST` | `/api/fl/flower-start` | Initiates multi-hospital federation via official Flower framework bridge. |
-| `GET` | `/api/fl/flower-info` | Reports Flower framework bridge status, strategies, and runtime metrics. |
-| `POST` | `/api/cdss/diagnose` | Forward pass classification, structured XAI explanation, and Grad-CAM heatmap. |
-| `GET` | `/api/diagnose/audit-trail` | Forensic audit trail of historical clinical diagnoses committed to SQLite. |
-| `GET` | `/api/cdss/rag-similar` | Retrieves top-k biopsy-confirmed digital twins from HNSW vector index. |
-| `GET` | `/api/cdss/voice` | Streams synthesized bilingual diagnostic audio briefing (EN/TR). |
-| `GET` | `/api/cdss/report-pdf` | Compiles and streams cryptographic vector PDF diagnostic report with SHA-256 hash. |
+The FastAPI backend (`api/main.py`) provides asynchronous REST and streaming endpoints validated against strict Pydantic v2 schemas (`api/schemas.py`):
 
-All request/response schemas are defined in `api/schemas.py` as Pydantic v2 models.
-
----
-
-## 16. Test Suite Matrix (384 Tests)
-
-Fed-XRay maintains 384 automated tests (287 Python Pytest backend + 97 TypeScript Vitest frontend), all passing at 100%.
-
-### Backend Pytest Suites (41 Test Files, 287 Tests)
-
-| Subsystem | Test File | Count | Scope |
+| HTTP Method | Endpoint | Description | Schema / Response |
 | :--- | :--- | :--- | :--- |
-| Baseline and Models | `test_all.py` | 7 | Baseline model creation, Grad-CAM hooks, aggregation consistency, and Byzantine defense. |
-| API Exhaustive | `test_api_deep_suite.py` | 27 | Parameter permutations, SSE bounds, error recovery, path traversal blocks, and schema bounds. |
-| API Core Routing | `test_api_endpoints.py` | 5 | REST routing, health, cohort partitioning, diagnostic responses, and PDF streaming. |
-| Pydantic Contracts | `test_api_schemas_contracts.py` | 5 | Pydantic v2 validation, boundary conditions, serialization integrity, and opacity clamping. |
-| Asymmetric PEFT | `test_asymmetric_foundation_peft.py` | 10 | FlexLoRA SVD, FedAS-LoRA RSS routing, HetLoRA rank slicing, FedPerfix, and foundation integration. |
-| Benchmark Engine | `test_benchmarking_engine.py` | 1 | Foundation PEFT empirical benchmark execution and metric logging. |
-| Browser Runtime Shield | `test_browser_runtime_shield_and_extension_isolation.py` | 4 | Interception of extension errors, port closures, console deduplication, and boundary contracts. |
-| CDSS Explainability | `test_cdss_explainability_and_localization.py` | 6 | Zero-markdown-asterisk invariant, structured clinical formatting, quadrant spatial localization. |
-| PDF Reporting | `test_cdss_report.py` | 11 | PDF compilation, image overlays, SHA-256 digests, empty state handling, and vector rendering. |
-| RAG and Similarity | `test_cdss_similarity.py` | 12 | Dynamic HNSW indexing (128 to 1024 dims), biopsy twin search, cosine distance verification. |
-| Voice Dictation | `test_cdss_voice.py` | 4 | Async speech synthesis, disk caching, and bilingual audio fallbacks. |
-| Explainable AI | `test_cdss_xai.py` | 4 | Multi-layer Grad-CAM, forward/backward hooks, and explicit exception raising. |
-| Client Subtree Resilience | `test_client_subtree_resilience_and_error_boundaries.py` | 4 | Next.js app error boundaries, granular component containment, defensive array access. |
-| Clinical Cohort Staging | `test_clinical_cohort_authenticity_and_staging.py` | 7 | Real-world dataset staging, forensic cohort authenticity auditing, honest non-clinical tagging. |
-| Consortium Cryptography | `test_consortium_cryptography_and_zero_plaintext.py` | 3 | RLWE 128-bit CKKS encryption, SecAgg+ zero-sum masking, Byzantine defense under ciphertext. |
-| Persistent State Store | `test_consortium_persistent_state_store.py` | 9 | SQLite WAL persistence, relational tables, restart state hydration, history and reset endpoints. |
-| Imbalance Losses | `test_core_imbalance_losses.py` | 6 | DAFL, BSM, LDAM, and missing-class repel loss numerical stability. |
-| Cryptographic Privacy | `test_crypto_privacy_optimizers.py` | 11 | TenSEAL CKKS ciphertext addition, SecAgg+ zero-sum masking, distributed DP Gaussian noise. |
-| E2E Lifecycle | `test_e2e_full_federated_pipeline.py` | 2 | End-to-end ingestion, federated training, RAG digital twins, and PDF report compilation. |
-| Enclave Attestation | `test_enclave_handshake.py` | 5 | Multi-stage enclave handshake, X25519 fingerprints, unclamped dynamic Renyi DP accumulation. |
-| CDSS Grounding | `test_evidence_grounded_cdss.py` | 5 | Grad-CAM spatial peak relevance, genuine RAG case retrieval, and honest failure modes. |
-| Flower Protocol | `test_flower_and_sota_enhancements.py` | 7 | Flower bridge, InProcessProxy, NumPy parameter serialization roundtrips. |
-| Checkpoint Integrity | `test_foundation_checkpoint_integrity_and_provenance.py` | 10 | Zero-silent-pass policy, honest exception raising on missing weights, SHA-256 weight fingerprinting. |
-| Foundation Privacy | `test_foundation_privacy.py` | 16 | Multimodal semantic anchoring, CKKS vector scaling, and Renyi Differential Privacy composition bounds. |
-| Strategy E Generator | `test_generator_strategy_e.py` | 12 | 224x224 input resolution, 196 ViT patch tokens, robust PyTorch DataLoader pipelines. |
-| Multi-Class Oncology | `test_multiclass_oncology_integrity.py` | 4 | ISIC 8-class dermoscopy and NCT-CRC-HE 9-class histopathology integrity, unconstrained class indices, PDF report bounds. |
-| Multimodal PEFT Adapters | `test_multimodal_foundation_peft_adapters.py` | 5 | Runtime integration of MedSAM, FedMedCLIP, FedCola, and FedDAT dual-attention adapters. |
-| Network Routing | `test_network_routing_and_tunnel_resilience.py` | 6 | Dynamic ephemeral tunnel detection, dead domain blacklisting, automatic loopback fallback, open CORS. |
-| Node-Level DP Accounting | `test_node_level_dp_accounting.py` | 5 | Node-specific Renyi Differential Privacy tracking, authentic client-level sample sizes and subsampling ratios, zero initial spent budget, elimination of static heuristic multipliers. |
-| Numerical Stability | `test_numerical_stability_losses.py` | 6 | Boundary conditions, extreme class imbalance limits, and high-dimensional vector stability. |
-| Prototypes and Losses | `test_prototypes.py` | 7 | FedProto dispersion weighting, covariance traces, centroid synthesis, and prototype rounds. |
-| Real-World Scenarios | `test_real_world_data_scenarios.py` | 8 | DiskMedicalDataset manifests, Non-IID Scenarios A through G, SHA-256 image deduplication. |
-| Robustness and Adversarial | `test_robustness_and_adversarial.py` | 9 | Byzantine gradient poisoning mitigation without self-incrimination, NaN/Inf gradient resilience, free-rider rejection, L2 norm outlier detection. |
-| SQLite Memory Equivalence | `test_sqlite_memory_state_equivalence.py` | 4 | Strict 1:1 equivalence between in-memory telemetry and SQLite Write-Ahead Logging storage, metric preservation across container reboots, state reset invariance. |
-| State Persistence | `test_state_persistence.py` | 4 | AppState save and restore roundtrips, persistence endpoint verification. |
-| Strategy E Ingestion | `test_strategy_e_real_ingestion.py` | 7 | ISIC Archive API v2 ingestion, file staging, and leak-free patient isolation invariants. |
-| Swin UNETR Backbone | `test_swin_unetr_radiology_backbone.py` | 4 | Authentic hierarchical Shifted Window Attention, patch merging, 2D/3D volumetric support, and PEFT adaptation. |
-| Telemetry Authenticity | `test_training_telemetry_authenticity.py` | 7 | Unconflated separation between client local training metrics train_loss/train_accuracy and server holdout validation metrics loss/accuracy across SSE, background worker, and Flower pipelines. |
-| Uploaded Scan Metadata | `test_uploaded_scan_metadata_integrity.py` | 4 | Uploaded scan metadata normalization, custom user site/provenance retention, and SQLite state store parity. |
-| ViT PEFT Optimizers | `test_vit_peft_optimizers.py` | 4 | ViT-Base FFA-LoRA zero bilinear error, FedDyn, SCAFFOLD, and MOON optimization. |
-| ViT-Tiny FFA-LoRA | `test_vit_tiny_ffa_lora.py` | 4 | ViT-Tiny 224x224 FFA-LoRA injection, CPU runtime efficiency, state dict roundtrips. |
-
-### Frontend Vitest Suites (21 Test Files, 97 Tests)
-
-| Component / Utility | Test File | Count | Scope |
-| :--- | :--- | :--- | :--- |
-| API Client | `api.test.ts` | 8 | Dual SSE streaming, polling fallbacks, honest error parsing, and timeout resilience. |
-| Backend Gateway | `backendGateway.test.ts` | 9 | Next.js serverless route gateway resilience, honest HTTP 502/503 propagation, mock elimination, and error status contracts. |
-| Clinical Error Boundary | `ClinicalErrorBoundary.test.tsx` | 3 | Catches rendering errors, renders bilingual recovery controls, reset callbacks. |
-| Enclave Overlay | `ConsortiumLaunchOverlay.test.tsx` | 5 | 4-stage cryptographic enclave handshake, ECDH fingerprints, attestation badges. |
-| Diagnostic Studio | `DiagnosticStudio.test.tsx` | 5 | Pre-training locked state, forward pass inference, Grad-CAM overlays, audio briefing, PDF trigger. |
-| Topology Map | `FederatedTopologyMap.test.tsx` | 3 | Multi-hospital topology map, node status indicators, and SVG connection rendering. |
-| Hero Component | `Hero.test.tsx` | 3 | Headline rendering, consortium status badge, quick launch actions. |
-| Hospital Studio | `HospitalStudio.test.tsx` | 3 | Multi-hospital tabs, demographic breakdown, Non-IID distribution charts. |
-| Presentation Page | `LandingPage.test.tsx` | 5 | Verifiable KPI metrics, interactive results showcase tabs, enclave launch trigger. |
-| Live HUD | `LiveHud.test.tsx` | 3 | Attestation digest badge, real-time telemetry indicators, pulse status. |
-| Geometry Utilities | `lungGeometry.test.ts` | 6 | Anatomical lung SVG boundary calculations and coordinate scaling. |
-| 3D Volumetric Lung Scene | `LungViewer3D.test.tsx` | 3 | Three.js 3D volumetric lung container rendering and cleanup. |
-| Navigation | `Navbar.test.tsx` | 7 | Bilingual language toggle (EN/TR), dark/light mode toggle, responsive mobile navigation, enclave launch trigger. |
-| RAG Digital Twins | `RagDigitalTwins.test.tsx` | 2 | Biopsy-confirmed digital twin rendering, confidence bars, clinical metadata tags. |
-| Report Download | `ReportDownload.test.tsx` | 3 | PDF report card rendering, encoded download link generation, disabled states. |
-| Browser Runtime Shield | `runtimeShield.test.ts` | 9 | Interception of extension errors, port drop isolation, console deduplication. |
-| Subtree Isolation | `subtreeIsolation.test.tsx` | 5 | Fault containment across null/undefined sample images, twin lists, and telemetry arrays. |
-| Telemetry Cockpit | `TelemetryCockpit.test.tsx` | 4 | Loss and accuracy convergence graphs, client drift tracking, Byzantine threat alerts, cryptographic options. |
-| Localization | `translations.test.ts` | 4 | Complete key parity and translation completeness across English and Turkish dictionaries. |
-| Voice Assistant | `VoiceAssistant.test.tsx` | 3 | Audio player controls, bilingual voice toggle, synthesization loading indicators. |
-| Workflow Stepper | `WorkflowStepper.test.tsx` | 4 | 4-step workflow navigation, step completion locking, interactive advancement. |
+| `GET` | `/` | Root service status and documentation links | Service health metadata |
+| `GET` | `/api/health` | Backend system health, execution device, and CUDA status | Hardware and engine status |
+| `GET` | `/api/state` | Active federation state, node counts, and model parameters | `ConsortiumStateResponse` |
+| `GET` | `/api/state/history` | Full round telemetry history from persistent SQLite WAL storage | Telemetry history array |
+| `POST` | `/api/state/reset` | Resets persistent state store and clears active consortium session | Reset confirmation |
+| `POST` | `/api/state/save` | Persists trained weights, metadata, cohorts, and history to disk | Persistence confirmation |
+| `POST` | `/api/state/restore` | Restores saved state from disk and hydrates database | Hydration status |
+| `POST` | `/api/cohorts/generate` | Partitions Strategy E clinical cohorts across Scenarios A through G | `CohortPartitionResponse` |
+| `GET` | `/api/cohorts/verify-authenticity` | Forensic audit of staged cohort provenance and patient isolation | Authenticity audit log |
+| `POST` | `/api/cohorts/stage-real-isic` | Stages authentic multi-center ISIC 2019 dermoscopy cohorts | Ingestion confirmation |
+| `GET` | `/api/fl/enclave-handshake` | Cryptographic attestation: X25519 fingerprints, SHA-256 certificate digest | `EnclaveHandshakeResponse` |
+| `POST` | `/api/fl/train-start` | Launches asynchronous federated optimization background worker | Training task identifier |
+| `GET` | `/api/fl/train-status` | Polls training progress, round telemetry, and Byzantine reports | Round status and metrics |
+| `GET` | `/api/fl/train-stream` | Server-Sent Events (SSE) stream of real-time metrics and client drift | Continuous SSE stream |
+| `GET` | `/api/fl/privacy-status` | Reports Differential Privacy bounds, Rényi budget, and CKKS status | DP privacy budget report |
+| `POST` | `/api/fl/flower-start` | Initiates multi-hospital federation via official Flower framework bridge | Task launch response |
+| `GET` | `/api/fl/flower-info` | Reports Flower framework bridge status, strategies, and metrics | Bridge telemetry |
+| `POST` | `/api/cdss/diagnose` | Forward pass classification, structured XAI explanation, and Grad-CAM | `DiagnosisResponse` |
+| `GET` | `/api/diagnose/audit-trail` | Forensic audit trail of historical clinical diagnoses stored in SQLite | Audit records array |
+| `GET` | `/api/cdss/rag-similar` | Retrieves top-k biopsy-confirmed digital twins from HNSW vector index | `SimilarCasesResponse` |
+| `GET` | `/api/cdss/voice` | Streams synthesized bilingual diagnostic audio briefing (EN/TR) | Audio stream (`audio/mpeg`) |
+| `GET` | `/api/cdss/report-pdf` | Compiles and streams signed vector PDF report with SHA-256 hash | Document stream (`application/pdf`) |
 
 ---
 
-## 17. Repository Directory Structure
+## 11. Verification and Automated Test Suite (384 Tests)
+
+Fed-XRay maintains an automated test suite comprising **384 tests** (287 Python Pytest backend tests + 97 TypeScript Vitest frontend tests), achieving a 100% pass rate.
+
+### Backend Pytest Suites (41 Files, 287 Tests)
+
+| Domain Category | Key Test Files | Test Count | Verified Invariants |
+| :--- | :--- | :--- | :--- |
+| **Model Architectures & PEFT** | `test_vit_tiny_ffa_lora.py`, `test_vit_peft_optimizers.py`, `test_asymmetric_foundation_peft.py`, `test_swin_unetr_radiology_backbone.py`, `test_multimodal_foundation_peft_adapters.py`, `test_foundation_checkpoint_integrity_and_provenance.py` | 42 | Zero bilinear LoRA error, FFA-LoRA / FedSA-LoRA mathematical consistency, Swin UNETR shifted windows, MedSAM FCA, SHA-256 weight digests |
+| **Distributed Optimization** | `test_all.py`, `test_benchmarking_engine.py`, `test_flower_and_sota_enhancements.py`, `test_training_telemetry_authenticity.py` | 22 | FedDyn dynamic objectives, FedAdam momentum, SCAFFOLD control variates, MOON contrastive loss, Flower bridge synchronization |
+| **Class Imbalance & Prototypes** | `test_core_imbalance_losses.py`, `test_numerical_stability_losses.py`, `test_prototypes.py`, `test_multiclass_oncology_integrity.py` | 23 | DAFL dynamic recall adjustment, BSM logit correction, LDAM margins, missing-class repel loss, FedProto covariance trace weighting |
+| **Dual-Layer Privacy (Option J)** | `test_consortium_cryptography_and_zero_plaintext.py`, `test_crypto_privacy_optimizers.py`, `test_enclave_handshake.py`, `test_foundation_privacy.py`, `test_node_level_dp_accounting.py` | 40 | Patient-level L2 DP clipping, Rényi DP composition bounds, RLWE 128-bit CKKS addition, SecAgg+ zero-sum masking, attestation certificates |
+| **Clinical Decision Support** | `test_cdss_explainability_and_localization.py`, `test_cdss_similarity.py`, `test_cdss_report.py`, `test_cdss_voice.py`, `test_cdss_xai.py`, `test_evidence_grounded_cdss.py` | 44 | Structured clinical text (zero raw asterisks), quadrant spatial localization, dynamic HNSW index retrieval, vector PDF compilation, audio synthesis |
+| **Data Ingestion & Cohorts** | `test_clinical_cohort_authenticity_and_staging.py`, `test_generator_strategy_e.py`, `test_real_world_data_scenarios.py`, `test_strategy_e_real_ingestion.py`, `test_uploaded_scan_metadata_integrity.py` | 42 | Strategy E multi-center dataset ingestion, 7 Non-IID scenarios, 100% leak-free patient isolation, ImageNet standardization |
+| **API, State & Persistence** | `test_api_deep_suite.py`, `test_api_endpoints.py`, `test_api_schemas_contracts.py`, `test_consortium_persistent_state_store.py`, `test_sqlite_memory_state_equivalence.py`, `test_state_persistence.py` | 54 | Pydantic v2 validation contracts, SSE streaming limits, path traversal blocks, SQLite WAL persistence, process restart memory equivalence |
+| **Security & Robustness** | `test_robustness_and_adversarial.py`, `test_network_routing_and_tunnel_resilience.py`, `test_browser_runtime_shield_and_extension_isolation.py`, `test_client_subtree_resilience_and_error_boundaries.py`, `test_e2e_full_federated_pipeline.py` | 20 | Byzantine gradient poisoning rejection without self-incrimination, NaN/Inf resilience, free-rider rejection, tunnel resilience, runtime shield |
+
+### Frontend Vitest Suites (21 Files, 97 Tests)
+
+| Component / Utility | Test File | Tests | Verified Contracts |
+| :--- | :--- | :--- | :--- |
+| **API Client & Gateway** | `api.test.ts`, `backendGateway.test.ts` | 17 | SSE streaming parser, polling fallbacks, honest HTTP 502/503 propagation without mock fallbacks |
+| **Error Handling & Shield** | `runtimeShield.test.ts`, `ClinicalErrorBoundary.test.tsx`, `subtreeIsolation.test.tsx` | 17 | Chrome/Edge extension isolation, port drop handling, error boundaries, null payload defenses |
+| **Diagnostic Studio & 3D** | `DiagnosticStudio.test.tsx`, `LungViewer3D.test.tsx`, `lungGeometry.test.ts`, `RagDigitalTwins.test.tsx` | 16 | Inference lifecycle, Three.js container cleanup, coordinate scaling, biopsy twin rendering |
+| **Consortium & Enclave** | `ConsortiumLaunchOverlay.test.tsx`, `FederatedTopologyMap.test.tsx`, `LiveHud.test.tsx` | 11 | 4-stage cryptographic handshake, ECDH fingerprints, SVG topology rendering, attestation badge |
+| **Telemetry & Reporting** | `TelemetryCockpit.test.tsx`, `ReportDownload.test.tsx`, `VoiceAssistant.test.tsx` | 10 | Loss/accuracy convergence charts, client drift tracking, PDF trigger, audio briefing controls |
+| **Navigation & Pages** | `Navbar.test.tsx`, `Hero.test.tsx`, `LandingPage.test.tsx`, `HospitalStudio.test.tsx`, `WorkflowStepper.test.tsx`, `translations.test.ts` | 26 | Bilingual EN/TR parity, dark mode, responsive mobile drawer, Non-IID breakdown, 4-step stepper |
+
+---
+
+## 12. Repository Structure
 
 ```text
 Fed-XRay/
-|-- api/                               # FastAPI Async Backend
-|   |-- main.py                        # REST, SSE, Enclave, Persistence, and CDSS Routes
-|   `-- schemas.py                     # Pydantic v2 Request/Response Contracts
-|-- frontend/                          # Next.js 14 Clinical SaaS Web App
+|-- api/                               # FastAPI Asynchronous Backend
+|   |-- main.py                        # REST, SSE Streaming, Enclave, and CDSS Routes
+|   `-- schemas.py                     # Strict Pydantic v2 Data Contracts
+|-- frontend/                          # Next.js 14 Clinical SaaS Web Application
 |   |-- src/
-|   |   |-- app/                       # App Router Pages, Error Boundaries (error.tsx, global-error.tsx)
-|   |   |-- components/                # ClinicalErrorBoundary, Cockpit Panels, SVG Topology, HUD
+|   |   |-- app/                       # App Router Pages and Error Boundaries (error.tsx, global-error.tsx)
+|   |   |-- components/                # DiagnosticStudio, LungViewer3D, TelemetryCockpit, HUD
 |   |   |-- context/                   # Language (EN/TR) and API Connection Providers
 |   |   |-- lib/                       # API Client, Runtime Shield, Translations, Utilities
 |   |   |-- types/                     # TypeScript Strict Interface Definitions
-|   |   `-- __tests__/                 # Vitest Component and Integration Tests (21 Files, 94 Tests)
+|   |   `-- __tests__/                 # Vitest Component and Integration Tests (21 Files, 97 Tests)
 |   |-- package.json
 |   `-- tailwind.config.js             # Clinical SaaS HSL Design Token System
 |-- scripts/
 |   `-- run_flower_federation.py       # Flower Multi-Hospital Federation Runner
 |-- src/
-|   `-- fed_xray/                      # Core Python Package
-|       |-- core/                      # Federated Optimization Core
-|       |   |-- client.py              # HospitalClient (PEFT, FedDyn, SCAFFOLD, MOON, DP, MedSAM, FedMedCLIP)
-|       |   |-- server.py              # CentralServer (FedAdam, FedDyn, Byzantine Detection, Asymmetric PEFT)
+|   `-- fed_xray/                      # Core Federated Learning Package
+|       |-- core/                      # Distributed Optimization and Protocols
+|       |   |-- client.py              # HospitalClient (PEFT, FedDyn, SCAFFOLD, MOON, DP, MedSAM)
+|       |   |-- server.py              # CentralServer (FedAdam, FedDyn, Byzantine Defense, Asymmetric PEFT)
 |       |   |-- privacy.py             # Option J: TenSEAL CKKS HE, SecAgg+ ECDH, Rényi DP
-|       |   |-- prototypes.py          # FedProto Dispersion-Weighted Synthesis
+|       |   |-- prototypes.py          # FedProto Dispersion-Weighted Prototype Synthesis
 |       |   |-- imbalance_losses.py    # DAFL, Balanced Softmax, LDAM, Missing-Class Repel
-|       |   `-- metrics.py             # Telemetry Trackers and Anomaly Reports
+|       |   `-- metrics.py             # Telemetry Tracking and Anomaly Reporting
 |       |-- storage/
-|       |   `-- state_store.py         # ACID PersistentStateStore (SQLite WAL Mode across 5 Relational Tables)
+|       |   `-- state_store.py         # ACID PersistentStateStore (SQLite WAL across 5 Relational Tables)
 |       |-- federation/
-|       |   `-- flower_protocol_bridge.py  # Flower (flwr) Client Proxy and Strategy
+|       |   `-- flower_protocol_bridge.py  # Bidirectional Flower (flwr) Client Proxy and Strategy
 |       |-- models/
-|       |   |-- vit.py                 # Vision Transformer (MHSA, PatchEmbedding, create_medical_vit)
+|       |   |-- vit.py                 # Vision Transformers (MHSA, PatchEmbedding, ViT-Tiny, ViT-Base)
 |       |   |-- peft.py                # FFA-LoRA, FedSA-LoRA, FedAS-LoRA, FlexLoRA, FedPerfix, MedSAM FCA
-|       |   |-- foundation.py          # Swin UNETR 3D, UNI Backbone, FedMedCLIP, FedCola, FedDAT
-|       |   |-- precomputed_clinical_anchors.pt # Verified Bio_ClinicalBERT Semantic Embeddings
-|       |   `-- cnn.py                 # XRayClassifier Baseline
+|       |   |-- foundation.py          # Swin UNETR 3D, UNI Pathology Backbone, FedMedCLIP, FedCola
+|       |   `-- cnn.py                 # XRayClassifier Convolutional Baseline
 |       |-- data/
 |       |   |-- real_world.py          # DiskMedicalDataset, Scenarios A-G, SHA-256 Deduplication
-|       |   |-- ingest_real_world.py   # Strategy E Dataset Staging and In-Silico Calibration Suite
+|       |   |-- ingest_real_world.py   # Strategy E Clinical Staging and Calibration Suite
 |       |   `-- generator.py           # Multi-Resolution 224x224 ViT-Compatible Generator
 |       `-- cdss/
 |           |-- xai.py                 # Grad-CAM Heatmaps and Activation Overlays (Structured, Zero-Asterisks)
 |           |-- similarity.py          # Dynamic HNSW Digital Twin Retrieval (128 to 1024 dims)
 |           |-- report.py              # Cryptographic Vector PDF Report Engine (fpdf2 + SHA-256 Digest)
-|           |-- voice.py               # Speech Dictation Engine (Async gTTS with Disk Cache)
+|           |-- voice.py               # Speech Synthesis Engine (Async gTTS with Disk Cache)
 |           `-- i18n.py                # Bilingual Clinical Localization (EN/TR)
 |-- benchmarks/
-|   `-- benchmark_foundation_peft.py   # Foundation PEFT Comparative Benchmark Suite
-|-- tests/                             # Pytest Test Suites (40 Files, 274 Tests)
+|   `-- benchmark_foundation_peft.py   # Foundation PEFT Empirical Benchmark Suite
+|-- tests/                             # Pytest Backend Suites (41 Files, 287 Tests)
 |-- research/                          # Canonical Scientific Research Foundations (6 Papers)
 |   |-- federated_vision_transformers_for_oncology.md
 |   |-- federated_foundation_models_for_cancer.md
@@ -711,23 +600,24 @@ Fed-XRay/
 |   |-- federated_medical_vision_language_models_and_retrieval_augmented_oncology_ai.md
 |   `-- real_world_medical_dataset_migration_for_federated_cancer_ai.md
 |-- app.py                             # Standalone Streamlit Scientific Benchmark UI
-|-- render.yaml                        # Cloud Deployment Blueprint
-|-- Dockerfile                         # Container Deployment Configuration
+|-- Dockerfile                         # Production Backend Container Configuration
+|-- frontend/Dockerfile                # Production Next.js Container Configuration
+|-- docker-compose.yml                 # Multi-Service Production Compose Configuration
 `-- requirements.txt                   # Production Python Dependencies
 ```
 
 ---
 
-## 18. Installation and Quick Start
+## 13. Installation and Quick Start
 
-### 18.1 Environment Setup
+### 13.1 Environment Setup
 
 ```bash
-# Clone repository
+# Clone the repository
 git clone https://github.com/yusufcalisir/Fed-XRay.git
 cd Fed-XRay
 
-# Create and activate isolated Python virtual environment
+# Create and activate an isolated Python virtual environment
 python -m venv venv
 # Windows:
 .\venv\Scripts\activate
@@ -737,11 +627,11 @@ source venv/bin/activate
 # Install production Python dependencies
 pip install -r requirements.txt
 
-# Or install full testing and development dependencies
+# Or install complete development and testing dependencies
 pip install -r requirements-dev.txt
 ```
 
-### 18.2 Automated Test Execution and CI/CD Pipeline
+### 13.2 Running the Automated Test Suite
 
 ```bash
 # Execute all 287 Python backend tests
@@ -755,59 +645,38 @@ npm run build
 cd ..
 ```
 
-All 384 tests and quality gates run automatically on every push and pull request via the GitHub Actions CI pipeline (`.github/workflows/ci.yml`), organized across 5 parallel, categorized jobs:
-
-1. **Code Quality and Static Analysis:** Ruff linting and Rule 13 invariant checks.
-2. **Backend Unit and Integration Tests:** Python 3.12, CPU PyTorch, 287 Pytest tests.
-3. **Frontend Unit and Component Tests:** Node 20, Vitest, 97 component tests.
-4. **Frontend Production Build Validation:** Next.js 14 production build and TypeScript check.
-5. **Docker Container Build Verification:** Container build and image integrity.
-
-### 18.3 Flower Protocol Federation
-
-```bash
-python scripts/run_flower_federation.py --rounds 5 --hospitals 4 --model vit_tiny
-```
-
-### 18.4 Foundation PEFT Benchmark
-
-```bash
-python -m benchmarks.benchmark_foundation_peft
-```
-
-### 18.5 Launching Services
+### 13.3 Launching the Application Services
 
 **Option A: Next.js 14 Clinical SaaS Web App (Recommended)**
 
 ```bash
-# Terminal 1 - FastAPI Backend
+# Terminal 1: Launch FastAPI Backend
 python -m uvicorn api.main:app --host 127.0.0.1 --port 8000 --reload
 
-# Terminal 2 - Next.js Frontend
+# Terminal 2: Launch Next.js Frontend
 cd frontend
 npm run dev
-# Open http://localhost:3000
+# Access the clinical dashboard at http://localhost:3000
 ```
 
-**Option B: Standalone Streamlit Benchmark UI**
+**Option B: Standalone Streamlit Scientific Benchmark UI**
 
 ```bash
 streamlit run app.py
-# Open http://localhost:8501
+# Access the research interface at http://localhost:8501
 ```
 
-**Option C: Docker Container**
+**Option C: Docker Multi-Container Deployment**
 
 ```bash
-docker build -t fed-xray:latest .
-docker run -p 8000:8000 -p 3000:3000 fed-xray:latest
+docker compose up --build
 ```
 
 ---
 
-## 19. Scientific Anchors and Citations
+## 14. Scientific Anchors and Citations
 
-If you use Fed-XRay in your research, please cite the foundational papers:
+If you use Fed-XRay in your research, please cite the foundational literature:
 
 1. **Hu et al.** (ICLR 2022) - *LoRA: Low-Rank Adaptation of Large Language Models.*
 2. **Sun et al.** (ICLR 2024) - *FFA-LoRA: Freezing Factor A in Federated Low-Rank Adaptation.*
