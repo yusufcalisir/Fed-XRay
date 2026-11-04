@@ -8,6 +8,10 @@ from src.fed_xray.core.server import CentralServer
 
 @pytest.fixture
 def client():
+    state.server = None
+    state.dataloaders = None
+    state.hospital_cohort_info = []
+    state.ensure_cohort_loaded()
     return TestClient(app)
 
 

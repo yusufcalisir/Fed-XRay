@@ -469,7 +469,7 @@ class AppState:
         Guarantees the federated backend is self-healing and never trapped in an uninitialized
         state when clients connect, query state, or initiate training rounds.
         """
-        if self.dataloaders is not None and self.global_test_set is not None and len(self.hospital_cohort_info) > 0:
+        if self.dataloaders is not None and self.global_test_set is not None and bool(self.hospital_cohort_info):
             return True
 
         default_manifest = Path("data/manifests/strategy_e_manifest.csv")
@@ -816,7 +816,7 @@ def format_telemetry_bandwidth(
     Dynamically converts byte counts to human-readable representations (B, KB, MB)
     derived from authentic tensor or ciphertext parameter transmission payloads.
     """
-    effective_bytes = int(uplink_bytes) if uplink_bytes > 0 else 0
+    effective_bytes = uplink_bytes if uplink_bytes > 0 else 0
 
     if effective_bytes <= 0 and server is not None:
         effective_bytes = int(getattr(server, "last_uplink_bytes_per_client", 0))
@@ -2174,12 +2174,12 @@ def get_dynamic_peft_subspace_descriptor(
     lora_r: int = 16,
 ) -> str:
     """Return an authoritative cryptographic and architectural descriptor of the client PEFT subspace."""
-    if not peft_mode or str(peft_mode).strip().lower() in ("none", "false", "off", "full"):
+    if not peft_mode or peft_mode.strip().lower() in ("none", "false", "off", "full"):
         if model_type == "cnn":
             return "Full Convolutional Weights (Direct Plaintext / Masked Aggregation)"
         return "Full ViT Parameters (All Transformer Layers Trainable)"
 
-    normalized_mode = str(peft_mode).strip().lower()
+    normalized_mode = peft_mode.strip().lower()
     if normalized_mode == "ffa_lora":
         return f"FFA-LoRA (Rank-{lora_r} Globally Frozen-A / Local-B)"
     if normalized_mode == "fedsa_lora":
@@ -2230,8 +2230,8 @@ async def perform_enclave_handshake():
     active_peft = getattr(state.server, "peft_mode", state.peft_mode) if state.server is not None else state.peft_mode
     active_model = getattr(state.server, "model_type", state.model_type) if state.server is not None else state.model_type
     active_lora_r = getattr(state.server, "lora_r", getattr(state, "lora_r", 16)) if state.server is not None else getattr(state, "lora_r", 16)
-    active_ckks = bool(getattr(state.server, "use_ckks", state.use_ckks)) if state.server is not None else bool(state.use_ckks)
-    active_secagg = bool(getattr(state.server, "secure_aggregation", state.secure_aggregation)) if state.server is not None else bool(state.secure_aggregation)
+    active_ckks = bool(getattr(state.server, "use_ckks", state.use_ckks)) if state.server is not None else state.use_ckks
+    active_secagg = bool(getattr(state.server, "secure_aggregation", state.secure_aggregation)) if state.server is not None else state.secure_aggregation
 
     subspace_desc = get_dynamic_peft_subspace_descriptor(
         peft_mode=active_peft,
