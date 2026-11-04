@@ -230,25 +230,28 @@ class PersistentStateStore:
             "f1_score": [],
             "privacy_epsilon": [],
             "threat_detected": [],
+            "blocked_nodes": [],
             "blocked_count": 0,
         }
 
         for r in rows:
-            history["round"].append(r["round_num"])
-            history["loss"].append(r["train_loss"])
-            history["accuracy"].append(r["train_accuracy"])
-            history["test_loss"].append(r["test_loss"])
-            history["test_accuracy"].append(r["test_accuracy"])
-            history["precision"].append(r["precision"])
-            history["recall"].append(r["recall"])
-            history["f1_score"].append(r["f1_score"])
-            history["privacy_epsilon"].append(r["privacy_epsilon"])
+            history["round"].append(int(r["round_num"]))
+            history["loss"].append(float(r["train_loss"]))
+            history["accuracy"].append(float(r["train_accuracy"]))
+            history["test_loss"].append(float(r["test_loss"]))
+            history["test_accuracy"].append(float(r["test_accuracy"]))
+            history["precision"].append(float(r["precision"]))
+            history["recall"].append(float(r["recall"]))
+            history["f1_score"].append(float(r["f1_score"]))
+            history["privacy_epsilon"].append(float(r["privacy_epsilon"]))
             history["threat_detected"].append(bool(r["threat_detected"]))
             try:
                 blocked = json.loads(r["blocked_nodes"])
-                history["blocked_count"] += len(blocked) if isinstance(blocked, list) else 0
+                blocked_parsed = blocked if isinstance(blocked, list) else []
+                history["blocked_nodes"].append(blocked_parsed)
+                history["blocked_count"] += len(blocked_parsed)
             except Exception:
-                pass
+                history["blocked_nodes"].append([])
 
         history["privacy_spent"] = history["privacy_epsilon"][-1] if history["privacy_epsilon"] else 0.0
         return history

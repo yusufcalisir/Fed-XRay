@@ -130,7 +130,11 @@ class AppState:
             "f1_score": [],
             "test_accuracy": [],
             "test_loss": [],
+            "privacy_epsilon": [],
+            "threat_detected": [],
+            "blocked_nodes": [],
             "blocked_count": 0,
+            "privacy_spent": 0.0,
         }
         # Background training task state (for Render/proxy SSE fallback)
         self.task_running: bool = False
@@ -156,7 +160,7 @@ class AppState:
 
     def save_to_disk(self, checkpoint_dir: str = "checkpoints") -> bool:
         """Persist trained model weights, metadata, cohorts, and history to SQLite and disk."""
-        if not self.model_trained or self.server is None:
+        if not self.model_trained:
             return False
         try:
             out_dir = Path(checkpoint_dir)
@@ -164,10 +168,12 @@ class AppState:
             model_path = out_dir / "federated_global_model.pt"
             meta_path = out_dir / "federated_state_metadata.json"
 
-            torch.save(self.server.global_model.state_dict(), model_path)
-
-            with open(model_path, "rb") as mf:
-                model_hash = hashlib.sha256(mf.read()).hexdigest()
+            model_hash = None
+            if self.server is not None:
+                torch.save(self.server.global_model.state_dict(), model_path)
+            if model_path.exists():
+                with open(model_path, "rb") as mf:
+                    model_hash = hashlib.sha256(mf.read()).hexdigest()
 
             # 1. Update SQLite relational state store
             self.store.save_system_state({
@@ -195,6 +201,11 @@ class AppState:
             test_losses = self.training_history.get("test_loss", losses)
             test_accs = self.training_history.get("test_accuracy", accs)
             f1s = self.training_history.get("f1_score", [])
+            precisions = self.training_history.get("precision", [])
+            recalls = self.training_history.get("recall", [])
+            threats = self.training_history.get("threat_detected", [])
+            epsilons = self.training_history.get("privacy_epsilon", [])
+            blocked_nodes_list = self.training_history.get("blocked_nodes", [])
             for idx, r in enumerate(round_nums):
                 self.store.record_training_round({
                     "round_num": r,
@@ -202,23 +213,26 @@ class AppState:
                     "train_accuracy": accs[idx] if idx < len(accs) else 0.0,
                     "test_loss": test_losses[idx] if idx < len(test_losses) else 0.0,
                     "test_accuracy": test_accs[idx] if idx < len(test_accs) else 0.0,
-                    "precision": accs[idx] if idx < len(accs) else 0.0,
-                    "recall": accs[idx] if idx < len(accs) else 0.0,
+                    "precision": precisions[idx] if idx < len(precisions) else (accs[idx] if idx < len(accs) else 0.0),
+                    "recall": recalls[idx] if idx < len(recalls) else (accs[idx] if idx < len(accs) else 0.0),
                     "f1_score": f1s[idx] if idx < len(f1s) else 0.0,
-                    "privacy_epsilon": self.server.get_privacy_spent() if self.server else 0.0,
+                    "privacy_epsilon": epsilons[idx] if idx < len(epsilons) else (self.server.get_privacy_spent() if self.server else 0.0),
+                    "threat_detected": threats[idx] if idx < len(threats) else False,
+                    "blocked_nodes": blocked_nodes_list[idx] if idx < len(blocked_nodes_list) else [],
                     "status": "completed",
                 })
 
-            # 4. Log checkpoint in audit ledger
-            self.store.record_checkpoint({
-                "model_type": self.model_type,
-                "peft_mode": self.peft_mode,
-                "checkpoint_path": str(model_path),
-                "checkpoint_hash": model_hash,
-                "is_pretrained": True,
-                "provenance": f"disk_checkpoint:{model_path.name}",
-                "rounds_completed": len(round_nums),
-            })
+            # 4. Log checkpoint in audit ledger if model hash is available
+            if model_hash:
+                self.store.record_checkpoint({
+                    "model_type": self.model_type,
+                    "peft_mode": self.peft_mode,
+                    "checkpoint_path": str(model_path),
+                    "checkpoint_hash": model_hash,
+                    "is_pretrained": True,
+                    "provenance": f"disk_checkpoint:{model_path.name}",
+                    "rounds_completed": len(round_nums),
+                })
 
             # Legacy JSON metadata backup
             meta = {
@@ -277,7 +291,12 @@ class AppState:
             except Exception as exc:
                 logger.warning("Failed to load JSON metadata from %s: %s", meta_path, exc)
 
-        # 1. Hydrate system state from SQLite
+        # 1. Check if checkpoint_dir has its own dedicated SQLite database
+        local_db_path = out_dir / "consortium_state.db"
+        if local_db_path.exists():
+            self.store = PersistentStateStore(db_path=local_db_path)
+
+        # 2. Hydrate system state from SQLite
         try:
             saved_state = self.store.load_system_state()
             if saved_state:
@@ -293,11 +312,14 @@ class AppState:
                     self.model_trained = True
                 restored_any = True
 
-            # 2. Hydrate training history from SQLite
-            saved_history = self.store.get_training_history()
-            if saved_history and saved_history.get("round"):
-                self.training_history = saved_history
-                restored_any = True
+            # 3. Hydrate training history from SQLite if not already restored from checkpoint metadata
+            if not self.training_history.get("round") or local_db_path.exists():
+                saved_history = self.store.get_training_history()
+                if saved_history and saved_history.get("round"):
+                    self.training_history = saved_history
+                    if len(saved_history.get("round", [])) > 0:
+                        self.model_trained = True
+                    restored_any = True
 
             # 3. Hydrate hospital cohorts from SQLite
             persisted_cohorts = self.store.load_hospital_cohorts()
@@ -722,14 +744,17 @@ async def get_state():
         elif state.task_rounds:
             # Fallback hydration from completed in-flight background worker rounds
             for tr in state.task_rounds:
-                state.training_history["round"].append(tr.get("round_num", 1))
-                state.training_history["loss"].append(tr.get("train_loss", 0.0))
-                state.training_history["accuracy"].append(tr.get("train_accuracy", 0.0))
-                state.training_history["test_loss"].append(tr.get("test_loss", 0.0))
-                state.training_history["test_accuracy"].append(tr.get("test_accuracy", 0.0))
-                state.training_history["precision"].append(tr.get("precision", 0.0))
-                state.training_history["recall"].append(tr.get("recall", 0.0))
-                state.training_history["f1_score"].append(tr.get("f1_score", 0.0))
+                state.training_history.setdefault("round", []).append(tr.get("round_num", 1))
+                state.training_history.setdefault("loss", []).append(tr.get("train_loss", 0.0))
+                state.training_history.setdefault("accuracy", []).append(tr.get("train_accuracy", 0.0))
+                state.training_history.setdefault("test_loss", []).append(tr.get("test_loss", 0.0))
+                state.training_history.setdefault("test_accuracy", []).append(tr.get("test_accuracy", 0.0))
+                state.training_history.setdefault("precision", []).append(tr.get("precision", 0.0))
+                state.training_history.setdefault("recall", []).append(tr.get("recall", 0.0))
+                state.training_history.setdefault("f1_score", []).append(tr.get("f1_score", 0.0))
+                state.training_history.setdefault("threat_detected", []).append(tr.get("threat_detected", False))
+                state.training_history.setdefault("privacy_epsilon", []).append(tr.get("privacy_epsilon", 0.0))
+                state.training_history.setdefault("blocked_nodes", []).append(tr.get("blocked_nodes", []))
             if state.task_complete:
                 state.model_trained = True
 
@@ -794,12 +819,14 @@ async def get_state():
     test_losses = state.training_history.get("test_loss", [])
     test_accs = state.training_history.get("test_accuracy", [])
     f1s = state.training_history.get("f1_score", [])
+    threats = state.training_history.get("threat_detected", [])
     for idx, r in enumerate(round_nums):
         train_loss_val = losses[idx] if idx < len(losses) else 0.0
         train_acc_val = accs[idx] if idx < len(accs) else 0.0
         test_loss_val = test_losses[idx] if idx < len(test_losses) else train_loss_val
         test_acc_val = test_accs[idx] if idx < len(test_accs) else train_acc_val
         f1_val = f1s[idx] if idx < len(f1s) else 0.0
+        threat_val = threats[idx] if idx < len(threats) else False
         rounds_list.append({
             "round_num": r,
             "train_loss": round(float(train_loss_val), 4),
@@ -808,7 +835,7 @@ async def get_state():
             "test_accuracy": round(float(test_acc_val), 2),
             "f1_score": round(float(f1_val), 4) if f1_val <= 1.0 else round(float(f1_val) / 100.0, 4),
             "bandwidth": "67.1 KB" if state.peft_mode in ("ffa_lora", "lora", "fedsa_lora") else "4.2 MB",
-            "threat_detected": False,
+            "threat_detected": bool(threat_val),
             "status": "completed",
         })
 
@@ -903,7 +930,11 @@ async def reset_state_endpoint():
         "f1_score": [],
         "test_accuracy": [],
         "test_loss": [],
+        "privacy_epsilon": [],
+        "threat_detected": [],
+        "blocked_nodes": [],
         "blocked_count": 0,
+        "privacy_spent": 0.0,
     }
     return {"status": "reset", "message": "Persistent store and memory state cleared cleanly"}
 
@@ -1333,16 +1364,19 @@ async def stream_federated_training(
                         if state.server is not None and hasattr(state.server, "record_client_epsilon"):
                             state.server.record_client_epsilon(f"node-{c.client_id}", c_eps)
 
-                state.training_history["round"].append(round_num)
-                state.training_history["loss"].append(t_loss)
-                state.training_history["accuracy"].append(t_acc)
-                state.training_history["test_accuracy"].append(val_acc)
-                state.training_history["test_loss"].append(val_loss)
-                state.training_history["precision"].append(prec)
-                state.training_history["recall"].append(rec)
-                state.training_history["f1_score"].append(f1)
+                state.training_history.setdefault("round", []).append(round_num)
+                state.training_history.setdefault("loss", []).append(t_loss)
+                state.training_history.setdefault("accuracy", []).append(t_acc)
+                state.training_history.setdefault("test_accuracy", []).append(val_acc)
+                state.training_history.setdefault("test_loss", []).append(val_loss)
+                state.training_history.setdefault("precision", []).append(prec)
+                state.training_history.setdefault("recall", []).append(rec)
+                state.training_history.setdefault("f1_score", []).append(f1)
+                state.training_history.setdefault("threat_detected", []).append(threat_detected)
+                state.training_history.setdefault("privacy_epsilon", []).append(float(state.server.get_privacy_spent()) if state.server else 0.0)
+                state.training_history.setdefault("blocked_nodes", []).append([n + 1 for n in blocked_nodes])
                 if blocked_nodes:
-                    state.training_history["blocked_count"] += len(blocked_nodes)
+                    state.training_history["blocked_count"] = state.training_history.get("blocked_count", 0) + len(blocked_nodes)
 
                 try:
                     state.store.record_training_round({
@@ -1355,6 +1389,8 @@ async def stream_federated_training(
                         "recall": rec,
                         "f1_score": f1,
                         "privacy_epsilon": float(state.server.get_privacy_spent()) if state.server else 0.0,
+                        "threat_detected": threat_detected,
+                        "blocked_nodes": [n + 1 for n in blocked_nodes],
                         "status": "training" if round_num < num_rounds else "complete",
                     })
                 except Exception as db_exc:
@@ -1567,16 +1603,19 @@ async def start_training_background(
                 state.task_rounds.append(round_data)
                 state.task_current_round = round_num
 
-                state.training_history["round"].append(round_num)
-                state.training_history["loss"].append(t_loss)
-                state.training_history["accuracy"].append(t_acc)
-                state.training_history["test_accuracy"].append(val_acc)
-                state.training_history["test_loss"].append(val_loss)
-                state.training_history["precision"].append(prec)
-                state.training_history["recall"].append(rec)
-                state.training_history["f1_score"].append(f1)
+                state.training_history.setdefault("round", []).append(round_num)
+                state.training_history.setdefault("loss", []).append(t_loss)
+                state.training_history.setdefault("accuracy", []).append(t_acc)
+                state.training_history.setdefault("test_accuracy", []).append(val_acc)
+                state.training_history.setdefault("test_loss", []).append(val_loss)
+                state.training_history.setdefault("precision", []).append(prec)
+                state.training_history.setdefault("recall", []).append(rec)
+                state.training_history.setdefault("f1_score", []).append(f1)
+                state.training_history.setdefault("threat_detected", []).append(len(blocked_nodes) > 0)
+                state.training_history.setdefault("privacy_epsilon", []).append(float(srv.get_privacy_spent()))
+                state.training_history.setdefault("blocked_nodes", []).append([n + 1 for n in blocked_nodes])
                 if blocked_nodes:
-                    state.training_history["blocked_count"] += len(blocked_nodes)
+                    state.training_history["blocked_count"] = state.training_history.get("blocked_count", 0) + len(blocked_nodes)
 
                 try:
                     state.store.record_training_round({
@@ -1589,6 +1628,8 @@ async def start_training_background(
                         "recall": rec,
                         "f1_score": f1,
                         "privacy_epsilon": float(srv.get_privacy_spent()),
+                        "threat_detected": len(blocked_nodes) > 0,
+                        "blocked_nodes": [n + 1 for n in blocked_nodes],
                         "status": "training" if round_num < num_rounds else "complete",
                     })
                 except Exception as db_exc:
@@ -1761,16 +1802,19 @@ async def start_flower_training_background(
                 state.task_rounds.append(round_data)
                 state.task_current_round = round_num
 
-                state.training_history["round"].append(round_num)
-                state.training_history["loss"].append(t_loss)
-                state.training_history["accuracy"].append(t_acc)
-                state.training_history["test_accuracy"].append(val_acc)
-                state.training_history["test_loss"].append(val_loss)
-                state.training_history["precision"].append(prec)
-                state.training_history["recall"].append(rec)
-                state.training_history["f1_score"].append(f1)
+                state.training_history.setdefault("round", []).append(round_num)
+                state.training_history.setdefault("loss", []).append(t_loss)
+                state.training_history.setdefault("accuracy", []).append(t_acc)
+                state.training_history.setdefault("test_accuracy", []).append(val_acc)
+                state.training_history.setdefault("test_loss", []).append(val_loss)
+                state.training_history.setdefault("precision", []).append(prec)
+                state.training_history.setdefault("recall", []).append(rec)
+                state.training_history.setdefault("f1_score", []).append(f1)
+                state.training_history.setdefault("threat_detected", []).append(blocked_count > 0)
+                state.training_history.setdefault("privacy_epsilon", []).append(float(srv.get_privacy_spent()))
+                state.training_history.setdefault("blocked_nodes", []).append([1] if blocked_count > 0 else [])
                 if blocked_count > 0:
-                    state.training_history["blocked_count"] += blocked_count
+                    state.training_history["blocked_count"] = state.training_history.get("blocked_count", 0) + blocked_count
 
                 try:
                     state.store.record_training_round({
@@ -1783,6 +1827,8 @@ async def start_flower_training_background(
                         "recall": rec,
                         "f1_score": f1,
                         "privacy_epsilon": float(srv.get_privacy_spent()),
+                        "threat_detected": blocked_count > 0,
+                        "blocked_nodes": [1] if blocked_count > 0 else [],
                         "status": "training" if round_num < num_rounds else "complete",
                     })
                 except Exception as db_exc:
