@@ -24,6 +24,12 @@ from src.fed_xray.core.prototypes import (
 from src.fed_xray.core.server import CentralServer, run_federated_round
 from src.fed_xray.core.client import HospitalClient
 
+try:
+    import tenseal  # noqa: F401
+    HAS_TENSEAL = True
+except ImportError:
+    HAS_TENSEAL = False
+
 
 def test_text_semantic_anchor():
     """Verify TextSemanticAnchor produces genuine, normalized clinical language coordinates."""
@@ -133,6 +139,7 @@ def test_fedmedclip_kl_distillation():
     assert not torch.isnan(loss)
 
 
+@pytest.mark.skipif(not HAS_TENSEAL, reason='tenseal optional dependency not installed')
 def test_ckks_additive_homomorphism():
     """Verify Leveled CKKS additive homomorphism on encrypted float vectors."""
     engine = CKKSEncryptionEngine(scale_bits=40)
@@ -150,6 +157,7 @@ def test_ckks_additive_homomorphism():
     assert torch.allclose(decrypted, expected, atol=1e-2)
 
 
+@pytest.mark.skipif(not HAS_TENSEAL, reason='tenseal optional dependency not installed')
 def test_ckks_server_public_context_cannot_decrypt():
     """The aggregation server holds only the public context and must not be able to decrypt."""
     import tenseal as ts
@@ -164,6 +172,7 @@ def test_ckks_server_public_context_cannot_decrypt():
         server_view.decrypt()
 
 
+@pytest.mark.skipif(not HAS_TENSEAL, reason='tenseal optional dependency not installed')
 def test_ckks_ciphertexts_are_probabilistic():
     """Encrypting the same plaintext twice must yield different ciphertexts."""
     engine = CKKSEncryptionEngine(scale_bits=40)
@@ -256,6 +265,7 @@ def test_secagg_weighted_pairwise_zero_sum():
     assert torch.allclose(sum_b1, torch.zeros_like(sum_b1), atol=1e-6)
 
 
+@pytest.mark.skipif(not HAS_TENSEAL, reason='tenseal optional dependency not installed')
 def test_ckks_state_dict_encryption_and_aggregation():
     """Verify CKKS encryption, homomorphic dictionary aggregation, and decryption."""
     engine = CKKSEncryptionEngine(scale_bits=40)
@@ -276,6 +286,7 @@ def test_ckks_state_dict_encryption_and_aggregation():
     assert torch.allclose(decrypted["b"], expected_b, atol=1e-2)
 
 
+@pytest.mark.skipif(not HAS_TENSEAL, reason='tenseal optional dependency not installed')
 def test_federated_round_with_secagg_and_ckks():
     """Verify full federated training round with SecAgg+ masking, CKKS aggregation, and DP tracking."""
     torch.manual_seed(42)

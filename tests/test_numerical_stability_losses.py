@@ -1,5 +1,6 @@
 """Numerical Stability & Boundary Condition Testing Suite for Imbalance Losses & Option J Privacy."""
 
+import pytest
 import torch
 
 from src.fed_xray.core.imbalance_losses import (
@@ -13,6 +14,12 @@ from src.fed_xray.core.privacy import (
     CKKSEncryptionEngine,
     PatientLevelDPAccountant,
 )
+
+try:
+    import tenseal  # noqa: F401
+    HAS_TENSEAL = True
+except ImportError:
+    HAS_TENSEAL = False
 
 
 def test_dafl_numerical_stability_boundaries():
@@ -89,6 +96,7 @@ def test_missing_class_repel_loss():
     assert loss.item() >= 0.0
 
 
+@pytest.mark.skipif(not HAS_TENSEAL, reason='tenseal optional dependency not installed')
 def test_ckks_high_dimensional_vector_scaling():
     """Verify CKKS encryption engine across large parameter vectors and multi-client sums."""
     engine = CKKSEncryptionEngine(poly_modulus_degree=8192, scale_bits=30)

@@ -4,11 +4,12 @@
 3. Flower (flwr v1.8+) gRPC Hospital Client and Server Strategy Bridge
 """
 
+import pytest
 import numpy as np
 import torch
 from torch.utils.data import DataLoader, TensorDataset
 
-from src.fed_xray.cdss.similarity import FederatedRAGCaseMatcher
+from src.fed_xray.cdss.similarity import FederatedRAGCaseMatcher, HNSW_AVAILABLE
 from src.fed_xray.core.client import HospitalClient
 from src.fed_xray.core.server import CentralServer
 from src.fed_xray.federation.flower_protocol_bridge import (
@@ -45,6 +46,7 @@ def test_vit_base_224_pretrained_and_ffa_lora():
     assert info["total_parameters"] > 80_000_000, "Base foundation model must maintain 80M+ capacity"
 
 
+@pytest.mark.skipif(not HNSW_AVAILABLE, reason='hnswlib optional dependency not installed')
 def test_hnsw_vector_indexing_federated_rag():
     """Verify HNSW sub-millisecond vector indexing on verified clinical cases."""
     from src.fed_xray.data.real_world import RealWorldPatientRecord

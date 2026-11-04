@@ -8,6 +8,7 @@ Verifies:
 """
 
 from __future__ import annotations
+import pytest
 import torch
 from src.fed_xray.core.privacy import (
     CKKSEncryptionEngine,
@@ -21,7 +22,15 @@ from src.fed_xray.core.client import HospitalClient
 from src.fed_xray.core.server import CentralServer
 from torch.utils.data import DataLoader, TensorDataset
 
+try:
+    import tenseal  # noqa: F401
+    HAS_TENSEAL = True
+except ImportError:
+    HAS_TENSEAL = False
 
+
+
+@pytest.mark.skipif(not HAS_TENSEAL, reason='tenseal optional dependency not installed')
 def test_tenseal_ckks_homomorphic_sum_precision():
     """Verify RLWE 128-bit CKKS homomorphic aggregation on parameter vectors."""
     engine = CKKSEncryptionEngine(poly_modulus_degree=8192, scale_bits=40)

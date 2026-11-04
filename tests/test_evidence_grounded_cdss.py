@@ -106,9 +106,11 @@ def test_rag_similar_rejects_unqueried_state_with_http_409(monkeypatch):
     """Verify /api/cdss/rag-similar rejects unqueried state with honest HTTP 409 rather than injecting fallback probabilities."""
     from fastapi.testclient import TestClient
     from api.main import app, state
+    from src.fed_xray.core.server import CentralServer
 
     client = TestClient(app)
     monkeypatch.setattr(state, "model_trained", True)
+    monkeypatch.setattr(state, "server", CentralServer())
     monkeypatch.setattr(state, "last_scan", None)
     monkeypatch.setattr(state, "last_probabilities", None)
 

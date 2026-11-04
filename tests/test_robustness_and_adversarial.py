@@ -1,11 +1,18 @@
 """Adversarial Robustness, Byzantine Defense, and Numerical Edge-Case Test Suite."""
 
+import pytest
 import torch
 from torch.utils.data import DataLoader, TensorDataset
 
 from src.fed_xray.core.client import HospitalClient
 from src.fed_xray.core.privacy import ClientAttestation
 from src.fed_xray.core.server import CentralServer, run_federated_round
+
+try:
+    import tenseal  # noqa: F401
+    HAS_TENSEAL = True
+except ImportError:
+    HAS_TENSEAL = False
 
 
 def create_dummy_dataloader(n_samples: int = 40, label: int = 0) -> DataLoader:
@@ -18,6 +25,7 @@ def create_dummy_dataloader(n_samples: int = 40, label: int = 0) -> DataLoader:
 
 def test_byzantine_poisoning_detection_and_mitigation():
     """Verify Byzantine poisoning defense intercepts malicious client updates without self-incrimination."""
+    torch.manual_seed(42)
     device = torch.device("cpu")
     server = CentralServer(device=device, defense_mode=True, model_type="vit_tiny", peft_mode="ffa_lora")
 
@@ -118,8 +126,10 @@ def test_free_rider_and_empty_batch_handling():
     assert not torch.isnan(torch.tensor(agg_metrics["loss"]))
 
 
+@pytest.mark.skipif(not HAS_TENSEAL, reason='tenseal optional dependency not installed')
 def test_byzantine_poisoning_under_secagg_and_ckks():
     """Verify Byzantine poisoning is detected, blocked, and isolated under SecAgg+ and CKKS without self-incrimination."""
+    torch.manual_seed(42)
     device = torch.device("cpu")
     server = CentralServer(
         device=device,
@@ -209,8 +219,10 @@ def test_validate_and_aggregate_with_secagg_masking():
         server._validate_client_model = original_validate
 
 
+@pytest.mark.skipif(not HAS_TENSEAL, reason='tenseal optional dependency not installed')
 def test_byzantine_poisoning_blocks_malicious_node_without_self_incrimination():
     """Verify Byzantine defense isolates adversaries via consensus without relying on self-incrimination."""
+    torch.manual_seed(42)
     device = torch.device("cpu")
     server = CentralServer(
         device=device,

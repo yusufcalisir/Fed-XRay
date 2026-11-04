@@ -17,6 +17,14 @@ from src.fed_xray.core.privacy import (
 from src.fed_xray.core.client import HospitalClient
 from src.fed_xray.core.server import CentralServer, run_federated_round
 
+try:
+    import tenseal  # noqa: F401
+    HAS_TENSEAL = True
+except ImportError:
+    HAS_TENSEAL = False
+
+pytestmark = pytest.mark.skipif(not HAS_TENSEAL, reason='tenseal optional dependency not installed')
+
 
 def test_ckks_public_context_key_separation():
     """Verify CentralServer cannot decrypt individual client ciphertexts."""

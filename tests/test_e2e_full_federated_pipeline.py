@@ -1,14 +1,21 @@
 """End-to-End Full Lifecycle Federated Medical AI Pipeline Test."""
 
+import pytest
 import torch
 
-from src.fed_xray.data.real_world import StrategyEDatasetEcosystem
-from src.fed_xray.core.client import HospitalClient
-from src.fed_xray.core.server import CentralServer, run_federated_round
-from src.fed_xray.core.privacy import PatientLevelDPAccountant
-from src.fed_xray.cdss.xai import GradCAM
-from src.fed_xray.cdss.similarity import FederatedRAGCaseMatcher, extract_embedding
 from src.fed_xray.cdss.report import generate_medical_report
+from src.fed_xray.cdss.similarity import FederatedRAGCaseMatcher, extract_embedding
+from src.fed_xray.cdss.xai import GradCAM
+from src.fed_xray.core.client import HospitalClient
+from src.fed_xray.core.privacy import PatientLevelDPAccountant
+from src.fed_xray.core.server import CentralServer, run_federated_round
+from src.fed_xray.data.real_world import StrategyEDatasetEcosystem
+
+try:
+    import tenseal  # noqa: F401
+    HAS_TENSEAL = True
+except ImportError:
+    HAS_TENSEAL = False
 
 
 def test_full_federated_lifecycle_pipeline():
@@ -112,6 +119,7 @@ def test_full_federated_lifecycle_pipeline():
     assert len(pdf_bytes) > 1000
 
 
+@pytest.mark.skipif(not HAS_TENSEAL, reason='tenseal optional dependency not installed')
 def test_full_federated_lifecycle_strategy_e_224():
     """Verify entire workflow on Strategy E disk manifest at native 224x224 with TenSEAL CKKS."""
     device = torch.device("cpu")
