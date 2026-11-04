@@ -2,6 +2,7 @@
 
 import pytest
 import torch
+from typing import Dict, Tuple
 from torch.utils.data import DataLoader, TensorDataset
 
 from src.fed_xray.core.client import HospitalClient
@@ -199,7 +200,7 @@ def test_validate_and_aggregate_with_secagg_masking():
 
     original_validate = server._validate_client_model
     try:
-        server._validate_client_model = lambda client_weights, test_images, test_labels: 0.90 if client_weights is not bad_weights else 0.05
+        server._validate_client_model = lambda client_weights, test_images, test_labels: (0.90, 0.90) if client_weights is not bad_weights else (0.05, 0.05)
 
         agg_weights, report = server.validate_and_aggregate(
             client_weights=[good_weights_1, good_weights_2, bad_weights],
@@ -297,7 +298,7 @@ def test_byzantine_gradient_scaling_attack_detected_by_l2_norm():
     test_labels = torch.zeros(10, dtype=torch.long)
 
     # Server evaluates accuracy uniformly to isolate norm detection
-    server._validate_client_model = lambda client_weights, test_images, test_labels: 0.90
+    server._validate_client_model = lambda client_weights, test_images, test_labels: (0.90, 0.90)
 
     _, report = server.validate_and_aggregate(
         client_weights=[w0, w1, w2, w_malicious],
@@ -334,7 +335,7 @@ def test_byzantine_attestation_spoofing_detection():
     test_labels = torch.zeros(10, dtype=torch.long)
 
     # Server independently validates weights: node 0 and 1 get 0.90, node 2 gets 0.05
-    server._validate_client_model = lambda client_weights, test_images, test_labels: 0.90 if client_weights is not w2 else 0.05
+    server._validate_client_model = lambda client_weights, test_images, test_labels: (0.90, 0.90) if client_weights is not w2 else (0.05, 0.05)
 
     _, report = server.validate_and_aggregate(
         client_weights=[w0, w1, w2],
@@ -384,12 +385,16 @@ def test_byzantine_defense_preserves_honest_non_iid_specialist_hospital():
     # Hospital 1 (class 1): overall 0.65, class-max 0.85
     # Hospital 2 (honest specialist on rare class 2): overall 0.33, class-max 0.95 (specialist competence)
     # Hospital 3 (adversary): overall 0.04, class-max 0.08 (total collapse)
-    def mock_validate(w, img, lbl):
-        if w is w0:
+    def mock_validate(
+        client_weights: Dict[str, torch.Tensor],
+        test_images: torch.Tensor,
+        test_labels: torch.Tensor,
+    ) -> Tuple[float, float]:
+        if client_weights is w0:
             return 0.70, 0.90
-        elif w is w1:
+        elif client_weights is w1:
             return 0.65, 0.85
-        elif w is w2:
+        elif client_weights is w2:
             return 0.33, 0.95
         else:
             return 0.04, 0.08

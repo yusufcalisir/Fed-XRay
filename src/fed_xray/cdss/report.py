@@ -35,7 +35,7 @@ def _sanitize_for_pdf(text: str) -> str:
         "≤": "<=", "≥": ">=", "≠": "!=", "±": "+/-",
         "→": "->", "←": "<-", "×": "x",
     }
-    res = str(text)
+    res = text
     for k, v in replacements.items():
         res = res.replace(k, v)
     return res.encode("latin-1", "replace").decode("latin-1")
@@ -130,7 +130,7 @@ def generate_medical_report(
 
     # Resolve class labels
     if class_labels and len(class_labels) > 0:
-        labels = [str(lbl) for lbl in class_labels]
+        labels = list(class_labels)
     elif is_derm:
         labels = (
             [
@@ -748,11 +748,13 @@ def generate_medical_report(
     pdf.cell(90, 3, _sanitize_for_pdf(footer_l), 0, 0, "L")
     pdf.cell(90, 3, _sanitize_for_pdf(footer_r), 0, 1, "R")
 
-    # Serialize PDF bytes
-    try:
-        raw_output = pdf.output()
-    except TypeError:
-        raw_output = pdf.output(dest="S")
+    # Serialize PDF bytes across PyFPDF 1.7.x and modern fpdf2
+    output_fn = getattr(pdf, "output")
+    code_obj = getattr(output_fn, "__code__", None) or getattr(getattr(output_fn, "__func__", None), "__code__", None)
+    if code_obj and "dest" in getattr(code_obj, "co_varnames", ()):
+        raw_output = output_fn(dest="S")
+    else:
+        raw_output = output_fn()
 
     if isinstance(raw_output, str):
         pdf_output = raw_output.encode("latin-1")

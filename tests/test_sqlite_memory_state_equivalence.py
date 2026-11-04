@@ -225,7 +225,7 @@ def test_api_state_reset_clears_both_memory_and_sqlite(test_client: TestClient, 
         "blocked_count": 0,
         "privacy_spent": 0.5,
     }
-    state.model_trained = True
+    setattr(state, "model_trained", True)
     state.save_to_disk(checkpoint_dir=str(tmp_path / "ckpts"))
 
     # Reset
@@ -234,7 +234,7 @@ def test_api_state_reset_clears_both_memory_and_sqlite(test_client: TestClient, 
 
     # In-memory must be empty
     assert len(state.training_history.get("round", [])) == 0
-    assert state.model_trained is False
+    assert getattr(state, "model_trained") is False
 
     # SQLite must be empty
     sql_hist = store.get_training_history()

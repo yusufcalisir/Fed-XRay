@@ -269,7 +269,7 @@ class FlowerFedXRayStrategy(Strategy):
             "dp_clipping_bound": float(getattr(self.central_server, "dp_clipping_bound", 1.0)),
             "dp_noise_multiplier": float(self.central_server.privacy_noise),
             "dp_mode": str(getattr(self.central_server, "dp_mode", "distributed")),
-            "num_consortium_clients": int(sample_size),
+            "num_consortium_clients": sample_size,
         }
         fit_ins = FitIns(parameters, config)
         return [(client, fit_ins) for client in clients]
@@ -361,8 +361,8 @@ class FlowerFedXRayStrategy(Strategy):
                 self.central_server.privacy_noise > 0.0
                 and getattr(self.central_server, "dp_mode", "off") != "off"
             ),
-            "uplink_bytes_per_client": int(self.central_server.last_uplink_bytes_per_client),
-            "full_model_bytes": int(self.central_server.last_full_model_bytes),
+            "uplink_bytes_per_client": self.central_server.last_uplink_bytes_per_client,
+            "full_model_bytes": self.central_server.last_full_model_bytes,
         }
 
         return ndarrays_to_parameters(self.arrays), metrics

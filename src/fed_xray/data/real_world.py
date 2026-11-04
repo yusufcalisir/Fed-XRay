@@ -65,9 +65,9 @@ class RealWorldPatientRecord:
         self.biopsy_confirmed = biopsy_confirmed
         self.therapeutic_outcome = therapeutic_outcome
         if is_authentic_clinical is not None:
-            self.is_authentic_clinical = bool(is_authentic_clinical)
+            self.is_authentic_clinical = is_authentic_clinical
         else:
-            prov_lower = str(provenance).lower()
+            prov_lower = provenance.lower()
             is_clinical = any(k in prov_lower for k in ("isic", "mimic", "crc", "real_clinical", "real_archive"))
             is_synth = any(k in prov_lower for k in ("in_silico", "phantom", "synthetic", "simulation"))
             self.is_authentic_clinical = is_clinical and not is_synth
@@ -641,7 +641,7 @@ class StrategyEDatasetEcosystem:
             if isinstance(target_size, int):
                 h, w = target_size, target_size
             else:
-                h, w = int(target_size[0]), int(target_size[1])
+                h, w = target_size[0], target_size[1]
             x_dummy = torch.empty(0, in_channels, h, w, dtype=torch.float32)
             y_dummy = torch.empty(0, dtype=torch.long)
             return DataLoader(TensorDataset(x_dummy, y_dummy), batch_size=batch_size)

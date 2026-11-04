@@ -952,7 +952,7 @@ class CentralServer:
 
         # Dynamic multiclass evaluation supporting multi-class oncology benchmarks
         n_eval = len(all_labels_arr)
-        effective_classes: int = int(num_classes) if num_classes is not None else int(getattr(self, "num_classes", 3) or 3)
+        effective_classes: int = num_classes if num_classes is not None else int(getattr(self, "num_classes", 3) or 3)
         head = (
             getattr(self.global_model, "head", None)
             or getattr(self.global_model, "fc2", None)
@@ -965,7 +965,7 @@ class CentralServer:
             max_label = int(np.max(all_labels_arr))
             max_pred = int(np.max(all_preds_arr)) if len(all_preds_arr) > 0 else 0
             effective_classes = max(effective_classes, max_label + 1, max_pred + 1)
-        effective_classes = max(int(effective_classes), 1)
+        effective_classes = max(effective_classes, 1)
 
         if n_eval > 0:
             accuracy = float(np.mean(all_labels_arr == all_preds_arr))
@@ -1215,7 +1215,7 @@ def run_federated_round(
                 client_prototypes=clean_protos,
                 client_traces=clean_traces,
                 client_counts=clean_counts,
-                num_classes=int(num_classes) if num_classes is not None else int(getattr(server, "num_classes", 3) or 3),
+                num_classes=num_classes if num_classes is not None else int(getattr(server, "num_classes", 3) or 3),
             )
             server.set_global_prototypes(synthesized_protos)
 
