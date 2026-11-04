@@ -35,15 +35,37 @@ class GradCAM:
         self._register_hooks()
 
     def _register_hooks(self) -> None:
-        """Register forward and backward hooks on the last feature extraction layer."""
-        target_layer: Optional[nn.Module] = None
-        # Look for last Conv2d layer
-        for name, module in self.model.named_modules():
-            if isinstance(module, nn.Conv2d):
-                target_layer = module
-                self.target_layer_name = name
+        """Register forward and backward hooks on the last feature extraction layer.
 
-        # If no Conv2d found (e.g. Pure ViT without Conv patch embed), hook on last transformer block norm or head
+        For Vision Transformers (ViT), hooks on the deepest TransformerEncoderBlock
+        to extract contextual patch-token representations rather than shallow patch-embed convs.
+        For CNNs, hooks on the last Conv2d layer.
+        """
+        target_layer: Optional[nn.Module] = None
+
+        # 1. Vision Transformer: hook on last encoder block
+        if hasattr(self.model, "blocks") and len(self.model.blocks) > 0:
+            target_layer = self.model.blocks[-1]
+            self.target_layer_name = f"blocks.{len(self.model.blocks) - 1}"
+        else:
+            last_block_module = None
+            last_block_name = ""
+            for name, module in self.model.named_modules():
+                if "TransformerEncoderBlock" in module.__class__.__name__ or ".blocks." in name:
+                    last_block_module = module
+                    last_block_name = name
+            if last_block_module is not None:
+                target_layer = last_block_module
+                self.target_layer_name = last_block_name
+
+        # 2. CNN fallback: look for last Conv2d layer
+        if target_layer is None:
+            for name, module in self.model.named_modules():
+                if isinstance(module, nn.Conv2d):
+                    target_layer = module
+                    self.target_layer_name = name
+
+        # 3. LayerNorm fallback
         if target_layer is None:
             for name, module in self.model.named_modules():
                 if isinstance(module, nn.LayerNorm) and "norm" in name:
@@ -51,7 +73,6 @@ class GradCAM:
                     self.target_layer_name = name
 
         if target_layer is None:
-            # Fallback to model root
             target_layer = self.model
 
         def forward_hook(module: nn.Module, input: Any, output: Any) -> None:
@@ -156,7 +177,7 @@ class GradCAM:
             if cam_arr.shape[0] != input_h or cam_arr.shape[1] != input_w:
                 zoom_h = input_h / cam_arr.shape[0]
                 zoom_w = input_w / cam_arr.shape[1]
-                cam_arr = zoom(cam_arr, (zoom_h, zoom_w), order=1)
+                cam_arr = zoom(cam_arr, (zoom_h, zoom_w), order=2)
 
             cam_final = np.clip(cam_arr, 0.0, 1.0).astype(np.float32)
             return cam_final, pred_class, conf_score

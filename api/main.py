@@ -114,6 +114,7 @@ class AppState:
         self.last_predicted_class: Optional[int] = None
         self.last_patient_id: Optional[str] = None
         self.reference_records: List[RealWorldPatientRecord] = []
+        self.test_records: List[RealWorldPatientRecord] = []
         self.hospital_cohort_info: List[HospitalCohortInfo] = []
         self.data_source: str = "none"
         self.data_provenance: str = "isic_archive_v2_real_clinical"
@@ -469,6 +470,7 @@ class AppState:
             self.dataloaders = dataloaders_list
             self.hospital_cohort_info = list(hospitals_info)
             self.reference_records = list(train_recs)
+            self.test_records = list(test_recs)
             self.data_source = data_source
             self.data_provenance = data_source
             self.is_authentic_clinical = is_authentic_clinical
@@ -667,7 +669,7 @@ def get_default_reference_cases() -> List[Dict[str, Any]]:
                     {
                         "case_id": r0["patient_id"],
                         "diagnosis": r0["diagnosis"],
-                        "similarity": 96.4,
+                        "similarity": 0.0,
                         "clinical_notes": r0["clinical_notes"],
                         "site_id": r0["site_id"],
                         "biopsy_confirmed": r0.get("biopsy_confirmed", "True") == "True",
@@ -677,11 +679,11 @@ def get_default_reference_cases() -> List[Dict[str, Any]]:
                     {
                         "case_id": r1["patient_id"],
                         "diagnosis": r1["diagnosis"],
-                        "similarity": 92.1,
+                        "similarity": 0.0,
                         "clinical_notes": r1["clinical_notes"],
                         "site_id": r1["site_id"],
                         "biopsy_confirmed": r1.get("biopsy_confirmed", "True") == "True",
-                        "anatomical_site": r1.get("anatomical_site", "Lower leg"),
+                        "anatomical_site": r1.get("anatomical_site", "Posterior trunk"),
                         "provenance": r1.get("provenance", "isic_archive_v2_real_clinical"),
                     },
                 ]
@@ -801,7 +803,7 @@ async def get_state():
             reference_cases.append({
                 "case_id": r.patient_id,
                 "diagnosis": active_labels.get(r.label, f"Class {r.label}"),
-                "similarity": 95.8,
+                "similarity": 0.0,
                 "clinical_notes": r.clinical_notes,
                 "site_id": r.site_id,
                 "biopsy_confirmed": getattr(r, "biopsy_confirmed", True),
@@ -1066,6 +1068,7 @@ async def generate_cohorts(req: CohortGenerateRequest):
     state.dataloaders = dataloaders_list
     state.hospital_cohort_info = list(hospitals_info)
     state.reference_records = list(train_recs)
+    state.test_records = list(test_recs)
     state.data_source = data_source
     state.data_provenance = data_source
     state.is_authentic_clinical = is_authentic_clinical
@@ -1946,6 +1949,7 @@ async def perform_diagnosis(req: DiagnoseRequest):
     provenance: Optional[str] = "uploaded_custom_scan"
     anatomical_site: Optional[str] = None
     biopsy_confirmed: Optional[bool] = None
+    modality: Optional[str] = None
     if req.image_base64:
         try:
             header, _, encoded = req.image_base64.partition(",")
@@ -1990,17 +1994,23 @@ async def perform_diagnosis(req: DiagnoseRequest):
         image_np = test_images[pick, 0].cpu().numpy()
         true_class = int(test_labels[pick])
         image_source = f"holdout_test_set:{state.data_source}"
-        if state.reference_records and pick < len(state.reference_records):
-            rec = state.reference_records[pick]
+        source_records = state.test_records or state.reference_records
+        if source_records and pick < len(source_records):
+            rec = source_records[pick]
             patient_id = rec.patient_id
             anatomical_site = getattr(rec, "anatomical_site", None)
             biopsy_confirmed = getattr(rec, "biopsy_confirmed", None)
             provenance = getattr(rec, "provenance", state.data_source)
+            modality = getattr(rec, "modality", "Dermoscopy" if ("isic" in str(provenance).lower() or "strategy_e" in str(provenance).lower() or "disk_manifest" in str(provenance).lower()) else "Chest X-Ray")
         else:
             patient_id = f"PAT_{state.data_source}_{pick + 1:04d}"
             anatomical_site = None
             biopsy_confirmed = None
             provenance = state.data_source
+            modality = "Dermoscopy" if ("isic" in state.data_source.lower() or "strategy_e" in state.data_source.lower() or "disk_manifest" in state.data_source.lower()) else "Chest X-Ray"
+
+    if modality is None:
+        modality = "Dermoscopy" if ("isic" in state.data_source.lower() or "strategy_e" in state.data_source.lower() or "disk_manifest" in state.data_source.lower()) else "Chest X-Ray"
 
     if req.class_index is not None and req.class_index in (0, 1, 2) and true_class == -1:
         true_class = req.class_index
@@ -2098,6 +2108,7 @@ async def perform_diagnosis(req: DiagnoseRequest):
         provenance=provenance,
         anatomical_site=anatomical_site,
         biopsy_confirmed=biopsy_confirmed,
+        modality=modality,
     )
 
 
@@ -2112,19 +2123,28 @@ async def get_diagnostic_audit_trail_endpoint(limit: int = Query(default=50, ge=
 async def get_similar_rag_cases(top_k: int = Query(default=2, ge=1, le=10)):
     """Retrieve the most similar cases from the loaded reference cohort for the last diagnosed scan."""
     server = require_trained_server()
+    model = server.get_model()
+    model.eval()
+
     if state.last_scan is None:
         if state.global_test_set is None:
             state.ensure_cohort_loaded()
         if state.global_test_set is not None:
-            state.last_scan = state.global_test_set[0][0, 0].cpu().numpy()
-            state.last_predicted_class = int(state.global_test_set[1][0].item())
+            sample_img = state.global_test_set[0][0, 0].cpu().numpy()
+            state.last_scan = sample_img
             state.last_patient_id = "REF_BENCHMARK_001"
-            state.last_probabilities = [0.1, 0.85, 0.05]
+            init_t = torch.tensor(sample_img, dtype=torch.float32).unsqueeze(0).unsqueeze(0)
+            if init_t.shape[-2:] != (state.image_size, state.image_size):
+                init_t = F.interpolate(init_t, size=(state.image_size, state.image_size), mode="bilinear", align_corners=False)
+            with torch.no_grad():
+                init_logits = model(init_t.to(state.device))
+                if isinstance(init_logits, tuple):
+                    init_logits = init_logits[0]
+                init_probs = torch.softmax(init_logits, dim=1).cpu().numpy()[0]
+                state.last_predicted_class = int(np.argmax(init_probs))
+                state.last_probabilities = [round(float(p) * 100.0, 2) for p in init_probs]
         else:
             raise HTTPException(status_code=409, detail="Run a diagnosis first; case retrieval embeds the last diagnosed scan.")
-
-    model = server.get_model()
-    model.eval()
 
     if state.rag_matcher is None:
         state.rag_matcher = build_rag_matcher(server)

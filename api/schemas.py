@@ -114,6 +114,7 @@ class DiagnoseResponse(BaseModel):
     provenance: Optional[str] = None
     anatomical_site: Optional[str] = None
     biopsy_confirmed: Optional[bool] = None
+    modality: Optional[str] = None
 
 
 class RagTwinCase(BaseModel):

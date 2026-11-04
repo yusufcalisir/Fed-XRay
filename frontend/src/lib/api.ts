@@ -263,7 +263,7 @@ export function getVoiceBriefingUrl(
     else if (dLower.includes("carcinoma")) localizedDiag = "Bazal Hücreli Karsinom";
   }
   const text = isTr
-    ? `%${Math.round(confidence)} model güveni ile ${localizedDiag} teşhisi doğrulandı. Federe model analizi tamamlandı.`
+    ? `Yüzde ${Math.round(confidence)} model güveni ile ${localizedDiag} teşhisi doğrulandı. Federe model analizi tamamlandı.`
     : `${diagnosis} diagnosis with ${Math.round(confidence)} percent confidence. Federated model inference complete.`;
   return `${baseUrl.replace(/\/$/, "")}/api/cdss/voice?text=${encodeURIComponent(text)}&lang=${isTr ? "tr" : "en"}`;
 }

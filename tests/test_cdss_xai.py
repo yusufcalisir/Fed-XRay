@@ -57,3 +57,30 @@ def test_gradcam_specific_target_class():
     # Different target classes should produce different gradient attention distributions
     assert not np.allclose(heatmap_c0, heatmap_c2, atol=1e-5)
     cam.remove_hooks()
+
+
+def test_gradcam_heatmap_generation_vision_transformer():
+    """Verify Grad-CAM hooks onto last encoder block of VisionTransformer and produces organic 2D heatmap."""
+    from src.fed_xray.models.vit import VisionTransformer
+
+    model = VisionTransformer(img_size=224, patch_size=16, in_channels=1, num_classes=3, depth=4, num_heads=4, embed_dim=128)
+    cam = GradCAM(model)
+
+    assert "blocks." in cam.target_layer_name
+    assert not cam.target_layer_name.startswith("patch_embed")
+
+    input_tensor = torch.rand(1, 1, 224, 224, requires_grad=True)
+    heatmap, pred_class, confidence = cam.generate_heatmap(input_tensor)
+
+    assert isinstance(heatmap, np.ndarray)
+    assert heatmap.shape == (224, 224)
+    assert 0 <= pred_class < 3
+    assert 0.0 <= confidence <= 1.0
+    assert heatmap.min() >= 0.0
+    assert heatmap.max() <= 1.0
+
+    # Ensure heatmap has rich spatial variation rather than a single degenerate patch
+    nonzero_ratio = (heatmap > 0.05).mean()
+    assert nonzero_ratio > 0.15, f"Heatmap attention is overly collapsed: {nonzero_ratio:.4f}"
+
+    cam.remove_hooks()

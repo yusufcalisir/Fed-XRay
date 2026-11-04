@@ -55,7 +55,7 @@ describe("Frontend API Client Functions", () => {
 
     const urlTr = getVoiceBriefingUrl("http://127.0.0.1:8000", "Pneumonia", 94.8, "tr");
     expect(urlTr).toContain("lang=tr");
-    expect(urlTr).toContain(encodeURIComponent("%95 model güveni"));
+    expect(urlTr).toContain(encodeURIComponent("Yüzde 95 model güveni"));
     expect(urlTr).toContain(encodeURIComponent("Zatürre"));
   });
 

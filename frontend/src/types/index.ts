@@ -51,6 +51,7 @@ export interface DiagnosisResult {
   provenance?: string;
   anatomical_site?: string;
   biopsy_confirmed?: boolean;
+  modality?: string;
 }
 
 export interface RagCase {

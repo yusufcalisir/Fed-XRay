@@ -58,7 +58,7 @@ export default function Footer({ maxWidth = "max-w-[1360px]" }: FooterProps) {
         {/* Middle Tier: Clean Structured Navigation Links */}
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <span className="text-[11px] font-mono font-semibold uppercase tracking-wider text-[var(--text-muted)]">
-            Consortium Navigation
+            {t("footer_nav_title")}
           </span>
           <nav className="grid grid-cols-2 sm:grid-cols-3 md:flex md:items-center gap-x-6 gap-y-3 text-xs font-semibold" aria-label="Footer Navigation">
             <Link
@@ -110,9 +110,9 @@ export default function Footer({ maxWidth = "max-w-[1360px]" }: FooterProps) {
 
         {/* Bottom Tier: Copyright & Consortium Verification */}
         <div className="pt-2 flex flex-col sm:flex-row items-center justify-between gap-3 text-[11px] font-mono text-[var(--text-muted)]">
-          <span>(c) 2026 Fed-XRay Consortium. Open Architecture for Federated Oncology AI.</span>
+          <span>(c) 2026 Fed-XRay Consortium. {t("footer_tagline")}</span>
           <span className="text-[10px] text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20">
-            Strategy E Verified Benchmark Standards
+            {t("footer_badge_strategy_e")}
           </span>
         </div>
       </div>

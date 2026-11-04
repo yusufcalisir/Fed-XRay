@@ -34,6 +34,10 @@ export default function VoiceAssistant({ diagnosisName, confidence }: VoiceAssis
       : diagnosisName
     : diagnosisName;
 
+  const spokenPreviewText = isTr
+    ? `Yüzde ${Math.round(confidence)} model güveni ile ${localizedDiagnosis} teşhisi doğrulandı. Federe model analizi tamamlandı.`
+    : `${diagnosisName} diagnosis with ${Math.round(confidence)} percent confidence. Federated model inference complete.`;
+
   return (
     <div className="card p-3.5 sm:p-5 flex flex-col justify-between">
       <div>
@@ -42,6 +46,16 @@ export default function VoiceAssistant({ diagnosisName, confidence }: VoiceAssis
           <span className="text-xs sm:text-sm font-bold text-[var(--text-heading)]">{t("sec3_voice_title")}</span>
         </div>
         <p className="text-[10px] sm:text-[11px] text-[var(--text-muted)] mb-3 sm:mb-4">{t("sec3_voice_desc")}</p>
+
+        {/* Spoken Text Readout Banner */}
+        <div className="p-2.5 rounded-lg bg-[var(--bg-card-inner)] border border-[var(--border-subtle)] text-[10px] sm:text-[11px] mb-3 sm:mb-4 leading-relaxed">
+          <span className="text-[var(--text-muted)] font-medium">
+            {t("sec3_voice_preview_label")}{" "}
+          </span>
+          <span className="font-semibold text-[var(--text-heading)]">
+            &ldquo;{spokenPreviewText}&rdquo;
+          </span>
+        </div>
       </div>
 
       {audioError ? (

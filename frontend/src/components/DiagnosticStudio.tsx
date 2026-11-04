@@ -169,11 +169,12 @@ export default function DiagnosticStudio({
         hg = Math.min(255, Math.max(0, 1.5 - Math.abs(hv * 4 - 2)) * 255);
         hb = Math.min(255, Math.max(0, 1.5 - Math.abs(hv * 4 - 1)) * 255);
       }
-      const a = opacity;
+      // Weight colormap by activation so raw anatomical scan remains crisp where activation is low
+      const blendWeight = Math.min(1.0, Math.max(0.0, opacity * Math.pow(hv, 0.7)));
       const i = (r * s + c) * 4;
-      img.data[i] = Math.floor((1-a)*rv + a*hr);
-      img.data[i+1] = Math.floor((1-a)*rv + a*hg);
-      img.data[i+2] = Math.floor((1-a)*rv + a*hb);
+      img.data[i] = Math.floor((1 - blendWeight) * rv + blendWeight * hr);
+      img.data[i+1] = Math.floor((1 - blendWeight) * rv + blendWeight * hg);
+      img.data[i+2] = Math.floor((1 - blendWeight) * rv + blendWeight * hb);
       img.data[i+3] = 255;
     }
     ctx.putImageData(img, 0, 0);
@@ -182,7 +183,24 @@ export default function DiagnosticStudio({
   const isIsic = (diagnosis?.image_source || "").toLowerCase().includes("isic") ||
                  (diagnosis?.provenance || "").toLowerCase().includes("isic") ||
                  (diagnosis?.image_source || "").toLowerCase().includes("strategy_e") ||
-                 (diagnosis?.provenance || "").toLowerCase().includes("strategy_e");
+                 (diagnosis?.provenance || "").toLowerCase().includes("strategy_e") ||
+                 (diagnosis?.image_source || "").toLowerCase().includes("disk_manifest") ||
+                 (diagnosis?.provenance || "").toLowerCase().includes("disk_manifest") ||
+                 (diagnosis?.modality || "").toLowerCase().includes("dermo") ||
+                 (diagnosis?.patient_id || "").toLowerCase().includes("isic") ||
+                 (diagnosis?.predicted_name || "").toLowerCase().includes("melanoma") ||
+                 (diagnosis?.predicted_name || "").toLowerCase().includes("nevus") ||
+                 (diagnosis?.predicted_name || "").toLowerCase().includes("carcinoma");
+  const isCrc = (diagnosis?.image_source || "").toLowerCase().includes("crc") ||
+                (diagnosis?.provenance || "").toLowerCase().includes("crc") ||
+                (diagnosis?.modality || "").toLowerCase().includes("histo");
+  const isTr = (language || "").toUpperCase() === "TR";
+  const paneTitle = isIsic
+    ? t("sec3_dual_pane_orig_isic")
+    : isCrc
+    ? (isTr ? "Histopatoloji Doku Kesiti" : "Histopathology Tissue Patch")
+    : t("sec3_dual_pane_orig");
+
   const isicLabels = [t("isic_class_0") || "Benign Dysplastic Nevus", t("isic_class_1") || "Malignant Melanoma", t("isic_class_2") || "Basal Cell Carcinoma"];
   const xrayLabels = [t("sec1_normal"), t("sec1_pneumonia"), t("sec1_covid")];
   const classLabels = isIsic ? isicLabels : xrayLabels;
@@ -602,19 +620,19 @@ export default function DiagnosticStudio({
 
               <div className="card p-3.5 sm:p-4">
                 <div className="metric-label mb-3">{t("lung3d_2d_title")}</div>
-                <div className="grid grid-cols-2 gap-x-3 gap-y-1.5 items-start">
-                  <div className="text-[10px] sm:text-[11px] font-semibold text-[var(--text-muted)] min-h-[28px] sm:min-h-[32px] flex items-center leading-snug">
-                    {isIsic ? t("sec3_dual_pane_orig_isic") : t("sec3_dual_pane_orig")}
+                <div className="grid grid-cols-2 gap-x-3 gap-y-2 items-start">
+                  <div className="text-[10px] sm:text-[11px] font-semibold text-[var(--text-muted)] min-h-[38px] flex items-center leading-snug">
+                    {paneTitle}
                   </div>
-                  <div className="text-[10px] sm:text-[11px] font-semibold text-[var(--text-muted)] min-h-[28px] sm:min-h-[32px] flex items-center leading-snug">
+                  <div className="text-[10px] sm:text-[11px] font-semibold text-[var(--text-muted)] min-h-[38px] flex items-center leading-snug">
                     {t("sec3_dual_pane_xai")}
                   </div>
 
-                  <div className="xray-frame aspect-square w-full flex items-center justify-center">
+                  <div className="xray-frame aspect-square w-full flex items-center justify-center overflow-hidden rounded-xl border border-[var(--border-subtle)] bg-slate-950">
                     <canvas ref={rawRef} className="w-full h-full object-contain" />
                   </div>
                   {heatAvailable ? (
-                    <div className="xray-frame aspect-square w-full flex items-center justify-center">
+                    <div className="xray-frame aspect-square w-full flex items-center justify-center overflow-hidden rounded-xl border border-[var(--border-subtle)] bg-slate-950">
                       <canvas ref={xaiRef} className="w-full h-full object-contain" />
                     </div>
                   ) : (

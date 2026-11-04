@@ -516,6 +516,10 @@ export const TRANSLATIONS: Record<Language, Record<string, string>> = {
     footer_egress: "Zero Patient Data Egress",
     footer_he: "RLWE CKKS 128-Bit HE",
     footer_dp: "Patient-Level DP (ε ≤ 2.0)",
+    footer_nav_title: "Consortium Navigation",
+    footer_tagline: "Open Architecture for Federated Oncology AI.",
+    footer_badge_strategy_e: "Strategy E Verified Benchmark Standards",
+    sec3_voice_preview_label: "Spoken Briefing Preview:",
   },
   TR: {
     app_title: "Fed-XRay",
@@ -1030,5 +1034,9 @@ export const TRANSLATIONS: Record<Language, Record<string, string>> = {
     footer_egress: "Sıfır Hasta Verisi Çıkışı",
     footer_he: "RLWE CKKS 128-Bit HE",
     footer_dp: "Hasta Düzeyinde DP (ε ≤ 2.0)",
+    footer_nav_title: "Konsorsiyum Gezintisi",
+    footer_tagline: "Federe Onkoloji Yapay Zekası için Açık Mimari.",
+    footer_badge_strategy_e: "Strategy E Doğrulanmış Kıyaslama Standartları",
+    sec3_voice_preview_label: "Sesli Dikte Önizlemesi:",
   }
 };
