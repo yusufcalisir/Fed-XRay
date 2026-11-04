@@ -602,26 +602,27 @@ export default function DiagnosticStudio({
 
               <div className="card p-3.5 sm:p-4">
                 <div className="metric-label mb-3">{t("lung3d_2d_title")}</div>
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <div className="text-[10px] font-semibold text-[var(--text-muted)] mb-1.5">{t("sec3_dual_pane_orig")}</div>
+                <div className="grid grid-cols-2 gap-x-3 gap-y-1.5 items-start">
+                  <div className="text-[10px] sm:text-[11px] font-semibold text-[var(--text-muted)] min-h-[28px] sm:min-h-[32px] flex items-center leading-snug">
+                    {isIsic ? t("sec3_dual_pane_orig_isic") : t("sec3_dual_pane_orig")}
+                  </div>
+                  <div className="text-[10px] sm:text-[11px] font-semibold text-[var(--text-muted)] min-h-[28px] sm:min-h-[32px] flex items-center leading-snug">
+                    {t("sec3_dual_pane_xai")}
+                  </div>
+
+                  <div className="xray-frame aspect-square w-full flex items-center justify-center">
+                    <canvas ref={rawRef} className="w-full h-full object-contain" />
+                  </div>
+                  {heatAvailable ? (
                     <div className="xray-frame aspect-square w-full flex items-center justify-center">
-                      <canvas ref={rawRef} className="w-full h-full object-contain" />
+                      <canvas ref={xaiRef} className="w-full h-full object-contain" />
                     </div>
-                  </div>
-                  <div>
-                    <div className="text-[10px] font-semibold text-[var(--text-muted)] mb-1.5">{t("sec3_dual_pane_xai")}</div>
-                    {heatAvailable ? (
-                      <div className="xray-frame aspect-square w-full flex items-center justify-center">
-                        <canvas ref={xaiRef} className="w-full h-full object-contain" />
-                      </div>
-                    ) : (
-                      <div className="aspect-square w-full flex flex-col items-center justify-center p-3 text-center bg-slate-900/40 rounded-xl border border-dashed border-slate-700">
-                        <div className="text-amber-400 text-[11px] font-semibold mb-1">{t("sec3_xai_unavailable")}</div>
-                        <div className="text-[10px] text-[var(--text-muted)]">{diagnosis.heatmap_error || t("sec3_xai_unavailable_desc")}</div>
-                      </div>
-                    )}
-                  </div>
+                  ) : (
+                    <div className="aspect-square w-full flex flex-col items-center justify-center p-3 text-center bg-slate-900/40 rounded-xl border border-dashed border-slate-700">
+                      <div className="text-amber-400 text-[11px] font-semibold mb-1">{t("sec3_xai_unavailable")}</div>
+                      <div className="text-[10px] text-[var(--text-muted)]">{diagnosis.heatmap_error || t("sec3_xai_unavailable_desc")}</div>
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
