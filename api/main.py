@@ -116,6 +116,7 @@ class AppState:
         self.reference_records: List[RealWorldPatientRecord] = []
         self.test_records: List[RealWorldPatientRecord] = []
         self.hospital_cohort_info: List[HospitalCohortInfo] = []
+        self.node_epsilons: Dict[str, float] = {}
         self.data_source: str = "none"
         self.data_provenance: str = "isic_archive_v2_real_clinical"
         self.is_authentic_clinical: bool = True
@@ -595,9 +596,16 @@ async def health_check():
     }
 
 
-def get_default_strategy_e_hospitals(active_epsilon: float = 0.0) -> List[Dict[str, Any]]:
+def get_default_strategy_e_hospitals(
+    active_epsilon: float = 0.0,
+    node_epsilons: Optional[Dict[str, float]] = None,
+) -> List[Dict[str, Any]]:
     """Return Strategy E consortium hospital topology nodes grounded in real manifest sites."""
-    node_eps = round(active_epsilon, 2) if active_epsilon > 0.0 else 0.0
+    def resolve_node_epsilon(node_id: str) -> float:
+        if node_epsilons and node_id in node_epsilons:
+            return round(float(node_epsilons[node_id]), 4)
+        return round(float(active_epsilon), 4) if active_epsilon > 0.0 else 0.0
+
     return [
         {
             "id": "node-1",
@@ -608,7 +616,7 @@ def get_default_strategy_e_hospitals(active_epsilon: float = 0.0) -> List[Dict[s
             "modalityKey": "topo_mod_dermo",
             "skewKey": "topo_skew_melanoma",
             "adapter": "FFA-LoRA (r=8, alpha=16)",
-            "dpEpsilon": node_eps,
+            "dpEpsilon": resolve_node_epsilon("node-1"),
             "status": "online",
         },
         {
@@ -620,7 +628,7 @@ def get_default_strategy_e_hospitals(active_epsilon: float = 0.0) -> List[Dict[s
             "modalityKey": "topo_mod_xray",
             "skewKey": "topo_skew_pneumonia",
             "adapter": "FFA-LoRA (r=8, alpha=16)",
-            "dpEpsilon": node_eps,
+            "dpEpsilon": resolve_node_epsilon("node-2"),
             "status": "online",
         },
         {
@@ -632,7 +640,7 @@ def get_default_strategy_e_hospitals(active_epsilon: float = 0.0) -> List[Dict[s
             "modalityKey": "topo_mod_histo",
             "skewKey": "topo_skew_carcinoma",
             "adapter": "FFA-LoRA (r=8, alpha=16)",
-            "dpEpsilon": node_eps,
+            "dpEpsilon": resolve_node_epsilon("node-3"),
             "status": "online",
         },
         {
@@ -644,7 +652,7 @@ def get_default_strategy_e_hospitals(active_epsilon: float = 0.0) -> List[Dict[s
             "modalityKey": "topo_mod_dermo",
             "skewKey": "topo_skew_nevi",
             "adapter": "FFA-LoRA (r=8, alpha=16)",
-            "dpEpsilon": node_eps,
+            "dpEpsilon": resolve_node_epsilon("node-4"),
             "status": "online",
         },
     ]
@@ -756,8 +764,13 @@ async def get_state():
                 modality_key = "topo_mod_dermo"
                 skew_key = "topo_skew_nevi"
 
+            node_key = f"node-{h.hospital_id}"
+            node_epsilon = state.node_epsilons.get(
+                node_key,
+                round(active_epsilon, 4) if active_epsilon > 0 else 0.0,
+            )
             hospitals_list.append({
-                "id": f"node-{h.hospital_id}",
+                "id": node_key,
                 "name": h_name,
                 "location": loc,
                 "scanner": scanner,
@@ -765,11 +778,14 @@ async def get_state():
                 "modalityKey": modality_key,
                 "skewKey": skew_key,
                 "adapter": f"{state.peft_mode.upper() if state.peft_mode else 'Full'}",
-                "dpEpsilon": round(active_epsilon, 2) if active_epsilon > 0 else 0.0,
+                "dpEpsilon": node_epsilon,
                 "status": "online",
             })
     else:
-        hospitals_list = get_default_strategy_e_hospitals(active_epsilon)
+        hospitals_list = get_default_strategy_e_hospitals(
+            active_epsilon=active_epsilon,
+            node_epsilons=state.node_epsilons,
+        )
 
     rounds_list: List[Dict[str, Any]] = []
     round_nums = state.training_history.get("round", [])
@@ -1286,6 +1302,13 @@ async def stream_federated_training(
                 blocked_nodes = sec_report.clients_blocked if sec_report else []
                 threat_detected = len(blocked_nodes) > 0
 
+                for c in clients:
+                    if hasattr(c, "get_spent_epsilon"):
+                        c_eps = round(float(c.get_spent_epsilon()), 4)
+                        state.node_epsilons[f"node-{c.client_id}"] = c_eps
+                        if state.server is not None and hasattr(state.server, "record_client_epsilon"):
+                            state.server.record_client_epsilon(f"node-{c.client_id}", c_eps)
+
                 state.training_history["round"].append(round_num)
                 state.training_history["loss"].append(t_loss)
                 state.training_history["accuracy"].append(t_acc)
@@ -1490,6 +1513,12 @@ async def start_training_background(
                 f1 = float(test_metrics.f1_score * 100.0) if test_metrics else 0.0
                 blocked_nodes = sec_report.clients_blocked if sec_report else []
 
+                for c in clients:
+                    if hasattr(c, "get_spent_epsilon"):
+                        c_eps = round(float(c.get_spent_epsilon()), 4)
+                        state.node_epsilons[f"node-{c.client_id}"] = c_eps
+                        srv.record_client_epsilon(f"node-{c.client_id}", c_eps)
+
                 round_data = {
                     "round_num": round_num,
                     "total_rounds": num_rounds,
@@ -1677,6 +1706,12 @@ async def start_flower_training_background(
 
                 t_loss = float(agg_metrics.get("train_loss", val_loss))
                 t_acc = float(agg_metrics.get("train_accuracy", val_acc * 0.01)) * 100.0
+
+                for c in clients:
+                    if hasattr(c, "get_spent_epsilon"):
+                        c_eps = round(float(c.get_spent_epsilon()), 4)
+                        state.node_epsilons[f"node-{c.client_id}"] = c_eps
+                        srv.record_client_epsilon(f"node-{c.client_id}", c_eps)
 
                 round_data = {
                     "round_num": round_num,

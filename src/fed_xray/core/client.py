@@ -50,6 +50,7 @@ from .privacy import (
     CKKSEncryptionEngine,
     EncryptedTensor,
     ClientAttestation,
+    PatientLevelDPAccountant,
 )
 
 
@@ -131,6 +132,12 @@ class HospitalClient:
         self.ckks_engine: Optional[CKKSEncryptionEngine] = None
         self.cola_bridge: Optional[FedColaModalityBridge] = None
         self.text_anchor: Optional[Any] = None
+        # Client-specific Patient-Level Rényi Differential Privacy Accountant
+        self.dp_accountant = PatientLevelDPAccountant(target_delta=1e-5)
+
+    def get_spent_epsilon(self, delta: Optional[float] = None) -> float:
+        """Return the authentic client-level Rényi Differential Privacy composed epsilon."""
+        return self.dp_accountant.get_epsilon(delta=delta)
 
     def _create_local_model(self) -> nn.Module:
         """Instantiate backbone and inject PEFT adapters if requested."""
@@ -680,6 +687,11 @@ class HospitalClient:
                     updated_weights[name] = (
                         initial_params[name].cpu() + perturbed_deltas[name]
                     ).to(orig_dtype)
+
+            # Record privacy step in client-specific RDP accountant based on authentic local dataset size
+            batch_size = getattr(self.dataloader, "batch_size", 32) if self.dataloader else 32
+            subsampling_q = min(1.0, float(batch_size) / max(1.0, float(self.n_samples))) if self.n_samples > 0 else 1.0
+            self.dp_accountant.step(q=subsampling_q, sigma=active_noise)
 
         if self.cola_bridge is not None and (algorithm.upper() == "FEDCOLA" or loss_fn_name.upper() == "FEDCOLA"):
             for k, v in self.cola_bridge.state_dict().items():

@@ -54,7 +54,7 @@ const HOSPITAL_NODES: HospitalNode[] = [
     modalityKey: "topo_mod_dermo",
     skewKey: "topo_skew_melanoma",
     adapter: "FFA-LoRA (r=8, alpha=16)",
-    dpEpsilon: 1.42,
+    dpEpsilon: 0.0,
     status: "online",
   },
   {
@@ -66,7 +66,7 @@ const HOSPITAL_NODES: HospitalNode[] = [
     modalityKey: "topo_mod_histo",
     skewKey: "topo_skew_carcinoma",
     adapter: "FFA-LoRA (r=8, alpha=16)",
-    dpEpsilon: 1.55,
+    dpEpsilon: 0.0,
     status: "online",
   },
   {
@@ -78,7 +78,7 @@ const HOSPITAL_NODES: HospitalNode[] = [
     modalityKey: "topo_mod_dermo",
     skewKey: "topo_skew_nevi",
     adapter: "FFA-LoRA (r=8, alpha=16)",
-    dpEpsilon: 1.48,
+    dpEpsilon: 0.0,
     status: "online",
   },
   {
@@ -90,7 +90,7 @@ const HOSPITAL_NODES: HospitalNode[] = [
     modalityKey: "topo_mod_xray",
     skewKey: "topo_skew_pneumonia",
     adapter: "FFA-LoRA (r=8, alpha=16)",
-    dpEpsilon: 1.38,
+    dpEpsilon: 0.0,
     status: "online",
   },
 ];

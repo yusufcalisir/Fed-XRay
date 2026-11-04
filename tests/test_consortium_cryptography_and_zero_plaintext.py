@@ -88,6 +88,7 @@ def test_client_side_ckks_encryption_and_zero_plaintext_aggregation():
 
 def test_byzantine_defense_with_client_attestation_and_secagg():
     """Verify Byzantine defense works without server-side plaintext snooping."""
+    torch.manual_seed(42)
     device = torch.device("cpu")
     server = CentralServer(
         device=device,

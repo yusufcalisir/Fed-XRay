@@ -132,6 +132,19 @@ class CentralServer:
         self.last_uplink_bytes_per_client = 0
         self.last_security_report: Optional[SecurityReport] = None
         self.global_prototypes: Optional[Dict[int, torch.Tensor]] = None
+        self.client_epsilons: Dict[str, float] = {}
+
+    def record_client_epsilon(self, client_id: str, epsilon: float) -> None:
+        """Record the authentic mathematically composed DP epsilon for a consortium client."""
+        self.client_epsilons[str(client_id)] = float(epsilon)
+
+    def get_client_epsilon(self, client_id: str) -> float:
+        """Retrieve the spent differential privacy epsilon for a specific client node."""
+        return self.client_epsilons.get(str(client_id), 0.0)
+
+    def get_all_client_epsilons(self) -> Dict[str, float]:
+        """Return a dictionary mapping client identifiers to their spent DP epsilons."""
+        return dict(self.client_epsilons)
 
     def get_privacy_spent(self) -> float:
         """Compute cumulative differential privacy budget spent epsilon under Renyi DP."""
