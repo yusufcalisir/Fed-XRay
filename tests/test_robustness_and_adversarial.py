@@ -363,3 +363,53 @@ def test_client_generates_authentic_local_dataloader_accuracy():
     assert isinstance(attestation.validation_accuracy, float)
     assert 0.0 <= attestation.validation_accuracy <= 1.0
     assert attestation.update_l2_norm >= 0.0
+
+
+def test_byzantine_defense_preserves_honest_non_iid_specialist_hospital():
+    """Verify Byzantine defense does not falsely block honest hospitals with extreme Non-IID label skew."""
+    torch.manual_seed(42)
+    device = torch.device("cpu")
+    server = CentralServer(device=device, defense_mode=True, model_type="vit_tiny", peft_mode="ffa_lora")
+
+    global_weights = server.get_global_weights()
+    w0 = {k: v.clone() for k, v in global_weights.items()}
+    w1 = {k: v.clone() for k, v in global_weights.items()}
+    w2 = {k: v.clone() for k, v in global_weights.items()}  # Specialist hospital holding rare cancer
+    w3_adversary = {k: torch.randn_like(v) * 50.0 for k, v in global_weights.items()}  # Malicious poisoner
+
+    test_images = torch.randn(30, 1, 28, 28)
+    test_labels = torch.cat([torch.zeros(10), torch.ones(10), torch.full((10,), 2)]).long()
+
+    # Hospital 0 (class 0): overall 0.70, class-max 0.90
+    # Hospital 1 (class 1): overall 0.65, class-max 0.85
+    # Hospital 2 (honest specialist on rare class 2): overall 0.33, class-max 0.95 (specialist competence)
+    # Hospital 3 (adversary): overall 0.04, class-max 0.08 (total collapse)
+    def mock_validate(w, img, lbl):
+        if w is w0:
+            return 0.70, 0.90
+        elif w is w1:
+            return 0.65, 0.85
+        elif w is w2:
+            return 0.33, 0.95
+        else:
+            return 0.04, 0.08
+
+    server._validate_client_model = mock_validate
+
+    _, report = server.validate_and_aggregate(
+        client_weights=[w0, w1, w2, w3_adversary],
+        sample_counts=[100, 100, 50, 100],
+        client_ids=[0, 1, 2, 3],
+        test_images=test_images,
+        test_labels=test_labels,
+    )
+
+    # Hospital 2 has cohort_max - val_acc = 0.70 - 0.33 = 0.37 >= 0.25.
+    # Under naive consensus divergence logic, Hospital 2 would be falsely blocked.
+    # Under Non-IID aware defense, Hospital 2 is preserved due to class competence (0.95 >= 0.35).
+    assert report.threat_detected is True
+    assert 3 in report.clients_blocked, "Genuine adversary must be blocked"
+    assert 2 in report.clients_accepted, "Honest Non-IID specialist hospital must be accepted"
+    assert 0 in report.clients_accepted, "Honest hospital 0 must be accepted"
+    assert 1 in report.clients_accepted, "Honest hospital 1 must be accepted"
+

@@ -300,8 +300,12 @@ class CentralServer:
         client_weights: Dict[str, torch.Tensor],
         test_images: torch.Tensor,
         test_labels: torch.Tensor,
-    ) -> float:
-        """Validate client update on trusted global hold-out validation set."""
+    ) -> Tuple[float, float]:
+        """Validate client update on trusted global hold-out validation set.
+
+        Returns:
+            Tuple of (overall_accuracy, max_per_class_accuracy).
+        """
         temp_model = self._create_model().to(self.device)
         if self.peft_mode:
             temp_model.load_state_dict(self.global_model.state_dict())
@@ -312,6 +316,9 @@ class CentralServer:
 
         correct = 0
         total = 0
+        from collections import defaultdict
+        class_correct: Dict[int, int] = defaultdict(int)
+        class_total: Dict[int, int] = defaultdict(int)
 
         with torch.no_grad():
             batch_size = 64
@@ -331,13 +338,26 @@ class CentralServer:
 
                 outputs = temp_model(batch_images)
                 if torch.isnan(outputs).any():
-                    return 0.0
+                    return 0.0, 0.0
 
                 _, predicted = outputs.max(1)
                 correct += predicted.eq(batch_labels).sum().item()
                 total += batch_labels.size(0)
 
-        return correct / max(total, 1)
+                for y_t, y_p in zip(batch_labels.view(-1).tolist(), predicted.view(-1).tolist()):
+                    label_int = int(y_t)
+                    class_total[label_int] += 1
+                    if label_int == int(y_p):
+                        class_correct[label_int] += 1
+
+        overall_acc = correct / max(total, 1)
+        per_class_accs = [
+            class_correct[c] / class_total[c]
+            for c in class_total
+            if class_total[c] > 0
+        ]
+        max_class_acc = max(per_class_accs) if per_class_accs else overall_acc
+        return overall_acc, max_class_acc
 
     def validate_and_aggregate(
         self,
@@ -374,6 +394,7 @@ class CentralServer:
         # 1. Compute validation accuracy and extract update norms for all client updates
         client_update_norms: Dict[int, float] = {}
         attestation_spoofed: Dict[int, bool] = {}
+        max_class_accuracies: Dict[int, float] = {}
 
         for idx, (weights, count, cid) in enumerate(zip(client_weights, sample_counts, client_ids)):
             first_val = next(iter(weights.values())) if weights else None
@@ -395,8 +416,14 @@ class CentralServer:
             # Evaluate or verify validation accuracy
             if not is_encrypted and test_images is not None and test_labels is not None:
                 # Authentic server-side independent evaluation of plaintext weights
-                measured_acc = self._validate_client_model(weights, test_images, test_labels)
+                val_res = self._validate_client_model(weights, test_images, test_labels)
+                if isinstance(val_res, tuple):
+                    measured_acc, max_class_acc = val_res
+                else:
+                    measured_acc = float(val_res)
+                    max_class_acc = float(val_res)
                 val_acc = measured_acc
+                max_class_accuracies[cid] = max_class_acc
                 # Check for attestation spoofing if attestation was supplied
                 if client_attestations is not None and idx < len(client_attestations):
                     att_acc = client_attestations[idx].validation_accuracy
@@ -409,6 +436,7 @@ class CentralServer:
             elif client_attestations is not None and idx < len(client_attestations):
                 # Option J Architecture: Under CKKS homomorphic encryption, server relies on signed enclave attestation
                 val_acc = float(client_attestations[idx].validation_accuracy)
+                max_class_accuracies[cid] = val_acc
             elif is_encrypted:
                 # Under CKKS without client enclave attestation, server cannot decrypt individual ciphertexts
                 logger.warning(
@@ -416,8 +444,10 @@ class CentralServer:
                     cid
                 )
                 val_acc = 0.0
+                max_class_accuracies[cid] = 0.0
             else:
                 val_acc = 1.0
+                max_class_accuracies[cid] = 1.0
 
             validation_accuracies[cid] = val_acc
 
@@ -429,6 +459,27 @@ class CentralServer:
 
         valid_norms = [n for n in client_update_norms.values() if not math.isnan(n) and not math.isinf(n) and n > 0]
         cohort_med_norm = float(np.median(valid_norms)) if valid_norms else 0.0
+
+        # Compute directional cosine alignment to detect gradient inversion poisoning
+        directional_similarities: Dict[int, float] = {}
+        client_flat_vectors: Dict[int, torch.Tensor] = {}
+        for cid, w in zip(client_ids, client_weights):
+            first_v = next(iter(w.values())) if w else None
+            if not isinstance(first_v, EncryptedTensor):
+                try:
+                    client_flat_vectors[cid] = torch.cat([t.flatten().float() for t in w.values()])
+                except Exception:
+                    pass
+
+        if len(client_flat_vectors) >= 3:
+            stacked_dirs = torch.stack(list(client_flat_vectors.values()))
+            consensus_dir = torch.mean(stacked_dirs, dim=0)
+            c_norm = torch.norm(consensus_dir).item()
+            if c_norm > 1e-7:
+                for cid, u in client_flat_vectors.items():
+                    u_norm = torch.norm(u).item()
+                    if u_norm > 1e-7:
+                        directional_similarities[cid] = torch.dot(u, consensus_dir).item() / (u_norm * c_norm)
 
         for idx, (weights, count, cid) in enumerate(zip(client_weights, sample_counts, client_ids)):
             val_acc = validation_accuracies[cid]
@@ -448,18 +499,30 @@ class CentralServer:
             elif len(client_ids) >= 3 and cohort_med_norm > 1e-4 and norm_val > 3.5 * cohort_med_norm:
                 is_malicious = True
                 block_reason = f"Update L2 norm ({norm_val:.2f}) exceeds cohort median ({cohort_med_norm:.2f}) by >3.5x (Gradient scaling attack)"
-            # Check D: Consensus-Relative Performance Outlier Detection
+            # Check D: Consensus-Relative Performance & Directional Alignment
             elif len(client_ids) > 1:
-                if cohort_max >= 0.30 and (cohort_max - val_acc) >= 0.25:
+                # Non-IID label skew awareness (Scenario D / E):
+                # A specialized honest hospital holding rare pathology has lower global accuracy
+                # but exhibits high per-class competence (max_class_acc >= 0.35) on its held pathology.
+                is_specialist = max_class_accuracies.get(cid, 0.0) >= 0.35
+                cos_sim = directional_similarities.get(cid, 0.0)
+
+                # Gradient / update direction inversion attack: update is diametrically opposed to consensus
+                if len(client_ids) >= 3 and cid in directional_similarities and cos_sim < -0.30:
                     is_malicious = True
-                    block_reason = f"Consensus divergence (Acc: {val_acc*100:.1f}% vs Cohort Max: {cohort_max*100:.1f}%)"
-                elif (cohort_med - val_acc) >= 0.20:
-                    is_malicious = True
-                    block_reason = f"Cohort median divergence (Acc: {val_acc*100:.1f}% vs Cohort Med: {cohort_med*100:.1f}%)"
-                elif val_acc < 0.10 and cohort_max >= 0.20:
-                    is_malicious = True
-                    block_reason = f"Performance collapse below baseline (Acc: {val_acc*100:.1f}%)"
-            elif val_acc < 0.10:
+                    block_reason = f"Directional poisoning attack (Cosine similarity with consensus: {cos_sim:.2f} < -0.30)"
+                elif not is_specialist:
+                    # Non-specialist updates must not suffer catastrophic performance collapse
+                    if val_acc < 0.10 and cohort_max >= 0.20:
+                        is_malicious = True
+                        block_reason = f"Performance collapse below baseline (Acc: {val_acc*100:.1f}%, no class competence: {max_class_accuracies.get(cid, 0.0)*100:.1f}%)"
+                    elif cohort_max >= 0.40 and (cohort_max - val_acc) >= 0.35 and val_acc < 0.15:
+                        is_malicious = True
+                        block_reason = f"Consensus divergence (Acc: {val_acc*100:.1f}% vs Cohort Max: {cohort_max*100:.1f}%, no class competence)"
+                    elif (cohort_med - val_acc) >= 0.30 and val_acc < 0.15:
+                        is_malicious = True
+                        block_reason = f"Cohort median divergence (Acc: {val_acc*100:.1f}% vs Cohort Med: {cohort_med*100:.1f}%, no class competence)"
+            elif val_acc < 0.10 and max_class_accuracies.get(cid, 0.0) < 0.20:
                 is_malicious = True
                 block_reason = f"Standalone validation failure (Acc: {val_acc*100:.1f}%)"
 
