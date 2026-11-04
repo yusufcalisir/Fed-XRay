@@ -92,10 +92,23 @@ export default function PresentationLandingPage() {
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-10 lg:gap-14 items-center">
             {/* Left: Value Proposition */}
             <div className="max-w-xl">
-              {/* Single concise category tag */}
-              <div className="inline-flex items-center gap-2 mb-5 text-[11px] font-semibold uppercase tracking-widest text-emerald-600 dark:text-emerald-400">
-                <span className="w-4 h-px bg-emerald-500 shrink-0" />
-                <span>{t("landing_hero_badge")}</span>
+              {/* Category tag & Live Backend Status Indicator */}
+              <div className="flex items-center gap-3 mb-5 flex-wrap">
+                <div className="inline-flex items-center gap-2 text-[11px] font-semibold uppercase tracking-widest text-emerald-600 dark:text-emerald-400">
+                  <span className="w-4 h-px bg-emerald-500 shrink-0" />
+                  <span>{t("landing_hero_badge")}</span>
+                </div>
+                {isConnected ? (
+                  <div className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-mono font-semibold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                    <span>{t("landing_backend_connected")}</span>
+                  </div>
+                ) : (
+                  <div className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-mono font-semibold bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20">
+                    <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
+                    <span>{t("landing_backend_standalone")}</span>
+                  </div>
+                )}
               </div>
 
               <h1 className="font-display text-3xl sm:text-4xl lg:text-[44px] font-extrabold tracking-tight text-[var(--text-heading)] leading-[1.12] mb-5">

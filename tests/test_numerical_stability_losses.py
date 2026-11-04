@@ -66,6 +66,16 @@ def test_ldam_and_class_balanced_losses():
     assert loss_ldam.item() > 0.0
     assert loss_cb.item() > 0.0
 
+    # Extreme unnormalized logits stability check
+    extreme_logits = torch.tensor([[25.0, -25.0, 0.0], [-10.0, 30.0, 5.0]], requires_grad=True)
+    extreme_targets = torch.tensor([0, 1])
+    extreme_loss = ldam(extreme_logits, extreme_targets)
+    assert not torch.isnan(extreme_loss)
+    assert not torch.isinf(extreme_loss)
+    assert extreme_loss.item() >= 0.0
+    extreme_loss.backward()
+    assert extreme_logits.grad is not None
+
 
 def test_missing_class_repel_loss():
     """Verify Prototype-Contrastive Margin Regularization repel loss."""

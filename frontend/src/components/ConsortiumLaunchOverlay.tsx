@@ -14,6 +14,7 @@ import {
   AlertTriangle,
   RefreshCw,
   Link2,
+  Info,
 } from "lucide-react";
 import { useLanguage } from "@/context/LanguageContext";
 import { useApi } from "@/context/ApiContext";
@@ -580,6 +581,14 @@ export default function ConsortiumLaunchOverlay({
           {steps.map((s, i) => (
             <p key={i}>{s.desc}</p>
           ))}
+        </div>
+
+        {/* Clinical Literature Benchmark Disclaimer Note */}
+        <div className="mb-2.5 p-2 rounded-xl bg-[var(--bg-card-inner)] border border-[var(--border-subtle)] text-[10px] text-[var(--text-muted)] flex items-center gap-2">
+          <Info className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" />
+          <span className="leading-tight">
+            {t("launch_modal_benchmark_note")}
+          </span>
         </div>
 
         {/* Footer Actions */}

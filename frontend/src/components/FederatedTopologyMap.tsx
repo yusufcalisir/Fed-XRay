@@ -341,7 +341,7 @@ function InstitutionCard({
       onClick={onSelect}
       onMouseEnter={() => onHover(true)}
       onMouseLeave={() => onHover(false)}
-      className={`relative w-[calc(50%-4px)] sm:w-52 p-2 sm:p-2.5 rounded-xl transition-all cursor-pointer ${
+      className={`relative w-[calc(50%-4px)] sm:w-52 p-2 sm:p-2.5 rounded-xl transition-all cursor-pointer min-h-[66px] sm:min-h-[72px] flex flex-col justify-between ${
         isSelected
           ? "bg-white dark:bg-slate-900 border-2 border-emerald-500 dark:border-emerald-400 shadow-md scale-[1.02]"
           : "bg-white/95 dark:bg-slate-900/90 border border-slate-200 dark:border-slate-800 shadow-xs hover:border-slate-300 dark:hover:border-slate-700 hover:shadow-sm"

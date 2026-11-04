@@ -151,7 +151,10 @@ class LDAMLoss(nn.Module):
         batch_m = batch_m.view(-1, 1)
 
         output = torch.where(index, logits - batch_m, logits)
-        return F.cross_entropy(self.s * output, targets)
+        # Numerical stability guard: clamp scaled logits within safe float32 exponential bounds [-50.0, 50.0]
+        # to prevent overflow/underflow when raw unnormalized logits are supplied.
+        scaled_output = torch.clamp(self.s * output, min=-50.0, max=50.0)
+        return F.cross_entropy(scaled_output, targets)
 
 
 class PrototypeRepelLoss(nn.Module):

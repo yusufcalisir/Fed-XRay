@@ -191,6 +191,8 @@ export const TRANSLATIONS: Record<Language, Record<string, string>> = {
 
     // Landing Hero
     landing_hero_badge: "Privacy-Preserving Federated Learning (PPFL)",
+    landing_backend_connected: "FastAPI Backend Live (:8000)",
+    landing_backend_standalone: "Standalone Simulation Mode",
     landing_hero_title: "Privacy-Preserving Federated Learning for Multi-Hospital Medical AI",
     landing_hero_desc: "Collaborative federated learning platform for multi-hospital cancer imaging. Distributed hospital nodes train parameter-efficient FFA-LoRA adapters on local clinical cohorts without centralizing raw patient scans. Decentralized models converge under patient-level differential privacy and RLWE 128-bit CKKS homomorphic encryption, eliminating cross-site distribution shifts and client drift.",
     landing_hero_bullet_1: "Decentralized Node Training: Raw patient scans never leave local hospital firewalls",
@@ -397,6 +399,7 @@ export const TRANSLATIONS: Record<Language, Record<string, string>> = {
     launch_modal_step4_desc: "Loading real-time orchestration cockpit, telemetry cockpit, and Grad-CAM CDSS.",
     launch_modal_handshake: "Federated Handshake",
     launch_modal_footer_nodes: "4 Nodes: Patient DP ε ≤ 2.0",
+    launch_modal_benchmark_note: "Reference Target Note: The 98.4% AUC benchmark reflects published literature targets on full multi-hospital cohorts (25,000+ cases). Local interactive execution operates on 40-scan verified cohorts.",
     launch_modal_skip: "Enter Immediately",
     launch_fl_phase1: "Local Clinical Training: Patient Data Isolated On-Premise",
     launch_fl_phase2: "Cryptographic Aggregation: CKKS 128-Bit Homomorphic Updates",
@@ -703,6 +706,8 @@ export const TRANSLATIONS: Record<Language, Record<string, string>> = {
 
     // Landing Hero
     landing_hero_badge: "Gizlilik Korumalı Federe Öğrenme (PPFL)",
+    landing_backend_connected: "Canlı FastAPI Servisi Bağlı (:8000)",
+    landing_backend_standalone: "Bağımsız Simülasyon Modu",
     landing_hero_title: "Çok Merkezli Medikal Yapay Zeka İçin Gizlilik Korumalı Federe Öğrenme",
     landing_hero_desc: "Çok merkezli kanser görüntüleme için iş birlikli federe öğrenme platformu. Dağıtık hastane düğümleri, ham hasta verilerini merkezileştirmeden yerel klinik kohortlar üzerinde parametre verimli FFA-LoRA adaptörleri eğitir. Dağıtık modeller; hasta düzeyinde diferansiyel gizlilik ve RLWE 128-bit CKKS homomorfik şifreleme ile kurumlar arası dağılım kaymasını (non-IID) aşarak güvenle yakınsar.",
     landing_hero_bullet_1: "Dağıtık Düğüm Eğitimi: Ham hasta taramaları yerel hastane güvenlik duvarları dışına asla çıkmaz",
@@ -909,6 +914,7 @@ export const TRANSLATIONS: Record<Language, Record<string, string>> = {
     launch_modal_step4_desc: "Gerçek zamanlı orkestrasyon kokpiti, yakınsama telemetrisi ve Grad-CAM CDSS yükleniyor.",
     launch_modal_handshake: "Federe Kriptografik El Sıkışma",
     launch_modal_footer_nodes: "4 Düğüm: Hasta Düzeyinde DP ε ≤ 2.0",
+    launch_modal_benchmark_note: "Referans Hedef Notu: %98.4 AUC hedefi çok merkezli tam kohortların (25.000+ vaka) literatür referansıdır. Yerel interaktif oturum 40 vakalık doğrulanmış kohortlarla anlık çalışır.",
     launch_modal_skip: "Hemen Başlat",
     launch_fl_phase1: "Yerel Klinik Model Eğitimi: Hasta Verisi Kurum Sınırında İzole",
     launch_fl_phase2: "Kriptografik Güvenli Toplama: CKKS 128-Bit Homomorfik Güncellemeler",
