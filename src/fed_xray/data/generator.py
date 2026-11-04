@@ -422,7 +422,13 @@ def create_hospital_dataloaders(
                 scenario="A",
             )
             return [
-                ecosystem.records_to_dataloader(client_partitions[h], batch_size=batch_size, shuffle=True)
+                ecosystem.records_to_dataloader(
+                    client_partitions[h],
+                    batch_size=batch_size,
+                    shuffle=True,
+                    target_size=(image_size, image_size),
+                    in_channels=in_channels,
+                )
                 for h in range(n_hospitals)
             ]
         except Exception:

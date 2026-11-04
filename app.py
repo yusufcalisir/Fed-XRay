@@ -1070,7 +1070,13 @@ if btn_generate:
             )
 
             st.session_state.dataloaders = [
-                ecosystem.records_to_dataloader(client_partitions[h], batch_size=32, shuffle=True)
+                ecosystem.records_to_dataloader(
+                    client_partitions[h],
+                    batch_size=32,
+                    shuffle=True,
+                    target_size=(224, 224),
+                    in_channels=1,
+                )
                 for h in range(n_hospitals)
             ]
 

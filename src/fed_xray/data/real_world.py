@@ -23,7 +23,7 @@ import csv
 import hashlib
 import os
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Set, Tuple
+from typing import Any, Dict, List, Optional, Set, Tuple, Union
 import numpy as np
 from PIL import Image
 import torch
@@ -516,10 +516,11 @@ class StrategyEDatasetEcosystem:
     ) -> List[List[RealWorldPatientRecord]]:
         """Partitions patient records across federated clients according to Scenarios A through G."""
         client_partitions: List[List[RealWorldPatientRecord]] = [[] for _ in range(num_clients)]
+        if not records:
+            return client_partitions
 
-        if records:
-            max_label = max((r.label for r in records), default=num_classes - 1)
-            num_classes = max(num_classes, max_label + 1)
+        max_label = max((r.label for r in records), default=num_classes - 1)
+        num_classes = max(num_classes, max_label + 1)
 
         # Group records by class
         records_by_class: Dict[int, List[RealWorldPatientRecord]] = {c: [] for c in range(num_classes)}
@@ -603,7 +604,7 @@ class StrategyEDatasetEcosystem:
 
         # Fallback if any partition is empty
         for k in range(num_clients):
-            if not client_partitions[k]:
+            if not client_partitions[k] and records:
                 client_partitions[k].append(records[k % len(records)])
 
         return client_partitions
@@ -628,10 +629,20 @@ class StrategyEDatasetEcosystem:
         records: List[RealWorldPatientRecord],
         batch_size: int = 16,
         shuffle: bool = True,
+        target_size: Union[int, Tuple[int, int]] = (224, 224),
+        in_channels: int = 1,
     ) -> DataLoader:
-        """Converts RealWorldPatientRecord list to PyTorch DataLoader."""
+        """Converts RealWorldPatientRecord list to PyTorch DataLoader.
+
+        When records is empty, constructs an empty TensorDataset whose dimensions
+        dynamically reflect target_size and in_channels instead of hardcoded 28x28 shapes.
+        """
         if not records:
-            x_dummy = torch.empty(0, 1, 28, 28)
+            if isinstance(target_size, int):
+                h, w = target_size, target_size
+            else:
+                h, w = int(target_size[0]), int(target_size[1])
+            x_dummy = torch.empty(0, in_channels, h, w, dtype=torch.float32)
             y_dummy = torch.empty(0, dtype=torch.long)
             return DataLoader(TensorDataset(x_dummy, y_dummy), batch_size=batch_size)
 

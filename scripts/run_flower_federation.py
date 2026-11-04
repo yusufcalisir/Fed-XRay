@@ -139,7 +139,13 @@ def load_federated_medical_dataset(
 
     # 7. Convert partitions to PyTorch DataLoaders
     dataloaders = [
-        ecosystem.records_to_dataloader(client_partitions[i], batch_size=batch_size, shuffle=True)
+        ecosystem.records_to_dataloader(
+            client_partitions[i],
+            batch_size=batch_size,
+            shuffle=True,
+            target_size=(img_size, img_size),
+            in_channels=in_channels,
+        )
         for i in range(num_clients)
     ]
 

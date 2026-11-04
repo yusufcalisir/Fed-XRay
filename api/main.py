@@ -519,7 +519,13 @@ class AppState:
 
             for h in range(num_hospitals):
                 part = client_partitions[h]
-                loader = ecosystem.records_to_dataloader(part, batch_size=32, shuffle=True)
+                loader = ecosystem.records_to_dataloader(
+                    part,
+                    batch_size=32,
+                    shuffle=True,
+                    target_size=(224, 224),
+                    in_channels=1,
+                )
                 dataloaders_list.append(loader)
 
                 labels = np.array([r.label for r in part])
@@ -1182,7 +1188,13 @@ async def generate_cohorts(req: CohortGenerateRequest):
 
     for h in range(req.num_hospitals):
         part = client_partitions[h]
-        loader = ecosystem.records_to_dataloader(part, batch_size=32, shuffle=True)
+        loader = ecosystem.records_to_dataloader(
+            part,
+            batch_size=32,
+            shuffle=True,
+            target_size=(224, 224),
+            in_channels=1,
+        )
         dataloaders_list.append(loader)
 
         labels = np.array([r.label for r in part])

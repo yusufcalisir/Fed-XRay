@@ -267,3 +267,39 @@ def test_load_from_disk_manifest_e2e(tmp_path):
     assert len(train_pts.intersection(val_pts)) == 0
     assert len(train_pts.intersection(test_pts)) == 0
     assert len(val_pts.intersection(test_pts)) == 0
+
+
+def test_empty_partition_dynamic_shape_resolution() -> None:
+    """Verify empty partition dataloader preserves configured resolution and channels."""
+    ecosystem = StrategyEDatasetEcosystem(seed=42)
+
+    # 1. Default Strategy E resolution (224x224, 1 channel)
+    loader_default = ecosystem.records_to_dataloader([])
+    assert len(loader_default.dataset) == 0
+    x_empty_def, y_empty_def = loader_default.dataset[:]
+    assert x_empty_def.shape == (0, 1, 224, 224)
+    assert y_empty_def.shape == (0,)
+    assert x_empty_def.dtype == torch.float32
+    assert y_empty_def.dtype == torch.long
+
+    # 2. High-resolution multi-channel setting (256x256, 3 channels)
+    loader_rgb = ecosystem.records_to_dataloader([], target_size=(256, 256), in_channels=3)
+    x_empty_rgb, y_empty_rgb = loader_rgb.dataset[:]
+    assert x_empty_rgb.shape == (0, 3, 256, 256)
+    assert y_empty_rgb.shape == (0,)
+
+    # 3. Integer target_size scalar (e.g. 28x28 for legacy test suites)
+    loader_scalar = ecosystem.records_to_dataloader([], target_size=28, in_channels=1)
+    x_empty_scalar, y_empty_scalar = loader_scalar.dataset[:]
+    assert x_empty_scalar.shape == (0, 1, 28, 28)
+    assert y_empty_scalar.shape == (0,)
+
+
+def test_empty_records_partition_scenarios_safeguard() -> None:
+    """Verify partition_into_scenarios safely handles empty record inputs without division errors."""
+    ecosystem = StrategyEDatasetEcosystem(seed=42)
+    partitions = ecosystem.partition_into_scenarios([], num_clients=4, scenario="A")
+    assert len(partitions) == 4
+    for p in partitions:
+        assert len(p) == 0
+
