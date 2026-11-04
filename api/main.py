@@ -143,6 +143,15 @@ class AppState:
         db_dir.mkdir(parents=True, exist_ok=True)
         self.store = PersistentStateStore(db_path=db_dir / "consortium_state.db")
 
+        # Persistent cryptographic consortium peer identities for SecAgg+ (Option J)
+        self.consortium_peers: Dict[int, SecAggPeer] = {}
+
+    def get_or_create_consortium_peer(self, client_id: int) -> SecAggPeer:
+        """Return stable, deterministic SecAggPeer for consortium hospital node."""
+        if client_id not in self.consortium_peers:
+            self.consortium_peers[client_id] = SecAggPeer(client_id=client_id)
+        return self.consortium_peers[client_id]
+
     def save_to_disk(self, checkpoint_dir: str = "checkpoints") -> bool:
         """Persist trained model weights, metadata, cohorts, and history to SQLite and disk."""
         if not self.model_trained or self.server is None:
@@ -584,8 +593,9 @@ async def health_check():
     }
 
 
-def get_default_strategy_e_hospitals(active_epsilon: float = 1.42) -> List[Dict[str, Any]]:
+def get_default_strategy_e_hospitals(active_epsilon: float = 0.0) -> List[Dict[str, Any]]:
     """Return Strategy E consortium hospital topology nodes grounded in real manifest sites."""
+    node_eps = round(active_epsilon, 2) if active_epsilon > 0.0 else 0.0
     return [
         {
             "id": "node-1",
@@ -596,7 +606,7 @@ def get_default_strategy_e_hospitals(active_epsilon: float = 1.42) -> List[Dict[
             "modalityKey": "topo_mod_dermo",
             "skewKey": "topo_skew_melanoma",
             "adapter": "FFA-LoRA (r=8, alpha=16)",
-            "dpEpsilon": round(active_epsilon, 2) if active_epsilon > 0 else 1.42,
+            "dpEpsilon": node_eps,
             "status": "online",
         },
         {
@@ -608,7 +618,7 @@ def get_default_strategy_e_hospitals(active_epsilon: float = 1.42) -> List[Dict[
             "modalityKey": "topo_mod_xray",
             "skewKey": "topo_skew_pneumonia",
             "adapter": "FFA-LoRA (r=8, alpha=16)",
-            "dpEpsilon": round(active_epsilon * 0.97, 2) if active_epsilon > 0 else 1.38,
+            "dpEpsilon": node_eps,
             "status": "online",
         },
         {
@@ -620,7 +630,7 @@ def get_default_strategy_e_hospitals(active_epsilon: float = 1.42) -> List[Dict[
             "modalityKey": "topo_mod_histo",
             "skewKey": "topo_skew_carcinoma",
             "adapter": "FFA-LoRA (r=8, alpha=16)",
-            "dpEpsilon": round(active_epsilon * 1.09, 2) if active_epsilon > 0 else 1.55,
+            "dpEpsilon": node_eps,
             "status": "online",
         },
         {
@@ -632,7 +642,7 @@ def get_default_strategy_e_hospitals(active_epsilon: float = 1.42) -> List[Dict[
             "modalityKey": "topo_mod_dermo",
             "skewKey": "topo_skew_nevi",
             "adapter": "FFA-LoRA (r=8, alpha=16)",
-            "dpEpsilon": round(active_epsilon * 1.04, 2) if active_epsilon > 0 else 1.48,
+            "dpEpsilon": node_eps,
             "status": "online",
         },
     ]
@@ -740,7 +750,7 @@ async def get_state():
                 "modalityKey": modality_key,
                 "skewKey": skew_key,
                 "adapter": f"{state.peft_mode.upper() if state.peft_mode else 'Full'}",
-                "dpEpsilon": round(active_epsilon / max(1, len(state.hospital_cohort_info)), 2) if active_epsilon > 0 else 1.42,
+                "dpEpsilon": round(active_epsilon, 2) if active_epsilon > 0 else 0.0,
                 "status": "online",
             })
     else:
@@ -1191,6 +1201,7 @@ async def stream_federated_training(
                         dp_noise_multiplier=privacy_noise,
                         dp_mode=dp_mode,
                         strict_checkpoint=strict_checkpoint,
+                        secagg_peer=state.get_or_create_consortium_peer(i),
                     )
                     for i in range(len(active_dataloaders))
                 ]
@@ -1411,6 +1422,7 @@ async def start_training_background(
                     dp_noise_multiplier=privacy_noise,
                     dp_mode=dp_mode,
                     strict_checkpoint=strict_checkpoint,
+                    secagg_peer=state.get_or_create_consortium_peer(i),
                 )
                 for i in range(len(dataloaders))
             ]
@@ -1591,6 +1603,7 @@ async def start_flower_training_background(
                     dp_noise_multiplier=privacy_noise,
                     dp_mode=dp_mode,
                     strict_checkpoint=strict_checkpoint,
+                    secagg_peer=state.get_or_create_consortium_peer(i),
                 )
                 for i in range(len(dataloaders))
             ]
@@ -1745,9 +1758,9 @@ async def perform_enclave_handshake():
         3: "Brisbane, Australia",
     }
 
-    # Generate authentic X25519 ECDH keys and fingerprints for decentralized hospital peers
+    # Retrieve persistent, authentic X25519 ECDH keys and fingerprints for decentralized hospital peers
     for idx, h in enumerate(hospitals[:4]):
-        peer = SecAggPeer(client_id=idx)
+        peer = state.get_or_create_consortium_peer(idx)
         pk_fingerprint = f"ecdh:x25519:{hashlib.sha256(peer.public_key_bytes).hexdigest()[:16]}"
         if isinstance(h, dict):
             h_name = h.get("name", f"Hospital {idx + 1}")
@@ -1779,26 +1792,39 @@ async def perform_enclave_handshake():
         cipher_ring="N=8192, log(Q)=200, scale=2^40",
     )
 
-    # 3. Privacy status
+    # 3. Privacy status reflecting authentic accounting
+    target_epsilon = 2.0
+    target_delta = 1e-05
     if state.server is not None:
-        dp_report = dict(state.server.get_privacy_report())
-        dp_report["patient_level_dp"] = True
-        raw_eps = float(dp_report.get("epsilon", 0.0))
-        dp_report["epsilon"] = min(2.0, raw_eps) if raw_eps > 0.0 else 2.0
-        dp_report["target_delta"] = min(1e-05, float(dp_report.get("target_delta", 1e-05)))
-        dp_report["clipping_bound_C"] = 0.5
-        dp_report["mechanism"] = "Option J Patient-Level DP (SecAgg+ / CKKS)"
+        raw_report = state.server.get_privacy_report()
+        spent_eps = float(raw_report.get("epsilon", 0.0))
+        dp_report = {
+            "dp_active": bool(raw_report.get("dp_active", True)),
+            "patient_level_dp": True,
+            "epsilon": spent_eps,
+            "target_epsilon": target_epsilon,
+            "target_delta": float(raw_report.get("target_delta", target_delta)),
+            "clipping_bound_C": float(raw_report.get("clipping_bound_C", 1.0)),
+            "noise_multiplier_sigma": float(raw_report.get("noise_multiplier_sigma", 0.8)),
+            "mechanism": raw_report.get("mechanism", "Option J Distributed Patient-Level DP (SecAgg+ / CKKS)"),
+            "patient_level_clipping": bool(raw_report.get("patient_level_clipping", True)),
+            "total_rounds_composed": int(raw_report.get("total_rounds_composed", 0)),
+            "budget_exhausted": spent_eps > target_epsilon,
+        }
     else:
+        # Before server initialization: 0 rounds composed, 0 epsilon spent
         dp_report = {
             "dp_active": True,
             "patient_level_dp": True,
-            "epsilon": 2.0,
-            "target_delta": 1e-05,
-            "clipping_bound_C": 0.5,
+            "epsilon": 0.0,
+            "target_epsilon": target_epsilon,
+            "target_delta": target_delta,
+            "clipping_bound_C": 1.0,
             "noise_multiplier_sigma": 0.8,
             "mechanism": "Option J Patient-Level DP (SecAgg+ / CKKS)",
             "patient_level_clipping": True,
             "total_rounds_composed": 0,
+            "budget_exhausted": False,
         }
 
     # 4. Server Enclave Status
@@ -1822,7 +1848,7 @@ async def perform_enclave_handshake():
     canonical_repr = (
         f"fedxray-enclave-attestation:v1:"
         f"server={device_name}:{server_info['defense_mode']}:"
-        f"dp={dp_report.get('epsilon', 2.0)}:{dp_report.get('target_delta', 1e-5)}:"
+        f"dp_spent={dp_report.get('epsilon', 0.0)}:target_delta={dp_report.get('target_delta', 1e-5)}:"
         f"nodes={','.join(n.peer_key_fingerprint for n in nodes_list)}"
     )
     attestation_digest = f"sha256:{hashlib.sha256(canonical_repr.encode('utf-8')).hexdigest()}"

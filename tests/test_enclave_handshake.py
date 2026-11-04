@@ -2,7 +2,8 @@
 
 import pytest
 from fastapi.testclient import TestClient
-from api.main import app
+from api.main import app, state, get_default_strategy_e_hospitals
+from src.fed_xray.core.server import CentralServer
 
 
 @pytest.fixture
@@ -49,5 +50,61 @@ def test_enclave_handshake_endpoint(client):
     # Verify patient-level DP
     privacy = data["privacy"]
     assert privacy["patient_level_dp"] is True
-    assert privacy["epsilon"] <= 2.0
+    assert privacy["epsilon"] == 0.0
+    assert privacy["target_epsilon"] == 2.0
     assert privacy["target_delta"] <= 1e-5
+    assert privacy["budget_exhausted"] is False
+
+
+def test_enclave_handshake_deterministic_identity_stability(client):
+    """Verify that multiple enclave handshakes return stable node fingerprints and identical digests."""
+    res1 = client.get("/api/fl/enclave-handshake")
+    assert res1.status_code == 200
+    data1 = res1.json()
+
+    res2 = client.get("/api/fl/enclave-handshake")
+    assert res2.status_code == 200
+    data2 = res2.json()
+
+    assert data1["attestation_digest"] == data2["attestation_digest"]
+    assert len(data1["nodes"]) == len(data2["nodes"])
+
+    for node1, node2 in zip(data1["nodes"], data2["nodes"]):
+        assert node1["node_id"] == node2["node_id"]
+        assert node1["peer_key_fingerprint"] == node2["peer_key_fingerprint"]
+
+
+def test_strategy_e_hospitals_no_fake_multipliers():
+    """Verify that hospital topology does not use arbitrary fake multipliers or hardcoded 1.42."""
+    hospitals_zero = get_default_strategy_e_hospitals(active_epsilon=0.0)
+    for h in hospitals_zero:
+        assert h["dpEpsilon"] == 0.0
+
+    hospitals_active = get_default_strategy_e_hospitals(active_epsilon=1.85)
+    for h in hospitals_active:
+        assert h["dpEpsilon"] == 1.85
+
+
+def test_differential_privacy_budget_exhaustion_unclamped(client):
+    """Verify that spent epsilon is accurately reported and not clamped to 2.0 when exhausted."""
+    original_server = state.server
+    try:
+        # Create a real server with active DP
+        server = CentralServer(privacy_noise=0.8, defense_mode=False, dp_mode="distributed")
+        # Step accountant with 3 rounds so composed epsilon exceeds target (2.0)
+        for _ in range(3):
+            server.dp_accountant.step(q=0.5, sigma=0.8)
+        state.server = server
+
+        res = client.get("/api/fl/enclave-handshake")
+        assert res.status_code == 200
+        data = res.json()
+
+        privacy = data["privacy"]
+        # Epsilon must report the genuine > 2.0 spent, NOT clamped to 2.0
+        assert privacy["epsilon"] > 2.0
+        assert privacy["target_epsilon"] == 2.0
+        assert privacy["budget_exhausted"] is True
+        assert privacy["total_rounds_composed"] == 3
+    finally:
+        state.server = original_server

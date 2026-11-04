@@ -80,6 +80,7 @@ class HospitalClient:
         dp_noise_multiplier: float = 0.0,
         dp_mode: str = "distributed",  # "distributed", "local", "central", "off"
         strict_checkpoint: bool = False,
+        secagg_peer: Optional[SecAggPeer] = None,
     ) -> None:
         self.client_id = client_id
         self.dataloader = dataloader
@@ -125,7 +126,7 @@ class HospitalClient:
         self.class_counts = self._compute_class_counts()
 
         # Decentralized cryptographic peer enclave for SecAgg+ (Option J standard)
-        self.secagg_peer = SecAggPeer(client_id=self.client_id)
+        self.secagg_peer = secagg_peer if secagg_peer is not None else SecAggPeer(client_id=self.client_id)
         # Client-side CKKS homomorphic encryption engine (public context)
         self.ckks_engine: Optional[CKKSEncryptionEngine] = None
         self.cola_bridge: Optional[FedColaModalityBridge] = None
