@@ -517,6 +517,10 @@ class StrategyEDatasetEcosystem:
         """Partitions patient records across federated clients according to Scenarios A through G."""
         client_partitions: List[List[RealWorldPatientRecord]] = [[] for _ in range(num_clients)]
 
+        if records:
+            max_label = max((r.label for r in records), default=num_classes - 1)
+            num_classes = max(num_classes, max_label + 1)
+
         # Group records by class
         records_by_class: Dict[int, List[RealWorldPatientRecord]] = {c: [] for c in range(num_classes)}
         for r in records:

@@ -122,3 +122,113 @@ def test_cohort_generation_contains_authentic_dermoscopy_keys():
     assert "nevus" in counts or "benign_dysplastic_nevus" in counts
     assert "melanoma" in counts or "malignant_melanoma" in counts
     assert "carcinoma" in counts or "basal_cell_carcinoma" in counts
+
+
+def test_central_server_dynamic_confusion_matrix_8class_isic():
+    """Verify DEFECT-12 fix: evaluate_on_test_set dynamically dimensions confusion matrix to (8, 8)."""
+    from src.fed_xray.core.server import CentralServer
+
+    server = CentralServer(num_classes=8, model_type="cnn", img_size=28)
+    test_imgs = torch.randn(16, 1, 28, 28)
+    test_lbls = torch.tensor([0, 1, 2, 3, 4, 5, 6, 7, 0, 1, 2, 3, 4, 5, 6, 7], dtype=torch.long)
+
+    metrics = server.evaluate_on_test_set(test_imgs, test_lbls)
+
+    # Confusion matrix must be 8x8, not hardcoded 3x3
+    assert metrics.confusion_matrix.shape == (8, 8), f"Expected (8, 8), got {metrics.confusion_matrix.shape}"
+    # All 16 samples must be accounted for across all 8 classes without truncation
+    assert np.sum(metrics.confusion_matrix) == 16
+    assert 0.0 <= metrics.accuracy <= 1.0
+    assert 0.0 <= metrics.precision <= 1.0
+    assert 0.0 <= metrics.recall <= 1.0
+    assert 0.0 <= metrics.f1_score <= 1.0
+
+
+def test_central_server_dynamic_confusion_matrix_9class_nct_crc():
+    """Verify DEFECT-12 fix: evaluate_on_test_set dynamically dimensions confusion matrix to (9, 9)."""
+    from src.fed_xray.core.server import CentralServer
+
+    server = CentralServer(num_classes=9, model_type="vit_tiny", img_size=28)
+    test_imgs = torch.randn(18, 1, 28, 28)
+    test_lbls = torch.tensor([0, 1, 2, 3, 4, 5, 6, 7, 8, 0, 1, 2, 3, 4, 5, 6, 7, 8], dtype=torch.long)
+
+    metrics = server.evaluate_on_test_set(test_imgs, test_lbls)
+
+    assert metrics.confusion_matrix.shape == (9, 9), f"Expected (9, 9), got {metrics.confusion_matrix.shape}"
+    assert np.sum(metrics.confusion_matrix) == 18
+    assert 0.0 <= metrics.accuracy <= 1.0
+    assert 0.0 <= metrics.precision <= 1.0
+    assert 0.0 <= metrics.recall <= 1.0
+    assert 0.0 <= metrics.f1_score <= 1.0
+
+
+def test_central_server_dynamic_matrix_expands_to_observed_labels():
+    """Verify that if num_classes is default (3), evaluate_on_test_set expands dynamically to avoid dropping samples."""
+    from src.fed_xray.core.server import CentralServer
+
+    server = CentralServer(num_classes=3, model_type="cnn", img_size=28)
+    test_imgs = torch.randn(6, 1, 28, 28)
+    # Include classes 5 and 7 which exceed default 3 classes
+    test_lbls = torch.tensor([0, 1, 2, 5, 7, 7], dtype=torch.long)
+
+    metrics = server.evaluate_on_test_set(test_imgs, test_lbls)
+
+    # Matrix must dynamically expand to at least 8x8 to accommodate class 7
+    assert metrics.confusion_matrix.shape[0] >= 8
+    assert metrics.confusion_matrix.shape[1] >= 8
+    # All 6 samples must be counted
+    assert np.sum(metrics.confusion_matrix) == 6
+
+
+def test_empty_test_set_preserves_dynamic_matrix_dimension():
+    """Verify evaluate_on_test_set handles empty test batches while preserving expected class dimensions."""
+    from src.fed_xray.core.server import CentralServer
+
+    server = CentralServer(num_classes=8, model_type="cnn", img_size=28)
+    empty_imgs = torch.empty(0, 1, 28, 28)
+    empty_lbls = torch.empty(0, dtype=torch.long)
+
+    metrics = server.evaluate_on_test_set(empty_imgs, empty_lbls, num_classes=8)
+
+    assert metrics.confusion_matrix.shape == (8, 8)
+    assert np.sum(metrics.confusion_matrix) == 0
+    assert metrics.accuracy == 0.0
+    assert metrics.precision == 0.0
+    assert metrics.recall == 0.0
+    assert metrics.f1_score == 0.0
+
+
+def test_run_federated_round_multi_class_evaluation():
+    """Verify run_federated_round propagates multi-class evaluation metrics cleanly."""
+    from torch.utils.data import DataLoader, TensorDataset
+    from src.fed_xray.core.server import CentralServer, run_federated_round
+    from src.fed_xray.core.client import HospitalClient
+
+    server = CentralServer(num_classes=8, model_type="cnn", img_size=28)
+    train_x = torch.randn(20, 1, 28, 28)
+    train_y = torch.randint(0, 8, (20,))
+    ds = TensorDataset(train_x, train_y)
+    loader = DataLoader(ds, batch_size=10)
+
+    clients = [
+        HospitalClient(client_id=0, dataloader=loader, model_type="cnn", num_classes=8),
+        HospitalClient(client_id=1, dataloader=loader, model_type="cnn", num_classes=8),
+    ]
+
+    test_imgs = torch.randn(16, 1, 28, 28)
+    test_lbls = torch.tensor([0, 1, 2, 3, 4, 5, 6, 7, 0, 1, 2, 3, 4, 5, 6, 7], dtype=torch.long)
+
+    _, _, test_metrics, _ = run_federated_round(
+        server=server,
+        clients=clients,
+        round_num=1,
+        total_rounds=1,
+        test_images=test_imgs,
+        test_labels=test_lbls,
+        num_classes=8,
+    )
+
+    assert test_metrics is not None
+    assert test_metrics.confusion_matrix.shape == (8, 8)
+    assert np.sum(test_metrics.confusion_matrix) == 16
+

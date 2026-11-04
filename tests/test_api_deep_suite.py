@@ -122,12 +122,12 @@ def test_cdss_diagnose_class_variations(trained_api, class_idx):
     res = trained_api.post("/api/cdss/diagnose", json=payload)
     assert res.status_code == 200
     data = res.json()
-    assert data["predicted_class"] in (0, 1, 2)
+    assert data["predicted_class"] >= 0
     assert 0.0 <= data["confidence"] <= 100.0
-    assert len(data["probabilities"]) == 3
+    assert len(data["probabilities"]) in (3, 8, 9)
     assert abs(sum(data["probabilities"]) - 100.0) < 0.1
     assert data["image_source"].startswith("holdout_test_set:")
-    assert data["true_class"] in (0, 1, 2)
+    assert data["true_class"] >= 0
     if class_idx is not None:
         assert data["true_class"] == class_idx
     assert data["heatmap_available"] is True, f"Heatmap failed: {data.get('heatmap_error')}"

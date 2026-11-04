@@ -82,6 +82,7 @@ class HospitalClient:
         dp_mode: str = "distributed",  # "distributed", "local", "central", "off"
         strict_checkpoint: bool = False,
         secagg_peer: Optional[SecAggPeer] = None,
+        num_classes: int = 3,
     ) -> None:
         self.client_id = client_id
         self.dataloader = dataloader
@@ -101,6 +102,7 @@ class HospitalClient:
         self.dp_noise_multiplier = dp_noise_multiplier
         self.dp_mode = dp_mode
         self.strict_checkpoint = strict_checkpoint
+        self.num_classes = num_classes
 
         if img_size is not None:
             self.img_size = img_size
@@ -147,7 +149,7 @@ class HospitalClient:
                 model_type=self.model_type,
                 img_size=self.img_size,
                 patch_size=self.patch_size,
-                num_classes=3,
+                num_classes=self.num_classes,
                 pretrained=self.pretrained,
                 checkpoint_path=self.foundation_checkpoint,
                 strict_checkpoint=self.strict_checkpoint,
@@ -164,7 +166,7 @@ class HospitalClient:
         elif self.model_type == "uni":
             model = UNIFoundationBackbone(
                 embed_dim=512,
-                num_classes=3,
+                num_classes=self.num_classes,
                 patch_size=self.patch_size,
                 pretrained=self.pretrained,
                 checkpoint_path=self.foundation_checkpoint,
@@ -182,7 +184,7 @@ class HospitalClient:
         elif self.model_type in ("swin_unetr", "swin"):
             model = SwinUNETRRadiologyBackbone(
                 embed_dim=384,
-                num_classes=3,
+                num_classes=self.num_classes,
                 pretrained=self.pretrained,
                 checkpoint_path=self.foundation_checkpoint,
                 strict_checkpoint=self.strict_checkpoint,
@@ -201,7 +203,7 @@ class HospitalClient:
                 backbone_type="vit_tiny",
                 img_size=self.img_size,
                 patch_size=self.patch_size,
-                num_classes=3,
+                num_classes=self.num_classes,
                 pretrained=self.pretrained,
                 checkpoint_path=self.foundation_checkpoint,
                 strict_checkpoint=self.strict_checkpoint,
@@ -216,7 +218,7 @@ class HospitalClient:
                     deep_layers_only=self.deep_layers_only,
                 )
             return model
-        return create_cnn_model()
+        return create_cnn_model(num_classes=self.num_classes)
 
     def get_model_provenance(self) -> Dict[str, Any]:
         """Audit report of client model weight provenance and authenticity (MOD-02)."""
@@ -234,12 +236,13 @@ class HospitalClient:
 
     def _compute_class_counts(self) -> List[int]:
         """Compute sample count per class from local dataloader."""
-        counts = [0, 0, 0]
+        num_c = getattr(self, "num_classes", 3)
+        counts = [0] * num_c
         if self.dataloader and hasattr(self.dataloader, "dataset") and self.dataloader.dataset is not None:
             for _, labels in self.dataloader:
                 for y in labels:
                     c = y.item()
-                    if c < 3:
+                    if c < num_c:
                         counts[c] += 1
         for i in range(len(counts)):
             if counts[i] == 0:
@@ -405,7 +408,9 @@ class HospitalClient:
 
     def _flip_labels(self, labels: torch.Tensor) -> torch.Tensor:
         flipped = labels.clone()
-        for old_label, new_label in self.LABEL_FLIP_MAP.items():
+        num_c = getattr(self, "num_classes", 3)
+        flip_map = {c: (c + 1) % num_c for c in range(num_c)}
+        for old_label, new_label in flip_map.items():
             flipped[labels == old_label] = new_label
         return flipped
 
@@ -543,7 +548,7 @@ class HospitalClient:
                         self.text_anchor = TextSemanticAnchor(
                             dataset_name="isic",
                             embed_dim=512,
-                            num_classes=3,
+                            num_classes=getattr(self, "num_classes", 3),
                             device=self.device,
                         )
                     feats = extract_features(self.model, images)
@@ -716,5 +721,5 @@ class HospitalClient:
             model=self.model,
             dataloader=self.dataloader,
             device=self.device,
-            num_classes=3,
+            num_classes=getattr(self, "num_classes", 3),
         )

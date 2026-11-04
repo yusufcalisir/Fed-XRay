@@ -74,6 +74,7 @@ class CentralServer:
         dp_mode: str = "distributed",  # "distributed", "local", "central", "off"
         dp_clipping_bound: float = 1.0,
         strict_checkpoint: bool = False,
+        num_classes: int = 3,
     ) -> None:
         self.device = device or torch.device("cpu")
         self.privacy_noise = privacy_noise
@@ -90,6 +91,7 @@ class CentralServer:
         self.dp_mode = dp_mode
         self.dp_clipping_bound = dp_clipping_bound
         self.strict_checkpoint = strict_checkpoint
+        self.num_classes = num_classes
 
         self.img_size = img_size or 28
         self.patch_size = patch_size or (16 if self.img_size == 224 else 4)
@@ -184,7 +186,7 @@ class CentralServer:
                 model_type=self.model_type,
                 img_size=self.img_size,
                 patch_size=self.patch_size,
-                num_classes=3,
+                num_classes=self.num_classes,
                 pretrained=self.pretrained,
                 checkpoint_path=self.foundation_checkpoint,
                 strict_checkpoint=self.strict_checkpoint,
@@ -201,7 +203,7 @@ class CentralServer:
         elif self.model_type == "uni":
             model = UNIFoundationBackbone(
                 embed_dim=512,
-                num_classes=3,
+                num_classes=self.num_classes,
                 patch_size=self.patch_size,
                 pretrained=self.pretrained,
                 checkpoint_path=self.foundation_checkpoint,
@@ -219,7 +221,7 @@ class CentralServer:
         elif self.model_type in ("swin_unetr", "swin"):
             model = SwinUNETRRadiologyBackbone(
                 embed_dim=384,
-                num_classes=3,
+                num_classes=self.num_classes,
                 pretrained=self.pretrained,
                 checkpoint_path=self.foundation_checkpoint,
                 strict_checkpoint=self.strict_checkpoint,
@@ -238,7 +240,7 @@ class CentralServer:
                 backbone_type="vit_tiny",
                 img_size=self.img_size,
                 patch_size=self.patch_size,
-                num_classes=3,
+                num_classes=self.num_classes,
                 pretrained=self.pretrained,
                 checkpoint_path=self.foundation_checkpoint,
                 strict_checkpoint=self.strict_checkpoint,
@@ -253,7 +255,7 @@ class CentralServer:
                     deep_layers_only=self.deep_layers_only,
                 )
             return model
-        return create_cnn_model()
+        return create_cnn_model(num_classes=self.num_classes)
 
     def get_model_provenance(self) -> Dict[str, Any]:
         """Audit report of global model weight provenance and authenticity (MOD-02)."""
@@ -716,8 +718,13 @@ class CentralServer:
         self,
         test_images: torch.Tensor,
         test_labels: torch.Tensor,
+        num_classes: Optional[int] = None,
     ) -> EvaluationMetrics:
-        """Evaluate global model performance on hold-out validation set."""
+        """Evaluate global model performance on hold-out validation set.
+
+        Dynamically dimensions confusion matrix and per-class diagnostic metrics to support
+        multi-class oncology benchmarks (e.g. 8-class ISIC 2019 dermoscopy, 9-class NCT-CRC-HE).
+        """
         self.global_model.eval()
         criterion = nn.CrossEntropyLoss()
 
@@ -742,7 +749,13 @@ class CentralServer:
                     )
 
                 outputs = self.global_model(batch_images)
-                loss = criterion(outputs, batch_labels)
+                out_classes = outputs.size(1)
+                if batch_labels.numel() > 0 and (int(batch_labels.max()) >= out_classes or int(batch_labels.min()) < 0):
+                    max_target_c = int(batch_labels.max()) + 1
+                    padded_outputs = F.pad(outputs, (0, max_target_c - out_classes), value=-1e4)
+                    loss = criterion(padded_outputs, batch_labels)
+                else:
+                    loss = criterion(outputs, batch_labels)
 
                 total_loss += loss.item() * batch_images.size(0)
                 _, predicted = outputs.max(1)
@@ -753,31 +766,46 @@ class CentralServer:
         all_preds_arr = np.array(all_preds, dtype=np.int64)
         all_labels_arr = np.array(all_labels, dtype=np.int64)
 
-        # Pure NumPy multiclass evaluation (zero PyArrow/sklearn crash overhead)
+        # Dynamic multiclass evaluation supporting multi-class oncology benchmarks
         n_eval = len(all_labels_arr)
+        effective_classes = num_classes or getattr(self, "num_classes", 3)
+        head = (
+            getattr(self.global_model, "head", None)
+            or getattr(self.global_model, "fc2", None)
+            or getattr(self.global_model, "classifier", None)
+        )
+        if head is not None and hasattr(head, "out_features"):
+            effective_classes = max(effective_classes, int(head.out_features))
+
+        if n_eval > 0:
+            max_label = int(np.max(all_labels_arr))
+            max_pred = int(np.max(all_preds_arr)) if len(all_preds_arr) > 0 else 0
+            effective_classes = max(effective_classes, max_label + 1, max_pred + 1)
+        effective_classes = max(int(effective_classes), 1)
+
         if n_eval > 0:
             accuracy = float(np.mean(all_labels_arr == all_preds_arr))
-            conf_matrix = np.zeros((3, 3), dtype=np.int64)
+            conf_matrix = np.zeros((effective_classes, effective_classes), dtype=np.int64)
             for t_val, p_val in zip(all_labels_arr, all_preds_arr):
-                if 0 <= t_val < 3 and 0 <= p_val < 3:
+                if 0 <= t_val < effective_classes and 0 <= p_val < effective_classes:
                     conf_matrix[t_val, p_val] += 1
             precisions, recalls, f1s = [], [], []
-            for c in range(3):
+            for c in range(effective_classes):
                 tp = conf_matrix[c, c]
                 fp = np.sum(conf_matrix[:, c]) - tp
                 fn = np.sum(conf_matrix[c, :]) - tp
-                p = tp / (tp + fp) if (tp + fp) > 0 else 0.0
-                r = tp / (tp + fn) if (tp + fn) > 0 else 0.0
-                f = (2 * p * r) / (p + r) if (p + r) > 0 else 0.0
+                p = float(tp / (tp + fp)) if (tp + fp) > 0 else 0.0
+                r = float(tp / (tp + fn)) if (tp + fn) > 0 else 0.0
+                f = float((2 * p * r) / (p + r)) if (p + r) > 0 else 0.0
                 precisions.append(p)
                 recalls.append(r)
                 f1s.append(f)
-            precision = float(np.mean(precisions))
-            recall = float(np.mean(recalls))
-            f1 = float(np.mean(f1s))
+            precision = float(np.mean(precisions)) if precisions else 0.0
+            recall = float(np.mean(recalls)) if recalls else 0.0
+            f1 = float(np.mean(f1s)) if f1s else 0.0
         else:
             accuracy, precision, recall, f1 = 0.0, 0.0, 0.0, 0.0
-            conf_matrix = np.zeros((3, 3), dtype=np.int64)
+            conf_matrix = np.zeros((effective_classes, effective_classes), dtype=np.int64)
 
         avg_loss = total_loss / max(n_samples, 1)
 
@@ -815,6 +843,7 @@ def run_federated_round(
     secure_aggregation: bool = False,
     use_ckks: bool = False,
     total_consortium_hospitals: Optional[int] = None,
+    num_classes: Optional[int] = None,
 ) -> Tuple[Dict[str, Any], List[TrainingMetrics], Optional[EvaluationMetrics], Optional[SecurityReport]]:
     """Execute one federated round across all participating clinical nodes."""
     global_weights = server.get_global_weights()
@@ -990,7 +1019,7 @@ def run_federated_round(
                 client_prototypes=clean_protos,
                 client_traces=clean_traces,
                 client_counts=clean_counts,
-                num_classes=3,
+                num_classes=num_classes or getattr(server, "num_classes", 3),
             )
             server.set_global_prototypes(synthesized_protos)
 
@@ -1019,6 +1048,6 @@ def run_federated_round(
 
     test_metrics: Optional[EvaluationMetrics] = None
     if test_images is not None and test_labels is not None:
-        test_metrics = server.evaluate_on_test_set(test_images, test_labels)
+        test_metrics = server.evaluate_on_test_set(test_images, test_labels, num_classes=num_classes)
 
     return aggregated_metrics, client_metrics, test_metrics, security_report

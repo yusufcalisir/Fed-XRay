@@ -152,6 +152,11 @@ class AppState:
         # Persistent cryptographic consortium peer identities for SecAgg+ (Option J)
         self.consortium_peers: Dict[int, SecAggPeer] = {}
 
+    @property
+    def dataset_label_map(self) -> Dict[int, str]:
+        """Return the class ontology mapping corresponding to the active dataset."""
+        return get_dataset_label_map(self.data_source)
+
     def get_or_create_consortium_peer(self, client_id: int) -> SecAggPeer:
         """Return stable, deterministic SecAggPeer for consortium hospital node."""
         if client_id not in self.consortium_peers:
@@ -365,6 +370,15 @@ class AppState:
         if not model_path.exists():
             return False
         try:
+            saved_weights = torch.load(model_path, map_location=self.device)
+            inferred_classes = len(self.dataset_label_map) if self.dataset_label_map else 3
+            if "head.weight" in saved_weights:
+                inferred_classes = int(saved_weights["head.weight"].shape[0])
+            elif "fc2.weight" in saved_weights:
+                inferred_classes = int(saved_weights["fc2.weight"].shape[0])
+            elif "classifier.weight" in saved_weights:
+                inferred_classes = int(saved_weights["classifier.weight"].shape[0])
+
             server = CentralServer(
                 device=self.device,
                 model_type=self.model_type,
@@ -373,8 +387,8 @@ class AppState:
                 lora_alpha=self.lora_alpha,
                 deep_layers_only=self.deep_layers_only,
                 img_size=self.image_size,
+                num_classes=inferred_classes,
             )
-            saved_weights = torch.load(model_path, map_location=self.device)
             server.global_model.load_state_dict(saved_weights)
             base_m = getattr(server.global_model, "base_model", server.global_model)
             base_m.is_pretrained = True
@@ -1052,11 +1066,12 @@ async def generate_cohorts(req: CohortGenerateRequest):
             if not matched:
                 client_partitions[0].append(r)
     else:
+        actual_num_classes = len(state.dataset_label_map) if state.dataset_label_map else 3
         client_partitions = ecosystem.partition_into_scenarios(
             records=train_recs,
             num_clients=req.num_hospitals,
             scenario=req.scenario,
-            num_classes=3,
+            num_classes=actual_num_classes,
         )
 
     state.hospital_samples = {}
@@ -1259,6 +1274,8 @@ async def stream_federated_training(
             yield ": ping\n\n"
             await asyncio.sleep(0.01)
 
+            active_num_classes = len(state.dataset_label_map) if state.dataset_label_map else 3
+
             def _init_fl():
                 srv = CentralServer(
                     device=state.device,
@@ -1276,6 +1293,7 @@ async def stream_federated_training(
                     dp_mode=dp_mode,
                     dp_clipping_bound=dp_clipping_bound,
                     strict_checkpoint=strict_checkpoint,
+                    num_classes=active_num_classes,
                 )
                 clts = [
                     HospitalClient(
@@ -1298,6 +1316,7 @@ async def stream_federated_training(
                         dp_mode=dp_mode,
                         strict_checkpoint=strict_checkpoint,
                         secagg_peer=state.get_or_create_consortium_peer(i),
+                        num_classes=active_num_classes,
                     )
                     for i in range(len(active_dataloaders))
                 ]
@@ -1492,6 +1511,7 @@ async def start_training_background(
             actual_peft = None if peft_mode.lower() in ("none", "false", "off") else peft_mode
             state.model_type = model_type
             state.peft_mode = peft_mode
+            active_num_classes = len(state.dataset_label_map) if state.dataset_label_map else 3
 
             srv = CentralServer(
                 device=state.device,
@@ -1509,6 +1529,7 @@ async def start_training_background(
                 dp_mode=dp_mode,
                 dp_clipping_bound=dp_clipping_bound,
                 strict_checkpoint=strict_checkpoint,
+                num_classes=active_num_classes,
             )
             state.server = srv
             state.training_history = {
@@ -1544,6 +1565,7 @@ async def start_training_background(
                     dp_mode=dp_mode,
                     strict_checkpoint=strict_checkpoint,
                     secagg_peer=state.get_or_create_consortium_peer(i),
+                    num_classes=active_num_classes,
                 )
                 for i in range(len(dataloaders))
             ]
@@ -1706,6 +1728,7 @@ async def start_flower_training_background(
             actual_peft = None if peft_mode.lower() in ("none", "false", "off") else peft_mode
             state.model_type = model_type
             state.peft_mode = peft_mode
+            active_num_classes = len(state.dataset_label_map) if state.dataset_label_map else 3
 
             srv = CentralServer(
                 device=state.device,
@@ -1723,6 +1746,7 @@ async def start_flower_training_background(
                 dp_mode=dp_mode,
                 dp_clipping_bound=dp_clipping_bound,
                 strict_checkpoint=strict_checkpoint,
+                num_classes=active_num_classes,
             )
             state.server = srv
             state.training_history = {
@@ -1758,6 +1782,7 @@ async def start_flower_training_background(
                     dp_mode=dp_mode,
                     strict_checkpoint=strict_checkpoint,
                     secagg_peer=state.get_or_create_consortium_peer(i),
+                    num_classes=active_num_classes,
                 )
                 for i in range(len(dataloaders))
             ]
