@@ -231,6 +231,20 @@ def get_explanation_text(
         "Benign Dysplastic Nevus": "Benign Displastik Nevüs",
         "Malignant Melanoma": "Malign Melanom",
         "Basal Cell Carcinoma": "Bazal Hücreli Karsinom",
+        "Actinic Keratosis": "Aktinik Keratoz",
+        "Benign Keratosis (Solar Lentigo)": "Benign Keratoz (Solar Lentigo)",
+        "Dermatofibroma": "Dermatofibrom",
+        "Vascular Lesion": "Vasküler Lezyon",
+        "Squamous Cell Carcinoma": "Skuamöz Hücreli Karsinom",
+        "Adipose Tissue": "Yağ Dokusu",
+        "Background": "Arka Plan",
+        "Debris": "Nekrotik Doku / Debris",
+        "Immune Lymphocytes": "İmmün Lenfositler",
+        "Mucus": "Mukus",
+        "Smooth Muscle": "Düz Kas Dokusu",
+        "Normal Colon Mucosa": "Normal Kolon Mukozası",
+        "Cancer-Associated Stroma": "Kanserle İlişkili Stroma",
+        "Colorectal Adenocarcinoma Epithelium": "Kolorektal Adenokarsinom Epiteli",
     }
 
     pred_name = labels.get(predicted_class, "Unknown")

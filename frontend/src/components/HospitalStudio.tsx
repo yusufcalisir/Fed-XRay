@@ -24,33 +24,73 @@ export default function HospitalStudio({ hospitals, onGenerate, isLoading }: Hos
   const [activeTab, setActiveTab] = useState(0);
   const active = hospitals[activeTab];
 
+  const isDermoscopy = Boolean(
+    active && (
+      (active.provenance && (active.provenance.toLowerCase().includes("isic") || active.provenance.toLowerCase().includes("derm"))) ||
+      active.name.toLowerCase().includes("bcn") ||
+      active.name.toLowerCase().includes("skin") ||
+      active.name.toLowerCase().includes("melanoma") ||
+      active.name.toLowerCase().includes("vienna") ||
+      active.name.toLowerCase().includes("queensland") ||
+      active.counts?.nevus !== undefined ||
+      active.counts?.benign_dysplastic_nevus !== undefined
+    )
+  );
+
   const pieData = active
-    ? [
-        {
-          name: t("sec1_normal"),
-          shortName: "Normal",
-          value: active.counts?.normal ?? 0,
-          percentage: Math.round((active.distribution?.[0] ?? 0.33) * 100),
-          color: PIE_COLORS[0],
-          gradient: PIE_BAR_GRADIENTS[0],
-        },
-        {
-          name: t("sec1_pneumonia"),
-          shortName: "Pneumonia",
-          value: active.counts?.pneumonia ?? 0,
-          percentage: Math.round((active.distribution?.[1] ?? 0.33) * 100),
-          color: PIE_COLORS[1],
-          gradient: PIE_BAR_GRADIENTS[1],
-        },
-        {
-          name: t("sec1_covid"),
-          shortName: "COVID-19",
-          value: active.counts?.covid ?? 0,
-          percentage: Math.round((active.distribution?.[2] ?? 0.34) * 100),
-          color: PIE_COLORS[2],
-          gradient: PIE_BAR_GRADIENTS[2],
-        },
-      ]
+    ? isDermoscopy
+      ? [
+          {
+            name: t("isic_class_0") || "Benign Dysplastic Nevus",
+            shortName: "Nevus",
+            value: active.counts?.nevus ?? active.counts?.benign_dysplastic_nevus ?? active.counts?.normal ?? 0,
+            percentage: Math.round((active.distribution?.[0] ?? 0.33) * 100),
+            color: PIE_COLORS[0],
+            gradient: PIE_BAR_GRADIENTS[0],
+          },
+          {
+            name: t("isic_class_1") || "Malignant Melanoma",
+            shortName: "Melanoma",
+            value: active.counts?.melanoma ?? active.counts?.malignant_melanoma ?? active.counts?.pneumonia ?? 0,
+            percentage: Math.round((active.distribution?.[1] ?? 0.33) * 100),
+            color: PIE_COLORS[1],
+            gradient: PIE_BAR_GRADIENTS[1],
+          },
+          {
+            name: t("isic_class_2") || "Basal Cell Carcinoma",
+            shortName: "Carcinoma",
+            value: active.counts?.carcinoma ?? active.counts?.basal_cell_carcinoma ?? active.counts?.covid ?? 0,
+            percentage: Math.round((active.distribution?.[2] ?? 0.34) * 100),
+            color: PIE_COLORS[2],
+            gradient: PIE_BAR_GRADIENTS[2],
+          },
+        ]
+      : [
+          {
+            name: t("sec1_normal"),
+            shortName: "Normal",
+            value: active.counts?.normal ?? 0,
+            percentage: Math.round((active.distribution?.[0] ?? 0.33) * 100),
+            color: PIE_COLORS[0],
+            gradient: PIE_BAR_GRADIENTS[0],
+          },
+          {
+            name: t("sec1_pneumonia"),
+            shortName: "Pneumonia",
+            value: active.counts?.pneumonia ?? 0,
+            percentage: Math.round((active.distribution?.[1] ?? 0.33) * 100),
+            color: PIE_COLORS[1],
+            gradient: PIE_BAR_GRADIENTS[1],
+          },
+          {
+            name: t("sec1_covid"),
+            shortName: "COVID-19",
+            value: active.counts?.covid ?? 0,
+            percentage: Math.round((active.distribution?.[2] ?? 0.34) * 100),
+            color: PIE_COLORS[2],
+            gradient: PIE_BAR_GRADIENTS[2],
+          },
+        ]
     : [];
 
   return (
@@ -107,7 +147,7 @@ export default function HospitalStudio({ hospitals, onGenerate, isLoading }: Hos
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5 sm:gap-2 mb-4 w-full">
               {hospitals.map((h, idx) => (
                 <button
-                  key={h.hospital_id}
+                  key={h.hospital_id ?? `hosp-${idx}`}
                   onClick={() => setActiveTab(idx)}
                   className={`py-2 px-2 rounded-xl text-center font-semibold transition-all truncate text-[11px] sm:text-xs flex items-center justify-center gap-1.5 ${
                     activeTab === idx
@@ -239,7 +279,7 @@ export default function HospitalStudio({ hospitals, onGenerate, isLoading }: Hos
                 <div className="flex items-center justify-between pb-2 border-b border-[var(--border-subtle)]">
                   <div className="flex items-center gap-1.5 text-xs sm:text-sm font-bold text-[var(--text-heading)]">
                     <Eye className="w-3.5 h-3.5 text-accent-500" />
-                    <span>{t("sec1_sample_gallery")}</span>
+                    <span>{isDermoscopy ? (t("sec1_sample_gallery_isic") || "Representative Dermoscopic Scans") : t("sec1_sample_gallery")}</span>
                   </div>
                   <span className="text-[10px] text-[var(--text-muted)] font-mono">9 Local Client Crops</span>
                 </div>

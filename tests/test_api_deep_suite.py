@@ -59,7 +59,7 @@ def test_cohort_generation_all_scenarios(scenario: str):
     for h in data["hospitals"]:
         assert any(center.split()[0] in h["name"] for center in ["BCN-20000", "ViDIR", "Queensland", "Beth", "NCT"])
         assert h["num_samples"] > 0
-        assert len(h["distribution"]) == 3
+        assert len(h["distribution"]) in (3, 8, 9)
         assert sum(h["distribution"]) > 0.99  # Normalizes to 1.0
 
 

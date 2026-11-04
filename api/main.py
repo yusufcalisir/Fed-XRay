@@ -1035,14 +1035,38 @@ async def generate_cohorts(req: CohortGenerateRequest):
         dataloaders_list.append(loader)
 
         labels = np.array([r.label for r in part])
+        total_p = max(1, len(labels))
+        active_label_map = get_dataset_label_map(data_source)
+        is_derm = (
+            "isic" in str(data_source).lower()
+            or "strategy_e" in str(data_source).lower()
+            or "derm" in str(data_source).lower()
+            or "disk_manifest" in str(data_source).lower()
+        )
+
+        counts: Dict[str, int] = {}
+        for c_idx, c_name in active_label_map.items():
+            cnt = int(np.sum(labels == c_idx))
+            key = c_name.lower().replace(" ", "_").replace("-", "_")
+            counts[key] = cnt
 
         c0 = int(np.sum(labels == 0))
         c1 = int(np.sum(labels == 1))
         c2 = int(np.sum(labels == 2))
-        total_p = max(1, len(labels))
 
-        dist = [c0 / total_p, c1 / total_p, c2 / total_p]
-        counts = {"normal": c0, "pneumonia": c1, "covid": c2}
+        if is_derm:
+            counts["nevus"] = c0
+            counts["melanoma"] = c1
+            counts["carcinoma"] = c2
+            counts["normal"] = c0
+            counts["pneumonia"] = c1
+            counts["covid"] = c2
+        else:
+            counts["normal"] = c0
+            counts["pneumonia"] = c1
+            counts["covid"] = c2
+
+        dist = [round(float(np.sum(labels == c)) / total_p, 4) for c in range(max(3, len(active_label_map)))]
 
         # Generate 56x56 normalized preview thumbnails for UI canvas display
         sample_imgs = []
@@ -2016,7 +2040,7 @@ async def perform_diagnosis(req: DiagnoseRequest):
         if state.global_test_set is None:
             raise HTTPException(status_code=409, detail="No held-out test set is loaded and no image was supplied.")
         test_images, test_labels = state.global_test_set
-        if req.class_index is not None and req.class_index in (0, 1, 2):
+        if req.class_index is not None and req.class_index >= 0:
             candidates = torch.nonzero(test_labels == req.class_index).flatten()
             if candidates.numel() == 0:
                 raise HTTPException(
@@ -2047,7 +2071,7 @@ async def perform_diagnosis(req: DiagnoseRequest):
     if modality is None:
         modality = "Dermoscopy" if ("isic" in state.data_source.lower() or "strategy_e" in state.data_source.lower() or "disk_manifest" in state.data_source.lower()) else "Chest X-Ray"
 
-    if req.class_index is not None and req.class_index in (0, 1, 2) and true_class == -1:
+    if req.class_index is not None and req.class_index >= 0 and true_class == -1:
         true_class = req.class_index
 
     state.last_scan = image_np
@@ -2240,7 +2264,7 @@ async def stream_voice_briefing(
 @app.get("/api/cdss/report-pdf")
 async def download_diagnostic_pdf(
     patient_id: str = Query(..., min_length=1),
-    predicted_class: int = Query(..., ge=0, le=2),
+    predicted_class: int = Query(..., ge=0, le=15),
     confidence: float = Query(..., ge=0.0, le=100.0),
     findings: str = Query(...),
     lang: str = Query(default="en"),
@@ -2267,6 +2291,20 @@ async def download_diagnostic_pdf(
         "Benign Dysplastic Nevus": "Benign Displastik Nevüs",
         "Malignant Melanoma": "Malign Melanom",
         "Basal Cell Carcinoma": "Bazal Hücreli Karsinom",
+        "Actinic Keratosis": "Aktinik Keratoz",
+        "Benign Keratosis (Solar Lentigo)": "Benign Keratoz (Solar Lentigo)",
+        "Dermatofibroma": "Dermatofibrom",
+        "Vascular Lesion": "Vasküler Lezyon",
+        "Squamous Cell Carcinoma": "Skuamöz Hücreli Karsinom",
+        "Adipose Tissue": "Yağ Dokusu",
+        "Background": "Arka Plan",
+        "Debris": "Nekrotik Doku / Debris",
+        "Immune Lymphocytes": "İmmün Lenfositler",
+        "Mucus": "Mukus",
+        "Smooth Muscle": "Düz Kas Dokusu",
+        "Normal Colon Mucosa": "Normal Kolon Mukozası",
+        "Cancer-Associated Stroma": "Kanserle İlişkili Stroma",
+        "Colorectal Adenocarcinoma Epithelium": "Kolorektal Adenokarsinom Epiteli",
     }
     is_tr = (lang or "en").lower().startswith("tr")
     diag_display = tr_labels.get(p_name, p_name) if is_tr else p_name

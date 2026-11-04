@@ -133,12 +133,40 @@ def generate_medical_report(
         labels = [str(lbl) for lbl in class_labels]
     elif is_derm:
         labels = (
-            ["Benign Displastik Nevus", "Malign Melanom", "Bazal Hucreli Karsinom"]
+            [
+                "Benign Displastik Nevus",
+                "Malign Melanom",
+                "Bazal Hucreli Karsinom",
+                "Aktinik Keratoz",
+                "Benign Keratoz",
+                "Dermatofibrom",
+                "Vaskuler Lezyon",
+                "Skuamoz Hucreli Karsinom",
+            ]
             if is_tr
-            else ["Benign Dysplastic Nevus", "Malignant Melanoma", "Basal Cell Carcinoma"]
+            else [
+                "Benign Dysplastic Nevus",
+                "Malignant Melanoma",
+                "Basal Cell Carcinoma",
+                "Actinic Keratosis",
+                "Benign Keratosis",
+                "Dermatofibroma",
+                "Vascular Lesion",
+                "Squamous Cell Carcinoma",
+            ]
         )
     elif is_path:
-        labels = ["Stroma", "Tumor", "Complex"]
+        labels = [
+            "Adipose Tissue",
+            "Background",
+            "Debris",
+            "Immune Lymphocytes",
+            "Mucus",
+            "Smooth Muscle",
+            "Normal Colon Mucosa",
+            "Cancer-Associated Stroma",
+            "Colorectal Adenocarcinoma Epithelium",
+        ]
     else:
         labels = ["Normal Parankim", "Pnomoni", "COVID-19"] if is_tr else ["Normal", "Pneumonia", "COVID-19"]
 
@@ -771,9 +799,28 @@ def get_diagnosis_explanation(
             "BENIGN DYSPLASTIC NEVUS": 0,
             "MALIGNANT MELANOMA": 1,
             "BASAL CELL CARCINOMA": 2,
+            "ACTINIC KERATOSIS": 3,
+            "BENIGN KERATOSIS": 4,
+            "DERMATOFIBROMA": 5,
+            "VASCULAR LESION": 6,
+            "SQUAMOUS CELL CARCINOMA": 7,
             "BENIGN DISPLASTIK NEVUS": 0,
             "MALIGN MELANOM": 1,
             "BAZAL HUCRELI KARSINOM": 2,
+            "AKTINIK KERATOZ": 3,
+            "BENIGN KERATOZ": 4,
+            "DERMATOFIBROM": 5,
+            "VASKULER LEZYON": 6,
+            "SKUAMOZ HUCRELI KARSINOM": 7,
+            "ADIPOSE TISSUE": 0,
+            "BACKGROUND": 1,
+            "DEBRIS": 2,
+            "IMMUNE LYMPHOCYTES": 3,
+            "MUCUS": 4,
+            "SMOOTH MUSCLE": 5,
+            "NORMAL COLON MUCOSA": 6,
+            "CANCER-ASSOCIATED STROMA": 7,
+            "COLORECTAL ADENOCARCINOMA EPITHELIUM": 8,
         }
         for k, v in diag_map.items():
             if k in diag_up or diag_up in k:

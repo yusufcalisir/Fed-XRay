@@ -338,6 +338,11 @@ ISIC_LABEL_NAMES = {
     0: "Benign Dysplastic Nevus",
     1: "Malignant Melanoma",
     2: "Basal Cell Carcinoma",
+    3: "Actinic Keratosis",
+    4: "Benign Keratosis (Solar Lentigo)",
+    5: "Dermatofibroma",
+    6: "Vascular Lesion",
+    7: "Squamous Cell Carcinoma",
 }
 
 CHEST_XRAY_LABEL_NAMES = {
@@ -346,9 +351,31 @@ CHEST_XRAY_LABEL_NAMES = {
     2: "COVID-19",
 }
 
+NCT_CRC_HE_LABEL_NAMES = {
+    0: "Adipose Tissue",
+    1: "Background",
+    2: "Debris",
+    3: "Immune Lymphocytes",
+    4: "Mucus",
+    5: "Smooth Muscle",
+    6: "Normal Colon Mucosa",
+    7: "Cancer-Associated Stroma",
+    8: "Colorectal Adenocarcinoma Epithelium",
+}
+
 # Default label map aligned with Strategy E primary benchmark
 LABEL_NAMES = ISIC_LABEL_NAMES
-LABEL_COLORS = {0: "🟢", 1: "🟠", 2: "🔴"}
+LABEL_COLORS = {
+    0: "🟢",
+    1: "🟠",
+    2: "🔴",
+    3: "🟣",
+    4: "🟡",
+    5: "🔵",
+    6: "🟤",
+    7: "⚫",
+    8: "⚪",
+}
 
 
 def get_dataset_label_map(dataset_name: Optional[str] = None) -> Dict[int, str]:
@@ -356,6 +383,8 @@ def get_dataset_label_map(dataset_name: Optional[str] = None) -> Dict[int, str]:
     if dataset_name is None:
         return ISIC_LABEL_NAMES
     d_lower = dataset_name.lower()
-    if "xray" in d_lower or "chest" in d_lower or "mimic" in d_lower or "chexpert" in d_lower:
+    if "crc" in d_lower or "histo" in d_lower or "nct" in d_lower or "pathol" in d_lower:
+        return NCT_CRC_HE_LABEL_NAMES
+    if "xray" in d_lower or "chest" in d_lower or "mimic" in d_lower or "chexpert" in d_lower or "pulmonary" in d_lower:
         return CHEST_XRAY_LABEL_NAMES
     return ISIC_LABEL_NAMES

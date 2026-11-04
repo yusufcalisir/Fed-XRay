@@ -15,7 +15,17 @@ interface DiagnosticStudioProps {
   onScrollToTraining?: () => void;
 }
 
-const CLASS_COLORS_BAR = ["bg-accent-500", "bg-amber-500", "bg-red-500"];
+const CLASS_COLORS_BAR = [
+  "bg-emerald-500",
+  "bg-amber-500",
+  "bg-red-500",
+  "bg-purple-500",
+  "bg-sky-500",
+  "bg-teal-500",
+  "bg-indigo-500",
+  "bg-rose-500",
+  "bg-blue-500",
+];
 
 function formatFindings(text: string | undefined, lang: string): string[] {
   if (!text) return [];
@@ -201,9 +211,31 @@ export default function DiagnosticStudio({
     ? (isTr ? "Histopatoloji Doku Kesiti" : "Histopathology Tissue Patch")
     : t("sec3_dual_pane_orig");
 
-  const isicLabels = [t("isic_class_0") || "Benign Dysplastic Nevus", t("isic_class_1") || "Malignant Melanoma", t("isic_class_2") || "Basal Cell Carcinoma"];
+  const isicLabels = [
+    t("isic_class_0") || "Benign Dysplastic Nevus",
+    t("isic_class_1") || "Malignant Melanoma",
+    t("isic_class_2") || "Basal Cell Carcinoma",
+    t("isic_class_3") || "Actinic Keratosis",
+    t("isic_class_4") || "Benign Keratosis (Solar Lentigo)",
+    t("isic_class_5") || "Dermatofibroma",
+    t("isic_class_6") || "Vascular Lesion",
+    t("isic_class_7") || "Squamous Cell Carcinoma",
+  ];
+  const crcLabels = [
+    isTr ? "Yag Dokusu" : "Adipose Tissue",
+    isTr ? "Arka Plan" : "Background",
+    isTr ? "Debris" : "Debris",
+    isTr ? "Immun Lenfositler" : "Immune Lymphocytes",
+    isTr ? "Mukus" : "Mucus",
+    isTr ? "Duz Kas" : "Smooth Muscle",
+    isTr ? "Normal Kolon" : "Normal Colon Mucosa",
+    isTr ? "Kanser Stromasi" : "Cancer-Associated Stroma",
+    isTr ? "Kolorektal Epitel" : "Colorectal Adenocarcinoma Epithelium",
+  ];
   const xrayLabels = [t("sec1_normal"), t("sec1_pneumonia"), t("sec1_covid")];
-  const classLabels = isIsic ? isicLabels : xrayLabels;
+  const rawClassLabels = isIsic ? isicLabels : (isCrc ? crcLabels : xrayLabels);
+  const activeProbCount = diagnosis?.probabilities?.length || 3;
+  const classLabels = rawClassLabels.slice(0, Math.max(3, activeProbCount));
   const heatAvailable = !!diagnosis && diagnosis.heatmap_available !== false && !!diagnosis.heatmap;
 
   return (
@@ -541,7 +573,7 @@ export default function DiagnosticStudio({
                           <span className="font-mono font-bold text-[var(--text-heading)]">{pct}%</span>
                         </div>
                         <div className="w-full h-2 rounded-full bg-slate-200 dark:bg-navy-800 overflow-hidden">
-                          <div className={`h-full rounded-full ${CLASS_COLORS_BAR[idx]} transition-all duration-500`} style={{ width: `${pct}%` }} />
+                          <div className={`h-full rounded-full ${CLASS_COLORS_BAR[idx % CLASS_COLORS_BAR.length]} transition-all duration-500`} style={{ width: `${pct}%` }} />
                         </div>
                       </div>
                     );

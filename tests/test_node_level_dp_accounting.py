@@ -77,6 +77,7 @@ def test_state_reports_authentic_node_epsilons(monkeypatch):
 
     # 1. Unqueried state: All nodes report 0.0
     monkeypatch.setattr(state, "node_epsilons", {})
+    monkeypatch.setattr(state, "hospital_cohort_info", [])
     monkeypatch.setattr(state, "server", None)
     monkeypatch.setattr(state, "training_history", {})
     monkeypatch.setattr(state.store, "get_training_history", lambda: {})
