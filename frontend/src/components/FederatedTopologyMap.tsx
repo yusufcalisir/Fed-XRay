@@ -102,7 +102,6 @@ export default function FederatedTopologyMap({
   selectedNodeId = "node-1",
   isSimulatingRound = false,
   onSelectNode,
-  onSimulationComplete,
   className = "",
 }: FederatedTopologyMapProps) {
   const { t } = useLanguage();
@@ -116,7 +115,7 @@ export default function FederatedTopologyMap({
     let lastTs = performance.now();
 
     const loop = (ts: number) => {
-      const dt = (ts - lastTs) / 1000;
+      const dt = Math.min((ts - lastTs) / 1000, 0.1);
       lastTs = ts;
       const speed = isSimulatingRound ? 2.5 : 0.6;
       setAnimProgress((prev) => (prev + dt * speed) % 1);
@@ -124,11 +123,7 @@ export default function FederatedTopologyMap({
       if (isSimulatingRound) {
         setShockwave((prev) => {
           const next = prev + dt * 0.9;
-          if (next >= 1) {
-            onSimulationComplete?.();
-            return 0;
-          }
-          return next;
+          return next >= 1 ? 0 : next;
         });
       } else {
         setShockwave(0);
@@ -139,7 +134,7 @@ export default function FederatedTopologyMap({
 
     frameId = requestAnimationFrame(loop);
     return () => cancelAnimationFrame(frameId);
-  }, [isSimulatingRound, onSimulationComplete]);
+  }, [isSimulatingRound]);
 
   const topNodes = [INSTITUTIONS[0], INSTITUTIONS[1]];
   const bottomNodes = [INSTITUTIONS[2], INSTITUTIONS[3]];

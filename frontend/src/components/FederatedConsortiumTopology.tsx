@@ -242,7 +242,6 @@ export default function FederatedConsortiumTopology({
               selectedNodeId={selectedNodeId}
               isSimulatingRound={isSimulatingRound}
               onSelectNode={(id) => setSelectedNodeId(id)}
-              onSimulationComplete={() => setIsSimulatingRound(false)}
             />
           </div>
         )}
