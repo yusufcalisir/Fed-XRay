@@ -15,7 +15,7 @@
 <p align="center">
   <img src="https://img.shields.io/badge/Python-3.10+-blue?logo=python" alt="Python">
   <img src="https://img.shields.io/badge/PyTorch-2.0+-red?logo=pytorch" alt="PyTorch">
-  <img src="https://img.shields.io/badge/Next.js-15.5+-black?logo=next.js" alt="Next.js">
+  <img src="https://img.shields.io/badge/Next.js-14.2+-black?logo=next.js" alt="Next.js">
   <img src="https://img.shields.io/badge/FastAPI-0.110+-teal?logo=fastapi" alt="FastAPI">
   <img src="https://img.shields.io/badge/Privacy-Option_J_(DP_%2B_Threshold_CKKS_%2B_SecAgg%2B)-indigo" alt="Privacy">
   <img src="https://img.shields.io/badge/PEFT-FFA--LoRA_%7C_FedSA--LoRA_%7C_MedSAM_%7C_FedMedCLIP-purple" alt="PEFT">
@@ -63,7 +63,7 @@
   - [8.3 3D Anatomical Workspace and 2D Evidence Panes](#83-3d-anatomical-workspace-and-2d-evidence-panes)
   - [8.4 Cryptographic PDF Reports and Audio Briefings](#84-cryptographic-pdf-reports-and-audio-briefings)
 - [9. Multi-Platform Interfaces and Operations](#9-multi-platform-interfaces-and-operations)
-  - [9.1 Next.js 15 Clinical SaaS Web Application](#91-nextjs-15-clinical-saas-web-application)
+  - [9.1 Next.js 14 Clinical SaaS Web Application](#91-nextjs-14-clinical-saas-web-application)
   - [9.2 Standalone Streamlit Scientific Benchmark UI](#92-standalone-streamlit-scientific-benchmark-ui)
   - [9.3 Flower Framework Federation Bridge](#93-flower-framework-federation-bridge)
   - [9.4 ACID Persistent State Storage (SQLite WAL)](#94-acid-persistent-state-storage-sqlite-wal)
@@ -519,9 +519,9 @@ The Next.js Diagnostic Studio combines 3D anatomical visualization with aligned 
 
 ## 9. Multi-Platform Interfaces and Operations
 
-### 9.1 Next.js 15 Clinical SaaS Web Application
+### 9.1 Next.js 14 Clinical SaaS Web Application
 
-Located in `frontend/`, built with Next.js 15 App Router, React 18, TypeScript, and Tailwind CSS:
+Located in `frontend/`, built with Next.js 14 App Router, React 18, TypeScript, and Tailwind CSS:
 
 - **Consortium Landing View:** Displays network topology, security protocols, verifiable KPI indicators, and active consortium core connectivity.
 - **Telemetry Cockpit (`/dashboard`):** Real-time Server-Sent Events (SSE) streaming displaying convergence loss, hold-out validation accuracy, client drift, and Byzantine detection alerts.
@@ -638,7 +638,7 @@ Fed-XRay/
 |-- api/                               # FastAPI Asynchronous Backend
 |   |-- main.py                        # REST, SSE Streaming, Enclave, and CDSS Routes
 |   `-- schemas.py                     # Strict Pydantic v2 Data Contracts
-|-- frontend/                          # Next.js 15 Clinical SaaS Web Application
+|-- frontend/                          # Next.js 14 Clinical SaaS Web Application
 |   |-- src/
 |   |   |-- app/                       # App Router Pages and Error Boundaries (error.tsx, global-error.tsx)
 |   |   |-- components/                # DiagnosticStudio, LungViewer3D, TelemetryCockpit, HUD
@@ -742,7 +742,7 @@ cd ..
 
 ### 13.3 Launching the Application Services
 
-**Option A: Next.js 15 Clinical SaaS Web App (Recommended)**
+**Option A: Next.js 14 Clinical SaaS Web App (Recommended)**
 
 ```bash
 # Terminal 1: Launch FastAPI Backend
