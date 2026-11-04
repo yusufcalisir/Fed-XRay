@@ -70,3 +70,23 @@ def test_pdf_report_endpoint(diagnosed_api):
     assert res.status_code == 200
     assert res.headers["content-type"] == "application/pdf"
     assert len(res.content) > 1000
+
+
+def test_uninitialized_topology_standby_scans():
+    """Verify default strategy E hospital topology reports 0 scans and standby status when uninitialized."""
+    from api.main import get_default_strategy_e_hospitals
+
+    nodes = get_default_strategy_e_hospitals()
+    assert len(nodes) == 4
+    for node in nodes:
+        assert node["scans"] == 0
+        assert node["status"] == "standby"
+        assert "name" in node
+        assert "location" in node
+        assert "scanner" in node
+
+    custom_nodes = get_default_strategy_e_hospitals(status="online", scans=25)
+    for node in custom_nodes:
+        assert node["scans"] == 25
+        assert node["status"] == "online"
+

@@ -703,6 +703,8 @@ async def health_check():
 def get_default_strategy_e_hospitals(
     active_epsilon: float = 0.0,
     node_epsilons: Optional[Dict[str, float]] = None,
+    status: str = "standby",
+    scans: int = 0,
 ) -> List[Dict[str, Any]]:
     """Return Strategy E consortium hospital topology nodes grounded in real manifest sites."""
     def resolve_node_epsilon(node_id: str) -> float:
@@ -716,48 +718,48 @@ def get_default_strategy_e_hospitals(
             "name": "BCN-20000 Skin Cancer Hub",
             "location": "Barcelona, ES",
             "scanner": "Siemens Sensation Optical Dermatoscope",
-            "scans": 40,
+            "scans": scans,
             "modalityKey": "topo_mod_dermo",
             "skewKey": "topo_skew_melanoma",
             "adapter": "FFA-LoRA (r=8, alpha=16)",
             "dpEpsilon": resolve_node_epsilon("node-1"),
-            "status": "online",
+            "status": status,
         },
         {
             "id": "node-2",
             "name": "Beth Israel Deaconess Medical Center",
             "location": "Boston, USA",
             "scanner": "GE Revolution Digital Radiography (MIMIC-CXR)",
-            "scans": 40,
+            "scans": scans,
             "modalityKey": "topo_mod_xray",
             "skewKey": "topo_skew_pneumonia",
             "adapter": "FFA-LoRA (r=8, alpha=16)",
             "dpEpsilon": resolve_node_epsilon("node-2"),
-            "status": "online",
+            "status": status,
         },
         {
             "id": "node-3",
             "name": "ViDIR Dermatopathology Institute",
             "location": "Vienna, AT",
             "scanner": "Canon PRISM High-Throughput Digital Pathology",
-            "scans": 40,
+            "scans": scans,
             "modalityKey": "topo_mod_histo",
             "skewKey": "topo_skew_carcinoma",
             "adapter": "FFA-LoRA (r=8, alpha=16)",
             "dpEpsilon": resolve_node_epsilon("node-3"),
-            "status": "online",
+            "status": status,
         },
         {
             "id": "node-4",
             "name": "Queensland Oncology Screening Center",
             "location": "Brisbane, AU",
             "scanner": "Philips Digital Dermatoscope Core",
-            "scans": 40,
+            "scans": scans,
             "modalityKey": "topo_mod_dermo",
             "skewKey": "topo_skew_nevi",
             "adapter": "FFA-LoRA (r=8, alpha=16)",
             "dpEpsilon": resolve_node_epsilon("node-4"),
-            "status": "online",
+            "status": status,
         },
     ]
 
@@ -922,12 +924,14 @@ async def get_state():
                 "skewKey": skew_key,
                 "adapter": f"{state.peft_mode.upper() if state.peft_mode else 'Full'}",
                 "dpEpsilon": node_epsilon,
-                "status": "online",
+                "status": "online" if h.num_samples > 0 else "standby",
             })
     else:
         hospitals_list = get_default_strategy_e_hospitals(
             active_epsilon=active_epsilon,
             node_epsilons=state.node_epsilons,
+            status="standby",
+            scans=0,
         )
 
     rounds_list: List[Dict[str, Any]] = []
@@ -2263,11 +2267,11 @@ async def perform_enclave_handshake():
         pk_fingerprint = f"ecdh:x25519:{hashlib.sha256(peer.public_key_bytes).hexdigest()[:16]}"
         if isinstance(h, dict):
             h_name = h.get("name", f"Hospital {idx + 1}")
-            sample_cnt = h.get("scans", h.get("num_samples", 40))
+            sample_cnt = h.get("scans", h.get("num_samples", 0))
             h_loc = h.get("location", location_map.get(idx, "Global Oncology Consortium Node"))
         else:
             h_name = getattr(h, "name", f"Hospital {idx + 1}")
-            sample_cnt = getattr(h, "num_samples", getattr(h, "sample_count", 40))
+            sample_cnt = getattr(h, "num_samples", getattr(h, "sample_count", 0))
             h_loc = location_map.get(idx, "Global Oncology Consortium Node")
 
         nodes_list.append(

@@ -23,7 +23,7 @@ export interface HospitalNode {
   skewKey: string;
   adapter: string;
   dpEpsilon: number;
-  status: "online" | "syncing";
+  status: "online" | "syncing" | "standby";
 }
 
 const getLocalizedNodeName = (node: HospitalNode, t: (k: string) => string) => {
@@ -50,48 +50,48 @@ const HOSPITAL_NODES: HospitalNode[] = [
     name: "BCN-20000 Skin Cancer Hub",
     location: "Barcelona, ES",
     scanner: "Siemens Sensation Optical Dermatoscope",
-    scans: 40,
+    scans: 0,
     modalityKey: "topo_mod_dermo",
     skewKey: "topo_skew_melanoma",
     adapter: "FFA-LoRA (r=8, alpha=16)",
     dpEpsilon: 0.0,
-    status: "online",
+    status: "standby",
   },
   {
     id: "node-3",
     name: "ViDIR Dermatopathology Institute",
     location: "Vienna, AT",
     scanner: "Canon PRISM High-Throughput Digital Pathology",
-    scans: 40,
+    scans: 0,
     modalityKey: "topo_mod_histo",
     skewKey: "topo_skew_carcinoma",
     adapter: "FFA-LoRA (r=8, alpha=16)",
     dpEpsilon: 0.0,
-    status: "online",
+    status: "standby",
   },
   {
     id: "node-4",
     name: "Queensland Oncology Screening Center",
     location: "Brisbane, AU",
     scanner: "Philips Digital Dermatoscope Core",
-    scans: 40,
+    scans: 0,
     modalityKey: "topo_mod_dermo",
     skewKey: "topo_skew_nevi",
     adapter: "FFA-LoRA (r=8, alpha=16)",
     dpEpsilon: 0.0,
-    status: "online",
+    status: "standby",
   },
   {
     id: "node-2",
     name: "Beth Israel Deaconess Medical Center",
     location: "Boston, USA",
     scanner: "GE Revolution Digital Radiography (MIMIC-CXR)",
-    scans: 40,
+    scans: 0,
     modalityKey: "topo_mod_xray",
     skewKey: "topo_skew_pneumonia",
     adapter: "FFA-LoRA (r=8, alpha=16)",
     dpEpsilon: 0.0,
-    status: "online",
+    status: "standby",
   },
 ];
 

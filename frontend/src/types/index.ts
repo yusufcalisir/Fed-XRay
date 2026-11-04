@@ -110,7 +110,7 @@ export interface HospitalNodeTelemetry {
   skewKey: string;
   adapter: string;
   dpEpsilon: number;
-  status: "online" | "syncing";
+  status: "online" | "syncing" | "standby";
 }
 
 export interface BackendSystemState {
