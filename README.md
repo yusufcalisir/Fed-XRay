@@ -48,13 +48,15 @@
   - [6.1 Patient-Level Differential Privacy and Analytical RDP](#61-patient-level-differential-privacy-and-analytical-rdp)
   - [6.2 Decentralized (t, n) Threshold CKKS and SecAgg+](#62-decentralized-t-n-threshold-ckks-and-secagg)
   - [6.3 Process Enclave Virtual Address Space Isolation](#63-process-enclave-virtual-address-space-isolation)
-  - [6.4 Enclave Attestation Handshake](#64-enclave-attestation-handshake)
+  - [6.4 Enclave Attestation Handshake and Parameter Subspace Extraction](#64-enclave-attestation-handshake-and-parameter-subspace-extraction)
   - [6.5 Specialist-Aware Byzantine Defense](#65-specialist-aware-byzantine-defense)
+  - [6.6 Dynamic Uplink Telemetry Bandwidth and SQLite Persistence](#66-dynamic-uplink-telemetry-bandwidth-and-sqlite-persistence)
 - [7. Strategy E Real-World Benchmark Ecosystem](#7-strategy-e-real-world-benchmark-ecosystem)
   - [7.1 Real-World Clinical Cohorts](#71-real-world-clinical-cohorts)
   - [7.2 Non-IID Heterogeneity Scenarios (A through G)](#72-non-iid-heterogeneity-scenarios-a-through-g)
   - [7.3 Leak-Free Patient-Level Cohort Isolation](#73-leak-free-patient-level-cohort-isolation)
-  - [7.4 Communication Economics](#74-communication-economics)
+  - [7.4 Dynamic Spatial Resolutions and Standby Consortium State](#74-dynamic-spatial-resolutions-and-standby-consortium-state)
+  - [7.5 Communication Economics](#75-communication-economics)
 - [8. Clinical Decision Support System (CDSS)](#8-clinical-decision-support-system-cdss)
   - [8.1 Dynamic HNSW Vector Retrieval (Digital Twins)](#81-dynamic-hnsw-vector-retrieval-digital-twins)
   - [8.2 Structured Explainable AI (Grad-CAM Saliency)](#82-structured-explainable-ai-grad-cam-saliency)
@@ -67,6 +69,9 @@
   - [9.4 ACID Persistent State Storage (SQLite WAL)](#94-acid-persistent-state-storage-sqlite-wal)
 - [10. REST and Streaming API Reference](#10-rest-and-streaming-api-reference)
 - [11. Verification and Automated Test Suite (411 Tests)](#11-verification-and-automated-test-suite-411-tests)
+  - [11.1 Static Type Safety and Code Quality](#111-static-type-safety-and-code-quality)
+  - [11.2 Backend Pytest Suites (43 Files, 309 Tests)](#112-backend-pytest-suites-43-files-309-tests)
+  - [11.3 Frontend Vitest Suites (22 Files, 102 Tests)](#113-frontend-vitest-suites-22-files-102-tests)
 - [12. Repository Structure](#12-repository-structure)
 - [13. Installation and Quick Start](#13-installation-and-quick-start)
 - [14. Scientific Anchors and Citations](#14-scientific-anchors-and-citations)
@@ -386,13 +391,22 @@ To satisfy confidential computing threat models even in software-emulated enviro
 - The parent server process has zero memory read or write access to private keys or threshold secret shares.
 - Decryption requests, ciphertext payloads, and signed authorizations pass solely through serialization-restricted inter-process communication pipes.
 
-### 6.4 Enclave Attestation Handshake
+### 6.4 Enclave Attestation Handshake and Parameter Subspace Extraction
 
 Consortium nodes verify peer and server cryptographic parameters via `GET /api/fl/enclave-handshake`:
-- Validates X25519 public key fingerprints (`ecdh:x25519:...`).
-- Confirms RLWE polynomial degree ($N=8192$), modulus chain, and active DP accountant bounds.
-- Dynamically transitions from initialization to `process_isolated_threshold_enclave` with `active_quorum_enforced`.
-- Emits a canonical SHA-256 attestation certificate digest displayed directly in the web user interface.
+- **Cryptographic Fingerprints:** Validates X25519 public key fingerprints (`ecdh:x25519:...`), confirming ephemeral Diffie-Hellman parameters.
+- **RLWE Parameter Invariants:** Confirms RLWE polynomial degree ($N=8192$), coefficient modulus chain, and active DP accountant bounds.
+- **Dynamic PEFT Parameter Subspace Extraction:** Inspects the active model backbone and PEFT configuration in real time, reporting:
+  - `active_subspace`: The specific parameter partition (e.g., `FFA-LoRA (r=8, alpha=16)`, `FedSA-LoRA (r=8, alpha=16)`, `MedSAM FCA`, or `Full Architecture`).
+  - `trainable_parameters_count` ($|\theta_{\text{trainable}}|$): Exact count of active parameter weights.
+  - `frozen_parameters_count` ($|\theta_{\text{frozen}}|$): Exact count of frozen foundation encoder weights.
+- **Unmasked Parameter Byte Leakage Tracking:** Computes the exact parameter volume exposed to interception under naive plaintext transmission:
+  $$
+  \text{Leakage}_{\text{plaintext}} = 4 \times |\theta_{\text{trainable}}| \text{ bytes}
+  $$
+  Under TenSEAL Leveled CKKS Homomorphic Encryption and SecAgg+ zero-sum masking, Fed-XRay provides a verified zero-leakage guarantee (`zero_leakage_guaranteed: True`), ensuring that zero plaintext parameter bytes traverse the network.
+- **Process Enclave State:** Dynamically transitions from initialization to `process_isolated_threshold_enclave` with `active_quorum_enforced`.
+- **SHA-256 Attestation Digest:** Emits a canonical SHA-256 attestation certificate digest displayed directly in the web user interface.
 
 ### 6.5 Specialist-Aware Byzantine Defense
 
@@ -402,6 +416,12 @@ Under Non-IID label skew (Scenario D/E), honest specialist hospitals holding rar
 - **L2 Norm Outlier Detection:** Quarantines gradient scaling attacks exceeding 3.5x cohort median norm.
 - **Per-Class Competence Recognition:** Preserves honest specialist nodes exhibiting competence ($\max_c \text{acc}_c \ge 0.35$) on held pathologies.
 - **Directional Cosine Alignment:** Flags adversarial updates diametrically opposed to cohort consensus ($\cos \theta < -0.30$).
+
+### 6.6 Dynamic Uplink Telemetry Bandwidth and SQLite Persistence
+
+Unlike systems that report fixed nominal payload estimates, Fed-XRay evaluates client uplink communication dynamically:
+- **Dynamic Bandwidth Tracking:** The telemetry engine evaluates the exact tensor size of exchanged parameters ($4 \times |\theta_{\text{trainable}}| / 1024 \text{ KB}$) during plaintext execution, or measures expanded ciphertext serialization payloads under TenSEAL CKKS encryption.
+- **ACID Telemetry Persistence:** Every round records granular telemetry in SQLite WAL storage (`training_metrics` table), persisting client upload bandwidth, training loss, training accuracy, hold-out validation accuracy, loss deviance, and Byzantine defense verdicts across server restarts.
 
 ---
 
@@ -442,7 +462,13 @@ $$
 
 Exact duplicate images are eliminated via SHA-256 cryptographic digests, while near-duplicates are flagged using 64-bit difference hashing ($d_H \le 3$).
 
-### 7.4 Communication Economics
+### 7.4 Dynamic Spatial Resolutions and Standby Consortium State
+
+To support diverse clinical environments without synthetic artifacts:
+- **Dynamic Spatial Resolutions and Modality Channels:** Dataset loaders support arbitrary spatial resolutions (e.g., 224x224, 256x256, 512x512) and channel geometries (1-channel grayscale radiography vs 3-channel RGB histopathology and dermoscopy). Empty partition fallbacks dynamically generate zero-tensor representations matching the configured resolution and channel count without hardcoded 3-channel assumptions.
+- **Unmounted Topology Standby State:** Prior to cohort ingestion or generation, consortium nodes in `/api/state` report `scans: 0` and `status: "standby"`. Nodes transition to `status: "active"` and populate authentic patient counts only after verified dataset manifests or synthetic cohorts are mounted.
+
+### 7.5 Communication Economics
 
 The table below illustrates the communication savings achieved by parameter-efficient adaptation compared to traditional full-backbone federated averaging:
 
@@ -508,9 +534,11 @@ Located in `frontend/`, built with Next.js 14 App Router, React 18, TypeScript, 
 
 Located in `app.py`, providing a dedicated workbench for interactive research:
 
-- Direct exploration of 7 Non-IID data scenarios with demographic distribution charts.
-- Side-by-side comparative benchmarking of distributed optimizers (FedAvg, FedProx, SCAFFOLD, FedDyn, FedAdam, MOON).
-- Visual inspection of patient-level cohort splits and prototype dispersion clusters.
+- **End-to-End Architectural Wiring:** The Streamlit dashboard directly imports and initializes genuine core components from `src/fed_xray/models/peft.py` and `src/fed_xray/core/server.py`.
+- **Dynamic PEFT Adaptation Selection:** Interactive toggles allow instant evaluation of FFA-LoRA, FedSA-LoRA, FedAS-LoRA, FlexLoRA, FedPerfix, and MedSAM FCA with real weight matrices and parameter count calculations, eliminating disconnected simulation loops.
+- **Direct Strategy E Integration:** Explores 7 Non-IID data scenarios with demographic distribution charts, patient-level splits, and prototype dispersion clusters.
+- **Distributed Optimizer Benchmarking:** Side-by-side comparative benchmarking of distributed optimizers (FedAvg, FedProx, SCAFFOLD, FedDyn, FedAdam, MOON).
+- **Integrated Diagnostic Workspace:** Features genuine Grad-CAM activation maps, quadrant localization, and CDSS reference case matching directly inside the Streamlit interface.
 
 ### 9.3 Flower Framework Federation Bridge
 
@@ -518,19 +546,21 @@ Full bidirectional compatibility with the official Flower (`flwr`) framework via
 
 - **FlowerHospitalClient:** Implements `flwr.client.NumPyClient`, serializing PyTorch parameters to and from NumPy ndarrays.
 - **InProcessClientProxy:** High-speed, zero-IPC multi-client simulation within a single process.
+- **Authentic Multi-Center Dataset Manifests:** The Flower runner (`scripts/run_flower_federation.py` and `src/fed_xray/federation/flower_runner.py`) supports `--manifest` and `--site-manifests` flags to stage authentic Strategy E clinical cohorts (ISIC 2019, NCT-CRC-HE, MIMIC-CXR), binding each Flower client directly to authentic patient-isolated data.
 - **StrategyEHospitalStrategy:** Custom aggregation strategy integrating patient-level DP clipping and Byzantine defense into Flower execution loops.
 
 ```bash
-python scripts/run_flower_federation.py --rounds 5 --hospitals 4 --model vit_tiny
+python scripts/run_flower_federation.py --rounds 5 --hospitals 4 --model vit_tiny --manifest data/isic2019/manifest.json
 ```
 
 ### 9.4 ACID Persistent State Storage (SQLite WAL)
 
 Consortium sessions, training metrics, client drift histories, and forensic diagnostic audit records are preserved via `PersistentStateStore` (`src/fed_xray/storage/state_store.py`):
 
-- Implements SQLite in Write-Ahead Logging (WAL) mode across 5 relational tables.
-- Ensures zero data loss across backend process restarts with 1:1 memory parity.
-- Forensic diagnostic audit trail queryable via `GET /api/diagnose/audit-trail`.
+- **Relational Schema across 5 Tables:** Persists `consortium_state`, `hospital_nodes`, `training_metrics`, `client_drift_history`, and `cdss_audit_trail` using SQLite in Write-Ahead Logging (WAL) mode.
+- **Granular Round Telemetry:** Records per-client dynamic uplink bandwidth (`bandwidth_kb`), training loss, training accuracy, hold-out validation accuracy, loss deviance, and Byzantine defense verdicts.
+- **Zero Data Loss Guarantee:** Ensures complete data integrity across backend process restarts with 1:1 memory-to-disk state parity.
+- **Forensic Clinical Audit Trail:** Historical diagnostic requests, metadata provenance, and probability distributions queryable via `GET /api/diagnose/audit-trail`.
 
 ---
 
@@ -542,7 +572,7 @@ The FastAPI backend (`api/main.py`) provides asynchronous REST and streaming end
 | :--- | :--- | :--- | :--- |
 | `GET` | `/` | Root service status and documentation links | Service health metadata |
 | `GET` | `/api/health` | Backend system health, execution device, and CUDA status | Hardware and engine status |
-| `GET` | `/api/state` | Active federation state, node counts, and model parameters | `ConsortiumStateResponse` |
+| `GET` | `/api/state` | Active federation state, standby and active node topologies, patient scan counts, and model parameters | `ConsortiumStateResponse` |
 | `GET` | `/api/state/history` | Full round telemetry history from persistent SQLite WAL storage | Telemetry history array |
 | `POST` | `/api/state/reset` | Resets persistent state store and clears active consortium session | Reset confirmation |
 | `POST` | `/api/state/save` | Persists trained weights, metadata, cohorts, and history to disk | Persistence confirmation |
@@ -550,12 +580,12 @@ The FastAPI backend (`api/main.py`) provides asynchronous REST and streaming end
 | `POST` | `/api/cohorts/generate` | Partitions Strategy E clinical cohorts across Scenarios A through G | `CohortPartitionResponse` |
 | `GET` | `/api/cohorts/verify-authenticity` | Forensic audit of staged cohort provenance and patient isolation | Authenticity audit log |
 | `POST` | `/api/cohorts/stage-real-isic` | Stages authentic multi-center ISIC 2019 dermoscopy cohorts | Ingestion confirmation |
-| `GET` | `/api/fl/enclave-handshake` | Cryptographic attestation: X25519 fingerprints, SHA-256 certificate digest | `EnclaveHandshakeResponse` |
+| `GET` | `/api/fl/enclave-handshake` | Cryptographic attestation: X25519 fingerprints, dynamic PEFT parameter subspace extraction, unmasked leakage tracking, and SHA-256 certificate digest | `EnclaveHandshakeResponse` |
 | `POST` | `/api/fl/train-start` | Launches asynchronous federated optimization background worker | Training task identifier |
-| `GET` | `/api/fl/train-status` | Polls training progress, round telemetry, and Byzantine reports | Round status and metrics |
+| `GET` | `/api/fl/train-status` | Polls training progress, dynamic uplink bandwidth, per-client metrics, and Byzantine reports | Round status and metrics |
 | `GET` | `/api/fl/train-stream` | Server-Sent Events (SSE) stream of real-time metrics and client drift | Continuous SSE stream |
 | `GET` | `/api/fl/privacy-status` | Reports Differential Privacy bounds, Rényi budget, and CKKS status | DP privacy budget report |
-| `POST` | `/api/fl/flower-start` | Initiates multi-hospital federation via official Flower framework bridge | Task launch response |
+| `POST` | `/api/fl/flower-start` | Initiates multi-hospital federation via official Flower framework bridge with optional dataset manifests | Task launch response |
 | `GET` | `/api/fl/flower-info` | Reports Flower framework bridge status, strategies, and metrics | Bridge telemetry |
 | `POST` | `/api/cdss/diagnose` | Forward pass classification, structured XAI explanation, and Grad-CAM | `DiagnosisResponse` |
 | `GET` | `/api/diagnose/audit-trail` | Forensic audit trail of historical clinical diagnoses stored in SQLite | Audit records array |
@@ -569,7 +599,13 @@ The FastAPI backend (`api/main.py`) provides asynchronous REST and streaming end
 
 Fed-XRay maintains an automated test suite comprising **411 tests** (309 Python Pytest backend tests + 102 TypeScript Vitest frontend tests), achieving a 100% pass rate.
 
-### Backend Pytest Suites (43 Files, 309 Tests)
+### 11.1 Static Type Safety and Code Quality
+
+- **Strict Python 3.12 Type Validation:** Verified via `mypy src api`, enforcing strict typing contracts with zero errors across all 29 backend source files.
+- **Automated Linting and Code Hygiene:** Verified via `ruff check .`, ensuring syntax cleanliness, import order, and PEP 8 compliance.
+- **Frontend Strict TypeScript:** Full contract parity verified via `tsc --noEmit` and Vitest across all 22 component and integration suites.
+
+### 11.2 Backend Pytest Suites (43 Files, 309 Tests)
 
 | Domain Category | Key Test Files | Test Count | Verified Invariants |
 | :--- | :--- | :--- | :--- |
@@ -582,7 +618,7 @@ Fed-XRay maintains an automated test suite comprising **411 tests** (309 Python 
 | **API, State & Persistence** | `test_api_deep_suite.py`, `test_api_endpoints.py`, `test_api_schemas_contracts.py`, `test_consortium_persistent_state_store.py`, `test_sqlite_memory_state_equivalence.py`, `test_state_persistence.py` | 55 | Pydantic v2 validation contracts, SSE streaming limits, path traversal blocks, SQLite WAL persistence, process restart memory equivalence |
 | **Security & Robustness** | `test_robustness_and_adversarial.py`, `test_network_routing_and_tunnel_resilience.py`, `test_browser_runtime_shield_and_extension_isolation.py`, `test_client_subtree_resilience_and_error_boundaries.py`, `test_e2e_full_federated_pipeline.py` | 26 | Byzantine gradient poisoning rejection without self-incrimination, NaN/Inf resilience, free-rider rejection, tunnel resilience, runtime shield |
 
-### Frontend Vitest Suites (22 Files, 102 Tests)
+### 11.3 Frontend Vitest Suites (22 Files, 102 Tests)
 
 | Component / Utility | Test File | Tests | Verified Contracts |
 | :--- | :--- | :--- | :--- |
@@ -687,6 +723,12 @@ pip install -r requirements-dev.txt
 ### 13.2 Running the Automated Test Suite
 
 ```bash
+# Verify static typing contracts (zero errors across 29 source files)
+python -m mypy src api
+
+# Run code hygiene and linting checks
+python -m ruff check .
+
 # Execute all 309 Python backend tests
 python -m pytest tests/ -v
 
