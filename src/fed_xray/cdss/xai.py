@@ -298,7 +298,7 @@ def get_explanation_text(
                 f"{active_pct:.1f}% of pixels exceed 0.5 normalized relevance."
             )
 
-    is_derm_case = any("melanom" in str(v).lower() or "carcinoma" in str(v).lower() or "nevus" in str(v).lower() for v in labels.values())
+    is_derm_case = any("melanom" in v.lower() or "carcinoma" in v.lower() or "nevus" in v.lower() for v in labels.values())
     if is_tr:
         specialist_tr = "uzman hekim veya patoloji incelemesi" if is_derm_case else "uzman hekim veya radyolog incelemesi"
         lines.append(

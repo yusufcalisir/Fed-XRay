@@ -136,11 +136,11 @@ class CentralServer:
 
     def record_client_epsilon(self, client_id: str, epsilon: float) -> None:
         """Record the authentic mathematically composed DP epsilon for a consortium client."""
-        self.client_epsilons[str(client_id)] = float(epsilon)
+        self.client_epsilons[client_id] = float(epsilon)
 
     def get_client_epsilon(self, client_id: str) -> float:
         """Retrieve the spent differential privacy epsilon for a specific client node."""
-        return self.client_epsilons.get(str(client_id), 0.0)
+        return self.client_epsilons.get(client_id, 0.0)
 
     def get_all_client_epsilons(self) -> Dict[str, float]:
         """Return a dictionary mapping client identifiers to their spent DP epsilons."""
