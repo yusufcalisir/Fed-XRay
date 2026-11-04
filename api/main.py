@@ -760,15 +760,21 @@ async def get_state():
     round_nums = state.training_history.get("round", [])
     losses = state.training_history.get("loss", [])
     accs = state.training_history.get("accuracy", [])
+    test_losses = state.training_history.get("test_loss", [])
+    test_accs = state.training_history.get("test_accuracy", [])
     f1s = state.training_history.get("f1_score", [])
     for idx, r in enumerate(round_nums):
-        loss_val = losses[idx] if idx < len(losses) else 0.0
-        acc_val = accs[idx] if idx < len(accs) else 0.0
+        train_loss_val = losses[idx] if idx < len(losses) else 0.0
+        train_acc_val = accs[idx] if idx < len(accs) else 0.0
+        test_loss_val = test_losses[idx] if idx < len(test_losses) else train_loss_val
+        test_acc_val = test_accs[idx] if idx < len(test_accs) else train_acc_val
         f1_val = f1s[idx] if idx < len(f1s) else 0.0
         rounds_list.append({
             "round_num": r,
-            "train_loss": round(float(loss_val), 4),
-            "train_accuracy": round(float(acc_val), 2),
+            "train_loss": round(float(train_loss_val), 4),
+            "train_accuracy": round(float(train_acc_val), 2),
+            "test_loss": round(float(test_loss_val), 4),
+            "test_accuracy": round(float(test_acc_val), 2),
             "f1_score": round(float(f1_val), 4) if f1_val <= 1.0 else round(float(f1_val) / 100.0, 4),
             "bandwidth": "67.1 KB" if state.peft_mode in ("ffa_lora", "lora", "fedsa_lora") else "4.2 MB",
             "threat_detected": False,
@@ -1265,10 +1271,12 @@ async def stream_federated_training(
                 threat_detected = len(blocked_nodes) > 0
 
                 state.training_history["round"].append(round_num)
-                state.training_history["loss"].append(val_loss)
-                state.training_history["accuracy"].append(val_acc)
+                state.training_history["loss"].append(t_loss)
+                state.training_history["accuracy"].append(t_acc)
                 state.training_history["test_accuracy"].append(val_acc)
                 state.training_history["test_loss"].append(val_loss)
+                state.training_history["precision"].append(prec)
+                state.training_history["recall"].append(rec)
                 state.training_history["f1_score"].append(f1)
                 if blocked_nodes:
                     state.training_history["blocked_count"] += len(blocked_nodes)
@@ -1401,6 +1409,17 @@ async def start_training_background(
                 strict_checkpoint=strict_checkpoint,
             )
             state.server = srv
+            state.training_history = {
+                "loss": [],
+                "accuracy": [],
+                "round": [],
+                "precision": [],
+                "recall": [],
+                "f1_score": [],
+                "test_accuracy": [],
+                "test_loss": [],
+                "blocked_count": 0,
+            }
 
             clients = [
                 HospitalClient(
@@ -1478,6 +1497,17 @@ async def start_training_background(
                 }
                 state.task_rounds.append(round_data)
                 state.task_current_round = round_num
+
+                state.training_history["round"].append(round_num)
+                state.training_history["loss"].append(t_loss)
+                state.training_history["accuracy"].append(t_acc)
+                state.training_history["test_accuracy"].append(val_acc)
+                state.training_history["test_loss"].append(val_loss)
+                state.training_history["precision"].append(prec)
+                state.training_history["recall"].append(rec)
+                state.training_history["f1_score"].append(f1)
+                if blocked_nodes:
+                    state.training_history["blocked_count"] += len(blocked_nodes)
 
                 try:
                     state.store.record_training_round({
@@ -1582,6 +1612,17 @@ async def start_flower_training_background(
                 strict_checkpoint=strict_checkpoint,
             )
             state.server = srv
+            state.training_history = {
+                "loss": [],
+                "accuracy": [],
+                "round": [],
+                "precision": [],
+                "recall": [],
+                "f1_score": [],
+                "test_accuracy": [],
+                "test_loss": [],
+                "blocked_count": 0,
+            }
 
             clients = [
                 HospitalClient(
@@ -1618,11 +1659,14 @@ async def start_flower_training_background(
                 f1 = float(eval_metrics.get("f1_score", 0.0) * 100.0)
                 blocked_count = int(agg_metrics.get("blocked_clients_count", 0))
 
+                t_loss = float(agg_metrics.get("train_loss", val_loss))
+                t_acc = float(agg_metrics.get("train_accuracy", val_acc * 0.01)) * 100.0
+
                 round_data = {
                     "round_num": round_num,
                     "total_rounds": num_rounds,
-                    "train_loss": round(val_loss, 4),
-                    "train_accuracy": round(val_acc, 2),
+                    "train_loss": round(t_loss, 4),
+                    "train_accuracy": round(t_acc, 2),
                     "test_loss": round(val_loss, 4),
                     "test_accuracy": round(val_acc, 2),
                     "precision": round(prec, 2),
@@ -1642,11 +1686,22 @@ async def start_flower_training_background(
                 state.task_rounds.append(round_data)
                 state.task_current_round = round_num
 
+                state.training_history["round"].append(round_num)
+                state.training_history["loss"].append(t_loss)
+                state.training_history["accuracy"].append(t_acc)
+                state.training_history["test_accuracy"].append(val_acc)
+                state.training_history["test_loss"].append(val_loss)
+                state.training_history["precision"].append(prec)
+                state.training_history["recall"].append(rec)
+                state.training_history["f1_score"].append(f1)
+                if blocked_count > 0:
+                    state.training_history["blocked_count"] += blocked_count
+
                 try:
                     state.store.record_training_round({
                         "round_num": round_num,
-                        "train_loss": val_loss,
-                        "train_accuracy": val_acc,
+                        "train_loss": t_loss,
+                        "train_accuracy": t_acc,
                         "test_loss": val_loss,
                         "test_accuracy": val_acc,
                         "precision": prec,

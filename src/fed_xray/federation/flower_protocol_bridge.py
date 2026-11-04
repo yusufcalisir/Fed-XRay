@@ -321,9 +321,27 @@ class FlowerFedXRayStrategy(Strategy):
             blocked_nodes = []
 
         self.arrays, _ = state_dict_to_flower_parameters(avg_weights)
+
+        # Aggregate authentic local client training metrics weighted by batch samples
+        total_train_samples = sum(sample_counts)
+        if total_train_samples > 0:
+            weighted_train_loss = sum(
+                float(fit_res.metrics.get("loss", 0.0)) * count
+                for (_, fit_res), count in zip(results, sample_counts)
+            ) / total_train_samples
+            weighted_train_acc = sum(
+                float(fit_res.metrics.get("accuracy", 0.0)) * count
+                for (_, fit_res), count in zip(results, sample_counts)
+            ) / total_train_samples
+        else:
+            weighted_train_loss = 0.0
+            weighted_train_acc = 0.0
+
         metrics: Dict[str, Scalar] = {
             "round": server_round,
             "participating_clients": len(results),
+            "train_loss": float(weighted_train_loss),
+            "train_accuracy": float(weighted_train_acc),
             "blocked_clients_count": len(blocked_nodes),
             "privacy_epsilon": float(self.central_server.get_privacy_spent()),
             "dp_active": (

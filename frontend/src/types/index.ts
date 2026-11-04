@@ -117,6 +117,8 @@ export interface BackendSystemState {
     round_num: number;
     train_loss: number;
     train_accuracy: number;
+    test_loss?: number;
+    test_accuracy?: number;
     f1_score: number;
     bandwidth: string;
     threat_detected: boolean;
