@@ -188,7 +188,7 @@ export default function PresentationLandingPage() {
                 <span className="uppercase">
                   {systemState?.is_live && systemState?.rounds && systemState.rounds.length > 0
                     ? `${t("landing_kpi_live_title")} : ${systemState.history_rounds} ${t("landing_kpi_rounds")} : ${systemState.model_type.toUpperCase()}`
-                    : t("landing_kpi_ref_title")}
+                    : t("landing_kpi_standby_title")}
                 </span>
               </div>
             </div>
@@ -223,15 +223,15 @@ export default function PresentationLandingPage() {
                   value:
                     systemState?.is_live && systemState?.rounds && systemState.rounds.length > 0
                       ? `${systemState.rounds[systemState.rounds.length - 1].train_accuracy}%`
-                      : "98.4%",
+                      : "--",
                   label:
                     systemState?.is_live && systemState?.rounds && systemState.rounds.length > 0
                       ? t("landing_metric_val_acc")
-                      : t("landing_metric_auc"),
+                      : t("landing_metric_auc_pending"),
                   sub:
                     systemState?.is_live && systemState?.rounds && systemState.rounds.length > 0
                       ? `${t("landing_kpi_round")} ${systemState.rounds.length} (${systemState.peft_mode ? systemState.peft_mode.toUpperCase() : "Full"})`
-                      : t("landing_metric_auc_sub"),
+                      : t("landing_metric_auc_pending_sub"),
                   icon: Activity,
                   iconBg: "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20",
                   valColor: "text-slate-900 dark:text-slate-50",
@@ -251,9 +251,18 @@ export default function PresentationLandingPage() {
                   valColor: "text-indigo-600 dark:text-indigo-400",
                 },
                 {
-                  value: "99.6%",
-                  label: t("landing_metric_efficiency"),
-                  sub: t("landing_metric_efficiency_sub"),
+                  value:
+                    systemState?.is_live && systemState?.rounds && systemState.rounds.length > 0
+                      ? "99.6%"
+                      : "--",
+                  label:
+                    systemState?.is_live && systemState?.rounds && systemState.rounds.length > 0
+                      ? t("landing_metric_efficiency")
+                      : t("landing_metric_efficiency_pending"),
+                  sub:
+                    systemState?.is_live && systemState?.rounds && systemState.rounds.length > 0
+                      ? t("landing_metric_efficiency_sub")
+                      : t("landing_metric_efficiency_pending_sub"),
                   icon: Zap,
                   iconBg: "bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20",
                   valColor: "text-amber-600 dark:text-amber-400",

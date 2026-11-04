@@ -27,13 +27,13 @@ describe("PresentationLandingPage Component", () => {
     );
   };
 
-  it("renders hero headline, badge, and all 5 verifiable KPI metrics", () => {
+  it("renders hero headline, badge, and verifiable KPI metrics in standby state", () => {
     renderLandingPage();
 
     expect(screen.getByText("Privacy-Preserving Federated Learning (PPFL)")).toBeInTheDocument();
     expect(screen.getByText("Privacy-Preserving Federated Learning for Multi-Hospital Medical AI")).toBeInTheDocument();
 
-    // 5 KPI Metrics
+    // Verifiable KPI Metrics in Standby Mode
     expect(screen.getByText("4")).toBeInTheDocument();
     expect(screen.getByText("Federated Nodes")).toBeInTheDocument();
 
@@ -43,11 +43,58 @@ describe("PresentationLandingPage Component", () => {
     expect(screen.getByText("128-Bit")).toBeInTheDocument();
     expect(screen.getByText("Homomorphic Encryption")).toBeInTheDocument();
 
-    expect(screen.getByText("98.4%")).toBeInTheDocument();
-    expect(screen.getAllByText("Consensus Model AUC")[0]).toBeInTheDocument();
+    // In standby mode, un-trained metrics must show standby indicators "--" without hardcoded values
+    expect(screen.getByText("Consensus AUC (Standby)")).toBeInTheDocument();
+    expect(screen.getByText("Bandwidth Efficiency (Standby)")).toBeInTheDocument();
+    expect(screen.getAllByText("--").length).toBeGreaterThanOrEqual(2);
+    expect(screen.queryByText("98.4%")).not.toBeInTheDocument();
 
     expect(screen.getByText("ε ≤ 2.0")).toBeInTheDocument();
     expect(screen.getByText("Privacy Budget")).toBeInTheDocument();
+  });
+
+  it("renders live consensus accuracy and bandwidth efficiency when live training rounds exist", async () => {
+    vi.mocked(global.fetch).mockImplementation((url: any) => {
+      const urlStr = String(url);
+      if (urlStr.includes("/api/state")) {
+        return Promise.resolve({
+          ok: true,
+          status: 200,
+          json: async () => ({
+            is_live: true,
+            status: "training",
+            history_rounds: 5,
+            model_type: "vit",
+            peft_mode: "ffa-lora",
+            hospitals: [{ id: "h1" }, { id: "h2" }, { id: "h3" }, { id: "h4" }],
+            rounds: [
+              { round_num: 1, train_accuracy: 72.1 },
+              { round_num: 5, train_accuracy: 94.8 },
+            ],
+            privacy: { epsilon: 1.45 },
+          }),
+        } as any);
+      }
+      return Promise.resolve({
+        ok: true,
+        status: 200,
+        json: async () => ({
+          status: "ok",
+          version: "2.1.0",
+          nodes_online: 4,
+          total_nodes: 4,
+        }),
+      } as any);
+    });
+
+    renderLandingPage();
+
+    // Live training metrics should be rendered after state fetch
+    expect(await screen.findByText("94.8%")).toBeInTheDocument();
+    expect(screen.getByText("Validation Accuracy")).toBeInTheDocument();
+    expect(screen.getByText("99.6%")).toBeInTheDocument();
+    expect(screen.getByText("Bandwidth Efficiency")).toBeInTheDocument();
+    expect(screen.getByText("ε = 1.45")).toBeInTheDocument();
   });
 
   it("renders interactive results showcase tabs and switches between tabs", () => {
