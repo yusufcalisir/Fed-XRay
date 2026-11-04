@@ -263,7 +263,7 @@ $$
 MOON regularizes representation drift by contrasting the client's current representation $z_k^t$ against the global model representation $z_{\text{global}}^t$ and the previous round local representation $z_k^{t-1}$:
 
 $$
-\mathcal{L}_{\text{MOON}} = \mathcal{L}_{\text{task}} - \mu \log \frac{\exp\left(\operatorname{sim}\left(z_k^t, z_{\text{global}}^t\right) / \tau\right)}{\exp\left(\operatorname{sim}\left(z_k^t, z_{\text{global}}^t\right) / \tau\right) + \exp\left(\operatorname{sim}\left(z_k^t, z_k^{t-1}\right) / \tau\right)}
+\mathcal{L}_{\text{MOON}} = \mathcal{L}_{\text{task}} - \mu \log \frac{\exp\left(\mathrm{sim}\left(z_k^t, z_{\text{global}}^t\right) / \tau\right)}{\exp\left(\mathrm{sim}\left(z_k^t, z_{\text{global}}^t\right) / \tau\right) + \exp\left(\mathrm{sim}\left(z_k^t, z_k^{t-1}\right) / \tau\right)}
 $$
 
 ### FedProx (Proximal Regularization)
@@ -287,42 +287,52 @@ $$
 $$
 
 $$
-\alpha_{k,c} = \frac{\frac{n_{k,c}}{\operatorname{Tr}(\Sigma_{k,c}) + \epsilon}}{\sum_{j \in \mathcal{K}_c} \frac{n_{j,c}}{\operatorname{Tr}(\Sigma_{j,c}) + \epsilon}}, \quad \bar{p}_c = \sum_{k \in \mathcal{K}_c} \alpha_{k,c} \, p_{k,c}
+\alpha_{k,c} = \frac{\frac{n_{k,c}}{\mathrm{Tr}(\Sigma_{k,c}) + \epsilon}}{\sum_{j \in \mathcal{K}_c} \frac{n_{j,c}}{\mathrm{Tr}(\Sigma_{j,c}) + \epsilon}}, \quad \bar{p}_c = \sum_{k \in \mathcal{K}_c} \alpha_{k,c} \, p_{k,c}
 $$
 
 ### 5.2 Dynamic Imbalance Loss Suite
 
 Under institutional label skew, static Cross-Entropy collapses minority and rare cancer classes. Fed-XRay provides a complete loss suite in `src/fed_xray/core/imbalance_losses.py`:
 
-- **Dynamic Adaptive Focal Loss (DAFL):** Modulates class focusing parameters dynamically as round validation recall evolves:
+#### 1. Dynamic Adaptive Focal Loss (DAFL)
 
-  $$
-  \mathcal{L}_{\text{DAFL}} = -\alpha_c(t) (1 - p_t)^{\gamma_c(t)} \log(p_t), \quad \gamma_c(t) = \gamma_{\text{base}} + \mu \left(1 - \text{Recall}_c^{(t-1)}\right)
-  $$
+Modulates class focusing parameters dynamically as round validation recall evolves:
 
-- **Bayesian Balanced Softmax (BSM):** Adjusts output logits according to prior institutional class prevalence $\pi_y$:
+$$
+\mathcal{L}_{\text{DAFL}} = -\alpha_c(t) (1 - p_t)^{\gamma_c(t)} \log(p_t), \quad \gamma_c(t) = \gamma_{\text{base}} + \mu \left(1 - \text{Recall}_c^{(t-1)}\right)
+$$
 
-  $$
-  \mathcal{L}_{\text{BSM}} = -\log \frac{\exp(z_y + \log \pi_y)}{\sum_j \exp(z_j + \log \pi_j)}
-  $$
+#### 2. Bayesian Balanced Softmax (BSM)
 
-- **Class-Balanced Effective Number of Samples Loss ($\mathcal{L}_{\text{CB}}$):** Penalizes feature redundancy based on the effective volume of samples:
+Adjusts output logits according to prior institutional class prevalence $\pi_y$:
 
-  $$
-  \mathcal{L}_{\text{CB}}(\mathbf{z}, y) = \frac{1 - \beta}{1 - \beta^{n_y}} \mathcal{L}_{\text{CE}}(\mathbf{z}, y), \quad \text{where } \beta = \frac{N - 1}{N}
-  $$
+$$
+\mathcal{L}_{\text{BSM}} = -\log \frac{\exp(z_y + \log \pi_y)}{\sum_j \exp(z_j + \log \pi_j)}
+$$
 
-- **Label-Distribution-Aware Margin Loss (LDAM):** Enforces class margins inversely proportional to class frequency to discourage majority class dominance:
+#### 3. Class-Balanced Effective Number of Samples Loss ($\mathcal{L}_{\text{CB}}$)
 
-  $$
-  \mathcal{L}_{\text{LDAM}}(\mathbf{z}, y) = -\log \frac{\exp\left(z_y - \frac{C}{n_y^{1/4}}\right)}{\exp\left(z_y - \frac{C}{n_y^{1/4}}\right) + \sum_{j \neq y} \exp(z_j)}
-  $$
+Penalizes feature redundancy based on the effective volume of samples:
 
-- **Missing-Class Prototype Margin Regularization ($\mathcal{L}_{\text{repel}}$):** Enforces a minimum Euclidean separation margin $m$ between local representations and unobserved global prototypes:
+$$
+\mathcal{L}_{\text{CB}}(\mathbf{z}, y) = \frac{1 - \beta}{1 - \beta^{n_y}} \mathcal{L}_{\text{CE}}(\mathbf{z}, y), \quad \text{where } \beta = \frac{N - 1}{N}
+$$
 
-  $$
-  \mathcal{L}_{\text{repel}}(x_i, y_i; \bar{\mathcal{P}}) = \sum_{c \neq y_i} \max\left(0, m - \|f(x_i) - \bar{p}_c\|_2\right)
-  $$
+#### 4. Label-Distribution-Aware Margin Loss (LDAM)
+
+Enforces class margins inversely proportional to class frequency to discourage majority class dominance:
+
+$$
+\mathcal{L}_{\text{LDAM}}(\mathbf{z}, y) = -\log \frac{\exp\left(z_y - \frac{C}{n_y^{1/4}}\right)}{\exp\left(z_y - \frac{C}{n_y^{1/4}}\right) + \sum_{j \neq y} \exp(z_j)}
+$$
+
+#### 5. Missing-Class Prototype Margin Regularization ($\mathcal{L}_{\text{repel}}$)
+
+Enforces a minimum Euclidean separation margin $m$ between local representations and unobserved global prototypes:
+
+$$
+\mathcal{L}_{\text{repel}}(x_i, y_i; \bar{\mathcal{P}}) = \sum_{c \neq y_i} \max\left(0, m - \|f(x_i) - \bar{p}_c\|_2\right)
+$$
 
 ---
 
