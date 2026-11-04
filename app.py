@@ -134,11 +134,30 @@ st.markdown("""
     /* Streamlit Main Container Alignment */
     .stApp {
         font-family: var(--fed-font-sans);
+        background: radial-gradient(circle at 50% 0%, #0F172A 0%, #090D16 100%) !important;
     }
     .block-container {
         max-width: 1440px !important;
-        padding-top: 1.5rem !important;
+        padding-top: 0.75rem !important;
         padding-bottom: 3.5rem !important;
+        padding-left: 1.5rem !important;
+        padding-right: 1.5rem !important;
+    }
+
+    /* Completely suppress Streamlit default top header void and decoration bar */
+    header[data-testid="stHeader"],
+    [data-testid="stHeader"] {
+        display: none !important;
+        height: 0 !important;
+        visibility: hidden !important;
+    }
+    div[data-testid="stDecoration"] {
+        display: none !important;
+        height: 0 !important;
+    }
+    #MainMenu, footer {
+        display: none !important;
+        visibility: hidden !important;
     }
 
     /* Headings Style */
@@ -147,19 +166,100 @@ st.markdown("""
         letter-spacing: -0.02em;
     }
 
-    /* Top Navigation Header Bar */
-    .top-nav-bar {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        padding: 0.85rem 1.4rem;
-        background: var(--fed-card-bg);
-        border: 1px solid var(--fed-card-border);
-        border-radius: var(--fed-radius-lg);
-        margin-bottom: 1.5rem;
-        backdrop-filter: blur(14px);
-        -webkit-backdrop-filter: blur(14px);
-        box-shadow: 0 4px 20px -3px rgba(0, 0, 0, 0.25);
+    /* Top Navigation Header Bar Container */
+    div[data-testid="stHorizontalBlock"]:has(.top-nav-brand) {
+        background: linear-gradient(135deg, rgba(30, 41, 59, 0.85) 0%, rgba(15, 23, 42, 0.85) 100%) !important;
+        border: 1px solid rgba(148, 163, 184, 0.22) !important;
+        border-radius: 16px !important;
+        padding: 0.75rem 1.4rem !important;
+        align-items: center !important;
+        backdrop-filter: blur(16px) !important;
+        -webkit-backdrop-filter: blur(16px) !important;
+        box-shadow: 0 4px 24px -2px rgba(0, 0, 0, 0.4) !important;
+        margin-bottom: 1.5rem !important;
+    }
+
+    div[data-testid="stHorizontalBlock"]:has(.top-nav-brand) > div {
+        display: flex !important;
+        align-items: center !important;
+    }
+
+    div[data-testid="stHorizontalBlock"]:has(.top-nav-brand) > div:last-child {
+        justify-content: flex-end !important;
+    }
+
+    /* Modern Segmented Pill Switcher for Language Selector */
+    div[data-testid="stHorizontalBlock"]:has(.top-nav-brand) div[data-testid="stRadio"] {
+        margin: 0 !important;
+        padding: 0 !important;
+    }
+
+    div[data-testid="stHorizontalBlock"]:has(.top-nav-brand) div[data-testid="stRadio"] > div[role="radiogroup"] {
+        background: rgba(15, 23, 42, 0.9) !important;
+        border: 1px solid rgba(56, 189, 248, 0.28) !important;
+        border-radius: 10px !important;
+        padding: 3px !important;
+        gap: 3px !important;
+        display: inline-flex !important;
+        align-items: center !important;
+    }
+
+    div[data-testid="stHorizontalBlock"]:has(.top-nav-brand) div[data-testid="stRadio"] div[data-testid="stRadioCircle"] {
+        display: none !important;
+    }
+
+    div[data-testid="stHorizontalBlock"]:has(.top-nav-brand) div[data-testid="stRadio"] label {
+        margin: 0 !important;
+        padding: 5px 14px !important;
+        border-radius: 7px !important;
+        font-size: 0.82rem !important;
+        font-weight: 700 !important;
+        color: #94A3B8 !important;
+        cursor: pointer !important;
+        transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1) !important;
+    }
+
+    div[data-testid="stHorizontalBlock"]:has(.top-nav-brand) div[data-testid="stRadio"] label:hover {
+        color: #F8FAFC !important;
+    }
+
+    div[data-testid="stHorizontalBlock"]:has(.top-nav-brand) div[data-testid="stRadio"] label:has(input:checked) {
+        background: linear-gradient(135deg, rgba(2, 132, 199, 0.45) 0%, rgba(14, 165, 233, 0.45) 100%) !important;
+        color: #38BDF8 !important;
+        border: 1px solid rgba(56, 189, 248, 0.45) !important;
+        box-shadow: 0 2px 10px rgba(14, 165, 233, 0.3) !important;
+    }
+
+    /* Plotly Chart Card Container Styling */
+    div[data-testid="stPlotlyChart"] {
+        background: rgba(30, 41, 59, 0.6) !important;
+        border: 1px solid rgba(148, 163, 184, 0.16) !important;
+        border-radius: 16px !important;
+        padding: 0.6rem !important;
+        box-shadow: 0 4px 18px -3px rgba(0, 0, 0, 0.25) !important;
+        backdrop-filter: blur(14px) !important;
+        -webkit-backdrop-filter: blur(14px) !important;
+    }
+
+    /* Action Button Polish */
+    div[data-testid="stButton"] > button {
+        border-radius: 12px !important;
+        font-weight: 700 !important;
+        font-size: 0.92rem !important;
+        letter-spacing: 0.02em !important;
+        min-height: 48px !important;
+        transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1) !important;
+    }
+    div[data-testid="stButton"] > button:not(:disabled) {
+        background: linear-gradient(135deg, #0284C7 0%, #0369A1 100%) !important;
+        color: #FFFFFF !important;
+        border: 1px solid rgba(56, 189, 248, 0.4) !important;
+        box-shadow: 0 4px 14px rgba(2, 132, 199, 0.35) !important;
+    }
+    div[data-testid="stButton"] > button:hover:not(:disabled) {
+        transform: translateY(-2px) !important;
+        box-shadow: 0 8px 24px rgba(2, 132, 199, 0.5) !important;
+        border-color: #38BDF8 !important;
     }
 
     .top-nav-brand {
@@ -1081,6 +1181,63 @@ if st.session_state.hospital_data_generated and st.session_state.hospital_sample
 # SECTION 2: FEDERATED LEARNING ORCHESTRATION COCKPIT
 # ============================================================================
 
+def create_clinical_telemetry_chart(
+    rounds: list,
+    values: list,
+    title_text: str,
+    y_label: str,
+    color_hex: str,
+    fill_rgba: str,
+    is_percentage: bool = False,
+) -> go.Figure:
+    """Generate high-contrast clinical telemetry chart with unclipped titles and gradient fills."""
+    fig = go.Figure()
+    fig.add_trace(go.Scatter(
+        x=rounds,
+        y=values,
+        mode="lines+markers",
+        name=title_text,
+        line=dict(color=color_hex, width=3.5, shape="spline", smoothing=1.3),
+        fill="tozeroy",
+        fillcolor=fill_rgba,
+        marker=dict(size=8, color=color_hex, line=dict(width=2, color="#FFFFFF")),
+        hovertemplate=f"<b>Round %{{x}}</b><br>{y_label}: %{{y:.2f}}{'%' if is_percentage else ''}<extra></extra>",
+    ))
+    fig.update_layout(
+        title=dict(
+            text=f"<b>{title_text}</b>",
+            font=dict(family="Inter, -apple-system, sans-serif", size=14, color="#F8FAFC"),
+            x=0.04,
+            y=0.92,
+            xanchor="left",
+            yanchor="top",
+        ),
+        xaxis_title=get_text('sec2_round', lang),
+        yaxis_title=y_label,
+        height=320,
+        margin=dict(l=45, r=25, t=65, b=45),
+        paper_bgcolor="rgba(0,0,0,0)",
+        plot_bgcolor="rgba(0,0,0,0)",
+        font=dict(family="Inter, -apple-system, sans-serif", color="#94A3B8"),
+        hovermode="x unified",
+        xaxis=dict(
+            gridcolor="rgba(148, 163, 184, 0.12)",
+            tickfont=dict(color="#94A3B8", size=11),
+            title_font=dict(color="#CBD5E1", size=12),
+            zeroline=False,
+            dtick=1 if len(rounds) <= 10 else None,
+        ),
+        yaxis=dict(
+            gridcolor="rgba(148, 163, 184, 0.12)",
+            tickfont=dict(color="#94A3B8", size=11),
+            title_font=dict(color="#CBD5E1", size=12),
+            zeroline=False,
+            range=[0, 100] if is_percentage else None,
+        ),
+    )
+    return fig
+
+
 st.markdown(f"""
 <div class="modern-section-header">
     <div class="section-badge-num">02</div>
@@ -1091,27 +1248,35 @@ st.markdown(f"""
 </div>
 """, unsafe_allow_html=True)
 
-col_train_btn, col_train_economics = st.columns([1, 2])
+col_train_btn, col_train_economics = st.columns([1.1, 2.5])
 
 with col_train_btn:
     btn_start_fl = st.button(
-        f"{get_text('sec2_btn_start', lang)}",
+        f"🚀 {get_text('sec2_btn_start', lang)}",
         key="btn_start_fl_rounds",
-        disabled=not st.session_state.hospital_data_generated
+        disabled=not st.session_state.hospital_data_generated,
+        use_container_width=True,
     )
     if not st.session_state.hospital_data_generated:
-        st.info(f"{get_text('sec1_btn_generate', lang)} first.")
+        st.markdown(f"""
+        <div style="margin-top: 0.35rem; font-size: 0.75rem; color: #F59E0B; display: flex; align-items: center; gap: 4px;">
+            <span>⚠️</span> <span>{get_text('sec1_btn_generate', lang)} first</span>
+        </div>
+        """, unsafe_allow_html=True)
 
 with col_train_economics:
     st.markdown(f"""
-    <div class="hospital-card" style="margin-bottom: 0;">
-        <strong style="color: #F8FAFC; font-size: 0.95rem;">{get_text('sec2_economics_title', lang)}</strong>
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 0.5rem; flex-wrap: wrap; gap: 0.5rem;">
-            <span style="font-size: 0.8rem; color: #94A3B8;">{get_text('sec2_economics_full', lang)}</span>
-            <span style="font-size: 0.8rem; color: #10B981; font-weight: 700;">{get_text('sec2_economics_peft', lang)}</span>
-            <span style="background: rgba(16,185,129,0.15); color: #34D399; border: 1px solid rgba(16,185,129,0.3); padding: 2px 8px; border-radius: 6px; font-weight: 700; font-size: 0.75rem;">
-                {get_text('sec2_economics_savings', lang)}
-            </span>
+    <div class="hospital-card" style="margin-bottom: 0; min-height: 52px; display: flex; flex-direction: column; justify-content: center; padding: 0.75rem 1.25rem;">
+        <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.5rem;">
+            <div>
+                <strong style="color: #F8FAFC; font-size: 0.88rem; display: block;">{get_text('sec2_economics_title', lang)}</strong>
+                <span style="font-size: 0.75rem; color: #94A3B8;">{get_text('sec2_economics_full', lang)} &bull; <strong style="color: #10B981;">{get_text('sec2_economics_peft', lang)}</strong></span>
+            </div>
+            <div>
+                <span style="background: rgba(16,185,129,0.18); color: #34D399; border: 1px solid rgba(16,185,129,0.35); padding: 4px 10px; border-radius: 8px; font-weight: 700; font-size: 0.78rem; box-shadow: 0 0 12px rgba(16,185,129,0.15);">
+                    {get_text('sec2_economics_savings', lang)}
+                </span>
+            </div>
         </div>
     </div>
     """, unsafe_allow_html=True)
@@ -1186,51 +1351,26 @@ if btn_start_fl and st.session_state.hospital_data_generated:
             col_t1, col_t2 = st.columns(2)
 
             with col_t1:
-                fig_loss = go.Figure()
-                fig_loss.add_trace(go.Scatter(
-                    x=st.session_state.training_history['round'],
-                    y=st.session_state.training_history['test_loss'],
-                    mode='lines+markers',
-                    name=get_text('sec2_loss', lang),
-                    line=dict(color='#EF4444', width=3),
-                    marker=dict(size=7)
-                ))
-                fig_loss.update_layout(
-                    title=f"{get_text('sec2_loss', lang)}",
-                    xaxis_title=get_text('sec2_round', lang),
-                    yaxis_title="Loss",
-                    height=260,
-                    margin=dict(l=30, r=20, t=40, b=30),
-                    paper_bgcolor='rgba(0,0,0,0)',
-                    plot_bgcolor='rgba(0,0,0,0)',
-                    font=dict(family="Inter", color='#94A3B8'),
-                    xaxis=dict(gridcolor='rgba(148, 163, 184, 0.15)'),
-                    yaxis=dict(gridcolor='rgba(148, 163, 184, 0.15)')
+                fig_loss = create_clinical_telemetry_chart(
+                    rounds=st.session_state.training_history['round'],
+                    values=st.session_state.training_history['test_loss'] if st.session_state.training_history.get('test_loss') else st.session_state.training_history['loss'],
+                    title_text=get_text('sec2_loss', lang),
+                    y_label="Loss",
+                    color_hex="#F87171",
+                    fill_rgba="rgba(239, 68, 68, 0.10)",
+                    is_percentage=False,
                 )
                 st.plotly_chart(fig_loss, use_container_width=True)
 
             with col_t2:
-                fig_acc = go.Figure()
-                fig_acc.add_trace(go.Scatter(
-                    x=st.session_state.training_history['round'],
-                    y=st.session_state.training_history['test_accuracy'],
-                    mode='lines+markers',
-                    name=get_text('sec2_acc', lang),
-                    line=dict(color='#10B981', width=3),
-                    marker=dict(size=7)
-                ))
-                fig_acc.update_layout(
-                    title=f"{get_text('sec2_acc', lang)} (%)",
-                    xaxis_title=get_text('sec2_round', lang),
-                    yaxis_title="Accuracy %",
-                    yaxis_range=[0, 100],
-                    height=260,
-                    margin=dict(l=30, r=20, t=40, b=30),
-                    paper_bgcolor='rgba(0,0,0,0)',
-                    plot_bgcolor='rgba(0,0,0,0)',
-                    font=dict(family="Inter", color='#94A3B8'),
-                    xaxis=dict(gridcolor='rgba(148, 163, 184, 0.15)'),
-                    yaxis=dict(gridcolor='rgba(148, 163, 184, 0.15)')
+                fig_acc = create_clinical_telemetry_chart(
+                    rounds=st.session_state.training_history['round'],
+                    values=st.session_state.training_history['test_accuracy'] if st.session_state.training_history.get('test_accuracy') else st.session_state.training_history['accuracy'],
+                    title_text=f"{get_text('sec2_acc', lang)} (%)",
+                    y_label="Accuracy %",
+                    color_hex="#34D399",
+                    fill_rgba="rgba(16, 185, 129, 0.10)",
+                    is_percentage=True,
                 )
                 st.plotly_chart(fig_acc, use_container_width=True)
 
@@ -1261,42 +1401,25 @@ elif st.session_state.training_history['round']:
     with chart_placeholder.container():
         col_t1, col_t2 = st.columns(2)
         with col_t1:
-            fig_loss = go.Figure()
-            fig_loss.add_trace(go.Scatter(
-                x=st.session_state.training_history['round'],
-                y=st.session_state.training_history['test_loss'] if st.session_state.training_history['test_loss'] else st.session_state.training_history['loss'],
-                mode='lines+markers',
-                line=dict(color='#EF4444', width=3)
-            ))
-            fig_loss.update_layout(
-                title=f"{get_text('sec2_loss', lang)}",
-                height=250,
-                margin=dict(l=30, r=20, t=40, b=30),
-                paper_bgcolor='rgba(0,0,0,0)',
-                plot_bgcolor='rgba(0,0,0,0)',
-                font=dict(family="Inter", color='#94A3B8'),
-                xaxis=dict(gridcolor='rgba(148, 163, 184, 0.15)'),
-                yaxis=dict(gridcolor='rgba(148, 163, 184, 0.15)')
+            fig_loss = create_clinical_telemetry_chart(
+                rounds=st.session_state.training_history['round'],
+                values=st.session_state.training_history['test_loss'] if st.session_state.training_history.get('test_loss') else st.session_state.training_history['loss'],
+                title_text=get_text('sec2_loss', lang),
+                y_label="Loss",
+                color_hex="#F87171",
+                fill_rgba="rgba(239, 68, 68, 0.10)",
+                is_percentage=False,
             )
             st.plotly_chart(fig_loss, use_container_width=True)
         with col_t2:
-            fig_acc = go.Figure()
-            fig_acc.add_trace(go.Scatter(
-                x=st.session_state.training_history['round'],
-                y=st.session_state.training_history['test_accuracy'] if st.session_state.training_history['test_accuracy'] else st.session_state.training_history['accuracy'],
-                mode='lines+markers',
-                line=dict(color='#10B981', width=3)
-            ))
-            fig_acc.update_layout(
-                title=f"{get_text('sec2_acc', lang)} (%)",
-                height=250,
-                margin=dict(l=30, r=20, t=40, b=30),
-                yaxis_range=[0, 100],
-                paper_bgcolor='rgba(0,0,0,0)',
-                plot_bgcolor='rgba(0,0,0,0)',
-                font=dict(family="Inter", color='#94A3B8'),
-                xaxis=dict(gridcolor='rgba(148, 163, 184, 0.15)'),
-                yaxis=dict(gridcolor='rgba(148, 163, 184, 0.15)')
+            fig_acc = create_clinical_telemetry_chart(
+                rounds=st.session_state.training_history['round'],
+                values=st.session_state.training_history['test_accuracy'] if st.session_state.training_history.get('test_accuracy') else st.session_state.training_history['accuracy'],
+                title_text=f"{get_text('sec2_acc', lang)} (%)",
+                y_label="Accuracy %",
+                color_hex="#34D399",
+                fill_rgba="rgba(16, 185, 129, 0.10)",
+                is_percentage=True,
             )
             st.plotly_chart(fig_acc, use_container_width=True)
 
