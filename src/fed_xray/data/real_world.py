@@ -326,7 +326,7 @@ class StrategyEDatasetEcosystem:
         num_patients: int = 120,
         samples_per_patient: int = 3,
         num_classes: int = 3,
-        image_size: int = 28,
+        image_size: int = 224,
     ) -> List[RealWorldPatientRecord]:
         """Generates multi-center patient cohort with distinct patient IDs and multiple lesion crops."""
         records: List[RealWorldPatientRecord] = []
