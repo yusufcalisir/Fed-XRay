@@ -1,48 +1,13 @@
-import { NextResponse } from "next/server";
+import { proxyToUpstreamBackend } from "@/lib/backendGateway";
 
 export const dynamic = "force-dynamic";
 
+/**
+ * Health check reverse-proxy endpoint.
+ * Transparently queries the active Python FastAPI backend /api/health endpoint.
+ * Returns HTTP 503 Service Unavailable if the backend is offline or unresponsive,
+ * strictly eliminating false "healthy" standby responses under DEFECT-01.
+ */
 export async function GET() {
-  const envUrl = process.env.NEXT_PUBLIC_API_URL?.trim().replace(/\/$/, "");
-  const isDead = Boolean(
-    envUrl && (
-      envUrl.includes("globe-celebration-poems-shakira") ||
-      envUrl.includes("trycloudflare.com") ||
-      envUrl.includes("placeholder")
-    )
-  );
-  const defaultBackend =
-    process.env.NODE_ENV === "production"
-      ? "https://fed-xray-api.onrender.com"
-      : "http://127.0.0.1:8000";
-  const targetBackend = isDead || !envUrl ? defaultBackend : envUrl;
-
-  // Attempt to forward request to active Python backend
-  try {
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 1200);
-    const resp = await fetch(`${targetBackend}/api/health`, {
-      signal: controller.signal,
-      cache: "no-store",
-    });
-    clearTimeout(timeout);
-    if (resp.ok) {
-      const data = await resp.json();
-      return NextResponse.json(data);
-    }
-  } catch {
-    // Backend offline or unreachable (e.g. Vercel serverless without attached node)
-  }
-
-  // Resilient Standby Response: ensures cloud deployment never returns HTTP 404
-  return NextResponse.json({
-    status: "healthy",
-    mode: "cloud_standby",
-    message: "Fed-XRay Central Enclave gateway operational. Ready for distributed node attestation.",
-    timestamp: Date.now() / 1000,
-    device: "cpu",
-    cuda_available: false,
-    version: "2.1.0",
-  });
+  return proxyToUpstreamBackend(null, "/api/health", { timeoutMs: 2500 });
 }
-

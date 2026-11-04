@@ -144,7 +144,12 @@ export function ApiProvider({ children }: { children: React.ReactNode }) {
 
       if (res && res.ok) {
         const data = await res.json().catch(() => null);
-        return Boolean(data && (data.status === "healthy" || data.status === "ok" || res.status === 200));
+        return Boolean(
+          data &&
+          (data.status === "healthy" || data.status === "ok") &&
+          data.status !== "unavailable" &&
+          data.mode !== "cloud_standby"
+        );
       }
       return false;
     } catch {

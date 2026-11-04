@@ -1,50 +1,16 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest } from "next/server";
+import { proxyToUpstreamBackend } from "@/lib/backendGateway";
 
 export const dynamic = "force-dynamic";
 
+/**
+ * Case-based retrieval (Federated RAG) reverse-proxy endpoint.
+ * Retrieves verified twin cases from FastAPI /api/cdss/rag-similar.
+ * Fails honestly with HTTP 503 if the backend is unavailable or times out,
+ * eliminating false HTTP 200 empty responses under DEFECT-01.
+ */
 export async function GET(request: NextRequest) {
-  const envUrl = process.env.NEXT_PUBLIC_API_URL?.trim().replace(/\/$/, "");
-  const isDead = Boolean(
-    envUrl && (
-      envUrl.includes("globe-celebration-poems-shakira") ||
-      envUrl.includes("trycloudflare.com") ||
-      envUrl.includes("placeholder")
-    )
-  );
-  const defaultBackend =
-    process.env.NODE_ENV === "production"
-      ? "https://fed-xray-api.onrender.com"
-      : "http://127.0.0.1:8000";
-  const targetBackend = isDead || !envUrl ? defaultBackend : envUrl;
-
   const searchParams = request.nextUrl.searchParams;
   const topK = searchParams.get("top_k") || "2";
-
-  try {
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 15000);
-    const resp = await fetch(`${targetBackend}/api/cdss/rag-similar?top_k=${topK}`, {
-      signal: controller.signal,
-      cache: "no-store",
-    });
-    clearTimeout(timeout);
-    if (resp.ok) {
-      const data = await resp.json();
-      return NextResponse.json(data);
-    }
-    const errBody = await resp.json().catch(() => null);
-    return NextResponse.json(
-      { detail: errBody?.detail || `RAG retrieval failed with HTTP ${resp.status}` },
-      { status: resp.status }
-    );
-  } catch {
-    return NextResponse.json(
-      {
-        query_class: 0,
-        matched_cases: [],
-      },
-      { status: 200 }
-    );
-  }
+  return proxyToUpstreamBackend(request, `/api/cdss/rag-similar?top_k=${topK}`, { timeoutMs: 15000 });
 }
-
