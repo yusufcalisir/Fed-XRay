@@ -14,7 +14,6 @@ import ReportDownload from "@/components/ReportDownload";
 import Footer from "@/components/Footer";
 import { HospitalCohort, TelemetryRound, DiagnosisResult, RagCase, TrainingConfig } from "@/types";
 import { fetchHospitalCohorts, fetchClinicalDiagnosis, fetchRagTwins, streamFederatedTraining } from "@/lib/api";
-import authenticCohorts from "@/lib/authenticCohortsCompact.json";
 import { useLanguage } from "@/context/LanguageContext";
 import { useApi } from "@/context/ApiContext";
 import { AlertCircle } from "lucide-react";
@@ -47,15 +46,10 @@ export default function DashboardPage() {
   const abortControllerRef = useRef<AbortController | null>(null);
 
   const sanitizeCohorts = (cohortList: any[]): HospitalCohort[] => {
-    return cohortList.map((h: any, idx: number) => {
-      const hasImages = h.sample_images && Array.isArray(h.sample_images) && h.sample_images.length > 0;
-      return {
-        ...h,
-        sample_images: hasImages
-          ? h.sample_images
-          : (authenticCohorts as any[])[idx % (authenticCohorts.length || 1)]?.sample_images || [],
-      };
-    });
+    return cohortList.map((h: any) => ({
+      ...h,
+      sample_images: Array.isArray(h.sample_images) ? h.sample_images : [],
+    }));
   };
 
   const handleGenerateCohorts = async () => {
@@ -127,13 +121,20 @@ export default function DashboardPage() {
         // Auto-load authentic Strategy E cohorts if backend has not loaded them yet
         try {
           const res = await fetchHospitalCohorts(workingBase, 4, 50);
-          if (!isCancelled && res.success && res.hospitals) {
-            setHospitals(sanitizeCohorts(res.hospitals));
-          }
-        } catch {
-          // Graceful fallback to authentic Strategy E compact manifest
           if (!isCancelled) {
-            setHospitals(sanitizeCohorts(authenticCohorts as any[]));
+            if (res.success && res.hospitals) {
+              setHospitals(sanitizeCohorts(res.hospitals));
+            } else {
+              setHospitals([]);
+              setErrorMessage(res.error || t("dashboard_cohort_error"));
+            }
+          }
+        } catch (err: any) {
+          // Fail honestly: do not substitute fake mock data on backend failure
+          if (!isCancelled) {
+            console.warn("Auto-cohort hydration failed:", err.message);
+            setHospitals([]);
+            setErrorMessage(`${t("dashboard_cohort_error_prefix")}: ${err.message}. ${t("dashboard_cohort_error_suffix")}`);
           }
         }
       }

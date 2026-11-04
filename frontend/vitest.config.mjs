@@ -8,6 +8,7 @@ export default defineConfig({
   test: {
     environment: "jsdom",
     globals: true,
+    maxWorkers: 3,
     setupFiles: ["./src/test/preload-zstd.cjs", "./src/test/setup.ts"],
   },
   resolve: {
