@@ -189,7 +189,7 @@ def test_validate_and_aggregate_with_secagg_masking():
 
     original_validate = server._validate_client_model
     try:
-        server._validate_client_model = lambda w, img, lbl: 0.90 if w is not bad_weights else 0.05
+        server._validate_client_model = lambda client_weights, test_images, test_labels: 0.90 if client_weights is not bad_weights else 0.05
 
         agg_weights, report = server.validate_and_aggregate(
             client_weights=[good_weights_1, good_weights_2, bad_weights],
@@ -285,7 +285,7 @@ def test_byzantine_gradient_scaling_attack_detected_by_l2_norm():
     test_labels = torch.zeros(10, dtype=torch.long)
 
     # Server evaluates accuracy uniformly to isolate norm detection
-    server._validate_client_model = lambda w, img, lbl: 0.90
+    server._validate_client_model = lambda client_weights, test_images, test_labels: 0.90
 
     _, report = server.validate_and_aggregate(
         client_weights=[w0, w1, w2, w_malicious],
@@ -322,7 +322,7 @@ def test_byzantine_attestation_spoofing_detection():
     test_labels = torch.zeros(10, dtype=torch.long)
 
     # Server independently validates weights: node 0 and 1 get 0.90, node 2 gets 0.05
-    server._validate_client_model = lambda w, img, lbl: 0.90 if w is not w2 else 0.05
+    server._validate_client_model = lambda client_weights, test_images, test_labels: 0.90 if client_weights is not w2 else 0.05
 
     _, report = server.validate_and_aggregate(
         client_weights=[w0, w1, w2],
