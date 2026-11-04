@@ -34,7 +34,8 @@ from utils.cnn_model import create_model
 from utils.federated_core import (
     HospitalClient,
     CentralServer,
-    run_federated_round
+    run_federated_round,
+    format_byte_size,
 )
 from utils.xai_engine import GradCAM, create_overlay
 from utils.similarity_engine import HistoricalCaseBank, extract_embedding, LABEL_NAMES
@@ -60,6 +61,12 @@ def init_session_state() -> None:
     defaults: Dict[str, Any] = {
         'app_lang': "EN",
         'model_trained': False,
+        'model_type': "vit_tiny",
+        'peft_mode': "ffa_lora",
+        'lora_r': 16,
+        'last_uplink_bytes': 0,
+        'last_full_model_bytes': 0,
+        'server': None,
         'global_model': None,
         'trained_weights': None,
         'training_history': {
@@ -814,6 +821,63 @@ with st.sidebar:
         format="%.2f"
     )
 
+    model_arch_options = {
+        "vit_tiny": "ViT-Tiny (128-dim Vision Transformer)" if lang == "EN" else "ViT-Tiny (128-boyutlu Vision Transformer)",
+        "vit_base": "ViT-Base-224 (Pretrained ImageNet-1K)" if lang == "EN" else "ViT-Base-224 (Önceden Eğitilmiş ImageNet)",
+        "cnn": "Custom Medical CNN (3-Layer Baseline)" if lang == "EN" else "Özel Medikal CNN (3-Katmanlı Temel)",
+    }
+    model_arch_reverse = {v: k for k, v in model_arch_options.items()}
+    current_arch_val = st.session_state.get("model_type", "vit_tiny")
+    arch_keys = list(model_arch_options.keys())
+    arch_default_idx = arch_keys.index(current_arch_val) if current_arch_val in arch_keys else 0
+
+    selected_arch_display = st.selectbox(
+        get_text("sidebar_model_arch", lang),
+        options=list(model_arch_options.values()),
+        index=arch_default_idx,
+        help=get_text("sidebar_model_arch_help", lang),
+    )
+    selected_model_type = model_arch_reverse[selected_arch_display]
+    st.session_state.model_type = selected_model_type
+
+    if selected_model_type == "cnn":
+        peft_options = {
+            "none": "None (Full Parameter Tuning)" if lang == "EN" else "Yok (Tam Parametre Eğitimi)",
+        }
+    else:
+        peft_options = {
+            "ffa_lora": "FFA-LoRA (Globally Frozen-A / Option J)" if lang == "EN" else "FFA-LoRA (Küresel Dondurulmuş-A / Seçenek J)",
+            "fedsa_lora": "FedSA-LoRA (Shared-A Global Subspace)" if lang == "EN" else "FedSA-LoRA (Paylaşımlı-A Alt Uzayı)",
+            "lora": "LoRA (Standard Trainable Adapters)" if lang == "EN" else "LoRA (Standart Eğitilebilir Adaptörler)",
+            "none": "None (Full Parameter Tuning)" if lang == "EN" else "Yok (Tam Parametre Eğitimi)",
+        }
+    peft_reverse = {v: (None if k == "none" else k) for k, v in peft_options.items()}
+    current_peft_val = st.session_state.get("peft_mode", "ffa_lora")
+    peft_keys = list(peft_options.keys())
+    peft_key_for_idx = "none" if current_peft_val is None else current_peft_val
+    peft_default_idx = peft_keys.index(peft_key_for_idx) if peft_key_for_idx in peft_keys else 0
+
+    selected_peft_display = st.selectbox(
+        get_text("sidebar_peft_mode", lang),
+        options=list(peft_options.values()),
+        index=peft_default_idx,
+        help=get_text("sidebar_peft_mode_help", lang),
+    )
+    selected_peft_mode = peft_reverse[selected_peft_display]
+    st.session_state.peft_mode = selected_peft_mode
+
+    selected_lora_r = 16
+    if selected_peft_mode is not None:
+        selected_lora_r = st.slider(
+            get_text("sidebar_lora_rank", lang),
+            min_value=4,
+            max_value=64,
+            value=int(st.session_state.get("lora_r", 16)),
+            step=4,
+            help=get_text("sidebar_lora_rank_help", lang),
+        )
+        st.session_state.lora_r = selected_lora_r
+
     st.markdown("---")
 
     # Section 3: Byzantine Adversarial Shield
@@ -855,6 +919,12 @@ st.markdown(f"""
 # Live Clinical HUD
 status_kpi_text = get_text("kpi_status_trained", lang) if st.session_state.model_trained else get_text("kpi_status_ready", lang)
 
+if selected_model_type.startswith("vit"):
+    peft_tag = selected_peft_mode.upper().replace('_', '-') if selected_peft_mode else "Full"
+    hud_model_str = f"{selected_model_type.upper().replace('_', '-')} + {peft_tag} (r={selected_lora_r})"
+else:
+    hud_model_str = "Medical-CNN (Full Consensus)"
+
 st.markdown(f"""
 <div class="live-hud">
     <div class="hud-item">
@@ -862,7 +932,7 @@ st.markdown(f"""
         <span>{get_text('live_hud_active', lang)}: <strong>{n_hospitals} / {n_hospitals} {get_text('kpi_hospitals', lang)} Online</strong></span>
     </div>
     <div class="hud-item">
-        <span>Backbone: <strong>{get_text('live_hud_model', lang)}</strong></span>
+        <span>Backbone: <strong>{hud_model_str}</strong></span>
     </div>
     <div class="hud-item">
         <span>Shield: <strong>{get_text('live_hud_shield', lang) if activate_defense else get_text('sec2_shield_off', lang)}</strong></span>
@@ -1265,16 +1335,48 @@ with col_train_btn:
         """, unsafe_allow_html=True)
 
 with col_train_economics:
+    econ_img_size = 224
+    if st.session_state.dataloaders and len(st.session_state.dataloaders) > 0:
+        try:
+            econ_img_size = int(next(iter(st.session_state.dataloaders[0]))[0].shape[-1])
+        except Exception:
+            econ_img_size = 224
+
+    live_uplink_bytes = st.session_state.get('last_uplink_bytes', 0)
+    live_full_bytes = st.session_state.get('last_full_model_bytes', 0)
+
+    if live_uplink_bytes > 0 and live_full_bytes > 0:
+        full_bytes_disp = live_full_bytes
+        uplink_bytes_disp = live_uplink_bytes
+        reduction_pct_disp = max(0.0, (1.0 - (uplink_bytes_disp / max(1, full_bytes_disp))) * 100.0)
+    else:
+        econ = CentralServer.estimate_communication_economics(
+            model_type=selected_model_type,
+            peft_mode=selected_peft_mode,
+            lora_r=selected_lora_r,
+            img_size=econ_img_size,
+        )
+        full_bytes_disp = econ["full_model_bytes"]
+        uplink_bytes_disp = econ["uplink_bytes"]
+        reduction_pct_disp = econ["reduction_percentage"]
+
+    full_disp_str = f"{get_text('sec2_economics_full_label', lang)}: ~{format_byte_size(full_bytes_disp)} {get_text('sec2_economics_per_round', lang)}"
+    uplink_disp_str = f"{selected_peft_mode.upper() if selected_peft_mode else 'Full'}: ~{format_byte_size(uplink_bytes_disp)} {get_text('sec2_economics_per_round', lang)}"
+    if reduction_pct_disp > 0.05:
+        savings_disp_str = f"{reduction_pct_disp:.1f}% {get_text('sec2_economics_reduction', lang)}"
+    else:
+        savings_disp_str = get_text('sec2_economics_full_tuning', lang)
+
     st.markdown(f"""
     <div class="hospital-card" style="margin-bottom: 0; min-height: 52px; display: flex; flex-direction: column; justify-content: center; padding: 0.75rem 1.25rem;">
         <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.5rem;">
             <div>
                 <strong style="color: #F8FAFC; font-size: 0.88rem; display: block;">{get_text('sec2_economics_title', lang)}</strong>
-                <span style="font-size: 0.75rem; color: #94A3B8;">{get_text('sec2_economics_full', lang)} &bull; <strong style="color: #10B981;">{get_text('sec2_economics_peft', lang)}</strong></span>
+                <span style="font-size: 0.75rem; color: #94A3B8;">{full_disp_str} &bull; <strong style="color: #10B981;">{uplink_disp_str}</strong></span>
             </div>
             <div>
                 <span style="background: rgba(16,185,129,0.18); color: #34D399; border: 1px solid rgba(16,185,129,0.35); padding: 4px 10px; border-radius: 8px; font-weight: 700; font-size: 0.78rem; box-shadow: 0 0 12px rgba(16,185,129,0.15);">
-                    {get_text('sec2_economics_savings', lang)}
+                    {savings_disp_str}
                 </span>
             </div>
         </div>
@@ -1305,7 +1407,12 @@ if btn_start_fl and st.session_state.hospital_data_generated:
         device=device,
         privacy_noise=privacy_noise,
         defense_mode=activate_defense,
+        model_type=selected_model_type,
+        peft_mode=selected_peft_mode,
+        lora_r=selected_lora_r,
+        lora_alpha=float(selected_lora_r),
         img_size=batch_img_size,
+        patch_size=16 if batch_img_size == 224 else 4,
     )
 
     clients = []
@@ -1318,7 +1425,12 @@ if btn_start_fl and st.session_state.hospital_data_generated:
             learning_rate=0.0001,
             local_epochs=local_epochs,
             malicious=is_malicious,
+            model_type=selected_model_type,
+            peft_mode=selected_peft_mode,
+            lora_r=selected_lora_r,
+            lora_alpha=float(selected_lora_r),
             img_size=batch_img_size,
+            patch_size=16 if batch_img_size == 224 else 4,
         ))
 
     test_images, test_labels = st.session_state.global_test_set
@@ -1337,6 +1449,8 @@ if btn_start_fl and st.session_state.hospital_data_generated:
         st.session_state.training_history['loss'].append(metrics['loss'])
         st.session_state.training_history['accuracy'].append(metrics['accuracy'] * 100)
         st.session_state.training_history['round'].append(round_num)
+        st.session_state.last_uplink_bytes = metrics.get('uplink_bytes_per_client', 0)
+        st.session_state.last_full_model_bytes = metrics.get('full_model_bytes', 0)
 
         if test_metrics:
             st.session_state.training_history['test_accuracy'].append(test_metrics.accuracy * 100)
@@ -1390,6 +1504,7 @@ if btn_start_fl and st.session_state.hospital_data_generated:
                 """, unsafe_allow_html=True)
 
     trained_model = server.get_model()
+    st.session_state.server = server
     st.session_state.global_model = trained_model
     st.session_state.trained_weights = copy.deepcopy(trained_model.state_dict())
     st.session_state.model_trained = True
@@ -1576,9 +1691,15 @@ if btn_scan_patient and st.session_state.model_trained:
     st.session_state.scan_image = raw_input_img
     st.session_state.scan_true_label = input_true_label
 
-    model = create_model()
+    if st.session_state.global_model is not None:
+        model = copy.deepcopy(st.session_state.global_model)
+    else:
+        model = create_model()
     if st.session_state.trained_weights is not None:
-        model.load_state_dict(st.session_state.trained_weights)
+        try:
+            model.load_state_dict(st.session_state.trained_weights)
+        except Exception:
+            pass
     model.cpu().eval()
 
     img_tensor = torch.FloatTensor(raw_input_img).unsqueeze(0).unsqueeze(0)
@@ -1682,9 +1803,15 @@ if hasattr(st.session_state, 'scan_image') and st.session_state.scan_image is no
         st.markdown(f"### {get_text('sec3_rag_title', lang)}")
         st.caption(get_text('sec3_rag_desc', lang))
 
-        model_emb = create_model()
+        if st.session_state.global_model is not None:
+            model_emb = copy.deepcopy(st.session_state.global_model)
+        else:
+            model_emb = create_model()
         if st.session_state.trained_weights is not None:
-            model_emb.load_state_dict(st.session_state.trained_weights)
+            try:
+                model_emb.load_state_dict(st.session_state.trained_weights)
+            except Exception:
+                pass
         model_emb.cpu().eval()
 
         if st.session_state.case_bank is None:

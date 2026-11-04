@@ -295,6 +295,60 @@ class CentralServer:
             "peft_mode": self.peft_mode,
         }
 
+    @classmethod
+    def estimate_communication_economics(
+        cls,
+        model_type: str = "vit_tiny",
+        peft_mode: Optional[str] = "ffa_lora",
+        lora_r: int = 16,
+        img_size: int = 224,
+        num_classes: int = 3,
+    ) -> Dict[str, Any]:
+        """Compute authentic parameter counts, byte sizes, and bandwidth reduction percentage."""
+        patch_size = 16 if img_size == 224 else 4
+        if model_type.startswith("vit"):
+            model = create_medical_vit(
+                model_type=model_type,
+                img_size=img_size,
+                patch_size=patch_size,
+                num_classes=num_classes,
+                pretrained=False,
+            )
+            full_params = sum(p.numel() for p in model.parameters())
+            full_bytes = sum(p.numel() * p.element_size() for p in model.state_dict().values())
+            if peft_mode:
+                inject_lora_to_model(
+                    model=model,
+                    r=lora_r,
+                    lora_alpha=float(lora_r),
+                    mode=peft_mode,
+                )
+                peft_sd = extract_peft_state_dict(model, mode=peft_mode)
+                uplink_params = sum(t.numel() for t in peft_sd.values())
+                uplink_bytes = sum(t.numel() * t.element_size() for t in peft_sd.values())
+            else:
+                uplink_params = full_params
+                uplink_bytes = full_bytes
+        else:
+            model = create_cnn_model(num_classes=num_classes)
+            full_params = sum(p.numel() for p in model.parameters())
+            full_bytes = sum(p.numel() * p.element_size() for p in model.state_dict().values())
+            uplink_params = full_params
+            uplink_bytes = full_bytes
+
+        reduction_percentage = (1.0 - (uplink_bytes / max(1, full_bytes))) * 100.0
+
+        return {
+            "model_type": model_type,
+            "peft_mode": peft_mode,
+            "lora_r": lora_r,
+            "full_model_params": full_params,
+            "full_model_bytes": full_bytes,
+            "uplink_params": uplink_params,
+            "uplink_bytes": uplink_bytes,
+            "reduction_percentage": max(0.0, reduction_percentage),
+        }
+
     def get_global_weights(self) -> Dict[str, torch.Tensor]:
         """Get current global model or PEFT adapter weights."""
         weights: Dict[str, torch.Tensor]
