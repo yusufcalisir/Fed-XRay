@@ -90,11 +90,55 @@ describe("TelemetryCockpit Component", () => {
     expect(attackCheckbox).toBeChecked();
 
     fireEvent.click(startBtn);
-    expect(onStartMock).toHaveBeenCalledWith({
-      modelType: "vit_tiny",
-      algorithm: "FedDyn",
-      simulateAttack: true,
-    });
+    expect(onStartMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        modelType: "vit_tiny",
+        algorithm: "FedDyn",
+        simulateAttack: true,
+      })
+    );
+  });
+
+  it("allows configuring and transmitting cryptographic enclave suite and PEFT parameters", () => {
+    const onStartMock = vi.fn();
+    render(
+      <TelemetryCockpit
+        history={[]}
+        onStartTraining={onStartMock}
+        isTraining={false}
+        currentRound={0}
+        totalRounds={5}
+        isLocked={false}
+      />
+    );
+
+    // Open Advanced Security & Hyperparameters panel
+    const advancedBtn = screen.getByRole("button", { name: /Security & Hyperparameters/i });
+    fireEvent.click(advancedBtn);
+
+    // Verify SecAgg+ and CKKS options appear
+    expect(screen.getByText("SecAgg+ Vector Masking")).toBeInTheDocument();
+    expect(screen.getByText("RLWE CKKS 128-Bit HE")).toBeInTheDocument();
+
+    // Find checkboxes inside the advanced panel
+    const checkboxes = screen.getAllByRole("checkbox");
+    // [0]: simulate attack, [1]: SecAgg+, [2]: CKKS
+    expect(checkboxes.length).toBeGreaterThanOrEqual(3);
+    fireEvent.click(checkboxes[1]);
+    fireEvent.click(checkboxes[2]);
+
+    const startBtn = screen.getByRole("button", { name: /Start Federated Training Round/i });
+    fireEvent.click(startBtn);
+
+    expect(onStartMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        secureAggregation: true,
+        useCkks: true,
+        peftMode: "ffa_lora",
+        lossFn: "DAFL",
+        dpMode: "distributed",
+      })
+    );
   });
 
   it("renders Byzantine defense threat alert when poisoning is detected", () => {

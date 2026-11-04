@@ -5,6 +5,7 @@ import {
   TelemetryRound,
   BackendSystemState,
   EnclaveHandshakeResponse,
+  FederatedTrainingOptions,
 } from "@/types";
 
 const DIAG_TO_CLASS: Record<string, number> = {
@@ -123,22 +124,65 @@ export async function fetchRagTwins(
 }
 
 /** Build query-string for training params (shared by SSE and polling endpoints). */
-function buildTrainQS(
-  numRounds: number, localEpochs: number, learningRate: number,
-  simulateAttack: boolean, activateDefense: boolean,
-  algorithm: string, lossFn: string, modelType: string, peftMode: string
+export function buildTrainQS(
+  optionsOrNumRounds: FederatedTrainingOptions | number,
+  localEpochs?: number,
+  learningRate?: number,
+  simulateAttack?: boolean,
+  activateDefense?: boolean,
+  algorithm?: string,
+  lossFn?: string,
+  modelType?: string,
+  peftMode?: string,
+  secureAggregation?: boolean,
+  useCkks?: boolean,
+  dpMode?: string,
+  dpClippingBound?: number,
+  privacyNoise?: number,
+  pretrained?: boolean,
+  strictCheckpoint?: boolean
 ): string {
-  return (
-    `num_rounds=${numRounds}` +
-    `&local_epochs=${localEpochs}` +
-    `&learning_rate=${learningRate}` +
-    `&simulate_attack=${simulateAttack}` +
-    `&activate_defense=${activateDefense}` +
-    `&algorithm=${algorithm}` +
-    `&loss_fn=${lossFn}` +
-    `&model_type=${modelType}` +
-    `&peft_mode=${peftMode}`
-  );
+  const opts: FederatedTrainingOptions =
+    typeof optionsOrNumRounds === "object"
+      ? optionsOrNumRounds
+      : {
+          numRounds: optionsOrNumRounds,
+          localEpochs,
+          learningRate,
+          simulateAttack,
+          activateDefense,
+          algorithm,
+          lossFn,
+          modelType,
+          peftMode,
+          secureAggregation,
+          useCkks,
+          dpMode,
+          dpClippingBound,
+          privacyNoise,
+          pretrained,
+          strictCheckpoint,
+        };
+
+  const params = new URLSearchParams();
+  if (opts.numRounds !== undefined) params.set("num_rounds", String(opts.numRounds));
+  if (opts.localEpochs !== undefined) params.set("local_epochs", String(opts.localEpochs));
+  if (opts.learningRate !== undefined) params.set("learning_rate", String(opts.learningRate));
+  if (opts.privacyNoise !== undefined) params.set("privacy_noise", String(opts.privacyNoise));
+  if (opts.simulateAttack !== undefined) params.set("simulate_attack", String(opts.simulateAttack));
+  if (opts.activateDefense !== undefined) params.set("activate_defense", String(opts.activateDefense));
+  if (opts.algorithm) params.set("algorithm", opts.algorithm);
+  if (opts.lossFn) params.set("loss_fn", opts.lossFn);
+  if (opts.modelType) params.set("model_type", opts.modelType);
+  if (opts.peftMode) params.set("peft_mode", opts.peftMode);
+  if (opts.secureAggregation !== undefined) params.set("secure_aggregation", String(opts.secureAggregation));
+  if (opts.useCkks !== undefined) params.set("use_ckks", String(opts.useCkks));
+  if (opts.pretrained !== undefined) params.set("pretrained", String(opts.pretrained));
+  if (opts.dpMode) params.set("dp_mode", opts.dpMode);
+  if (opts.dpClippingBound !== undefined) params.set("dp_clipping_bound", String(opts.dpClippingBound));
+  if (opts.strictCheckpoint !== undefined) params.set("strict_checkpoint", String(opts.strictCheckpoint));
+
+  return params.toString();
 }
 
 /**
@@ -173,28 +217,34 @@ async function pollingFallback(
 
 export async function streamFederatedTraining(
   baseUrl: string,
-  options: {
-    numRounds?: number; localEpochs?: number; learningRate?: number;
-    simulateAttack?: boolean; activateDefense?: boolean;
-    algorithm?: string; lossFn?: string; modelType?: string; peftMode?: string;
-  },
+  options: FederatedTrainingOptions,
   onRound: (roundData: TelemetryRound) => void,
   onComplete: () => void,
   onError: (error: string) => void,
   signal?: AbortSignal
 ): Promise<void> {
-  const numRounds      = options.numRounds      ?? 5;
-  const localEpochs    = options.localEpochs    ?? 2;
-  const learningRate   = options.learningRate   ?? 0.0001;
-  const simulateAttack = options.simulateAttack ?? false;
-  const activateDefense= options.activateDefense?? true;
-  const algorithm      = options.algorithm      ?? "FedDyn";
-  const lossFn         = options.lossFn         ?? "DAFL";
-  const modelType      = options.modelType      ?? "vit_tiny";
-  const peftMode       = options.peftMode       ?? "ffa_lora";
+  const resolvedOptions: FederatedTrainingOptions = {
+    numRounds: options.numRounds ?? 5,
+    localEpochs: options.localEpochs ?? 2,
+    learningRate: options.learningRate ?? 0.0001,
+    privacyNoise: options.privacyNoise ?? 0.01,
+    simulateAttack: options.simulateAttack ?? false,
+    activateDefense: options.activateDefense ?? true,
+    algorithm: options.algorithm ?? "FedDyn",
+    lossFn: options.lossFn ?? "DAFL",
+    modelType: options.modelType ?? "vit_tiny",
+    peftMode: options.peftMode ?? "ffa_lora",
+    secureAggregation: options.secureAggregation ?? false,
+    useCkks: options.useCkks ?? false,
+    pretrained: options.pretrained ?? true,
+    dpMode: options.dpMode ?? "distributed",
+    dpClippingBound: options.dpClippingBound ?? 1.0,
+    strictCheckpoint: options.strictCheckpoint ?? false,
+  };
 
+  const numRounds = resolvedOptions.numRounds ?? 5;
   const base   = baseUrl.replace(/\/$/, "");
-  const qs     = buildTrainQS(numRounds, localEpochs, learningRate, simulateAttack, activateDefense, algorithm, lossFn, modelType, peftMode);
+  const qs     = buildTrainQS(resolvedOptions);
   const sseUrl = `${base}/api/fl/train-stream?${qs}`;
 
   try {
@@ -242,7 +292,7 @@ export async function streamFederatedTraining(
               if (data.round_num && data.round_num > 0) {
                 onRound(data);
               }
-              if (data.status === "complete" || (data.round_num && data.round_num >= numRounds)) {
+              if (data.status === "complete" || (data.round_num && data.round_num >= (resolvedOptions.numRounds ?? 5))) {
                 onComplete();
                 return "done";
               }

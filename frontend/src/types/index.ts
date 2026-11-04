@@ -26,6 +26,27 @@ export interface HospitalCohort {
   is_authentic_clinical?: boolean;
 }
 
+export interface FederatedTrainingOptions {
+  numRounds?: number;
+  localEpochs?: number;
+  learningRate?: number;
+  privacyNoise?: number;
+  simulateAttack?: boolean;
+  activateDefense?: boolean;
+  algorithm?: string;
+  lossFn?: string;
+  modelType?: string;
+  peftMode?: string;
+  secureAggregation?: boolean;
+  useCkks?: boolean;
+  pretrained?: boolean;
+  dpMode?: string;
+  dpClippingBound?: number;
+  strictCheckpoint?: boolean;
+}
+
+export type TrainingConfig = FederatedTrainingOptions;
+
 export interface TelemetryRound {
   round_num: number;
   total_rounds: number;

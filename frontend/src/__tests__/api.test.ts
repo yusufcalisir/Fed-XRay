@@ -5,6 +5,8 @@ import {
   fetchHospitalCohorts,
   fetchClinicalDiagnosis,
   fetchRagTwins,
+  buildTrainQS,
+  streamFederatedTraining,
 } from "@/lib/api";
 
 describe("Frontend API Client Functions", () => {
@@ -121,5 +123,82 @@ describe("Frontend API Client Functions", () => {
     const res = await fetchRagTwins("http://127.0.0.1:8000", 2);
     expect(res.matched_cases.length).toBe(1);
     expect(res.matched_cases[0].case_id).toBe("REF-001");
+  });
+
+  it("buildTrainQS serializes complete Option J cryptographic flags and hyperparameters", () => {
+    const qs = buildTrainQS({
+      numRounds: 10,
+      localEpochs: 3,
+      learningRate: 0.00005,
+      simulateAttack: true,
+      activateDefense: true,
+      algorithm: "FedDyn",
+      lossFn: "DAFL",
+      modelType: "uni",
+      peftMode: "ffa_lora",
+      secureAggregation: true,
+      useCkks: true,
+      dpMode: "distributed",
+      dpClippingBound: 1.5,
+      privacyNoise: 0.05,
+      pretrained: true,
+      strictCheckpoint: false,
+    });
+
+    const parsed = new URLSearchParams(qs);
+    expect(parsed.get("num_rounds")).toBe("10");
+    expect(parsed.get("local_epochs")).toBe("3");
+    expect(parsed.get("learning_rate")).toBe("0.00005");
+    expect(parsed.get("simulate_attack")).toBe("true");
+    expect(parsed.get("activate_defense")).toBe("true");
+    expect(parsed.get("algorithm")).toBe("FedDyn");
+    expect(parsed.get("loss_fn")).toBe("DAFL");
+    expect(parsed.get("model_type")).toBe("uni");
+    expect(parsed.get("peft_mode")).toBe("ffa_lora");
+    expect(parsed.get("secure_aggregation")).toBe("true");
+    expect(parsed.get("use_ckks")).toBe("true");
+    expect(parsed.get("dp_mode")).toBe("distributed");
+    expect(parsed.get("dp_clipping_bound")).toBe("1.5");
+    expect(parsed.get("privacy_noise")).toBe("0.05");
+    expect(parsed.get("pretrained")).toBe("true");
+  });
+
+  it("streamFederatedTraining transmits full cryptographic query string to training endpoints", async () => {
+    let requestedUrl = "";
+    global.fetch = vi.fn().mockImplementation((url: string) => {
+      requestedUrl = url;
+      return Promise.resolve({
+        ok: false,
+        status: 500,
+        body: null,
+      });
+    });
+
+    const onErrorMock = vi.fn();
+    await streamFederatedTraining(
+      "http://127.0.0.1:8000",
+      {
+        numRounds: 5,
+        modelType: "fedmedclip",
+        algorithm: "FedDyn",
+        peftMode: "fedsa_lora",
+        lossFn: "LDAM",
+        secureAggregation: true,
+        useCkks: true,
+        dpMode: "distributed",
+        dpClippingBound: 2.0,
+      },
+      vi.fn(),
+      vi.fn(),
+      onErrorMock
+    );
+
+    expect(requestedUrl).toContain("/api/fl/train-");
+    expect(requestedUrl).toContain("secure_aggregation=true");
+    expect(requestedUrl).toContain("use_ckks=true");
+    expect(requestedUrl).toContain("peft_mode=fedsa_lora");
+    expect(requestedUrl).toContain("loss_fn=LDAM");
+    expect(requestedUrl).toContain("dp_mode=distributed");
+    expect(requestedUrl).toContain("dp_clipping_bound=2");
   });
 });

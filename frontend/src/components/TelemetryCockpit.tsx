@@ -2,7 +2,7 @@
 
 import React, { useState } from "react";
 import { useLanguage } from "@/context/LanguageContext";
-import { TelemetryRound } from "@/types";
+import { TelemetryRound, TrainingConfig } from "@/types";
 import { Cpu, Play, ShieldAlert, ShieldCheck, Zap, TrendingUp, Lock, ArrowUp, SlidersHorizontal } from "lucide-react";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from "recharts";
 
@@ -18,11 +18,7 @@ function formatBytes(bytes: number): string {
   return `${v.toFixed(i === 0 ? 0 : 2)} ${units[i]}`;
 }
 
-export interface TrainingConfig {
-  modelType: string;
-  algorithm: string;
-  simulateAttack: boolean;
-}
+export type { TrainingConfig };
 
 interface TelemetryCockpitProps {
   history: TelemetryRound[];
@@ -46,7 +42,17 @@ export default function TelemetryCockpit({
   const { t } = useLanguage();
   const [modelType, setModelType] = useState<string>("vit_tiny");
   const [algorithm, setAlgorithm] = useState<string>("FedDyn");
+  const [peftMode, setPeftMode] = useState<string>("ffa_lora");
+  const [lossFn, setLossFn] = useState<string>("DAFL");
   const [simulateAttack, setSimulateAttack] = useState<boolean>(false);
+  const [secureAggregation, setSecureAggregation] = useState<boolean>(false);
+  const [useCkks, setUseCkks] = useState<boolean>(false);
+  const [dpMode, setDpMode] = useState<string>("distributed");
+  const [dpClippingBound, setDpClippingBound] = useState<number>(1.0);
+  const [privacyNoise, setPrivacyNoise] = useState<number>(0.01);
+  const [localEpochs, setLocalEpochs] = useState<number>(2);
+  const [learningRate, setLearningRate] = useState<number>(0.0001);
+  const [showAdvanced, setShowAdvanced] = useState<boolean>(false);
 
   const safeHistory = Array.isArray(history) ? history : [];
   const latestRound = safeHistory.length > 0 ? safeHistory[safeHistory.length - 1] : undefined;
@@ -80,7 +86,23 @@ export default function TelemetryCockpit({
 
         {!isLocked && (
           <button
-            onClick={() => onStartTraining({ modelType, algorithm, simulateAttack })}
+            onClick={() =>
+              onStartTraining({
+                modelType,
+                algorithm,
+                simulateAttack,
+                peftMode,
+                lossFn,
+                secureAggregation,
+                useCkks,
+                dpMode,
+                dpClippingBound,
+                privacyNoise,
+                localEpochs,
+                learningRate,
+                activateDefense: true,
+              })
+            }
             disabled={isTraining}
             className="btn-primary w-full sm:w-auto mt-2.5 sm:mt-0"
           >
@@ -115,63 +137,228 @@ export default function TelemetryCockpit({
       ) : (
         <>
           {/* Hyperparameter & Defense Toolbar */}
-          <div className="card p-3 sm:p-3.5 mb-3.5 sm:mb-4 flex flex-col lg:flex-row lg:items-center justify-between gap-2.5 sm:gap-3">
-            <div className="flex flex-col sm:flex-row flex-wrap items-stretch sm:items-center gap-2.5 sm:gap-3 w-full lg:w-auto">
-              {/* Model Architecture Selector */}
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1.5 sm:gap-2.5 bg-[var(--bg-card-inner)] border border-[var(--border-subtle)] px-3 py-2 sm:py-1.5 rounded-xl text-xs w-full sm:w-auto">
-                <div className="flex items-center gap-2 shrink-0">
-                  <Cpu className="w-3.5 h-3.5 text-blue-500 shrink-0" />
-                  <span className="text-[var(--text-muted)] font-medium whitespace-nowrap">{t("sec2_model_label")}</span>
+          <div className="card p-3 sm:p-3.5 mb-3.5 sm:mb-4 flex flex-col gap-2.5 sm:gap-3">
+            <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-2.5 sm:gap-3">
+              <div className="flex flex-col sm:flex-row flex-wrap items-stretch sm:items-center gap-2.5 sm:gap-3 w-full lg:w-auto">
+                {/* Model Architecture Selector */}
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1.5 sm:gap-2.5 bg-[var(--bg-card-inner)] border border-[var(--border-subtle)] px-3 py-2 sm:py-1.5 rounded-xl text-xs w-full sm:w-auto">
+                  <div className="flex items-center gap-2 shrink-0">
+                    <Cpu className="w-3.5 h-3.5 text-blue-500 shrink-0" />
+                    <span className="text-[var(--text-muted)] font-medium whitespace-nowrap">{t("sec2_model_label")}</span>
+                  </div>
+                  <select
+                    value={modelType}
+                    onChange={(e) => setModelType(e.target.value)}
+                    disabled={isTraining}
+                    className="bg-transparent text-[var(--text-heading)] font-semibold outline-none cursor-pointer text-xs w-full sm:w-auto text-left sm:text-right pr-1"
+                  >
+                    <option value="vit_base" className="bg-slate-900 text-slate-100">{t("sec2_model_vit_base")}</option>
+                    <option value="vit_tiny" className="bg-slate-900 text-slate-100">{t("sec2_model_vit_tiny")}</option>
+                    <option value="uni" className="bg-slate-900 text-slate-100">{t("sec2_model_uni")}</option>
+                    <option value="swin_unetr" className="bg-slate-900 text-slate-100">{t("sec2_model_swin")}</option>
+                    <option value="fedmedclip" className="bg-slate-900 text-slate-100">{t("sec2_model_fedmedclip")}</option>
+                  </select>
                 </div>
-                <select
-                  value={modelType}
-                  onChange={(e) => setModelType(e.target.value)}
-                  disabled={isTraining}
-                  className="bg-transparent text-[var(--text-heading)] font-semibold outline-none cursor-pointer text-xs w-full sm:w-auto text-left sm:text-right pr-1"
-                >
-                  <option value="vit_base" className="bg-slate-900 text-slate-100">{t("sec2_model_vit_base")}</option>
-                  <option value="vit_tiny" className="bg-slate-900 text-slate-100">{t("sec2_model_vit_tiny")}</option>
-                  <option value="uni" className="bg-slate-900 text-slate-100">{t("sec2_model_uni")}</option>
-                  <option value="swin_unetr" className="bg-slate-900 text-slate-100">{t("sec2_model_swin")}</option>
-                  <option value="fedmedclip" className="bg-slate-900 text-slate-100">{t("sec2_model_fedmedclip")}</option>
-                </select>
+
+                {/* FL Optimizer Selector */}
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1.5 sm:gap-2.5 bg-[var(--bg-card-inner)] border border-[var(--border-subtle)] px-3 py-2 sm:py-1.5 rounded-xl text-xs w-full sm:w-auto">
+                  <div className="flex items-center gap-2 shrink-0">
+                    <SlidersHorizontal className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
+                    <span className="text-[var(--text-muted)] font-medium whitespace-nowrap">{t("sec2_algo_label")}</span>
+                  </div>
+                  <select
+                    value={algorithm}
+                    onChange={(e) => setAlgorithm(e.target.value)}
+                    disabled={isTraining}
+                    className="bg-transparent text-[var(--text-heading)] font-semibold outline-none cursor-pointer text-xs w-full sm:w-auto text-left sm:text-right pr-1"
+                  >
+                    <option value="FedDyn" className="bg-slate-900 text-slate-100">FedDyn</option>
+                    <option value="FedAvg" className="bg-slate-900 text-slate-100">FedAvg</option>
+                    <option value="FedProx" className="bg-slate-900 text-slate-100">FedProx</option>
+                    <option value="FedCola" className="bg-slate-900 text-slate-100">FedCola</option>
+                  </select>
+                </div>
+
+                {/* PEFT Adapter Selector */}
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1.5 sm:gap-2.5 bg-[var(--bg-card-inner)] border border-[var(--border-subtle)] px-3 py-2 sm:py-1.5 rounded-xl text-xs w-full sm:w-auto">
+                  <div className="flex items-center gap-2 shrink-0">
+                    <Zap className="w-3.5 h-3.5 text-amber-500 shrink-0" />
+                    <span className="text-[var(--text-muted)] font-medium whitespace-nowrap">{t("sec2_peft_label")}</span>
+                  </div>
+                  <select
+                    value={peftMode}
+                    onChange={(e) => setPeftMode(e.target.value)}
+                    disabled={isTraining}
+                    className="bg-transparent text-[var(--text-heading)] font-semibold outline-none cursor-pointer text-xs w-full sm:w-auto text-left sm:text-right pr-1"
+                  >
+                    <option value="ffa_lora" className="bg-slate-900 text-slate-100">{t("sec2_peft_ffa")}</option>
+                    <option value="fedsa_lora" className="bg-slate-900 text-slate-100">{t("sec2_peft_fedsa")}</option>
+                    <option value="lora" className="bg-slate-900 text-slate-100">{t("sec2_peft_lora")}</option>
+                    <option value="none" className="bg-slate-900 text-slate-100">{t("sec2_peft_none")}</option>
+                  </select>
+                </div>
+
+                {/* Loss Objective Selector */}
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1.5 sm:gap-2.5 bg-[var(--bg-card-inner)] border border-[var(--border-subtle)] px-3 py-2 sm:py-1.5 rounded-xl text-xs w-full sm:w-auto">
+                  <div className="flex items-center gap-2 shrink-0">
+                    <TrendingUp className="w-3.5 h-3.5 text-purple-500 shrink-0" />
+                    <span className="text-[var(--text-muted)] font-medium whitespace-nowrap">{t("sec2_loss_label")}</span>
+                  </div>
+                  <select
+                    value={lossFn}
+                    onChange={(e) => setLossFn(e.target.value)}
+                    disabled={isTraining}
+                    className="bg-transparent text-[var(--text-heading)] font-semibold outline-none cursor-pointer text-xs w-full sm:w-auto text-left sm:text-right pr-1"
+                  >
+                    <option value="DAFL" className="bg-slate-900 text-slate-100">{t("sec2_loss_dafl")}</option>
+                    <option value="CE" className="bg-slate-900 text-slate-100">{t("sec2_loss_ce")}</option>
+                    <option value="Focal" className="bg-slate-900 text-slate-100">{t("sec2_loss_focal")}</option>
+                    <option value="LDAM" className="bg-slate-900 text-slate-100">{t("sec2_loss_ldam")}</option>
+                  </select>
+                </div>
               </div>
 
-              {/* FL Optimizer Selector */}
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1.5 sm:gap-2.5 bg-[var(--bg-card-inner)] border border-[var(--border-subtle)] px-3 py-2 sm:py-1.5 rounded-xl text-xs w-full sm:w-auto">
-                <div className="flex items-center gap-2 shrink-0">
-                  <SlidersHorizontal className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
-                  <span className="text-[var(--text-muted)] font-medium whitespace-nowrap">{t("sec2_algo_label")}</span>
-                </div>
-                <select
-                  value={algorithm}
-                  onChange={(e) => setAlgorithm(e.target.value)}
-                  disabled={isTraining}
-                  className="bg-transparent text-[var(--text-heading)] font-semibold outline-none cursor-pointer text-xs w-full sm:w-auto text-left sm:text-right pr-1"
+              <div className="flex items-center gap-2 sm:gap-2.5 self-end lg:self-auto">
+                {/* Advanced Security Toggle */}
+                <button
+                  type="button"
+                  onClick={() => setShowAdvanced(!showAdvanced)}
+                  className={`flex items-center gap-1.5 px-3 py-2 sm:py-1.5 rounded-xl border text-xs font-semibold select-none transition-all ${
+                    showAdvanced || secureAggregation || useCkks
+                      ? "bg-accent-500/10 border-accent-500/30 text-accent-600 dark:text-accent-400"
+                      : "bg-[var(--bg-card-inner)] border-[var(--border-subtle)] text-[var(--text-muted)] hover:text-[var(--text-heading)]"
+                  }`}
                 >
-                  <option value="FedDyn" className="bg-slate-900 text-slate-100">FedDyn</option>
-                  <option value="FedAvg" className="bg-slate-900 text-slate-100">FedAvg</option>
-                  <option value="FedProx" className="bg-slate-900 text-slate-100">FedProx</option>
-                  <option value="FedCola" className="bg-slate-900 text-slate-100">FedCola</option>
-                </select>
+                  <ShieldCheck className="w-3.5 h-3.5 shrink-0" />
+                  <span>{showAdvanced ? t("sec2_advanced_hide") : t("sec2_advanced_toggle")}</span>
+                  {(secureAggregation || useCkks) && (
+                    <span className="w-2 h-2 rounded-full bg-emerald-500 shrink-0" />
+                  )}
+                </button>
+
+                {/* Byzantine Attack Simulation Toggle */}
+                <label className={`flex items-center justify-start gap-2.5 px-3 py-2 sm:py-1.5 rounded-xl border text-xs font-semibold cursor-pointer select-none transition-all ${
+                  simulateAttack
+                    ? "bg-rose-500/10 border-rose-500/30 text-rose-600 dark:text-rose-400 shadow-sm"
+                    : "bg-[var(--bg-card-inner)] border-[var(--border-subtle)] text-[var(--text-muted)] hover:text-[var(--text-heading)]"
+                }`}>
+                  <input
+                    type="checkbox"
+                    checked={simulateAttack}
+                    onChange={(e) => setSimulateAttack(e.target.checked)}
+                    disabled={isTraining}
+                    className="w-4 h-4 rounded accent-rose-500 cursor-pointer shrink-0"
+                  />
+                  <span className="leading-snug">{t("sec2_simulate_attack")}</span>
+                </label>
               </div>
             </div>
 
-            {/* Byzantine Attack Simulation Toggle */}
-            <label className={`flex items-center justify-start gap-2.5 px-3 py-2 sm:py-1.5 rounded-xl border text-xs font-semibold cursor-pointer select-none transition-all w-full lg:w-auto ${
-              simulateAttack
-                ? "bg-rose-500/10 border-rose-500/30 text-rose-600 dark:text-rose-400 shadow-sm"
-                : "bg-[var(--bg-card-inner)] border-[var(--border-subtle)] text-[var(--text-muted)] hover:text-[var(--text-heading)]"
-            }`}>
-              <input
-                type="checkbox"
-                checked={simulateAttack}
-                onChange={(e) => setSimulateAttack(e.target.checked)}
-                disabled={isTraining}
-                className="w-4 h-4 rounded accent-rose-500 cursor-pointer shrink-0"
-              />
-              <span className="leading-snug">{t("sec2_simulate_attack")}</span>
-            </label>
+            {/* Expandable Advanced Security & Hyperparameters Panel */}
+            {showAdvanced && (
+              <div className="pt-3 border-t border-[var(--border-subtle)] grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-3 text-xs">
+                {/* SecAgg+ Toggle */}
+                <label className={`flex items-start gap-2.5 p-2.5 rounded-xl border cursor-pointer select-none transition-all ${
+                  secureAggregation
+                    ? "bg-emerald-500/10 border-emerald-500/30 text-emerald-700 dark:text-emerald-300"
+                    : "bg-[var(--bg-card-inner)] border-[var(--border-subtle)] text-[var(--text-muted)]"
+                }`}>
+                  <input
+                    type="checkbox"
+                    checked={secureAggregation}
+                    onChange={(e) => setSecureAggregation(e.target.checked)}
+                    disabled={isTraining}
+                    className="w-4 h-4 mt-0.5 rounded accent-emerald-500 cursor-pointer shrink-0"
+                  />
+                  <div>
+                    <div className="font-bold text-[var(--text-heading)]">{t("sec2_secagg_label")}</div>
+                    <div className="text-[10px] text-[var(--text-muted)]">{t("sec2_secagg_sub")}</div>
+                  </div>
+                </label>
+
+                {/* RLWE CKKS 128-Bit HE Toggle */}
+                <label className={`flex items-start gap-2.5 p-2.5 rounded-xl border cursor-pointer select-none transition-all ${
+                  useCkks
+                    ? "bg-sky-500/10 border-sky-500/30 text-sky-700 dark:text-sky-300"
+                    : "bg-[var(--bg-card-inner)] border-[var(--border-subtle)] text-[var(--text-muted)]"
+                }`}>
+                  <input
+                    type="checkbox"
+                    checked={useCkks}
+                    onChange={(e) => setUseCkks(e.target.checked)}
+                    disabled={isTraining}
+                    className="w-4 h-4 mt-0.5 rounded accent-sky-500 cursor-pointer shrink-0"
+                  />
+                  <div>
+                    <div className="font-bold text-[var(--text-heading)]">{t("sec2_ckks_label")}</div>
+                    <div className="text-[10px] text-[var(--text-muted)]">{t("sec2_ckks_sub")}</div>
+                  </div>
+                </label>
+
+                {/* DP Mode & Clipping Bound */}
+                <div className="bg-[var(--bg-card-inner)] border border-[var(--border-subtle)] p-2.5 rounded-xl flex flex-col justify-between gap-1.5">
+                  <div className="flex items-center justify-between">
+                    <span className="font-medium text-[var(--text-muted)]">{t("sec2_dp_mode_label")}</span>
+                    <select
+                      value={dpMode}
+                      onChange={(e) => setDpMode(e.target.value)}
+                      disabled={isTraining}
+                      className="bg-transparent text-[var(--text-heading)] font-semibold outline-none cursor-pointer text-xs"
+                    >
+                      <option value="distributed" className="bg-slate-900 text-slate-100">{t("sec2_dp_distributed")}</option>
+                      <option value="central" className="bg-slate-900 text-slate-100">{t("sec2_dp_central")}</option>
+                      <option value="none" className="bg-slate-900 text-slate-100">{t("sec2_dp_none")}</option>
+                    </select>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="font-medium text-[var(--text-muted)]">{t("sec2_clip_label")}</span>
+                    <select
+                      value={dpClippingBound}
+                      onChange={(e) => setDpClippingBound(parseFloat(e.target.value))}
+                      disabled={isTraining}
+                      className="bg-transparent text-[var(--text-heading)] font-semibold outline-none cursor-pointer text-xs"
+                    >
+                      <option value={0.5} className="bg-slate-900 text-slate-100">0.5</option>
+                      <option value={1.0} className="bg-slate-900 text-slate-100">1.0 (Standard)</option>
+                      <option value={2.0} className="bg-slate-900 text-slate-100">2.0</option>
+                      <option value={5.0} className="bg-slate-900 text-slate-100">5.0</option>
+                    </select>
+                  </div>
+                </div>
+
+                {/* Local Epochs & Learning Rate */}
+                <div className="bg-[var(--bg-card-inner)] border border-[var(--border-subtle)] p-2.5 rounded-xl flex flex-col justify-between gap-1.5">
+                  <div className="flex items-center justify-between">
+                    <span className="font-medium text-[var(--text-muted)]">{t("sec2_epochs_label")}</span>
+                    <select
+                      value={localEpochs}
+                      onChange={(e) => setLocalEpochs(parseInt(e.target.value, 10))}
+                      disabled={isTraining}
+                      className="bg-transparent text-[var(--text-heading)] font-semibold outline-none cursor-pointer text-xs"
+                    >
+                      <option value={1} className="bg-slate-900 text-slate-100">1 Epoch</option>
+                      <option value={2} className="bg-slate-900 text-slate-100">2 Epochs</option>
+                      <option value={3} className="bg-slate-900 text-slate-100">3 Epochs</option>
+                      <option value={5} className="bg-slate-900 text-slate-100">5 Epochs</option>
+                    </select>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="font-medium text-[var(--text-muted)]">{t("sec2_lr_label")}</span>
+                    <select
+                      value={learningRate}
+                      onChange={(e) => setLearningRate(parseFloat(e.target.value))}
+                      disabled={isTraining}
+                      className="bg-transparent text-[var(--text-heading)] font-semibold outline-none cursor-pointer text-xs"
+                    >
+                      <option value={0.001} className="bg-slate-900 text-slate-100">1e-3</option>
+                      <option value={0.0001} className="bg-slate-900 text-slate-100">1e-4</option>
+                      <option value={0.00005} className="bg-slate-900 text-slate-100">5e-5</option>
+                      <option value={0.00001} className="bg-slate-900 text-slate-100">1e-5</option>
+                    </select>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Progress Bar */}

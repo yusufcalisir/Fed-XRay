@@ -12,7 +12,7 @@ import RagDigitalTwins from "@/components/RagDigitalTwins";
 import VoiceAssistant from "@/components/VoiceAssistant";
 import ReportDownload from "@/components/ReportDownload";
 import Footer from "@/components/Footer";
-import { HospitalCohort, TelemetryRound, DiagnosisResult, RagCase } from "@/types";
+import { HospitalCohort, TelemetryRound, DiagnosisResult, RagCase, TrainingConfig } from "@/types";
 import { fetchHospitalCohorts, fetchClinicalDiagnosis, fetchRagTwins, streamFederatedTraining } from "@/lib/api";
 import authenticCohorts from "@/lib/authenticCohortsCompact.json";
 import { useLanguage } from "@/context/LanguageContext";
@@ -199,11 +199,7 @@ export default function DashboardPage() {
     };
   }, [hospitals.length, history.length, diagnosis]);
 
-  const handleStartTraining = async (config?: {
-    modelType: string;
-    algorithm: string;
-    simulateAttack: boolean;
-  }) => {
+  const handleStartTraining = async (config?: TrainingConfig) => {
     setErrorMessage(null);
     setIsTraining(true);
     setActiveSection("section-training");
@@ -218,20 +214,37 @@ export default function DashboardPage() {
     const selectedModel = config?.modelType || "vit_tiny";
     const selectedAlgorithm = config?.algorithm || "FedDyn";
     const selectedAttack = config?.simulateAttack ?? false;
+    const selectedPeft = config?.peftMode || "ffa_lora";
+    const selectedLoss = config?.lossFn || "DAFL";
+    const selectedSecAgg = config?.secureAggregation ?? false;
+    const selectedCkks = config?.useCkks ?? false;
+    const selectedDpMode = config?.dpMode || "distributed";
+    const selectedClip = config?.dpClippingBound ?? 1.0;
+    const selectedNoise = config?.privacyNoise ?? 0.01;
+    const selectedEpochs = config?.localEpochs ?? 2;
+    const selectedLr = config?.learningRate ?? 0.0001;
+    const selectedDefense = config?.activateDefense ?? true;
+
     setActiveModel(selectedModel);
+    setActivePeft(selectedPeft);
 
     await streamFederatedTraining(
       apiUrl,
       {
         numRounds: totalRounds,
-        localEpochs: 2,
-        learningRate: 0.0001,
+        localEpochs: selectedEpochs,
+        learningRate: selectedLr,
         simulateAttack: selectedAttack,
-        activateDefense: true,
+        activateDefense: selectedDefense,
         algorithm: selectedAlgorithm,
-        lossFn: "DAFL",
+        lossFn: selectedLoss,
         modelType: selectedModel,
-        peftMode: "ffa_lora",
+        peftMode: selectedPeft,
+        secureAggregation: selectedSecAgg,
+        useCkks: selectedCkks,
+        dpMode: selectedDpMode,
+        dpClippingBound: selectedClip,
+        privacyNoise: selectedNoise,
       },
       (roundData) => {
         setCurrentRound(roundData.round_num);
