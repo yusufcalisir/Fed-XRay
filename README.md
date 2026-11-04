@@ -21,7 +21,8 @@
   <img src="https://img.shields.io/badge/PEFT-FFA--LoRA_%7C_FedSA--LoRA_%7C_MedSAM_%7C_FedMedCLIP-purple" alt="PEFT">
   <img src="https://img.shields.io/badge/Flower_FL-Supported-green?logo=flower" alt="Flower FL">
   <img src="https://img.shields.io/badge/Localization-EN%20%7C%20TR-blue" alt="Bilingual">
-  <img src="https://img.shields.io/badge/Tests-368_Passed_(274_Backend_%2B_94_Frontend)-brightgreen" alt="Tests">
+  <a href="https://github.com/yusufcalisir/Fed-XRay/actions/workflows/ci.yml"><img src="https://github.com/yusufcalisir/Fed-XRay/actions/workflows/ci.yml/badge.svg" alt="CI Test and Build Pipeline"></a>
+  <img src="https://img.shields.io/badge/Tests-384_Passed_(287_Backend_%2B_97_Frontend)-brightgreen" alt="Tests">
   <img src="https://img.shields.io/badge/License-MIT-yellow" alt="License">
 </p>
 
@@ -50,7 +51,7 @@
 - [13. Multi-Platform Interfaces](#13-multi-platform-interfaces)
 - [14. Flower Protocol Federation Bridge](#14-flower-protocol-federation-bridge)
 - [15. REST and Streaming API Reference](#15-rest-and-streaming-api-reference)
-- [16. Test Suite Matrix (368 Tests)](#16-test-suite-matrix-368-tests)
+- [16. Test Suite Matrix (384 Tests)](#16-test-suite-matrix-384-tests)
 - [17. Repository Directory Structure](#17-repository-directory-structure)
 - [18. Installation and Quick Start](#18-installation-and-quick-start)
 - [19. Scientific Anchors and Citations](#19-scientific-anchors-and-citations)
@@ -573,11 +574,11 @@ All request/response schemas are defined in `api/schemas.py` as Pydantic v2 mode
 
 ---
 
-## 16. Test Suite Matrix (368 Tests)
+## 16. Test Suite Matrix (384 Tests)
 
-Fed-XRay maintains 368 automated tests (274 Python Pytest backend + 94 TypeScript Vitest frontend), all passing at 100%.
+Fed-XRay maintains 384 automated tests (287 Python Pytest backend + 97 TypeScript Vitest frontend), all passing at 100%.
 
-### Backend Pytest Suites (40 Test Files, 274 Tests)
+### Backend Pytest Suites (41 Test Files, 287 Tests)
 
 | Subsystem | Test File | Count | Scope |
 | :--- | :--- | :--- | :--- |
@@ -618,15 +619,16 @@ Fed-XRay maintains 368 automated tests (274 Python Pytest backend + 94 TypeScrip
 | State Persistence | `test_state_persistence.py` | 4 | AppState save and restore roundtrips, persistence endpoint verification. |
 | Strategy E Ingestion | `test_strategy_e_real_ingestion.py` | 7 | ISIC Archive API v2 ingestion, file staging, and leak-free patient isolation invariants. |
 | Swin UNETR Backbone | `test_swin_unetr_radiology_backbone.py` | 4 | Authentic hierarchical Shifted Window Attention, patch merging, 2D/3D volumetric support, and PEFT adaptation. |
-| Telemetry Authenticity | `test_training_telemetry_authenticity.py` | 4 | Unconflated separation between client local training metrics train_loss/train_accuracy and server holdout validation metrics loss/accuracy across SSE, background worker, and Flower pipelines. |
+| Telemetry Authenticity | `test_training_telemetry_authenticity.py` | 7 | Unconflated separation between client local training metrics train_loss/train_accuracy and server holdout validation metrics loss/accuracy across SSE, background worker, and Flower pipelines. |
+| Uploaded Scan Metadata | `test_uploaded_scan_metadata_integrity.py` | 4 | Uploaded scan metadata normalization, custom user site/provenance retention, and SQLite state store parity. |
 | ViT PEFT Optimizers | `test_vit_peft_optimizers.py` | 4 | ViT-Base FFA-LoRA zero bilinear error, FedDyn, SCAFFOLD, and MOON optimization. |
 | ViT-Tiny FFA-LoRA | `test_vit_tiny_ffa_lora.py` | 4 | ViT-Tiny 224x224 FFA-LoRA injection, CPU runtime efficiency, state dict roundtrips. |
 
-### Frontend Vitest Suites (21 Test Files, 94 Tests)
+### Frontend Vitest Suites (21 Test Files, 97 Tests)
 
 | Component / Utility | Test File | Count | Scope |
 | :--- | :--- | :--- | :--- |
-| API Client | `api.test.ts` | 6 | Dual SSE streaming, polling fallbacks, honest error parsing, and timeout resilience. |
+| API Client | `api.test.ts` | 8 | Dual SSE streaming, polling fallbacks, honest error parsing, and timeout resilience. |
 | Backend Gateway | `backendGateway.test.ts` | 9 | Next.js serverless route gateway resilience, honest HTTP 502/503 propagation, mock elimination, and error status contracts. |
 | Clinical Error Boundary | `ClinicalErrorBoundary.test.tsx` | 3 | Catches rendering errors, renders bilingual recovery controls, reset callbacks. |
 | Enclave Overlay | `ConsortiumLaunchOverlay.test.tsx` | 5 | 4-stage cryptographic enclave handshake, ECDH fingerprints, attestation badges. |
@@ -643,7 +645,7 @@ Fed-XRay maintains 368 automated tests (274 Python Pytest backend + 94 TypeScrip
 | Report Download | `ReportDownload.test.tsx` | 3 | PDF report card rendering, encoded download link generation, disabled states. |
 | Browser Runtime Shield | `runtimeShield.test.ts` | 9 | Interception of extension errors, port drop isolation, console deduplication. |
 | Subtree Isolation | `subtreeIsolation.test.tsx` | 5 | Fault containment across null/undefined sample images, twin lists, and telemetry arrays. |
-| Telemetry Cockpit | `TelemetryCockpit.test.tsx` | 3 | Loss and accuracy convergence graphs, client drift tracking, Byzantine threat alerts. |
+| Telemetry Cockpit | `TelemetryCockpit.test.tsx` | 4 | Loss and accuracy convergence graphs, client drift tracking, Byzantine threat alerts, cryptographic options. |
 | Localization | `translations.test.ts` | 4 | Complete key parity and translation completeness across English and Turkish dictionaries. |
 | Voice Assistant | `VoiceAssistant.test.tsx` | 3 | Audio player controls, bilingual voice toggle, synthesization loading indicators. |
 | Workflow Stepper | `WorkflowStepper.test.tsx` | 4 | 4-step workflow navigation, step completion locking, interactive advancement. |
@@ -734,20 +736,32 @@ source venv/bin/activate
 
 # Install production Python dependencies
 pip install -r requirements.txt
+
+# Or install full testing and development dependencies
+pip install -r requirements-dev.txt
 ```
 
-### 18.2 Automated Test Execution
+### 18.2 Automated Test Execution and CI/CD Pipeline
 
 ```bash
-# Execute all 274 Python backend tests
+# Execute all 287 Python backend tests
 python -m pytest tests/ -v
 
-# Execute all 94 Next.js frontend tests
+# Execute all 97 Next.js frontend tests
 cd frontend
-npm install
-npm test -- --run
+npm ci
+npm test
+npm run build
 cd ..
 ```
+
+All 384 tests and quality gates run automatically on every push and pull request via the GitHub Actions CI pipeline (`.github/workflows/ci.yml`), organized across 5 parallel, categorized jobs:
+
+1. **Code Quality and Static Analysis:** Ruff linting and Rule 13 invariant checks.
+2. **Backend Unit and Integration Tests:** Python 3.12, CPU PyTorch, 287 Pytest tests.
+3. **Frontend Unit and Component Tests:** Node 20, Vitest, 97 component tests.
+4. **Frontend Production Build Validation:** Next.js 14 production build and TypeScript check.
+5. **Docker Container Build Verification:** Container build and image integrity.
 
 ### 18.3 Flower Protocol Federation
 
