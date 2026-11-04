@@ -351,6 +351,35 @@ export default function Navbar({ mode = "landing", onLaunchDemo }: NavbarProps) 
           {/* Bottom Dock Tier inside Fullscreen Menu */}
           <div className="pt-4 border-t border-[var(--border-subtle)] space-y-3.5 shrink-0">
 
+            {/* Mobile Language Switcher */}
+            <div className="flex items-center justify-between px-3.5 py-2.5 rounded-xl bg-[var(--bg-card-inner)] border border-[var(--border-subtle)] text-xs">
+              <span className="text-[var(--text-muted)] font-medium">{language === "TR" ? "Arayüz Dili" : "Interface Language"}</span>
+              <div className="flex items-center gap-1 font-mono font-semibold text-xs">
+                <button
+                  type="button"
+                  onClick={() => setLanguage("EN")}
+                  className={`px-2.5 py-1 rounded-md transition-colors ${
+                    language === "EN"
+                      ? "bg-emerald-500 text-white font-bold"
+                      : "text-[var(--text-muted)] hover:text-[var(--text-heading)] bg-[var(--bg-app)]"
+                  }`}
+                >
+                  EN
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setLanguage("TR")}
+                  className={`px-2.5 py-1 rounded-md transition-colors ${
+                    language === "TR"
+                      ? "bg-emerald-500 text-white font-bold"
+                      : "text-[var(--text-muted)] hover:text-[var(--text-heading)] bg-[var(--bg-app)]"
+                  }`}
+                >
+                  TR
+                </button>
+              </div>
+            </div>
+
             {/* Quick Engine Status */}
             <div className="flex items-center justify-between px-3.5 py-2.5 rounded-xl bg-[var(--bg-card-inner)] border border-[var(--border-subtle)] text-xs">
               <span className="text-[var(--text-muted)] font-medium">{t("nav_mobile_engine")}</span>

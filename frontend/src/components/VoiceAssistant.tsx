@@ -9,12 +9,30 @@ import { getVoiceBriefingUrl } from "@/lib/api";
 interface VoiceAssistantProps { diagnosisName: string; confidence: number; }
 
 export default function VoiceAssistant({ diagnosisName, confidence }: VoiceAssistantProps) {
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
   const { apiUrl } = useApi();
   const [audioError, setAudioError] = useState(false);
   const [isPlaying, setIsPlaying] = useState(false);
 
-  const audioUrl = getVoiceBriefingUrl(apiUrl, diagnosisName, confidence);
+  const langCode = (language || "EN").toLowerCase();
+  const audioUrl = getVoiceBriefingUrl(apiUrl, diagnosisName, confidence, langCode);
+
+  const isTr = langCode === "tr";
+  const localizedDiagnosis = isTr
+    ? diagnosisName.toLowerCase().includes("normal")
+      ? "Normal Bulgular"
+      : diagnosisName.toLowerCase().includes("pneumonia") || diagnosisName.toLowerCase().includes("zatürre")
+      ? "Zatürre (Pnömoni)"
+      : diagnosisName.toLowerCase().includes("covid")
+      ? "COVID-19"
+      : diagnosisName.toLowerCase().includes("nevus")
+      ? "Benign Displastik Nevüs"
+      : diagnosisName.toLowerCase().includes("melanoma")
+      ? "Malign Melanom"
+      : diagnosisName.toLowerCase().includes("carcinoma")
+      ? "Bazal Hücreli Karsinom"
+      : diagnosisName
+    : diagnosisName;
 
   return (
     <div className="card p-3.5 sm:p-5 flex flex-col justify-between">
@@ -30,7 +48,9 @@ export default function VoiceAssistant({ diagnosisName, confidence }: VoiceAssis
         <div className="flex items-center gap-2 p-2.5 rounded-lg bg-amber-500/10 border border-amber-500/20 text-[10px] sm:text-[11px] text-amber-600 dark:text-amber-400">
           <AlertCircle className="w-3.5 h-3.5 shrink-0" />
           <span>
-            {diagnosisName} ({Math.round(confidence)}% confidence).{" "}
+            {isTr
+              ? `${localizedDiagnosis} (%${Math.round(confidence)} güven). `
+              : `${diagnosisName} (${Math.round(confidence)}% confidence). `}
             <button
               onClick={() => setAudioError(false)}
               className="underline underline-offset-2 font-semibold hover:no-underline"

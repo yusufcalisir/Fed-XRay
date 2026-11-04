@@ -251,8 +251,21 @@ export function getVoiceBriefingUrl(
   confidence: number = 95,
   lang: string = "en"
 ): string {
-  const text = `${diagnosis} diagnosis with ${Math.round(confidence)} percent confidence. Federated model inference complete.`;
-  return `${baseUrl.replace(/\/$/, "")}/api/cdss/voice?text=${encodeURIComponent(text)}&lang=${lang}`;
+  const isTr = lang.toLowerCase() === "tr";
+  let localizedDiag = diagnosis;
+  if (isTr) {
+    const dLower = diagnosis.toLowerCase();
+    if (dLower.includes("normal")) localizedDiag = "Normal Bulgular";
+    else if (dLower.includes("pneumonia") || dLower.includes("zatürre")) localizedDiag = "Zatürre";
+    else if (dLower.includes("covid")) localizedDiag = "COVID-19";
+    else if (dLower.includes("nevus") || dLower.includes("benign")) localizedDiag = "Benign Displastik Nevüs";
+    else if (dLower.includes("melanoma")) localizedDiag = "Malign Melanom";
+    else if (dLower.includes("carcinoma")) localizedDiag = "Bazal Hücreli Karsinom";
+  }
+  const text = isTr
+    ? `%${Math.round(confidence)} model güveni ile ${localizedDiag} teşhisi doğrulandı. Federe model analizi tamamlandı.`
+    : `${diagnosis} diagnosis with ${Math.round(confidence)} percent confidence. Federated model inference complete.`;
+  return `${baseUrl.replace(/\/$/, "")}/api/cdss/voice?text=${encodeURIComponent(text)}&lang=${isTr ? "tr" : "en"}`;
 }
 
 export function getPdfReportUrl(

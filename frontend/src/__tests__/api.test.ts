@@ -52,6 +52,11 @@ describe("Frontend API Client Functions", () => {
     expect(url).toContain("http://127.0.0.1:8000/api/cdss/voice");
     expect(url).toContain("text=COVID-19%20diagnosis%20with%2092%20percent%20confidence");
     expect(url).toContain("lang=en");
+
+    const urlTr = getVoiceBriefingUrl("http://127.0.0.1:8000", "Pneumonia", 94.8, "tr");
+    expect(urlTr).toContain("lang=tr");
+    expect(urlTr).toContain(encodeURIComponent("%95 model güveni"));
+    expect(urlTr).toContain(encodeURIComponent("Zatürre"));
   });
 
   it("fetchHospitalCohorts throws descriptive error on network failure", async () => {
