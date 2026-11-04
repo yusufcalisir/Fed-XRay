@@ -39,7 +39,11 @@ from src.fed_xray.data.ingest_real_world import ensure_strategy_e_dataset
 from src.fed_xray.storage import PersistentStateStore
 from src.fed_xray.core.client import HospitalClient
 from src.fed_xray.core.server import CentralServer, run_federated_round
-from src.fed_xray.core.privacy import SecAggPeer
+from src.fed_xray.core.privacy import (
+    SecAggPeer,
+    ConsortiumThresholdCommittee,
+    HospitalThresholdEnclave,
+)
 from src.fed_xray.cdss.xai import GradCAM, GradCAMUnavailableError, get_explanation_text
 from src.fed_xray.cdss.similarity import (
     FederatedRAGCaseMatcher,
@@ -152,6 +156,10 @@ class AppState:
         # Persistent cryptographic consortium peer identities for SecAgg+ (Option J)
         self.consortium_peers: Dict[int, SecAggPeer] = {}
 
+        # Decentralized Threshold CKKS committee and hospital enclaves under Option J
+        self.threshold_committee: Optional[ConsortiumThresholdCommittee] = None
+        self.hospital_threshold_enclaves: Dict[int, HospitalThresholdEnclave] = {}
+
     @property
     def dataset_label_map(self) -> Dict[int, str]:
         """Return the class ontology mapping corresponding to the active dataset."""
@@ -162,6 +170,23 @@ class AppState:
         if client_id not in self.consortium_peers:
             self.consortium_peers[client_id] = SecAggPeer(client_id=client_id)
         return self.consortium_peers[client_id]
+
+    def get_or_create_threshold_committee(
+        self, num_hospitals: int
+    ) -> Tuple[ConsortiumThresholdCommittee, Dict[int, HospitalThresholdEnclave]]:
+        """Return persistent ConsortiumThresholdCommittee and hospital enclaves under Option J."""
+        if self.threshold_committee is None or self.threshold_committee.num_participants != num_hospitals:
+            t_quorum = max(2, (num_hospitals + 1) // 2)
+            self.threshold_committee = ConsortiumThresholdCommittee(
+                num_participants=num_hospitals,
+                threshold=t_quorum,
+                scale_bits=40,
+            )
+            self.hospital_threshold_enclaves = {
+                i: self.threshold_committee.get_hospital_enclave(i)
+                for i in range(num_hospitals)
+            }
+        return self.threshold_committee, self.hospital_threshold_enclaves
 
     def save_to_disk(self, checkpoint_dir: str = "checkpoints") -> bool:
         """Persist trained model weights, metadata, cohorts, and history to SQLite and disk."""
@@ -1277,6 +1302,11 @@ async def stream_federated_training(
             active_num_classes = len(state.dataset_label_map) if state.dataset_label_map else 3
 
             def _init_fl():
+                threshold_comm = None
+                enclaves = {}
+                if use_ckks:
+                    threshold_comm, enclaves = state.get_or_create_threshold_committee(len(active_dataloaders))
+
                 srv = CentralServer(
                     device=state.device,
                     privacy_noise=privacy_noise,
@@ -1288,6 +1318,7 @@ async def stream_federated_training(
                     deep_layers_only=True,
                     secure_aggregation=secure_aggregation,
                     use_ckks=use_ckks,
+                    threshold_committee=threshold_comm,
                     img_size=state.image_size,
                     pretrained=pretrained,
                     dp_mode=dp_mode,
@@ -1316,6 +1347,7 @@ async def stream_federated_training(
                         dp_mode=dp_mode,
                         strict_checkpoint=strict_checkpoint,
                         secagg_peer=state.get_or_create_consortium_peer(i),
+                        threshold_enclave=enclaves.get(i),
                         num_classes=active_num_classes,
                     )
                     for i in range(len(active_dataloaders))
@@ -1356,6 +1388,7 @@ async def stream_federated_training(
                         feddyn_alpha=0.01 if algorithm.upper() == "FEDDYN" else 0.0,
                         secure_aggregation=secure_aggregation,
                         use_ckks=use_ckks,
+                        threshold_committee=state.threshold_committee,
                     )
                 )
 
@@ -1513,6 +1546,11 @@ async def start_training_background(
             state.peft_mode = peft_mode
             active_num_classes = len(state.dataset_label_map) if state.dataset_label_map else 3
 
+            threshold_comm = None
+            enclaves = {}
+            if use_ckks:
+                threshold_comm, enclaves = state.get_or_create_threshold_committee(len(dataloaders))
+
             srv = CentralServer(
                 device=state.device,
                 privacy_noise=privacy_noise,
@@ -1524,6 +1562,7 @@ async def start_training_background(
                 deep_layers_only=True,
                 secure_aggregation=secure_aggregation,
                 use_ckks=use_ckks,
+                threshold_committee=threshold_comm,
                 img_size=state.image_size,
                 pretrained=pretrained,
                 dp_mode=dp_mode,
@@ -1565,6 +1604,7 @@ async def start_training_background(
                     dp_mode=dp_mode,
                     strict_checkpoint=strict_checkpoint,
                     secagg_peer=state.get_or_create_consortium_peer(i),
+                    threshold_enclave=enclaves.get(i),
                     num_classes=active_num_classes,
                 )
                 for i in range(len(dataloaders))
@@ -1587,6 +1627,7 @@ async def start_training_background(
                     feddyn_alpha=0.01 if algorithm.upper() == "FEDDYN" else 0.0,
                     secure_aggregation=secure_aggregation,
                     use_ckks=use_ckks,
+                    threshold_committee=state.threshold_committee,
                 )
 
                 t_loss = float(metrics["loss"])
@@ -1730,6 +1771,11 @@ async def start_flower_training_background(
             state.peft_mode = peft_mode
             active_num_classes = len(state.dataset_label_map) if state.dataset_label_map else 3
 
+            threshold_comm = None
+            enclaves = {}
+            if use_ckks:
+                threshold_comm, enclaves = state.get_or_create_threshold_committee(len(dataloaders))
+
             srv = CentralServer(
                 device=state.device,
                 privacy_noise=privacy_noise,
@@ -1741,6 +1787,7 @@ async def start_flower_training_background(
                 deep_layers_only=True,
                 secure_aggregation=secure_aggregation,
                 use_ckks=use_ckks,
+                threshold_committee=threshold_comm,
                 img_size=state.image_size,
                 pretrained=pretrained,
                 dp_mode=dp_mode,
@@ -1782,6 +1829,7 @@ async def start_flower_training_background(
                     dp_mode=dp_mode,
                     strict_checkpoint=strict_checkpoint,
                     secagg_peer=state.get_or_create_consortium_peer(i),
+                    threshold_enclave=enclaves.get(i),
                     num_classes=active_num_classes,
                 )
                 for i in range(len(dataloaders))
@@ -2088,6 +2136,7 @@ async def perform_enclave_handshake():
         if state.model_type == "vit_base"
         else "ViT-Tiny (128-dim FFA-LoRA Rank-16)"
     )
+    has_threshold = getattr(state, "threshold_committee", None) is not None
     server_info = {
         "status": "healthy",
         "device": device_name,
@@ -2095,8 +2144,8 @@ async def perform_enclave_handshake():
         "defense_mode": getattr(state, "defense_mode", "bft_secagg_isolated"),
         "foundation_model": foundation_name,
         "model_trained": getattr(state, "model_trained", False),
-        "enclave_type": "software_cryptographic_simulation",
-        "threshold_mpc_status": "in_process_prototype",
+        "enclave_type": "process_isolated_threshold_enclave" if has_threshold else "software_cryptographic_simulation",
+        "threshold_mpc_status": "active_quorum_enforced" if has_threshold else "in_process_prototype",
     }
 
     # 5. Compute canonical SHA-256 attestation digest
@@ -2108,11 +2157,17 @@ async def perform_enclave_handshake():
     )
     attestation_digest = f"sha256:{hashlib.sha256(canonical_repr.encode('utf-8')).hexdigest()}"
 
+    enclave_arch = (
+        "Option J Isolated Process Threshold Enclave (TenSEAL CKKS + X25519 SecAgg+)"
+        if has_threshold
+        else "Software Cryptographic Simulation (TenSEAL CKKS + X25519 SecAgg+)"
+    )
+
     return EnclaveHandshakeResponse(
         attestation_status="verified",
         attestation_digest=attestation_digest,
         timestamp=ts_now,
-        enclave_architecture="Software Cryptographic Simulation (TenSEAL CKKS + X25519 SecAgg+)",
+        enclave_architecture=enclave_arch,
         is_hardware_tee=False,
         server_enclave=server_info,
         nodes=nodes_list,

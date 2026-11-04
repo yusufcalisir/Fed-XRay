@@ -11,7 +11,7 @@ Supports:
 from __future__ import annotations
 import logging
 import math
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple, Union
 import numpy as np
 import torch
 import torch.nn as nn
@@ -35,8 +35,10 @@ from .metrics import EvaluationMetrics, SecurityReport, TrainingMetrics
 from .prototypes import aggregate_prototypes_dispersion_weighted
 from .privacy import (
     CKKSEncryptionEngine,
-    ConsortiumKeyEnclave,
+    ConsortiumThresholdCommittee,
     EncryptedTensor,
+    HospitalAuthorization,
+    IsolatedProcessEnclave,
     ClientAttestation,
     PatientLevelDPAccountant,
     SecAggPlusProtocol,
@@ -75,6 +77,8 @@ class CentralServer:
         dp_clipping_bound: float = 1.0,
         strict_checkpoint: bool = False,
         num_classes: int = 3,
+        threshold_committee: Optional[Union[ConsortiumThresholdCommittee, IsolatedProcessEnclave]] = None,
+        public_context_bytes: Optional[bytes] = None,
     ) -> None:
         self.device = device or torch.device("cpu")
         self.privacy_noise = privacy_noise
@@ -99,14 +103,35 @@ class CentralServer:
 
         # Cryptographic and DP engines under Option J
         if use_ckks:
-            self.consortium_key_enclave: Optional[ConsortiumKeyEnclave] = ConsortiumKeyEnclave(scale_bits=40)
-            self.ckks_engine: Optional[CKKSEncryptionEngine] = CKKSEncryptionEngine.from_public_bytes(
-                self.consortium_key_enclave.public_context_bytes,
-                scale_bits=40,
-            )
+            if threshold_committee is not None:
+                self.threshold_committee: Optional[Any] = threshold_committee
+                pub_ctx = threshold_committee.public_context_bytes
+                if pub_ctx is not None:
+                    self.ckks_engine: Optional[CKKSEncryptionEngine] = CKKSEncryptionEngine.from_public_bytes(
+                        pub_ctx,
+                        scale_bits=40,
+                    )
+                else:
+                    self.ckks_engine = None
+            elif public_context_bytes is not None:
+                self.threshold_committee = None
+                self.ckks_engine = CKKSEncryptionEngine.from_public_bytes(
+                    public_context_bytes,
+                    scale_bits=40,
+                )
+            else:
+                self.threshold_committee = ConsortiumThresholdCommittee(
+                    num_participants=3, threshold=2, scale_bits=40
+                )
+                self.ckks_engine = CKKSEncryptionEngine.from_public_bytes(
+                    self.threshold_committee.public_context_bytes,
+                    scale_bits=40,
+                )
+            self.consortium_key_enclave = None  # Central server never holds single-enclave secret keys
         else:
-            self.consortium_key_enclave = None
+            self.threshold_committee = None
             self.ckks_engine = None
+            self.consortium_key_enclave = None
         self.dp_accountant = PatientLevelDPAccountant(target_delta=1e-5)
 
         # Instantiate global architecture
@@ -374,6 +399,8 @@ class CentralServer:
         client_attestations: Optional[List[ClientAttestation]] = None,
         clients: Optional[List[HospitalClient]] = None,
         round_num: int = 1,
+        hospital_authorizations: Optional[List[HospitalAuthorization]] = None,
+        threshold_committee: Optional[Union[ConsortiumThresholdCommittee, IsolatedProcessEnclave]] = None,
     ) -> Tuple[Dict[str, torch.Tensor], SecurityReport]:
         """Filter out malicious poisoned nodes and aggregate trusted updates."""
         validation_accuracies: Dict[int, float] = {}
@@ -516,10 +543,10 @@ class CentralServer:
                     if val_acc < 0.10 and cohort_max >= 0.20:
                         is_malicious = True
                         block_reason = f"Performance collapse below baseline (Acc: {val_acc*100:.1f}%, no class competence: {max_class_accuracies.get(cid, 0.0)*100:.1f}%)"
-                    elif cohort_max >= 0.40 and (cohort_max - val_acc) >= 0.35 and val_acc < 0.15:
+                    elif cohort_max >= 0.40 and (cohort_max - val_acc) >= 0.35 and val_acc <= 0.25:
                         is_malicious = True
                         block_reason = f"Consensus divergence (Acc: {val_acc*100:.1f}% vs Cohort Max: {cohort_max*100:.1f}%, no class competence)"
-                    elif (cohort_med - val_acc) >= 0.30 and val_acc < 0.15:
+                    elif (cohort_med - val_acc) >= 0.30 and val_acc <= 0.25:
                         is_malicious = True
                         block_reason = f"Cohort median divergence (Acc: {val_acc*100:.1f}% vs Cohort Med: {cohort_med*100:.1f}%, no class competence)"
             elif val_acc < 0.10 and max_class_accuracies.get(cid, 0.0) < 0.20:
@@ -584,6 +611,18 @@ class CentralServer:
                     client.encrypt_local_weights(w) for client, w in zip(trusted_clients, weights_to_aggregate)
                 ]
 
+            auths_to_use = hospital_authorizations
+            comm = threshold_committee or getattr(self, "threshold_committee", None)
+            if (use_ckks or self.use_ckks) and auths_to_use is None and comm is not None and trusted_clients:
+                c_digest = f"round_{round_num}"
+                auth_list = [
+                    c.sign_threshold_authorization(round_num, c_digest)
+                    for c in trusted_clients
+                    if getattr(c, "threshold_enclave", None) is not None
+                ]
+                if auth_list:
+                    auths_to_use = auth_list
+
             aggregated_weights = self.aggregate(
                 weights_to_aggregate,
                 trusted_counts,
@@ -591,6 +630,8 @@ class CentralServer:
                 delta_cs=trusted_delta_cs if trusted_delta_cs else None,
                 use_ckks=use_ckks,
                 client_subsampling_q=client_subsampling_q,
+                hospital_authorizations=auths_to_use,
+                threshold_committee=threshold_committee,
             )
 
         secagg_note = " under SecAgg+ zero-sum masking" if use_secagg else ""
@@ -624,6 +665,8 @@ class CentralServer:
         delta_cs: Optional[List[Dict[str, torch.Tensor]]] = None,
         use_ckks: Optional[bool] = None,
         client_subsampling_q: float = 1.0,
+        hospital_authorizations: Optional[List[HospitalAuthorization]] = None,
+        threshold_committee: Optional[Union[ConsortiumThresholdCommittee, IsolatedProcessEnclave]] = None,
     ) -> Dict[str, torch.Tensor]:
         """Aggregate model or adapter weights using the specified optimization algorithm."""
         total_samples = sum(sample_counts)
@@ -649,10 +692,21 @@ class CentralServer:
         # 1. Base Aggregation: CKKS Homomorphic Aggregation vs Standard Sample-Weighted Average
         if active_ckks:
             if self.ckks_engine is None:
-                self.consortium_key_enclave = ConsortiumKeyEnclave(scale_bits=40)
-                self.ckks_engine = CKKSEncryptionEngine.from_public_bytes(
-                    self.consortium_key_enclave.public_context_bytes, scale_bits=40
-                )
+                if threshold_committee is not None and threshold_committee.public_context_bytes is not None:
+                    self.ckks_engine = CKKSEncryptionEngine.from_public_bytes(
+                        threshold_committee.public_context_bytes, scale_bits=40
+                    )
+                elif self.threshold_committee is not None and self.threshold_committee.public_context_bytes is not None:
+                    self.ckks_engine = CKKSEncryptionEngine.from_public_bytes(
+                        self.threshold_committee.public_context_bytes, scale_bits=40
+                    )
+                else:
+                    self.threshold_committee = ConsortiumThresholdCommittee(
+                        num_participants=3, threshold=2, scale_bits=40
+                    )
+                    self.ckks_engine = CKKSEncryptionEngine.from_public_bytes(
+                        self.threshold_committee.public_context_bytes, scale_bits=40
+                    )
 
             first_val = next(iter(first_client.values()))
             if isinstance(first_val, EncryptedTensor):
@@ -668,15 +722,27 @@ class CentralServer:
                 encrypted_updates, [float(c) for c in sample_counts]
             )
 
-            if self.consortium_key_enclave is not None:
-                avg_weights = self.consortium_key_enclave.decrypt_aggregated_state_dict(
+            decryptor = threshold_committee or self.threshold_committee or self.consortium_key_enclave
+            if decryptor is None:
+                raise PermissionError(
+                    "Central aggregation server possesses only the public CKKS context and cannot decrypt. "
+                    "Consortium threshold committee must be provided for collective threshold decryption."
+                )
+
+            if hospital_authorizations is not None:
+                avg_weights = decryptor.collaborative_decrypt(
+                    agg_encrypted, hospital_authorizations, target_dtypes=target_dtypes
+                )
+            elif hasattr(decryptor, "auto_collaborative_decrypt"):
+                avg_weights = decryptor.auto_collaborative_decrypt(
+                    agg_encrypted, target_dtypes=target_dtypes
+                )
+            elif hasattr(decryptor, "decrypt_aggregated_state_dict"):
+                avg_weights = decryptor.decrypt_aggregated_state_dict(
                     agg_encrypted, target_dtypes=target_dtypes
                 )
             else:
-                raise PermissionError(
-                    "Central aggregation server possesses only the public CKKS context and cannot decrypt. "
-                    "Consortium Key Enclave must be provided for collective threshold decryption."
-                )
+                raise PermissionError("Decryption failed: committee or enclave interface missing.")
         else:
             avg_weights = {}
             for key in first_client.keys():
@@ -907,6 +973,7 @@ def run_federated_round(
     use_ckks: bool = False,
     total_consortium_hospitals: Optional[int] = None,
     num_classes: Optional[int] = None,
+    threshold_committee: Optional[Union[ConsortiumThresholdCommittee, IsolatedProcessEnclave]] = None,
 ) -> Tuple[Dict[str, Any], List[TrainingMetrics], Optional[EvaluationMetrics], Optional[SecurityReport]]:
     """Execute one federated round across all participating clinical nodes."""
     global_weights = server.get_global_weights()
@@ -963,11 +1030,20 @@ def run_federated_round(
     active_ckks = use_ckks or server.use_ckks
 
     # Distribute public CKKS context to hospital clients under Option J standard
-    if active_ckks and server.consortium_key_enclave is not None:
-        pub_bytes = server.consortium_key_enclave.public_context_bytes
-        for client in clients:
-            if client.ckks_engine is None:
-                client.init_ckks(pub_bytes)
+    if active_ckks:
+        pub_bytes = None
+        if threshold_committee is not None:
+            pub_bytes = threshold_committee.public_context_bytes
+        elif getattr(server, "threshold_committee", None) is not None and server.threshold_committee is not None:
+            pub_bytes = getattr(server.threshold_committee, "public_context_bytes", None)
+        elif server.consortium_key_enclave is not None:
+            pub_bytes = server.consortium_key_enclave.public_context_bytes
+        elif server.ckks_engine is not None:
+            pub_bytes = server.ckks_engine.export_public_context()
+        if pub_bytes is not None:
+            for client in clients:
+                if client.ckks_engine is None:
+                    client.init_ckks(pub_bytes)
 
     security_report: Optional[SecurityReport] = None
 
@@ -993,6 +1069,7 @@ def run_federated_round(
             client_attestations=attestations,
             clients=clients,
             round_num=round_num,
+            threshold_committee=threshold_committee,
         )
         if security_report:
             for metrics in client_metrics:
@@ -1046,6 +1123,7 @@ def run_federated_round(
             delta_cs=delta_cs_clean,
             use_ckks=active_ckks,
             client_subsampling_q=client_subsampling_q,
+            threshold_committee=threshold_committee,
         )
 
         if use_defense:

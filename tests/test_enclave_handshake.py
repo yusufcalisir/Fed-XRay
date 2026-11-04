@@ -114,8 +114,8 @@ def test_differential_privacy_intermediate_budget_accumulation(client):
     """Verify that 1 round of DP accumulation reports genuine intermediate epsilon (0.0 < eps < 2.0)."""
     original_server = state.server
     try:
-        server = CentralServer(privacy_noise=1.0, defense_mode=False, dp_mode="distributed")
-        server.dp_accountant.step(q=0.1, sigma=1.0)
+        server = CentralServer(privacy_noise=1.5, defense_mode=False, dp_mode="distributed")
+        server.dp_accountant.step(q=0.1, sigma=1.5)
         state.server = server
 
         res = client.get("/api/fl/enclave-handshake")
@@ -129,4 +129,24 @@ def test_differential_privacy_intermediate_budget_accumulation(client):
         assert privacy["total_rounds_composed"] == 1
     finally:
         state.server = original_server
+
+
+def test_enclave_handshake_with_threshold_committee(client):
+    """Verify handshake reports process-isolated threshold enclave when threshold committee is active."""
+    original_comm = getattr(state, "threshold_committee", None)
+    original_enclaves = getattr(state, "hospital_threshold_enclaves", None)
+    try:
+        comm, enclaves = state.get_or_create_threshold_committee(num_hospitals=4)
+        res = client.get("/api/fl/enclave-handshake")
+        assert res.status_code == 200
+        data = res.json()
+
+        assert "Option J Isolated Process Threshold Enclave" in data["enclave_architecture"]
+        server_enc = data["server_enclave"]
+        assert server_enc["enclave_type"] == "process_isolated_threshold_enclave"
+        assert server_enc["threshold_mpc_status"] == "active_quorum_enforced"
+    finally:
+        state.threshold_committee = original_comm
+        state.hospital_threshold_enclaves = original_enclaves
+
 

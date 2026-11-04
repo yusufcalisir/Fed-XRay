@@ -50,6 +50,8 @@ from .privacy import (
     CKKSEncryptionEngine,
     EncryptedTensor,
     ClientAttestation,
+    HospitalAuthorization,
+    HospitalThresholdEnclave,
     PatientLevelDPAccountant,
 )
 
@@ -82,6 +84,7 @@ class HospitalClient:
         dp_mode: str = "distributed",  # "distributed", "local", "central", "off"
         strict_checkpoint: bool = False,
         secagg_peer: Optional[SecAggPeer] = None,
+        threshold_enclave: Optional[HospitalThresholdEnclave] = None,
         num_classes: int = 3,
     ) -> None:
         self.client_id = client_id
@@ -130,6 +133,8 @@ class HospitalClient:
 
         # Decentralized cryptographic peer enclave for SecAgg+ (Option J standard)
         self.secagg_peer = secagg_peer if secagg_peer is not None else SecAggPeer(client_id=self.client_id)
+        # Decentralized threshold enclave for Option J collective decryption
+        self.threshold_enclave = threshold_enclave
         # Client-side CKKS homomorphic encryption engine (public context)
         self.ckks_engine: Optional[CKKSEncryptionEngine] = None
         self.cola_bridge: Optional[FedColaModalityBridge] = None
@@ -312,6 +317,14 @@ class HospitalClient:
             raise RuntimeError("Client CKKS engine is not initialized. Call init_ckks first.")
         w = weights if weights is not None else self.get_weights()
         return self.ckks_engine.encrypt_state_dict(w)
+
+    def sign_threshold_authorization(
+        self, round_num: int, ciphertext_digest: str
+    ) -> HospitalAuthorization:
+        """Issue an authentic signed threshold partial decryption authorization."""
+        if self.threshold_enclave is None:
+            raise RuntimeError(f"Client {self.client_id} does not possess a threshold enclave.")
+        return self.threshold_enclave.sign_partial_decryption_authorization(round_num, ciphertext_digest)
 
     def evaluate_local_model(
         self,
