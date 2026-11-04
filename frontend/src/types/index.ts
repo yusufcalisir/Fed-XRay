@@ -4,9 +4,21 @@ export interface HospitalCohort {
   num_samples: number;
   distribution: number[];
   counts: {
-    normal: number;
-    pneumonia: number;
-    covid: number;
+    normal?: number;
+    pneumonia?: number;
+    covid?: number;
+    nevus?: number;
+    melanoma?: number;
+    carcinoma?: number;
+    benign_dysplastic_nevus?: number;
+    malignant_melanoma?: number;
+    basal_cell_carcinoma?: number;
+    actinic_keratosis?: number;
+    benign_keratosis?: number;
+    dermatofibroma?: number;
+    vascular_lesion?: number;
+    squamous_cell_carcinoma?: number;
+    [key: string]: number | undefined;
   };
   sample_images: number[][][];
   sample_labels: number[];
