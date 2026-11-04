@@ -2162,13 +2162,11 @@ async def perform_diagnosis(req: DiagnoseRequest):
         image_source = "uploaded"
         patient_id = f"PAT_UPLOAD_{hashlib.md5(image_np.tobytes()).hexdigest()[:6].upper()}"
         modality = inferred_modality
-        if anatomical_site is None or str(anatomical_site).strip() in ("", "None", "null"):
+        if anatomical_site is None or anatomical_site.strip() in ("", "None", "null"):
             anatomical_site = default_site
         if biopsy_confirmed is None:
             biopsy_confirmed = False
-        else:
-            biopsy_confirmed = bool(biopsy_confirmed)
-        if provenance is None or str(provenance).strip() in ("", "None", "null"):
+        if provenance is None or provenance.strip() in ("", "None", "null"):
             provenance = "uploaded_custom_scan"
     elif req.image_data:
         try:
@@ -2184,13 +2182,11 @@ async def perform_diagnosis(req: DiagnoseRequest):
         image_source = "uploaded"
         patient_id = f"PAT_UPLOAD_{hashlib.md5(image_np.tobytes()).hexdigest()[:6].upper()}"
         modality = inferred_modality
-        if anatomical_site is None or str(anatomical_site).strip() in ("", "None", "null"):
+        if anatomical_site is None or anatomical_site.strip() in ("", "None", "null"):
             anatomical_site = default_site
         if biopsy_confirmed is None:
             biopsy_confirmed = False
-        else:
-            biopsy_confirmed = bool(biopsy_confirmed)
-        if provenance is None or str(provenance).strip() in ("", "None", "null"):
+        if provenance is None or provenance.strip() in ("", "None", "null"):
             provenance = "uploaded_custom_scan"
     else:
         if state.global_test_set is None:

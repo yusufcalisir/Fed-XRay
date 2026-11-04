@@ -852,20 +852,20 @@ def stage_manifest_from_local_isic_scans(
     allocations = []
     for site_idx, site_name in enumerate(STRATEGY_E_CENTERS):
         if site_idx == 0:
-            c1 = int(round(patients_per_hospital * 0.45))
-            c0 = int(round(patients_per_hospital * 0.35))
+            c1 = round(patients_per_hospital * 0.45)
+            c0 = round(patients_per_hospital * 0.35)
             c2 = patients_per_hospital - c1 - c0
         elif site_idx == 1:
-            c2 = int(round(patients_per_hospital * 0.45))
-            c1 = int(round(patients_per_hospital * 0.30))
+            c2 = round(patients_per_hospital * 0.45)
+            c1 = round(patients_per_hospital * 0.30)
             c0 = patients_per_hospital - c2 - c1
         elif site_idx == 2:
-            c0 = int(round(patients_per_hospital * 0.50))
-            c1 = int(round(patients_per_hospital * 0.30))
+            c0 = round(patients_per_hospital * 0.50)
+            c1 = round(patients_per_hospital * 0.30)
             c2 = patients_per_hospital - c0 - c1
         else:
-            c1 = int(round(patients_per_hospital * 0.35))
-            c2 = int(round(patients_per_hospital * 0.35))
+            c1 = round(patients_per_hospital * 0.35)
+            c2 = round(patients_per_hospital * 0.35)
             c0 = patients_per_hospital - c1 - c2
         quota = {0: max(0, c0), 1: max(0, c1), 2: max(0, c2)}
         diff = patients_per_hospital - sum(quota.values())
