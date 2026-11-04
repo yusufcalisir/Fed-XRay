@@ -1,11 +1,12 @@
 import unittest
 import numpy as np
 import torch
-from unittest.mock import patch
+from torch.utils.data import DataLoader, TensorDataset
 
 from src.fed_xray.models.cnn import create_model, count_parameters
 from src.fed_xray.data.generator import MedicalDataGenerator, get_distribution_info
 from src.fed_xray.core.server import CentralServer
+from src.fed_xray.core.client import HospitalClient
 from src.fed_xray.cdss.xai import GradCAM, create_overlay
 
 
@@ -48,25 +49,44 @@ class TestFederatedCore(unittest.TestCase):
         for key in weights_before.keys():
             self.assertTrue(torch.allclose(aggregated[key], weights_before[key]))
 
-    @patch.object(CentralServer, '_validate_client_model')
-    def test_server_defense_mechanism(self, mock_validate):
-        server = CentralServer(device=self.device, privacy_noise=0.0, defense_mode=True)
+    def test_server_defense_mechanism(self):
+        server = CentralServer(device=self.device, privacy_noise=0.0, defense_mode=True, model_type="cnn")
         global_weights = server.get_global_weights()
-        bad_weights = {name: torch.zeros_like(param) for name, param in global_weights.items()}
 
-        mock_validate.side_effect = lambda w, img, lbl: 0.85 if w is global_weights else 0.15
+        # Distinguishable training distributions so the honest client achieves genuine high accuracy
+        x_train = torch.cat([torch.ones(12, 1, 28, 28) * -2.0, torch.ones(12, 1, 28, 28) * 2.0])
+        y_train = torch.cat([torch.zeros(12, dtype=torch.long), torch.ones(12, dtype=torch.long)])
+        ds_train = TensorDataset(x_train, y_train)
+        loader = DataLoader(ds_train, batch_size=6, shuffle=True)
+
+        client = HospitalClient(0, loader, device=self.device, model_type="cnn", local_epochs=8, learning_rate=0.05)
+        honest_weights, _, _ = client.train(global_weights)
+
+        # Adversary produces inverted/poisoned weights causing performance collapse
+        bad_weights = {k: -v * 10.0 for k, v in honest_weights.items()}
+
+        test_images = torch.cat([torch.ones(10, 1, 28, 28) * -2.0, torch.ones(10, 1, 28, 28) * 2.0])
+        test_labels = torch.cat([torch.zeros(10, dtype=torch.long), torch.ones(10, dtype=torch.long)])
+
+        # Real model inference validation through _validate_client_model without mocks
+        honest_acc, _ = server._validate_client_model(honest_weights, test_images, test_labels)
+        bad_acc, _ = server._validate_client_model(bad_weights, test_images, test_labels)
+        self.assertGreaterEqual(honest_acc, 0.80)
+        self.assertLessEqual(bad_acc, 0.20)
 
         aggregated, report = server.validate_and_aggregate(
-            client_weights=[global_weights, bad_weights],
-            sample_counts=[100, 100],
+            client_weights=[honest_weights, bad_weights],
+            sample_counts=[24, 24],
             client_ids=[0, 1],
-            test_images=torch.randn(10, 1, 28, 28),
-            test_labels=torch.randint(0, 3, (10,))
+            test_images=test_images,
+            test_labels=test_labels,
         )
 
         self.assertIn(1, report.clients_blocked)
         self.assertEqual(len(report.clients_accepted), 1)
         self.assertEqual(report.clients_accepted[0], 0)
+        self.assertTrue(report.threat_detected)
+        self.assertIsNotNone(aggregated)
 
 
 class TestExplainableAI(unittest.TestCase):
