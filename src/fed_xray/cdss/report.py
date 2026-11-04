@@ -822,9 +822,9 @@ def get_diagnosis_explanation(
             "CANCER-ASSOCIATED STROMA": 7,
             "COLORECTAL ADENOCARCINOMA EPITHELIUM": 8,
         }
-        for k, v in diag_map.items():
-            if k in diag_up or diag_up in k:
-                diag_code = v
+        for name, code in diag_map.items():
+            if name in diag_up or diag_up in name:
+                diag_code = code
                 break
 
     norm_probs: Optional[List[float]] = None

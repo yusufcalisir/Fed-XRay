@@ -153,7 +153,8 @@ class UNIFoundationBackbone(nn.Module):
                     tiled_w = w.repeat(repeats, 1, 1, 1)[: self.embed_dim]
                     self.patch_proj.weight.data.copy_(tiled_w)
 
-            for i, blk in enumerate(self.blocks):
+            for i, raw_blk in enumerate(self.blocks):
+                blk: Any = raw_blk
                 src_idx = min(i, 11)
                 prefix = f"encoder.layers.encoder_layer_{src_idx}"
                 if f"{prefix}.ln_1.weight" in state:
@@ -161,9 +162,9 @@ class UNIFoundationBackbone(nn.Module):
                     self._copy_subspace(blk.norm1.bias, state[f"{prefix}.ln_1.bias"])
                 if f"{prefix}.self_attention.in_proj_weight" in state:
                     in_w = state[f"{prefix}.self_attention.in_proj_weight"]
-                    qw, kw, vw = in_w.chunk(3, dim=0)
+                    qw, kw_chunk, vw = in_w.chunk(3, dim=0)
                     self._copy_subspace_matrix(blk.attn.q_proj.weight, qw)
-                    self._copy_subspace_matrix(blk.attn.k_proj.weight, kw)
+                    self._copy_subspace_matrix(blk.attn.k_proj.weight, kw_chunk)
                     self._copy_subspace_matrix(blk.attn.v_proj.weight, vw)
                 if f"{prefix}.self_attention.out_proj.weight" in state:
                     out_p = getattr(blk.attn, "out_proj", getattr(blk.attn, "proj", None))
@@ -254,6 +255,7 @@ class SwinUNETRRadiologyBackbone(nn.Module):
 
         # Swin-T feature dimension is 768
         backbone_dim = 768
+        self.proj_to_embed: nn.Module
         if embed_dim != backbone_dim:
             self.proj_to_embed = nn.Linear(backbone_dim, embed_dim)
         else:

@@ -380,10 +380,10 @@ def load_pretrained_vit_weights(
             # Self-Attention
             if f"{prefix}.self_attention.in_proj_weight" in state:
                 in_w = state[f"{prefix}.self_attention.in_proj_weight"]
-                qw, kw, vw = in_w.chunk(3, dim=0)
-                blk.attn.q_proj.weight.data.copy_(qw[:dim, :dim])
-                blk.attn.k_proj.weight.data.copy_(kw[:dim, :dim])
-                blk.attn.v_proj.weight.data.copy_(vw[:dim, :dim])
+                q_weight, k_weight, v_weight = in_w.chunk(3, dim=0)
+                blk.attn.q_proj.weight.data.copy_(q_weight[:dim, :dim])
+                blk.attn.k_proj.weight.data.copy_(k_weight[:dim, :dim])
+                blk.attn.v_proj.weight.data.copy_(v_weight[:dim, :dim])
 
             if f"{prefix}.self_attention.in_proj_bias" in state:
                 in_b = state[f"{prefix}.self_attention.in_proj_bias"]

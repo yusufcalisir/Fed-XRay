@@ -566,9 +566,9 @@ def run_flower_federated_orchestration(
         )
 
         results: List[Tuple[ClientProxy, FitRes]] = []
-        for proxy, fit_ins in fit_configurations:
-            fit_res = proxy.fit(fit_ins)
-            results.append((proxy, fit_res))
+        for c_proxy, fit_ins in fit_configurations:
+            fit_res = c_proxy.fit(fit_ins, timeout=None, group_id=None)
+            results.append((c_proxy, fit_res))
 
         aggregated_params, agg_metrics = strategy.aggregate_fit(
             server_round=rnd,

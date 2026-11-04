@@ -306,6 +306,7 @@ class CentralServer:
     ) -> Dict[str, Any]:
         """Compute authentic parameter counts, byte sizes, and bandwidth reduction percentage."""
         patch_size = 16 if img_size == 224 else 4
+        model: nn.Module
         if model_type.startswith("vit"):
             model = create_medical_vit(
                 model_type=model_type,
@@ -629,7 +630,7 @@ class CentralServer:
             aggregated_weights = self.get_global_weights()
         else:
             # If SecAgg+ is active, apply zero-sum masking strictly among the trusted cohort
-            weights_to_aggregate = trusted_weights
+            weights_to_aggregate: List[Dict[str, Any]] = list(trusted_weights)
             if use_secagg and len(trusted_weights) > 1:
                 total_s = max(1, sum(trusted_counts))
                 if trusted_clients and hasattr(trusted_clients[0], "get_secagg_public_key"):
@@ -951,7 +952,7 @@ class CentralServer:
 
         # Dynamic multiclass evaluation supporting multi-class oncology benchmarks
         n_eval = len(all_labels_arr)
-        effective_classes = num_classes or getattr(self, "num_classes", 3)
+        effective_classes: int = int(num_classes) if num_classes is not None else int(getattr(self, "num_classes", 3) or 3)
         head = (
             getattr(self.global_model, "head", None)
             or getattr(self.global_model, "fc2", None)
@@ -1131,7 +1132,7 @@ def run_federated_round(
                     metrics.was_blocked = True
     else:
         # Defense not active or test set not available
-        updates_to_aggregate = client_updates
+        updates_to_aggregate: List[Dict[str, Any]] = list(client_updates)
         if active_secagg and len(client_updates) > 1:
             total_s = max(1, sum(sample_counts))
             if clients and hasattr(clients[0], "get_secagg_public_key"):
@@ -1214,7 +1215,7 @@ def run_federated_round(
                 client_prototypes=clean_protos,
                 client_traces=clean_traces,
                 client_counts=clean_counts,
-                num_classes=num_classes or getattr(server, "num_classes", 3),
+                num_classes=int(num_classes) if num_classes is not None else int(getattr(server, "num_classes", 3) or 3),
             )
             server.set_global_prototypes(synthesized_protos)
 

@@ -8,7 +8,7 @@ Implements:
 
 from __future__ import annotations
 import math
-from typing import Any, Dict, List, Optional, Sequence, Tuple
+from typing import Any, Dict, List, Optional, Sequence, Tuple, cast
 import numpy as np
 from scipy.ndimage import zoom
 import torch
@@ -44,9 +44,10 @@ class GradCAM:
         target_layer: Optional[nn.Module] = None
 
         # 1. Vision Transformer: hook on last encoder block
-        if hasattr(self.model, "blocks") and len(self.model.blocks) > 0:
-            target_layer = self.model.blocks[-1]
-            self.target_layer_name = f"blocks.{len(self.model.blocks) - 1}"
+        blocks = getattr(self.model, "blocks", None)
+        if blocks is not None and isinstance(blocks, (nn.ModuleList, list, tuple)) and len(blocks) > 0:
+            target_layer = cast(nn.Module, blocks[-1])
+            self.target_layer_name = f"blocks.{len(blocks) - 1}"
         else:
             last_block_module = None
             last_block_name = ""

@@ -421,11 +421,10 @@ def create_hospital_dataloaders(
                 num_clients=n_hospitals,
                 scenario="A",
             )
-            dataloaders = [
+            return [
                 ecosystem.records_to_dataloader(client_partitions[h], batch_size=batch_size, shuffle=True)
                 for h in range(n_hospitals)
             ]
-            return dataloaders
         except Exception:
             # Fall back to high-resolution benchmark generator if manifest load fails
             pass

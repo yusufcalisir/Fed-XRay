@@ -542,8 +542,9 @@ class HospitalClient:
                     labels = self._flip_labels(labels)
 
                 optimizer.zero_grad()
-                if hasattr(self.model, "compute_local_loss"):
-                    loss, y_ens = self.model.compute_local_loss(images, labels, beta=0.5)
+                compute_loss_fn = getattr(self.model, "compute_local_loss", None)
+                if callable(compute_loss_fn):
+                    loss, y_ens = compute_loss_fn(images, labels, beta=0.5)
                     outputs = torch.log(y_ens + 1e-8)
                 else:
                     outputs = self.model(images)
@@ -628,7 +629,7 @@ class HospitalClient:
 
                 total_loss += loss.item() * images.size(0)
                 _, predicted = outputs.max(1)
-                correct += predicted.eq(labels).sum().item()
+                correct += int(predicted.eq(labels).sum().item())
                 total_samples += images.size(0)
 
         # Update SCAFFOLD client control variates
