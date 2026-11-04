@@ -18,6 +18,9 @@ explicit_package_bases = true
 
 [tool.pytest.ini_options]
 pythonpath = ["src", "."]
+filterwarnings = [
+    "ignore::DeprecationWarning",
+]
 
 [tool.pyrefly]
 search-path = ["src", "."]

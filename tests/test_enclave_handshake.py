@@ -5,6 +5,12 @@ from fastapi.testclient import TestClient
 from api.main import app, state, get_default_strategy_e_hospitals
 from src.fed_xray.core.server import CentralServer
 
+try:
+    import tenseal  # noqa: F401
+    HAS_TENSEAL = True
+except ImportError:
+    HAS_TENSEAL = False
+
 
 @pytest.fixture
 def client():
@@ -135,6 +141,7 @@ def test_differential_privacy_intermediate_budget_accumulation(client):
         state.server = original_server
 
 
+@pytest.mark.skipif(not HAS_TENSEAL, reason="tenseal optional dependency not installed")
 def test_enclave_handshake_with_threshold_committee(client):
     """Verify handshake reports process-isolated threshold enclave when threshold committee is active."""
     original_comm = state.threshold_committee

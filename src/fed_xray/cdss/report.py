@@ -750,9 +750,9 @@ def generate_medical_report(
 
     # Serialize PDF bytes
     try:
-        raw_output = pdf.output(dest="S")
-    except TypeError:
         raw_output = pdf.output()
+    except TypeError:
+        raw_output = pdf.output(dest="S")
 
     if isinstance(raw_output, str):
         pdf_output = raw_output.encode("latin-1")
