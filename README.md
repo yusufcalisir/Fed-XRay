@@ -68,6 +68,7 @@
 - [12. Repository Structure](#12-repository-structure)
 - [13. Installation and Quick Start](#13-installation-and-quick-start)
 - [14. Scientific Anchors and Citations](#14-scientific-anchors-and-citations)
+- [15. Citing Fed-XRay](#15-citing-fed-xray)
 
 ---
 
@@ -716,3 +717,27 @@ If you use Fed-XRay in your research, please cite the verified foundational lite
 19. **Selvaraju et al.** (ICCV 2017) - Ramprasaath R. Selvaraju, Michael Cogswell, Abhishek Das, Ramakrishna Vedaldi, Devi Parikh, Dhruv Batra. *Grad-CAM: Visual Explanations from Deep Networks via Gradient-Based Localization.* IEEE International Conference on Computer Vision (ICCV 2017), pp. 618-626.
 20. **Cao et al.** (NeurIPS 2019) - Kaidi Cao, Colin Wei, Adrien Gaidon, Nikos Arechiga, Tengyu Ma. *Learning Imbalanced Datasets with Label-Distribution-Aware Margin Loss* (LDAM). Conference on Neural Information Processing Systems (NeurIPS 2019), pp. 1567-1578.
 21. **Ren et al.** (NeurIPS 2020) - Jiawei Ren, Cunjun Yu, Shunan Sheng, Xiao Ma, Haiyu Zhao, Shuai Yi, Hongsheng Li. *Balanced Meta-Softmax for Long-Tailed Visual Recognition* (Balanced Softmax). Conference on Neural Information Processing Systems (NeurIPS 2020), pp. 4175-4186.
+
+---
+
+## 15. Citing Fed-XRay
+
+If you use Fed-XRay in your research, academic publications, or clinical AI benchmarks, please cite the framework as follows:
+
+### BibTeX
+
+```bibtex
+@software{calisir2025fedxray,
+  author       = {Calisir, Yusuf},
+  title        = {{Fed-XRay: Enterprise Federated Learning for Medical Imaging and Oncology AI}},
+  year         = {2025},
+  publisher    = {GitHub},
+  journal      = {GitHub repository},
+  howpublished = {\url{https://github.com/yusufcalisir/Fed-XRay}},
+  url          = {https://github.com/yusufcalisir/Fed-XRay}
+}
+```
+
+### APA Format
+> Calisir, Y. (2025). *Fed-XRay: Enterprise Federated Learning for Medical Imaging and Oncology AI* (Version 2.0.0) [Computer software]. GitHub. https://github.com/yusufcalisir/Fed-XRay
+

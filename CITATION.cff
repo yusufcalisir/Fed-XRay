@@ -1,0 +1,21 @@
+cff-version: 1.2.0
+message: "If you use this software in your research or clinical AI benchmarks, please cite it as below."
+authors:
+  - family-names: "Calisir"
+    given-names: "Yusuf"
+    email: "ysfcals@gmail.com"
+title: "Fed-XRay: Enterprise Federated Learning for Medical Imaging and Oncology AI"
+version: 2.0.0
+date-released: 2025-01-15
+url: "https://github.com/yusufcalisir/Fed-XRay"
+repository-code: "https://github.com/yusufcalisir/Fed-XRay"
+license: "MIT"
+keywords:
+  - "federated-learning"
+  - "medical-imaging"
+  - "oncology-ai"
+  - "vision-transformers"
+  - "peft"
+  - "differential-privacy"
+  - "homomorphic-encryption"
+  - "clinical-decision-support"
