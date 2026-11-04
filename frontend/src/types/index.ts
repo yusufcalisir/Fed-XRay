@@ -190,6 +190,8 @@ export interface CryptographySuiteInfo {
   secagg_protocol: string;
   key_exchange: string;
   cipher_ring: string;
+  ckks_active?: boolean;
+  secagg_active?: boolean;
 }
 
 export interface EnclaveHandshakeResponse {

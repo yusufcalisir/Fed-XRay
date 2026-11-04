@@ -150,3 +150,147 @@ def test_enclave_handshake_with_threshold_committee(client):
         state.hospital_threshold_enclaves = original_enclaves
 
 
+def test_dynamic_peft_subspace_reporting(client):
+    """Verify that client nodes and server enclave dynamically reflect active PEFT modes and architectures."""
+    orig_peft = state.peft_mode
+    orig_model = state.model_type
+    orig_lora_r = state.lora_r
+    orig_server = state.server
+    try:
+        # 1. FedSA-LoRA with rank 8
+        state.server = None
+        state.peft_mode = "fedsa_lora"
+        state.model_type = "vit_tiny"
+        state.lora_r = 8
+        res = client.get("/api/fl/enclave-handshake")
+        assert res.status_code == 200
+        data = res.json()
+        assert "FedSA-LoRA (Rank-8 Shared-A / Local Personalized-B)" in data["nodes"][0]["peft_subspace"]
+        assert "ViT-Tiny (128-dim / FedSA-LoRA" in data["server_enclave"]["foundation_model"]
+
+        # 2. LoRA with rank 32
+        state.peft_mode = "lora"
+        state.model_type = "vit_base"
+        state.lora_r = 32
+        res = client.get("/api/fl/enclave-handshake")
+        assert res.status_code == 200
+        data = res.json()
+        assert "LoRA (Rank-32 Trainable Low-Rank Adapters)" in data["nodes"][0]["peft_subspace"]
+        assert "ViT-Base-224 (Pretrained ImageNet-1K / LoRA" in data["server_enclave"]["foundation_model"]
+
+        # 3. Full convolutional architecture (CNN baseline without PEFT adapters)
+        state.peft_mode = None
+        state.model_type = "cnn"
+        res = client.get("/api/fl/enclave-handshake")
+        assert res.status_code == 200
+        data = res.json()
+        assert "Full Convolutional Weights" in data["nodes"][0]["peft_subspace"]
+        assert data["server_enclave"]["foundation_model"] == "Custom 3-Layer Medical CNN Classifier (Radiological Feature Extractor)"
+
+        # 4. CentralServer priority over AppState defaults
+        server = CentralServer(model_type="vit_small", peft_mode="ffa_lora", lora_r=16, defense_mode=False)
+        state.server = server
+        res = client.get("/api/fl/enclave-handshake")
+        assert res.status_code == 200
+        data = res.json()
+        assert "FFA-LoRA (Rank-16 Globally Frozen-A / Local-B)" in data["nodes"][0]["peft_subspace"]
+        assert "ViT-Small-224 (384-dim / FFA-LoRA" in data["server_enclave"]["foundation_model"]
+    finally:
+        state.peft_mode = orig_peft
+        state.model_type = orig_model
+        state.lora_r = orig_lora_r
+        state.server = orig_server
+
+
+def test_cryptography_suite_active_vs_standby_states(client):
+    """Verify that CryptographySuiteInfo accurately reports active vs standby status for CKKS and SecAgg+."""
+    orig_server = state.server
+    orig_ckks = state.use_ckks
+    orig_secagg = state.secure_aggregation
+    try:
+        # 1. Plaintext mode (neither CKKS nor SecAgg+ active)
+        state.server = None
+        state.use_ckks = False
+        state.secure_aggregation = False
+        res = client.get("/api/fl/enclave-handshake")
+        assert res.status_code == 200
+        crypto = res.json()["cryptography"]
+        assert crypto["ckks_active"] is False
+        assert crypto["secagg_active"] is False
+        assert "Standby" in crypto["homomorphic_encryption"] or "Inactive" in crypto["homomorphic_encryption"]
+        assert "Standby" in crypto["secagg_protocol"] or "Inactive" in crypto["secagg_protocol"]
+        assert "CKKS" in crypto["homomorphic_encryption"]
+        assert "SecAgg+" in crypto["secagg_protocol"]
+
+        # 2. CKKS active, SecAgg+ standby
+        state.use_ckks = True
+        state.secure_aggregation = False
+        res = client.get("/api/fl/enclave-handshake")
+        assert res.status_code == 200
+        crypto = res.json()["cryptography"]
+        assert crypto["ckks_active"] is True
+        assert crypto["secagg_active"] is False
+        assert "Active" in crypto["homomorphic_encryption"]
+        assert "CKKS" in crypto["homomorphic_encryption"]
+
+        # 3. SecAgg+ active, CKKS standby
+        state.use_ckks = False
+        state.secure_aggregation = True
+        res = client.get("/api/fl/enclave-handshake")
+        assert res.status_code == 200
+        crypto = res.json()["cryptography"]
+        assert crypto["ckks_active"] is False
+        assert crypto["secagg_active"] is True
+        assert "Active" in crypto["secagg_protocol"]
+        assert "SecAgg+" in crypto["secagg_protocol"]
+    finally:
+        state.server = orig_server
+        state.use_ckks = orig_ckks
+        state.secure_aggregation = orig_secagg
+
+
+def test_leakage_bytes_parity_under_plaintext_vs_cryptographic_protection(client):
+    """Verify unmasked leakage byte footprint under plaintext and zero-leakage invariant under CKKS/SecAgg+."""
+    orig_server = state.server
+    orig_ckks = state.use_ckks
+    orig_secagg = state.secure_aggregation
+    try:
+        # 1. Plaintext server with unmasked uplink payload
+        server = CentralServer(defense_mode=False, use_ckks=False, secure_aggregation=False)
+        server.last_uplink_bytes_per_client = 65432
+        state.server = server
+        state.use_ckks = False
+        state.secure_aggregation = False
+
+        res = client.get("/api/fl/enclave-handshake")
+        assert res.status_code == 200
+        nodes = res.json()["nodes"]
+        # Under plaintext, unmasked update is visible to coordinator
+        for node in nodes:
+            assert node["leakage_bytes"] == 65432
+
+        # 2. CKKS encryption active -> zero leakage to central server
+        server.use_ckks = True
+        state.use_ckks = True
+        res = client.get("/api/fl/enclave-handshake")
+        assert res.status_code == 200
+        nodes = res.json()["nodes"]
+        for node in nodes:
+            assert node["leakage_bytes"] == 0
+
+        # 3. SecAgg+ masking active -> zero leakage to central server
+        server.use_ckks = False
+        state.use_ckks = False
+        server.secure_aggregation = True
+        state.secure_aggregation = True
+        res = client.get("/api/fl/enclave-handshake")
+        assert res.status_code == 200
+        nodes = res.json()["nodes"]
+        for node in nodes:
+            assert node["leakage_bytes"] == 0
+    finally:
+        state.server = orig_server
+        state.use_ckks = orig_ckks
+        state.secure_aggregation = orig_secagg
+
+

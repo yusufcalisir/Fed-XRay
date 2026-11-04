@@ -155,6 +155,8 @@ class CryptographySuiteInfo(BaseModel):
     secagg_protocol: str
     key_exchange: str
     cipher_ring: str
+    ckks_active: bool = False
+    secagg_active: bool = False
 
 
 class EnclaveHandshakeResponse(BaseModel):

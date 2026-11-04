@@ -22,7 +22,7 @@
   <img src="https://img.shields.io/badge/Flower_FL-Supported-green?logo=flower" alt="Flower FL">
   <img src="https://img.shields.io/badge/Localization-EN%20%7C%20TR-blue" alt="Bilingual">
   <a href="https://github.com/yusufcalisir/Fed-XRay/actions/workflows/ci.yml"><img src="https://github.com/yusufcalisir/Fed-XRay/actions/workflows/ci.yml/badge.svg" alt="CI Test and Build Pipeline"></a>
-  <img src="https://img.shields.io/badge/Tests-396_Passed_(294_Backend_%2B_102_Frontend)-brightgreen" alt="Tests">
+  <img src="https://img.shields.io/badge/Tests-399_Passed_(297_Backend_%2B_102_Frontend)-brightgreen" alt="Tests">
   <img src="https://img.shields.io/badge/License-MIT-yellow" alt="License">
 </p>
 

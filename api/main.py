@@ -110,6 +110,8 @@ class AppState:
         self.lora_alpha: float = 16.0
         self.deep_layers_only: bool = False
         self.defense_mode: str = "bft_secagg_isolated"
+        self.use_ckks: bool = False
+        self.secure_aggregation: bool = False
         self.image_size: int = 224
         self.rag_matcher: Optional[FederatedRAGCaseMatcher] = None
         self.last_scan: Optional[np.ndarray] = None
@@ -212,6 +214,8 @@ class AppState:
                 "model_type": self.model_type,
                 "peft_mode": self.peft_mode,
                 "defense_mode": self.defense_mode,
+                "use_ckks": self.use_ckks,
+                "secure_aggregation": self.secure_aggregation,
                 "image_size": self.image_size,
                 "data_source": self.data_source,
                 "data_provenance": self.data_provenance,
@@ -273,6 +277,8 @@ class AppState:
                 "model_trained": self.model_trained,
                 "model_type": self.model_type,
                 "peft_mode": self.peft_mode,
+                "use_ckks": self.use_ckks,
+                "secure_aggregation": self.secure_aggregation,
                 "lora_r": getattr(self.server, "lora_r", 8) if self.server else 8,
                 "lora_alpha": getattr(self.server, "lora_alpha", 16.0) if self.server else 16.0,
                 "deep_layers_only": getattr(self.server, "deep_layers_only", True) if self.server else True,
@@ -311,6 +317,8 @@ class AppState:
                 self.lora_alpha = float(meta.get("lora_alpha", self.lora_alpha))
                 self.deep_layers_only = bool(meta.get("deep_layers_only", self.deep_layers_only))
                 self.defense_mode = meta.get("defense_mode", self.defense_mode)
+                self.use_ckks = bool(meta.get("use_ckks", self.use_ckks))
+                self.secure_aggregation = bool(meta.get("secure_aggregation", self.secure_aggregation))
                 self.image_size = int(meta.get("image_size", self.image_size))
                 self.data_source = meta.get("data_source", self.data_source)
                 self.data_provenance = meta.get("data_provenance", self.data_provenance)
@@ -336,6 +344,10 @@ class AppState:
                 self.model_type = saved_state.get("model_type", self.model_type)
                 self.peft_mode = saved_state.get("peft_mode", self.peft_mode)
                 self.defense_mode = saved_state.get("defense_mode", self.defense_mode)
+                if "use_ckks" in saved_state:
+                    self.use_ckks = bool(saved_state["use_ckks"])
+                if "secure_aggregation" in saved_state:
+                    self.secure_aggregation = bool(saved_state["secure_aggregation"])
                 self.image_size = int(saved_state.get("image_size", self.image_size))
                 self.data_source = saved_state.get("data_source", self.data_source)
                 self.data_provenance = saved_state.get("data_provenance", self.data_provenance)
@@ -1420,6 +1432,10 @@ async def stream_federated_training(
                 return srv, clts
 
             state.server, clients = await asyncio.to_thread(_init_fl)
+            state.use_ckks = use_ckks
+            state.secure_aggregation = secure_aggregation
+            state.peft_mode = actual_peft
+            state.model_type = model_type
             test_images, test_labels = active_global_test_set
 
             state.training_history = {
@@ -1645,6 +1661,10 @@ async def start_training_background(
                 num_classes=active_num_classes,
             )
             state.server = srv
+            state.use_ckks = use_ckks
+            state.secure_aggregation = secure_aggregation
+            state.peft_mode = actual_peft
+            state.model_type = model_type
             state.training_history = {
                 "loss": [],
                 "accuracy": [],
@@ -1879,6 +1899,10 @@ async def start_flower_training_background(
                 num_classes=active_num_classes,
             )
             state.server = srv
+            state.use_ckks = use_ckks
+            state.secure_aggregation = secure_aggregation
+            state.peft_mode = actual_peft
+            state.model_type = model_type
             state.training_history = {
                 "loss": [],
                 "accuracy": [],
@@ -2128,6 +2152,51 @@ async def get_privacy_status():
     return state.server.get_privacy_report()
 
 
+def get_dynamic_peft_subspace_descriptor(
+    peft_mode: Optional[str],
+    model_type: str = "vit_tiny",
+    lora_r: int = 16,
+) -> str:
+    """Return an authoritative cryptographic and architectural descriptor of the client PEFT subspace."""
+    if not peft_mode or str(peft_mode).strip().lower() in ("none", "false", "off", "full"):
+        if model_type == "cnn":
+            return "Full Convolutional Weights (Direct Plaintext / Masked Aggregation)"
+        return "Full ViT Parameters (All Transformer Layers Trainable)"
+
+    normalized_mode = str(peft_mode).strip().lower()
+    if normalized_mode == "ffa_lora":
+        return f"FFA-LoRA (Rank-{lora_r} Globally Frozen-A / Local-B)"
+    if normalized_mode == "fedsa_lora":
+        return f"FedSA-LoRA (Rank-{lora_r} Shared-A / Local Personalized-B)"
+    if normalized_mode == "lora":
+        return f"LoRA (Rank-{lora_r} Trainable Low-Rank Adapters)"
+    if normalized_mode in ("medsam", "fca"):
+        return "MedSAM Feature-Calibration Adapters (FCA)"
+    if normalized_mode in ("feddat", "dat"):
+        return "FedDAT Dual-Adapter Domain-Aware Tuning"
+    if normalized_mode == "het_lora":
+        return f"HetLoRA (Variable Rank r_k <= {lora_r} Zero-Padded)"
+    return f"{peft_mode.upper()} Parameter-Efficient Adaptation"
+
+
+def get_dynamic_foundation_descriptor(
+    model_type: str,
+    peft_mode: Optional[str],
+    lora_r: int = 16,
+) -> str:
+    """Return the authentic server-side foundation model and parameter-adaptation configuration."""
+    subspace = get_dynamic_peft_subspace_descriptor(peft_mode, model_type=model_type, lora_r=lora_r)
+    if model_type == "cnn":
+        return "Custom 3-Layer Medical CNN Classifier (Radiological Feature Extractor)"
+    if model_type == "vit_base":
+        return f"ViT-Base-224 (Pretrained ImageNet-1K / {subspace})"
+    if model_type == "vit_small":
+        return f"ViT-Small-224 (384-dim / {subspace})"
+    if model_type == "vit_tiny":
+        return f"ViT-Tiny (128-dim / {subspace})"
+    return f"{model_type} Foundation Model ({subspace})"
+
+
 @app.get("/api/fl/enclave-handshake", response_model=EnclaveHandshakeResponse)
 async def perform_enclave_handshake():
     """Perform authentic cryptographic consortium enclave attestation handshake.
@@ -2141,6 +2210,29 @@ async def perform_enclave_handshake():
     """
     ts_now = datetime.now(timezone.utc).isoformat()
     device_name = "cuda:0" if torch.cuda.is_available() else "cpu"
+
+    active_peft = getattr(state.server, "peft_mode", state.peft_mode) if state.server is not None else state.peft_mode
+    active_model = getattr(state.server, "model_type", state.model_type) if state.server is not None else state.model_type
+    active_lora_r = getattr(state.server, "lora_r", getattr(state, "lora_r", 16)) if state.server is not None else getattr(state, "lora_r", 16)
+    active_ckks = bool(getattr(state.server, "use_ckks", state.use_ckks)) if state.server is not None else bool(state.use_ckks)
+    active_secagg = bool(getattr(state.server, "secure_aggregation", state.secure_aggregation)) if state.server is not None else bool(state.secure_aggregation)
+
+    subspace_desc = get_dynamic_peft_subspace_descriptor(
+        peft_mode=active_peft,
+        model_type=active_model,
+        lora_r=active_lora_r,
+    )
+
+    # In-transit parameter leakage to central coordinator:
+    # Under cryptographic protection (CKKS Homomorphic Encryption or SecAgg+ pairwise zero-sum masking),
+    # individual client parameter updates remain completely unobservable to the server.
+    # Under plaintext transmission, the unmasked client parameter payload is directly visible.
+    if active_ckks or active_secagg:
+        client_leakage_bytes = 0
+    elif state.server is not None:
+        client_leakage_bytes = int(getattr(state.server, "last_uplink_bytes_per_client", 0))
+    else:
+        client_leakage_bytes = 0
 
     # 1. Hospital cohort nodes
     hospitals = state.hospital_cohort_info if state.hospital_cohort_info else get_default_strategy_e_hospitals()
@@ -2174,17 +2266,27 @@ async def perform_enclave_handshake():
                 enclave_status="verified",
                 peer_key_fingerprint=pk_fingerprint,
                 scans_verified=int(sample_cnt),
-                peft_subspace="FFA-LoRA (Rank-16 Frozen-A)",
-                leakage_bytes=0,
+                peft_subspace=subspace_desc,
+                leakage_bytes=client_leakage_bytes,
             )
         )
 
     # 2. Cryptographic Suite Info
     crypto_info = CryptographySuiteInfo(
-        homomorphic_encryption="CKKS Leveled RLWE 128-Bit (N=8192, scale=2^40)",
-        secagg_protocol="Decentralized SecAgg+ (Option J Pairwise Zero-Sum)",
+        homomorphic_encryption=(
+            "CKKS Leveled RLWE 128-Bit (N=8192, scale=2^40, Active)"
+            if active_ckks
+            else "CKKS Leveled RLWE 128-Bit (Standby / Inactive in Plaintext Mode)"
+        ),
+        secagg_protocol=(
+            "Decentralized SecAgg+ (Option J Pairwise Zero-Sum, Active)"
+            if active_secagg
+            else "Decentralized SecAgg+ (Standby / Inactive in Direct Aggregation)"
+        ),
         key_exchange="X25519 ECDH + HKDF-SHA256 (RFC 7748 / RFC 5869)",
-        cipher_ring="N=8192, log(Q)=200, scale=2^40",
+        cipher_ring="N=8192, log(Q)=200, scale=2^40" if active_ckks else "Inactive (Plaintext Ring)",
+        ckks_active=active_ckks,
+        secagg_active=active_secagg,
     )
 
     # 3. Privacy status reflecting authentic accounting
@@ -2223,10 +2325,10 @@ async def perform_enclave_handshake():
         }
 
     # 4. Server Enclave Status
-    foundation_name = (
-        "ViT-Base-224 (Pretrained ImageNet-1K / FFA-LoRA)"
-        if state.model_type == "vit_base"
-        else "ViT-Tiny (128-dim FFA-LoRA Rank-16)"
+    foundation_name = get_dynamic_foundation_descriptor(
+        model_type=active_model,
+        peft_mode=active_peft,
+        lora_r=active_lora_r,
     )
     has_threshold = getattr(state, "threshold_committee", None) is not None
     server_info = {
