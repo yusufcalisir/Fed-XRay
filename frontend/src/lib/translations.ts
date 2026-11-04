@@ -385,10 +385,10 @@ export const TRANSLATIONS: Record<Language, Record<string, string>> = {
     bench_val_trimmed_active: "Anomaly Detection Active",
 
     // Launch Modal
-    launch_modal_title: "Initializing Federated Consortium Enclave",
+    launch_modal_title: "Initializing Federated Consortium Handshake",
     launch_modal_desc: "Establishing secure cryptographic communication channels across 4 decentralized hospital nodes...",
-    launch_modal_step1: "Hospital Node Enclaves Verified (4/4 Nodes Online)",
-    launch_modal_step1_desc: "Node 1-4 enclaves online. Zero cross-institution patient leakage verified.",
+    launch_modal_step1: "Hospital Cryptographic Nodes Verified (4/4 Nodes Online)",
+    launch_modal_step1_desc: "Software cryptographic nodes online. Zero cross-institution patient leakage verified.",
     launch_modal_step2: "128-bit RLWE CKKS Homomorphic Key Exchange Complete",
     launch_modal_step2_desc: "RLWE ciphertext ring initialized. Central server receives zero plaintext updates.",
     launch_modal_step3: "FFA-LoRA Parameter Subspace Synchronized",
@@ -418,7 +418,7 @@ export const TRANSLATIONS: Record<Language, Record<string, string>> = {
     landing_how_s3_desc: "The aggregated global model returns to participating hospital clients for explainable local inference, cross-center validation, and clinical decision support.",
 
     // Federated Consortium Topology
-    topo_badge_title: "Consortium Enclave",
+    topo_badge_title: "Consortium Secure Network",
     topo_badge_synced: "4/4 Synced",
     topo_tab_map: "Topology",
     topo_tab_crypto: "Crypto",
@@ -473,9 +473,9 @@ export const TRANSLATIONS: Record<Language, Record<string, string>> = {
 
     // Consortium Node Details & Central Hub Localization
     topo_hub_title: "CONSORTIUM AGGREGATOR",
-    topo_hub_crypto: "RLWE CKKS 128-Bit Enclave",
-    topo_hub_privacy: "Zero Plaintext Patient Data Transfer",
-    topo_badge_title_short: "ENCLAVE",
+    topo_hub_crypto: "RLWE CKKS 128-Bit Software Protocol",
+    topo_hub_privacy: "Zero Plaintext Patient Data Transfer (Simulated)",
+    topo_badge_title_short: "SECURE NET",
     topo_city_barcelona: "Barcelona",
     topo_city_vienna: "Vienna",
     topo_city_brisbane: "Brisbane",
@@ -983,8 +983,8 @@ export const TRANSLATIONS: Record<Language, Record<string, string>> = {
 
     // Consortium Node Details & Central Hub Localization
     topo_hub_title: "KONSORSİYUM TOPLAYICI",
-    topo_hub_crypto: "RLWE CKKS 128-Bit Güvenli Alan",
-    topo_hub_privacy: "Sıfır Açık Metin Hasta Verisi Transferi",
+    topo_hub_crypto: "RLWE CKKS 128-Bit Yazılımsal Protokol",
+    topo_hub_privacy: "Sıfır Açık Metin Hasta Verisi Transferi (Simülasyon)",
     topo_badge_title_short: "GÜVENLİ AĞ",
     topo_city_barcelona: "Barselona",
     topo_city_vienna: "Viyana",

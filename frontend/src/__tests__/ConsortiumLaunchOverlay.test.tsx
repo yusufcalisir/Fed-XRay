@@ -51,7 +51,7 @@ describe("ConsortiumLaunchOverlay Component", () => {
       <ConsortiumLaunchOverlay isOpen={true} onClose={vi.fn()} />
     );
 
-    expect(screen.getByText("Initializing Federated Consortium Enclave")).toBeInTheDocument();
+    expect(screen.getByText("Initializing Federated Consortium Handshake")).toBeInTheDocument();
     expect(screen.getByText(/Establishing secure cryptographic communication channels/i)).toBeInTheDocument();
     expect(screen.getByText("Federated Handshake")).toBeInTheDocument();
   });
@@ -84,7 +84,7 @@ describe("ConsortiumLaunchOverlay Component", () => {
       <ConsortiumLaunchOverlay isOpen={true} onClose={vi.fn()} />
     );
 
-    expect(screen.getByText("Hospital Node Enclaves Verified (4/4 Nodes Online)")).toBeInTheDocument();
+    expect(screen.getByText("Hospital Cryptographic Nodes Verified (4/4 Nodes Online)")).toBeInTheDocument();
     expect(screen.getByText("128-bit RLWE CKKS Homomorphic Key Exchange Complete")).toBeInTheDocument();
     expect(screen.getByText("FFA-LoRA Parameter Subspace Synchronized")).toBeInTheDocument();
   });

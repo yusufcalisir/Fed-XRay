@@ -367,9 +367,11 @@ Ciphertext addition of FFA-LoRA $B$ matrix updates is performed using TenSEAL (`
 > [!WARNING]
 > This is a **single-key simulation**. The server generates and holds the full TenSEAL CKKS key. The server can decrypt. True multi-party threshold CKKS, where no single party holds the full decryption key, requires distributed key generation and is a planned research target.
 
-### Enclave Attestation
+### Cryptographic Software Protocol and Attestation Handshake
 
-The `/api/fl/enclave-handshake` endpoint verifies node public key fingerprints, HE polynomial degrees, and DP clipping bounds before training. It produces an electronic SHA-256 attestation certificate digest displayed in the clinical HUD.
+Fed-XRay's enclave architecture represents an open-source software cryptographic protocol utilizing TenSEAL (Microsoft SEAL RLWE 128-bit) and RFC 7748 X25519 ECDH key agreements. It executes as a pure software simulation without requiring proprietary hardware Trusted Execution Environments (such as Intel SGX or AWS Nitro Enclaves), ensuring reproducible scientific execution across standard workstation environments.
+
+The `/api/fl/enclave-handshake` endpoint verifies decentralized node public key fingerprints, HE polynomial degrees (`N=8192`), and patient-level DP clipping bounds before training. It computes a canonical electronic SHA-256 attestation certificate digest displayed in the clinical HUD.
 
 ---
 

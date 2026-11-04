@@ -209,9 +209,14 @@ class CKKSEncryptionEngine:
 class ConsortiumKeyEnclave:
     """Cryptographic consortium key manager maintaining the secret RLWE key.
 
-    In the Option J architecture, the secret key is kept securely inside the consortium
-    trust enclave (or hospital client quorum). The untrusted central aggregation server
-    receives strictly the serialized public context with the secret key stripped.
+    Option J Architectural Boundary:
+    In a production cross-institutional deployment, the secret RLWE decryption key
+    is never held by a single entity; it is collectively held by a decentralized
+    Threshold CKKS (t-out-of-n secret sharing) quorum of hospital participants.
+    This class serves as an in-process, algebraically exact reference simulation
+    of the collective threshold decryption authority for local research execution.
+    The untrusted central aggregation server receives strictly the serialized public
+    context with the secret key stripped.
     """
 
     def __init__(

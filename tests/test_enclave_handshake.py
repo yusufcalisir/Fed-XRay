@@ -19,12 +19,16 @@ def test_enclave_handshake_endpoint(client):
     assert data["attestation_status"] == "verified"
     assert data["attestation_digest"].startswith("sha256:")
     assert len(data["attestation_digest"]) == 7 + 64
+    assert data["is_hardware_tee"] is False
+    assert "Software Cryptographic Simulation" in data["enclave_architecture"]
 
     # Verify server enclave
     server_enc = data["server_enclave"]
     assert server_enc["status"] == "healthy"
     assert "device" in server_enc
     assert "defense_mode" in server_enc
+    assert server_enc["enclave_type"] == "software_cryptographic_simulation"
+    assert server_enc["threshold_mpc_status"] == "in_process_prototype"
 
     # Verify 4 decentralized hospital enclaves
     nodes = data["nodes"]

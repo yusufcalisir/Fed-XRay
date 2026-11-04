@@ -33,8 +33,8 @@ describe("FederatedTopologyMap Localization", () => {
 
     // Aggregator in Turkish
     expect(screen.getByText("KONSORSİYUM TOPLAYICI")).toBeInTheDocument();
-    expect(screen.getByText("RLWE CKKS 128-Bit Güvenli Alan")).toBeInTheDocument();
-    expect(screen.getByText("Sıfır Açık Metin Hasta Verisi Transferi")).toBeInTheDocument();
+    expect(screen.getByText("RLWE CKKS 128-Bit Yazılımsal Protokol")).toBeInTheDocument();
+    expect(screen.getByText("Sıfır Açık Metin Hasta Verisi Transferi (Simülasyon)")).toBeInTheDocument();
 
     // Localized modalities and cities
     expect(screen.getByText(/Barselona : Dermoskopi/)).toBeInTheDocument();

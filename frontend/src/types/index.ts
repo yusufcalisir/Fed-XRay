@@ -145,6 +145,7 @@ export interface EnclaveNodeInfo {
   scans_verified: number;
   peft_subspace: string;
   leakage_bytes: number;
+  enclave_type?: string;
 }
 
 export interface CryptographySuiteInfo {
@@ -158,6 +159,8 @@ export interface EnclaveHandshakeResponse {
   attestation_status: string;
   attestation_digest: string;
   timestamp: string;
+  enclave_architecture?: string;
+  is_hardware_tee?: boolean;
   server_enclave: {
     status: string;
     device: string;
@@ -165,6 +168,8 @@ export interface EnclaveHandshakeResponse {
     defense_mode: string;
     foundation_model: string;
     model_trained?: boolean;
+    enclave_type?: string;
+    threshold_mpc_status?: string;
   };
   nodes: EnclaveNodeInfo[];
   cryptography: CryptographySuiteInfo;

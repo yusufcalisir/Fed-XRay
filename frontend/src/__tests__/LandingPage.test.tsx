@@ -116,7 +116,7 @@ describe("PresentationLandingPage Component", () => {
     fireEvent.click(launchBtns[0]);
 
     // Modal should now be open
-    expect(screen.getByText("Initializing Federated Consortium Enclave")).toBeInTheDocument();
+    expect(screen.getByText("Initializing Federated Consortium Handshake")).toBeInTheDocument();
     expect(screen.getByText("Federated Handshake")).toBeInTheDocument();
   });
 });

@@ -143,6 +143,7 @@ class EnclaveNodeInfo(BaseModel):
     scans_verified: int
     peft_subspace: str
     leakage_bytes: int = 0
+    enclave_type: str = "software_peer_simulation"
 
 
 class CryptographySuiteInfo(BaseModel):
@@ -156,6 +157,8 @@ class EnclaveHandshakeResponse(BaseModel):
     attestation_status: str
     attestation_digest: str
     timestamp: str
+    enclave_architecture: str = "Software Cryptographic Simulation (TenSEAL CKKS + X25519 SecAgg+)"
+    is_hardware_tee: bool = False
     server_enclave: Dict[str, Any]
     nodes: List[EnclaveNodeInfo]
     cryptography: CryptographySuiteInfo

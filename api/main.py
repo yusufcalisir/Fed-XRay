@@ -1814,6 +1814,8 @@ async def perform_enclave_handshake():
         "defense_mode": getattr(state, "defense_mode", "bft_secagg_isolated"),
         "foundation_model": foundation_name,
         "model_trained": getattr(state, "model_trained", False),
+        "enclave_type": "software_cryptographic_simulation",
+        "threshold_mpc_status": "in_process_prototype",
     }
 
     # 5. Compute canonical SHA-256 attestation digest
@@ -1829,6 +1831,8 @@ async def perform_enclave_handshake():
         attestation_status="verified",
         attestation_digest=attestation_digest,
         timestamp=ts_now,
+        enclave_architecture="Software Cryptographic Simulation (TenSEAL CKKS + X25519 SecAgg+)",
+        is_hardware_tee=False,
         server_enclave=server_info,
         nodes=nodes_list,
         cryptography=crypto_info,

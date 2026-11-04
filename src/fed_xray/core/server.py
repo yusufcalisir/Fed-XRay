@@ -361,7 +361,12 @@ class CentralServer:
                 validation_accuracies[att.client_id] = att.validation_accuracy
         else:
             for idx, (weights, count, cid) in enumerate(zip(client_weights, sample_counts, client_ids)):
-                if test_images is not None and test_labels is not None:
+                first_val = next(iter(weights.values())) if weights else None
+                if isinstance(first_val, EncryptedTensor):
+                    # Option J Architectural Invariant: Server possesses only public CKKS context
+                    # and cannot decrypt individual weights to perform forward evaluation passes.
+                    val_acc = 1.0
+                elif test_images is not None and test_labels is not None:
                     val_acc = self._validate_client_model(weights, test_images, test_labels)
                 else:
                     val_acc = 1.0
