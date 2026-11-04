@@ -21,7 +21,7 @@
   <img src="https://img.shields.io/badge/PEFT-FFA--LoRA_%7C_FedSA--LoRA_%7C_MedSAM_%7C_FedMedCLIP-purple" alt="PEFT">
   <img src="https://img.shields.io/badge/Flower_FL-Supported-green?logo=flower" alt="Flower FL">
   <img src="https://img.shields.io/badge/Localization-EN%20%7C%20TR-blue" alt="Bilingual">
-  <img src="https://img.shields.io/badge/Tests-326_Passed_(246_Backend_%2B_80_Frontend)-brightgreen" alt="Tests">
+  <img src="https://img.shields.io/badge/Tests-368_Passed_(274_Backend_%2B_94_Frontend)-brightgreen" alt="Tests">
   <img src="https://img.shields.io/badge/License-MIT-yellow" alt="License">
 </p>
 
@@ -50,7 +50,7 @@
 - [13. Multi-Platform Interfaces](#13-multi-platform-interfaces)
 - [14. Flower Protocol Federation Bridge](#14-flower-protocol-federation-bridge)
 - [15. REST and Streaming API Reference](#15-rest-and-streaming-api-reference)
-- [16. Test Suite Matrix (326 Tests)](#16-test-suite-matrix-326-tests)
+- [16. Test Suite Matrix (368 Tests)](#16-test-suite-matrix-368-tests)
 - [17. Repository Directory Structure](#17-repository-directory-structure)
 - [18. Installation and Quick Start](#18-installation-and-quick-start)
 - [19. Scientific Anchors and Citations](#19-scientific-anchors-and-citations)
@@ -117,14 +117,18 @@ The table below distinguishes what is actually coded and exercised in this repos
 | DAFL, BSM, LDAM, repel losses | **Implemented** | Dynamic imbalance loss suite with verified numerical stability |
 | Grad-CAM (CNN and ViT) | **Implemented** | Multi-layer PyTorch hooks; raises `GradCAMUnavailableError` if gradients fail |
 | Structured CDSS XAI (Zero Asterisks) | **Implemented** | Asterisk-free clinical assessment, quadrant spatial localization, bilingual consistency |
-| HNSW dynamic-dim RAG retrieval | **Implemented** | Auto-detects 128-dim to 1024-dim latents; matches biopsy-confirmed twins |
-| ACID Persistent State Store | **Implemented** | SQLite WAL mode (`PersistentStateStore`) surviving process restarts across 5 relational tables |
+| HNSW dynamic-dim RAG retrieval | **Implemented** | Auto-detects 128-dim to 1024-dim latents; matches biopsy-confirmed twins using authentic cosine similarity |
+| ACID Persistent State Store | **Implemented** | SQLite WAL mode (`PersistentStateStore`) surviving process restarts across 5 relational tables with 1:1 memory parity |
+| Telemetry Lineage (Train vs Val) | **Implemented** | Unconflated logging of local training metrics (`train_loss`, `train_accuracy`) and holdout metrics (`loss`, `accuracy`) |
+| Multi-Class Strategy E Oncology | **Implemented** | Complete 8-class ISIC 2019 dermoscopy and 9-class NCT-CRC-HE histopathology support in cohorts, inference, and PDF |
+| Node-Level Rényi DP Accounting | **Implemented** | Client-specific `PatientLevelDPAccountant` based on local sample sizes and batch ratios without heuristic multipliers |
+| Failure Transparency & Gateway Resilience | **Implemented** | Next.js serverless route handlers propagate genuine HTTP 502/503 without synthetic mock JSON fallbacks |
 | Network Routing & Tunnel Resilience | **Implemented** | Dynamic ephemeral tunnel detection, dead domain blacklisting, automatic loopback fallback |
 | Browser Runtime Shield | **Implemented** | Client-side interception of extension collisions (`useCache`, `content.js`), port drop isolation |
 | React Subtree Resilience | **Implemented** | Next.js `app/error.tsx`, `app/global-error.tsx`, and `ClinicalErrorBoundary` with bilingual recovery |
-| PDF diagnostic report engine | **Implemented** | `fpdf2`-based with embedded scan, Grad-CAM, RAG twins, and SHA-256 hash |
+| PDF diagnostic report engine | **Implemented** | `fpdf2`-based with embedded scan, Grad-CAM, RAG twins, and SHA-256 hash supporting multi-class oncology |
 | Bilingual voice dictation (EN/TR) | **Implemented** | Asynchronous `gTTS` speech synthesis with persistent disk cache |
-| Byzantine detection (cosine + deviance) | **Implemented (plaintext phase)** | Runs before simulated CKKS encryption; see Section 4.2 |
+| Byzantine detection (zero-confession) | **Implemented (plaintext & attestation phase)** | Isolates adversaries via consensus divergence and L2 norm scaling without relying on self-incrimination |
 | SecAgg+ ECDH zero-sum masking | **Simulated** | In-process Python simulation, not a real multi-party network protocol |
 | CKKS HE aggregation (TenSEAL) | **Simulated** | Single server-held key, aggregation-only depth; see Section 4.3 |
 | Flower protocol bridge | **Implemented** | `NumPyClient` wrapping with `InProcessClientProxy` and `StrategyEHospitalStrategy` |
@@ -569,11 +573,11 @@ All request/response schemas are defined in `api/schemas.py` as Pydantic v2 mode
 
 ---
 
-## 16. Test Suite Matrix (326 Tests)
+## 16. Test Suite Matrix (368 Tests)
 
-Fed-XRay maintains 326 automated tests (246 Python Pytest backend + 80 TypeScript Vitest frontend), all passing at 100%.
+Fed-XRay maintains 368 automated tests (274 Python Pytest backend + 94 TypeScript Vitest frontend), all passing at 100%.
 
-### Backend Pytest Suites (36 Test Files, 246 Tests)
+### Backend Pytest Suites (40 Test Files, 274 Tests)
 
 | Subsystem | Test File | Count | Scope |
 | :--- | :--- | :--- | :--- |
@@ -588,7 +592,7 @@ Fed-XRay maintains 326 automated tests (246 Python Pytest backend + 80 TypeScrip
 | PDF Reporting | `test_cdss_report.py` | 11 | PDF compilation, image overlays, SHA-256 digests, empty state handling, and vector rendering. |
 | RAG and Similarity | `test_cdss_similarity.py` | 12 | Dynamic HNSW indexing (128 to 1024 dims), biopsy twin search, cosine distance verification. |
 | Voice Dictation | `test_cdss_voice.py` | 4 | Async speech synthesis, disk caching, and bilingual audio fallbacks. |
-| Explainable AI | `test_cdss_xai.py` | 3 | Multi-layer Grad-CAM, forward/backward hooks, and explicit exception raising. |
+| Explainable AI | `test_cdss_xai.py` | 4 | Multi-layer Grad-CAM, forward/backward hooks, and explicit exception raising. |
 | Client Subtree Resilience | `test_client_subtree_resilience_and_error_boundaries.py` | 4 | Next.js app error boundaries, granular component containment, defensive array access. |
 | Clinical Cohort Staging | `test_clinical_cohort_authenticity_and_staging.py` | 7 | Real-world dataset staging, forensic cohort authenticity auditing, honest non-clinical tagging. |
 | Consortium Cryptography | `test_consortium_cryptography_and_zero_plaintext.py` | 3 | RLWE 128-bit CKKS encryption, SecAgg+ zero-sum masking, Byzantine defense under ciphertext. |
@@ -596,46 +600,52 @@ Fed-XRay maintains 326 automated tests (246 Python Pytest backend + 80 TypeScrip
 | Imbalance Losses | `test_core_imbalance_losses.py` | 6 | DAFL, BSM, LDAM, and missing-class repel loss numerical stability. |
 | Cryptographic Privacy | `test_crypto_privacy_optimizers.py` | 11 | TenSEAL CKKS ciphertext addition, SecAgg+ zero-sum masking, distributed DP Gaussian noise. |
 | E2E Lifecycle | `test_e2e_full_federated_pipeline.py` | 2 | End-to-end ingestion, federated training, RAG digital twins, and PDF report compilation. |
-| Enclave Attestation | `test_enclave_handshake.py` | 1 | Enclave handshake, X25519 fingerprint verification, SHA-256 certificates. |
-| CDSS Grounding | `test_evidence_grounded_cdss.py` | 3 | Grad-CAM spatial peak relevance, genuine RAG case retrieval, and honest failure modes. |
+| Enclave Attestation | `test_enclave_handshake.py` | 5 | Multi-stage enclave handshake, X25519 fingerprints, unclamped dynamic Renyi DP accumulation. |
+| CDSS Grounding | `test_evidence_grounded_cdss.py` | 5 | Grad-CAM spatial peak relevance, genuine RAG case retrieval, and honest failure modes. |
 | Flower Protocol | `test_flower_and_sota_enhancements.py` | 7 | Flower bridge, InProcessProxy, NumPy parameter serialization roundtrips. |
 | Checkpoint Integrity | `test_foundation_checkpoint_integrity_and_provenance.py` | 10 | Zero-silent-pass policy, honest exception raising on missing weights, SHA-256 weight fingerprinting. |
-| Foundation Privacy | `test_foundation_privacy.py` | 16 | Multimodal semantic anchoring, CKKS vector scaling, and Rényi Differential Privacy composition bounds. |
+| Foundation Privacy | `test_foundation_privacy.py` | 16 | Multimodal semantic anchoring, CKKS vector scaling, and Renyi Differential Privacy composition bounds. |
 | Strategy E Generator | `test_generator_strategy_e.py` | 12 | 224x224 input resolution, 196 ViT patch tokens, robust PyTorch DataLoader pipelines. |
+| Multi-Class Oncology | `test_multiclass_oncology_integrity.py` | 4 | ISIC 8-class dermoscopy and NCT-CRC-HE 9-class histopathology integrity, unconstrained class indices, PDF report bounds. |
 | Multimodal PEFT Adapters | `test_multimodal_foundation_peft_adapters.py` | 5 | Runtime integration of MedSAM, FedMedCLIP, FedCola, and FedDAT dual-attention adapters. |
 | Network Routing | `test_network_routing_and_tunnel_resilience.py` | 6 | Dynamic ephemeral tunnel detection, dead domain blacklisting, automatic loopback fallback, open CORS. |
+| Node-Level DP Accounting | `test_node_level_dp_accounting.py` | 5 | Node-specific Renyi Differential Privacy tracking, authentic client-level sample sizes and subsampling ratios, zero initial spent budget, elimination of static heuristic multipliers. |
 | Numerical Stability | `test_numerical_stability_losses.py` | 6 | Boundary conditions, extreme class imbalance limits, and high-dimensional vector stability. |
 | Prototypes and Losses | `test_prototypes.py` | 7 | FedProto dispersion weighting, covariance traces, centroid synthesis, and prototype rounds. |
 | Real-World Scenarios | `test_real_world_data_scenarios.py` | 8 | DiskMedicalDataset manifests, Non-IID Scenarios A through G, SHA-256 image deduplication. |
-| Robustness and Adversarial | `test_robustness_and_adversarial.py` | 5 | Byzantine gradient poisoning mitigation, NaN/Inf gradient resilience, free-rider rejection. |
+| Robustness and Adversarial | `test_robustness_and_adversarial.py` | 9 | Byzantine gradient poisoning mitigation without self-incrimination, NaN/Inf gradient resilience, free-rider rejection, L2 norm outlier detection. |
+| SQLite Memory Equivalence | `test_sqlite_memory_state_equivalence.py` | 4 | Strict 1:1 equivalence between in-memory telemetry and SQLite Write-Ahead Logging storage, metric preservation across container reboots, state reset invariance. |
 | State Persistence | `test_state_persistence.py` | 4 | AppState save and restore roundtrips, persistence endpoint verification. |
 | Strategy E Ingestion | `test_strategy_e_real_ingestion.py` | 7 | ISIC Archive API v2 ingestion, file staging, and leak-free patient isolation invariants. |
 | Swin UNETR Backbone | `test_swin_unetr_radiology_backbone.py` | 4 | Authentic hierarchical Shifted Window Attention, patch merging, 2D/3D volumetric support, and PEFT adaptation. |
+| Telemetry Authenticity | `test_training_telemetry_authenticity.py` | 4 | Unconflated separation between client local training metrics train_loss/train_accuracy and server holdout validation metrics loss/accuracy across SSE, background worker, and Flower pipelines. |
 | ViT PEFT Optimizers | `test_vit_peft_optimizers.py` | 4 | ViT-Base FFA-LoRA zero bilinear error, FedDyn, SCAFFOLD, and MOON optimization. |
 | ViT-Tiny FFA-LoRA | `test_vit_tiny_ffa_lora.py` | 4 | ViT-Tiny 224x224 FFA-LoRA injection, CPU runtime efficiency, state dict roundtrips. |
 
-### Frontend Vitest Suites (19 Test Files, 80 Tests)
+### Frontend Vitest Suites (21 Test Files, 94 Tests)
 
 | Component / Utility | Test File | Count | Scope |
 | :--- | :--- | :--- | :--- |
 | API Client | `api.test.ts` | 6 | Dual SSE streaming, polling fallbacks, honest error parsing, and timeout resilience. |
+| Backend Gateway | `backendGateway.test.ts` | 9 | Next.js serverless route gateway resilience, honest HTTP 502/503 propagation, mock elimination, and error status contracts. |
 | Clinical Error Boundary | `ClinicalErrorBoundary.test.tsx` | 3 | Catches rendering errors, renders bilingual recovery controls, reset callbacks. |
 | Enclave Overlay | `ConsortiumLaunchOverlay.test.tsx` | 5 | 4-stage cryptographic enclave handshake, ECDH fingerprints, attestation badges. |
 | Diagnostic Studio | `DiagnosticStudio.test.tsx` | 5 | Pre-training locked state, forward pass inference, Grad-CAM overlays, audio briefing, PDF trigger. |
+| Topology Map | `FederatedTopologyMap.test.tsx` | 3 | Multi-hospital topology map, node status indicators, and SVG connection rendering. |
 | Hero Component | `Hero.test.tsx` | 3 | Headline rendering, consortium status badge, quick launch actions. |
 | Hospital Studio | `HospitalStudio.test.tsx` | 3 | Multi-hospital tabs, demographic breakdown, Non-IID distribution charts. |
 | Presentation Page | `LandingPage.test.tsx` | 5 | Verifiable KPI metrics, interactive results showcase tabs, enclave launch trigger. |
 | Live HUD | `LiveHud.test.tsx` | 3 | Attestation digest badge, real-time telemetry indicators, pulse status. |
 | Geometry Utilities | `lungGeometry.test.ts` | 6 | Anatomical lung SVG boundary calculations and coordinate scaling. |
 | 3D Volumetric Lung Scene | `LungViewer3D.test.tsx` | 3 | Three.js 3D volumetric lung container rendering and cleanup. |
-| Navigation | `Navbar.test.tsx` | 6 | Bilingual language toggle (EN/TR), dark/light mode toggle, responsive mobile navigation. |
+| Navigation | `Navbar.test.tsx` | 7 | Bilingual language toggle (EN/TR), dark/light mode toggle, responsive mobile navigation, enclave launch trigger. |
 | RAG Digital Twins | `RagDigitalTwins.test.tsx` | 2 | Biopsy-confirmed digital twin rendering, confidence bars, clinical metadata tags. |
 | Report Download | `ReportDownload.test.tsx` | 3 | PDF report card rendering, encoded download link generation, disabled states. |
 | Browser Runtime Shield | `runtimeShield.test.ts` | 9 | Interception of extension errors, port drop isolation, console deduplication. |
 | Subtree Isolation | `subtreeIsolation.test.tsx` | 5 | Fault containment across null/undefined sample images, twin lists, and telemetry arrays. |
 | Telemetry Cockpit | `TelemetryCockpit.test.tsx` | 3 | Loss and accuracy convergence graphs, client drift tracking, Byzantine threat alerts. |
 | Localization | `translations.test.ts` | 4 | Complete key parity and translation completeness across English and Turkish dictionaries. |
-| Voice Assistant | `VoiceAssistant.test.tsx` | 2 | Audio player controls, bilingual voice toggle, synthesization loading indicators. |
+| Voice Assistant | `VoiceAssistant.test.tsx` | 3 | Audio player controls, bilingual voice toggle, synthesization loading indicators. |
 | Workflow Stepper | `WorkflowStepper.test.tsx` | 4 | 4-step workflow navigation, step completion locking, interactive advancement. |
 
 ---
@@ -654,7 +664,7 @@ Fed-XRay/
 |   |   |-- context/                   # Language (EN/TR) and API Connection Providers
 |   |   |-- lib/                       # API Client, Runtime Shield, Translations, Utilities
 |   |   |-- types/                     # TypeScript Strict Interface Definitions
-|   |   `-- __tests__/                 # Vitest Component and Integration Tests (80 Tests)
+|   |   `-- __tests__/                 # Vitest Component and Integration Tests (21 Files, 94 Tests)
 |   |-- package.json
 |   `-- tailwind.config.js             # Clinical SaaS HSL Design Token System
 |-- scripts/
@@ -690,7 +700,7 @@ Fed-XRay/
 |           `-- i18n.py                # Bilingual Clinical Localization (EN/TR)
 |-- benchmarks/
 |   `-- benchmark_foundation_peft.py   # Foundation PEFT Comparative Benchmark Suite
-|-- tests/                             # Pytest Test Suites (36 Files, 246 Tests)
+|-- tests/                             # Pytest Test Suites (40 Files, 274 Tests)
 |-- research/                          # Canonical Scientific Research Foundations (6 Papers)
 |   |-- federated_vision_transformers_for_oncology.md
 |   |-- federated_foundation_models_for_cancer.md
@@ -729,10 +739,10 @@ pip install -r requirements.txt
 ### 18.2 Automated Test Execution
 
 ```bash
-# Execute all 246 Python backend tests
+# Execute all 274 Python backend tests
 python -m pytest tests/ -v
 
-# Execute all 80 Next.js frontend tests
+# Execute all 94 Next.js frontend tests
 cd frontend
 npm install
 npm test -- --run
