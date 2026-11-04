@@ -17,12 +17,12 @@
   <img src="https://img.shields.io/badge/PyTorch-2.0+-red?logo=pytorch" alt="PyTorch">
   <img src="https://img.shields.io/badge/Next.js-14.2+-black?logo=next.js" alt="Next.js">
   <img src="https://img.shields.io/badge/FastAPI-0.110+-teal?logo=fastapi" alt="FastAPI">
-  <img src="https://img.shields.io/badge/Privacy-Option_J_(DP_%2B_CKKS_%2B_SecAgg%2B)-indigo" alt="Privacy">
+  <img src="https://img.shields.io/badge/Privacy-Option_J_(DP_%2B_Threshold_CKKS_%2B_SecAgg%2B)-indigo" alt="Privacy">
   <img src="https://img.shields.io/badge/PEFT-FFA--LoRA_%7C_FedSA--LoRA_%7C_MedSAM_%7C_FedMedCLIP-purple" alt="PEFT">
   <img src="https://img.shields.io/badge/Flower_FL-Supported-green?logo=flower" alt="Flower FL">
   <img src="https://img.shields.io/badge/Localization-EN%20%7C%20TR-blue" alt="Bilingual">
   <a href="https://github.com/yusufcalisir/Fed-XRay/actions/workflows/ci.yml"><img src="https://github.com/yusufcalisir/Fed-XRay/actions/workflows/ci.yml/badge.svg" alt="CI Test and Build Pipeline"></a>
-  <img src="https://img.shields.io/badge/Tests-384_Passed_(287_Backend_%2B_97_Frontend)-brightgreen" alt="Tests">
+  <img src="https://img.shields.io/badge/Tests-390_Passed_(293_Backend_%2B_97_Frontend)-brightgreen" alt="Tests">
   <img src="https://img.shields.io/badge/License-MIT-yellow" alt="License">
 </p>
 
@@ -45,9 +45,11 @@
   - [5.1 Foundation-Anchored Prototype Synthesis](#51-foundation-anchored-prototype-synthesis)
   - [5.2 Dynamic Imbalance Loss Suite](#52-dynamic-imbalance-loss-suite)
 - [6. Dual-Layer Privacy Architecture (Option J)](#6-dual-layer-privacy-architecture-option-j)
-  - [6.1 Patient-Level Differential Privacy](#61-patient-level-differential-privacy)
-  - [6.2 Cryptographic Homomorphic Encryption and SecAgg+](#62-cryptographic-homomorphic-encryption-and-secagg)
-  - [6.3 Enclave Attestation Handshake](#63-enclave-attestation-handshake)
+  - [6.1 Patient-Level Differential Privacy and Analytical RDP](#61-patient-level-differential-privacy-and-analytical-rdp)
+  - [6.2 Decentralized (t, n) Threshold CKKS and SecAgg+](#62-decentralized-t-n-threshold-ckks-and-secagg)
+  - [6.3 Process Enclave Virtual Address Space Isolation](#63-process-enclave-virtual-address-space-isolation)
+  - [6.4 Enclave Attestation Handshake](#64-enclave-attestation-handshake)
+  - [6.5 Specialist-Aware Byzantine Defense](#65-specialist-aware-byzantine-defense)
 - [7. Strategy E Real-World Benchmark Ecosystem](#7-strategy-e-real-world-benchmark-ecosystem)
   - [7.1 Real-World Clinical Cohorts](#71-real-world-clinical-cohorts)
   - [7.2 Non-IID Heterogeneity Scenarios (A through G)](#72-non-iid-heterogeneity-scenarios-a-through-g)
@@ -64,7 +66,7 @@
   - [9.3 Flower Framework Federation Bridge](#93-flower-framework-federation-bridge)
   - [9.4 ACID Persistent State Storage (SQLite WAL)](#94-acid-persistent-state-storage-sqlite-wal)
 - [10. REST and Streaming API Reference](#10-rest-and-streaming-api-reference)
-- [11. Verification and Automated Test Suite (384 Tests)](#11-verification-and-automated-test-suite-384-tests)
+- [11. Verification and Automated Test Suite (390 Tests)](#11-verification-and-automated-test-suite-390-tests)
 - [12. Repository Structure](#12-repository-structure)
 - [13. Installation and Quick Start](#13-installation-and-quick-start)
 - [14. Scientific Anchors and Citations](#14-scientific-anchors-and-citations)
@@ -339,28 +341,67 @@ $$
 
 ## 6. Dual-Layer Privacy Architecture (Option J)
 
-Fed-XRay implements the **Option J Architecture Standard**, combining cryptographic defenses with formal differential privacy guarantees.
+Fed-XRay implements the **Option J Architecture Standard**, combining decentralized cryptographic defense layers with formal differential privacy guarantees:
 
-### 6.1 Patient-Level Differential Privacy
+### 6.1 Patient-Level Differential Privacy and Analytical RDP
 
-In medical imaging, naive example-level DP fails because multi-slice CT/MRI scans and gigapixel Whole Slide Images contain hundreds or thousands of related images per patient. Applying example-level clipping rapidly exhausts privacy budgets, leading to privacy collapse.
+In medical imaging, naive example-level DP causes catastrophic privacy collapse: a gigapixel Whole Slide Image with $m = 2,000$ patches under nominal example-level $\epsilon_{\text{ex}} = 0.5$ results in an actual patient-level privacy loss of $\epsilon_{\text{patient}} = m \cdot \epsilon_{\text{ex}} = 1,000$.
 
-Fed-XRay enforces honest **Patient-Level DP Gradient Clipping**:
+Fed-XRay strictly enforces **Patient-Level DP Gradient Clipping**:
 
 $$
 g_i = \frac{1}{m_i} \sum_{j=1}^{m_i} g_{i, j}, \quad \bar{g}_i = g_i \cdot \min\left(1, \frac{C}{\|g_i\|_2}\right)
 $$
 
-Gaussian noise is calibrated and added to the aggregate update to guarantee $(\epsilon \le 2.0, \delta \le 10^{-5})$-DP, tracked continuously using Rényi Differential Privacy (RDP) composition accounting.
+Calibrated Gaussian perturbation is applied at the institutional boundary:
 
-### 6.2 Cryptographic Homomorphic Encryption and SecAgg+
+$$
+\tilde{g} = \frac{1}{|B_P|} \left(\sum_{i \in B_P} \bar{g}_i + \mathcal{N}\left(0, \sigma^2 C^2 \mathbf{I}\right)\right)
+$$
 
-- **TenSEAL CKKS Homomorphic Encryption:** Enables addition of encrypted FFA-LoRA updates in ciphertext space without intermediate server decryption (`poly_modulus_degree=8192`, `scale_bits=40`).
-- **SecAgg+ Zero-Sum ECDH Masking:** Hospital clients establish shared secrets using X25519 key agreements and HKDF-SHA256, generating pairwise zero-sum pseudo-random vectors ($s_{i,j} = -s_{j,i}$) such that $\sum_{i=1}^K s_i = 0$. This blinds individual client updates from the server during transport.
+**Exact Subsampled Rényi DP (RDP) Accounting:**
+Rather than relying on first-order Taylor approximations $((q^2 \alpha)/(2\sigma^2))$ that degrade rapidly for higher moments $\alpha$, `PatientLevelDPAccountant` implements the exact analytical Poisson-subsampled Gaussian moments formula (Wang, Balle, and Kasiviswanathan, AISTATS 2019) via log-space binomial expansions:
 
-### 6.3 Enclave Attestation Handshake
+$$
+A_\alpha = \sum_{j=0}^\alpha \binom{\alpha}{j} (1-q)^{\alpha-j} q^j \exp\left(\frac{j(j-1)}{2\sigma^2}\right), \quad \operatorname{RDP}(\alpha) = \frac{\ln(A_\alpha)}{\alpha - 1}
+$$
 
-Before any training round begins, edge hospital nodes verify consortium credentials via `GET /api/fl/enclave-handshake`. The endpoint validates X25519 public key fingerprints, confirms RLWE polynomial security parameters ($N=8192$), checks patient DP clipping thresholds, and generates an electronic SHA-256 attestation certificate digest displayed directly in the clinical user interface.
+Total composed privacy loss is converted to canonical $(\epsilon, \delta)$-DP bounds via:
+
+$$
+\epsilon(\delta) = \min_{\alpha \in \mathcal{A}} \left\{ \sum_{t=1}^T \operatorname{RDP}_t(\alpha) + \frac{\ln(1/\delta)}{\alpha - 1} \right\} \le 2.0, \quad \text{with } \delta \le 10^{-5}
+$$
+
+### 6.2 Decentralized (t, n) Threshold CKKS and SecAgg+
+
+- **Decentralized (t, n) Threshold CKKS Key Management:** To eliminate monolithic master key possession by the central server, the master RLWE context is encrypted under an ephemeral 256-bit AES-GCM master key $K_{\text{master}}$. $K_{\text{master}}$ is partitioned into $n$ Shamir secret shares over the 256-bit prime field $\mathbb{F}_p$ ($p = 2^{256} - 189$) and distributed exclusively to hospital clients (`HospitalThresholdEnclave`).
+- **Zero Plaintext Decryption Guarantee:** The central server operates strictly with public context (`is_public_only=True`). Collaborative threshold reconstruction requires $\ge t$ authentic hospital authorizations signed with HMAC-SHA256, raising `ThresholdQuorumNotMetError` if insufficient shares are provided.
+- **TenSEAL Leveled RLWE 128-bit Encryption:** Addition of FFA-LoRA updates is performed directly in ciphertext space (`poly_modulus_degree=8192`, $\text{scale}=2^{40}$, 128-bit security level).
+- **Decentralized SecAgg+ Zero-Sum Masking:** Edge hospital nodes establish ephemeral pairwise shared secrets via X25519 ECDH and HKDF-SHA256, generating zero-sum pseudo-random vectors ($s_{i,j} = -s_{j,i}$) ensuring $\sum_{i=1}^K s_i = 0$ upon aggregation.
+
+### 6.3 Process Enclave Virtual Address Space Isolation
+
+To satisfy confidential computing threat models even in software-emulated environments, `IsolatedProcessEnclave` executes the threshold cryptographic committee in a dedicated operating system child process (`multiprocessing.Process` via `mp.Pipe`):
+- Guarantees strict physical virtual memory address space separation (`worker_pid != parent_pid`).
+- The parent server process has zero memory read or write access to private keys or threshold secret shares.
+- Decryption requests, ciphertext payloads, and signed authorizations pass solely through serialization-restricted inter-process communication pipes.
+
+### 6.4 Enclave Attestation Handshake
+
+Consortium nodes verify peer and server cryptographic parameters via `GET /api/fl/enclave-handshake`:
+- Validates X25519 public key fingerprints (`ecdh:x25519:...`).
+- Confirms RLWE polynomial degree ($N=8192$), modulus chain, and active DP accountant bounds.
+- Dynamically transitions from initialization to `process_isolated_threshold_enclave` with `active_quorum_enforced`.
+- Emits a canonical SHA-256 attestation certificate digest displayed directly in the web user interface.
+
+### 6.5 Specialist-Aware Byzantine Defense
+
+Under Non-IID label skew (Scenario D/E), honest specialist hospitals holding rare oncology subtypes (e.g., dermatofibroma or vascular lesions) have lower global consensus accuracy but high per-class competence. Fed-XRay avoids false Byzantine penalization through multi-stage validation:
+- **Numerical Instability Shield:** Blocks NaN/Inf gradient tensors immediately.
+- **Attestation Verification:** Intercepts attested client metrics diverging from model validation behavior.
+- **L2 Norm Outlier Detection:** Quarantines gradient scaling attacks exceeding 3.5x cohort median norm.
+- **Per-Class Competence Recognition:** Preserves honest specialist nodes exhibiting competence ($\max_c \text{acc}_c \ge 0.35$) on held pathologies.
+- **Directional Cosine Alignment:** Flags adversarial updates diametrically opposed to cohort consensus ($\cos \theta < -0.30$).
 
 ---
 
@@ -425,6 +466,7 @@ The CDSS similarity engine (`src/fed_xray/cdss/similarity.py`) indexes feature r
 - Automatically detects and indexes the active model embedding dimensionality (128-dim CNN, 192-dim ViT-Tiny, 512-dim FedMedCLIP, 768-dim ViT-Base / Swin UNETR, 1024-dim UNI).
 - Given a query scan, the engine extracts genuine embeddings and performs authentic cosine similarity matching against reference cohorts.
 - Retrieves biopsy-confirmed "digital twin" cases with verified clinical diagnoses, giving physicians grounded comparative evidence rather than isolated probability scores.
+- **Zero Mock or Hardcoded Matches:** Similarity vectors are calculated in real time from model feature activations; uninitialized case banks fail honestly without canned default matches.
 
 ### 8.2 Structured Explainable AI (Grad-CAM Saliency)
 
@@ -523,18 +565,18 @@ The FastAPI backend (`api/main.py`) provides asynchronous REST and streaming end
 
 ---
 
-## 11. Verification and Automated Test Suite (384 Tests)
+## 11. Verification and Automated Test Suite (390 Tests)
 
-Fed-XRay maintains an automated test suite comprising **384 tests** (287 Python Pytest backend tests + 97 TypeScript Vitest frontend tests), achieving a 100% pass rate.
+Fed-XRay maintains an automated test suite comprising **390 tests** (293 Python Pytest backend tests + 97 TypeScript Vitest frontend tests), achieving a 100% pass rate.
 
-### Backend Pytest Suites (41 Files, 287 Tests)
+### Backend Pytest Suites (41 Files, 293 Tests)
 
 | Domain Category | Key Test Files | Test Count | Verified Invariants |
 | :--- | :--- | :--- | :--- |
 | **Model Architectures & PEFT** | `test_vit_tiny_ffa_lora.py`, `test_vit_peft_optimizers.py`, `test_asymmetric_foundation_peft.py`, `test_swin_unetr_radiology_backbone.py`, `test_multimodal_foundation_peft_adapters.py`, `test_foundation_checkpoint_integrity_and_provenance.py` | 42 | Zero bilinear LoRA error, FFA-LoRA / FedSA-LoRA mathematical consistency, Swin UNETR shifted windows, MedSAM FCA, SHA-256 weight digests |
 | **Distributed Optimization** | `test_all.py`, `test_benchmarking_engine.py`, `test_flower_and_sota_enhancements.py`, `test_training_telemetry_authenticity.py` | 22 | FedDyn dynamic objectives, FedAdam momentum, SCAFFOLD control variates, MOON contrastive loss, Flower bridge synchronization |
 | **Class Imbalance & Prototypes** | `test_core_imbalance_losses.py`, `test_numerical_stability_losses.py`, `test_prototypes.py`, `test_multiclass_oncology_integrity.py` | 23 | DAFL dynamic recall adjustment, BSM logit correction, LDAM margins, missing-class repel loss, FedProto covariance trace weighting |
-| **Dual-Layer Privacy (Option J)** | `test_consortium_cryptography_and_zero_plaintext.py`, `test_crypto_privacy_optimizers.py`, `test_enclave_handshake.py`, `test_foundation_privacy.py`, `test_node_level_dp_accounting.py` | 40 | Patient-level L2 DP clipping, Rényi DP composition bounds, RLWE 128-bit CKKS addition, SecAgg+ zero-sum masking, attestation certificates |
+| **Dual-Layer Privacy (Option J)** | `test_consortium_cryptography_and_zero_plaintext.py`, `test_crypto_privacy_optimizers.py`, `test_enclave_handshake.py`, `test_foundation_privacy.py`, `test_node_level_dp_accounting.py` | 46 | Patient-level L2 DP clipping, analytical Wang et al. (AISTATS 2019) RDP accounting, decentralized (t, n) Threshold CKKS Shamir secret sharing, IsolatedProcessEnclave OS process address space isolation, SecAgg+ zero-sum masking, attestation certificates |
 | **Clinical Decision Support** | `test_cdss_explainability_and_localization.py`, `test_cdss_similarity.py`, `test_cdss_report.py`, `test_cdss_voice.py`, `test_cdss_xai.py`, `test_evidence_grounded_cdss.py` | 44 | Structured clinical text (zero raw asterisks), quadrant spatial localization, dynamic HNSW index retrieval, vector PDF compilation, audio synthesis |
 | **Data Ingestion & Cohorts** | `test_clinical_cohort_authenticity_and_staging.py`, `test_generator_strategy_e.py`, `test_real_world_data_scenarios.py`, `test_strategy_e_real_ingestion.py`, `test_uploaded_scan_metadata_integrity.py` | 42 | Strategy E multi-center dataset ingestion, 7 Non-IID scenarios, 100% leak-free patient isolation, ImageNet standardization |
 | **API, State & Persistence** | `test_api_deep_suite.py`, `test_api_endpoints.py`, `test_api_schemas_contracts.py`, `test_consortium_persistent_state_store.py`, `test_sqlite_memory_state_equivalence.py`, `test_state_persistence.py` | 54 | Pydantic v2 validation contracts, SSE streaming limits, path traversal blocks, SQLite WAL persistence, process restart memory equivalence |
@@ -602,7 +644,7 @@ Fed-XRay/
 |           `-- i18n.py                # Bilingual Clinical Localization (EN/TR)
 |-- benchmarks/
 |   `-- benchmark_foundation_peft.py   # Foundation PEFT Empirical Benchmark Suite
-|-- tests/                             # Pytest Backend Suites (41 Files, 287 Tests)
+|-- tests/                             # Pytest Backend Suites (41 Files, 293 Tests)
 |-- research/                          # Canonical Scientific Research Foundations (6 Papers)
 |   |-- federated_vision_transformers_for_oncology.md
 |   |-- federated_foundation_models_for_cancer.md
@@ -645,7 +687,7 @@ pip install -r requirements-dev.txt
 ### 13.2 Running the Automated Test Suite
 
 ```bash
-# Execute all 287 Python backend tests
+# Execute all 293 Python backend tests
 python -m pytest tests/ -v
 
 # Execute all 97 Next.js frontend tests
