@@ -4,6 +4,7 @@ import torch
 from torch.utils.data import DataLoader, TensorDataset
 
 from src.fed_xray.core.client import HospitalClient
+from src.fed_xray.core.privacy import ClientAttestation
 from src.fed_xray.core.server import CentralServer, run_federated_round
 
 
@@ -179,3 +180,152 @@ def test_validate_and_aggregate_with_secagg_masking():
         assert "SecAgg+ zero-sum masking" in report.details
     finally:
         server._validate_client_model = original_validate
+
+
+def test_byzantine_poisoning_blocks_malicious_node_without_self_incrimination():
+    """Verify Byzantine defense isolates adversaries via consensus without relying on self-incrimination."""
+    device = torch.device("cpu")
+    server = CentralServer(
+        device=device,
+        defense_mode=True,
+        model_type="vit_tiny",
+        peft_mode="ffa_lora",
+        secure_aggregation=True,
+        use_ckks=True,
+    )
+
+    # Consortium foundation backbone state dict
+    init_sd = server.global_model.state_dict()
+
+    x_train = torch.ones(30, 1, 28, 28) * 2.0
+    y_train = torch.zeros(30, dtype=torch.long)
+
+    dataset_good_0 = TensorDataset(x_train.clone(), y_train.clone())
+    dataset_good_1 = TensorDataset(x_train.clone(), y_train.clone())
+    dataset_bad = TensorDataset(x_train.clone(), y_train.clone())
+    dataset_good_3 = TensorDataset(x_train.clone(), y_train.clone())
+
+    c0 = HospitalClient(0, DataLoader(dataset_good_0, batch_size=10), device=device, model_type="vit_tiny", peft_mode="ffa_lora")
+    c1 = HospitalClient(1, DataLoader(dataset_good_1, batch_size=10), device=device, model_type="vit_tiny", peft_mode="ffa_lora")
+    c2 = HospitalClient(2, DataLoader(dataset_bad, batch_size=10), device=device, malicious=True, model_type="vit_tiny", peft_mode="ffa_lora")
+    c3 = HospitalClient(3, DataLoader(dataset_good_3, batch_size=10), device=device, model_type="vit_tiny", peft_mode="ffa_lora")
+
+    for cl in [c0, c1, c2, c3]:
+        cl.model.load_state_dict(init_sd)
+
+    # Explicitly tamper c2 so its attestation has is_malicious=False (no self-incrimination)
+    original_generate_attestation = c2.generate_attestation
+
+    def non_incriminating_attestation(*args, **kwargs):
+        att = original_generate_attestation(*args, **kwargs)
+        att.is_malicious = False
+        return att
+
+    c2.generate_attestation = non_incriminating_attestation
+
+    test_images = torch.ones(20, 1, 28, 28) * 2.0
+    test_labels = torch.zeros(20, dtype=torch.long)
+
+    agg_metrics, client_metrics, test_metrics, sec_report = run_federated_round(
+        server=server,
+        clients=[c0, c1, c2, c3],
+        round_num=1,
+        total_rounds=1,
+        test_images=test_images,
+        test_labels=test_labels,
+        use_defense=True,
+        secure_aggregation=True,
+        use_ckks=True,
+    )
+
+    assert sec_report is not None
+    assert sec_report.defense_active is True
+    assert sec_report.threat_detected is True
+    assert 2 in sec_report.clients_blocked
+    assert 0 in sec_report.clients_accepted
+    assert 1 in sec_report.clients_accepted
+    assert 3 in sec_report.clients_accepted
+
+
+def test_byzantine_gradient_scaling_attack_detected_by_l2_norm():
+    """Verify Byzantine gradient scaling attacks (>3.5x median norm) are blocked by L2 norm detection."""
+    device = torch.device("cpu")
+    server = CentralServer(device=device, defense_mode=True, model_type="vit_tiny", peft_mode="ffa_lora")
+
+    global_weights = server.get_global_weights()
+    w0 = {k: v.clone() for k, v in global_weights.items()}
+    w1 = {k: v.clone() for k, v in global_weights.items()}
+    w2 = {k: v.clone() for k, v in global_weights.items()}
+    # Attacker amplifies update norm by 10x
+    w_malicious = {k: v.clone() * 10.0 for k, v in global_weights.items()}
+
+    test_images = torch.randn(10, 1, 28, 28)
+    test_labels = torch.zeros(10, dtype=torch.long)
+
+    # Server evaluates accuracy uniformly to isolate norm detection
+    server._validate_client_model = lambda w, img, lbl: 0.90
+
+    _, report = server.validate_and_aggregate(
+        client_weights=[w0, w1, w2, w_malicious],
+        sample_counts=[50, 50, 50, 50],
+        client_ids=[0, 1, 2, 3],
+        test_images=test_images,
+        test_labels=test_labels,
+    )
+
+    assert report.threat_detected is True
+    assert 3 in report.clients_blocked
+    assert 0 in report.clients_accepted
+    assert 1 in report.clients_accepted
+    assert 2 in report.clients_accepted
+
+
+def test_byzantine_attestation_spoofing_detection():
+    """Verify that forged high accuracy in client attestation is caught by server-side verification."""
+    device = torch.device("cpu")
+    server = CentralServer(device=device, defense_mode=True, model_type="vit_tiny", peft_mode="ffa_lora")
+
+    global_weights = server.get_global_weights()
+    w0 = {k: v.clone() for k, v in global_weights.items()}
+    w1 = {k: v.clone() for k, v in global_weights.items()}
+    w2 = {k: v.clone() for k, v in global_weights.items()}
+
+    # Honest attestations match true performance (90%)
+    att0 = ClientAttestation(client_id=0, validation_accuracy=0.90, update_l2_norm=1.0, public_key_bytes=b"")
+    att1 = ClientAttestation(client_id=1, validation_accuracy=0.90, update_l2_norm=1.0, public_key_bytes=b"")
+    # Adversary claims 99% accuracy in attestation, but its weights achieve only 5% on server validation
+    att2_spoofed = ClientAttestation(client_id=2, validation_accuracy=0.99, update_l2_norm=1.0, public_key_bytes=b"")
+
+    test_images = torch.randn(10, 1, 28, 28)
+    test_labels = torch.zeros(10, dtype=torch.long)
+
+    # Server independently validates weights: node 0 and 1 get 0.90, node 2 gets 0.05
+    server._validate_client_model = lambda w, img, lbl: 0.90 if w is not w2 else 0.05
+
+    _, report = server.validate_and_aggregate(
+        client_weights=[w0, w1, w2],
+        sample_counts=[50, 50, 50],
+        client_ids=[0, 1, 2],
+        test_images=test_images,
+        test_labels=test_labels,
+        client_attestations=[att0, att1, att2_spoofed],
+    )
+
+    assert report.threat_detected is True
+    assert 2 in report.clients_blocked
+    assert 0 in report.clients_accepted
+    assert 1 in report.clients_accepted
+
+
+def test_client_generates_authentic_local_dataloader_accuracy():
+    """Verify that when test_images is None, HospitalClient evaluates genuinely on its own dataloader."""
+    device = torch.device("cpu")
+    dataset = TensorDataset(torch.randn(20, 1, 28, 28), torch.zeros(20, dtype=torch.long))
+    client = HospitalClient(0, DataLoader(dataset, batch_size=10), device=device, model_type="vit_tiny", peft_mode="ffa_lora")
+
+    # Call generate_attestation without external test images
+    attestation = client.generate_attestation(test_images=None, test_labels=None)
+
+    assert isinstance(attestation.validation_accuracy, float)
+    assert 0.0 <= attestation.validation_accuracy <= 1.0
+    assert attestation.update_l2_norm >= 0.0

@@ -340,6 +340,36 @@ class HospitalClient:
 
         return correct / max(total, 1)
 
+    def _compute_local_dataloader_accuracy(self, max_batches: int = 4) -> float:
+        """Compute authentic evaluation accuracy across local dataloader batches."""
+        if not self.dataloader:
+            return 0.0
+        self.model.eval()
+        correct = 0
+        total = 0
+        with torch.no_grad():
+            for b_idx, batch in enumerate(self.dataloader):
+                if b_idx >= max_batches:
+                    break
+                images, labels = batch[0].to(self.device), batch[1].to(self.device)
+                if (
+                    images.shape[-1] != self.img_size
+                    or images.shape[-2] != self.img_size
+                ):
+                    images = F.interpolate(
+                        images,
+                        size=(self.img_size, self.img_size),
+                        mode="bilinear",
+                        align_corners=False,
+                    )
+                outputs = self.model(images)
+                if torch.isnan(outputs).any():
+                    return 0.0
+                _, predicted = outputs.max(1)
+                correct += predicted.eq(labels).sum().item()
+                total += labels.size(0)
+        return correct / max(total, 1)
+
     def generate_attestation(
         self,
         test_images: Optional[torch.Tensor] = None,
@@ -352,8 +382,10 @@ class HospitalClient:
 
         if test_images is not None and test_labels is not None:
             val_acc = self.evaluate_local_model(test_images, test_labels)
+        elif self.dataloader is not None:
+            val_acc = self._compute_local_dataloader_accuracy()
         else:
-            val_acc = 1.0 if not self.malicious else 0.1
+            val_acc = 0.0
 
         return ClientAttestation(
             client_id=self.client_id,

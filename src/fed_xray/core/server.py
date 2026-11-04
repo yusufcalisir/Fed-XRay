@@ -10,6 +10,7 @@ Supports:
 
 from __future__ import annotations
 import logging
+import math
 from typing import Any, Dict, List, Optional, Tuple
 import numpy as np
 import torch
@@ -355,50 +356,102 @@ class CentralServer:
                 t.numel() * t.element_size() for t in client_weights[0].values()
             )
 
-        # 1. Compute validation accuracy for all client models
-        if client_attestations is not None and len(client_attestations) == len(client_ids):
-            for att in client_attestations:
-                validation_accuracies[att.client_id] = att.validation_accuracy
-        else:
-            for idx, (weights, count, cid) in enumerate(zip(client_weights, sample_counts, client_ids)):
-                first_val = next(iter(weights.values())) if weights else None
-                if isinstance(first_val, EncryptedTensor):
-                    # Option J Architectural Invariant: Server possesses only public CKKS context
-                    # and cannot decrypt individual weights to perform forward evaluation passes.
-                    val_acc = 1.0
-                elif test_images is not None and test_labels is not None:
-                    val_acc = self._validate_client_model(weights, test_images, test_labels)
-                else:
-                    val_acc = 1.0
-                validation_accuracies[cid] = val_acc
+        # 1. Compute validation accuracy and extract update norms for all client updates
+        client_update_norms: Dict[int, float] = {}
+        attestation_spoofed: Dict[int, bool] = {}
 
-        # 2. Consensus-relative Byzantine outlier detection
-        # Prevents deadlocks during early warm-up while isolating genuine adversaries
+        for idx, (weights, count, cid) in enumerate(zip(client_weights, sample_counts, client_ids)):
+            first_val = next(iter(weights.values())) if weights else None
+            is_encrypted = isinstance(first_val, EncryptedTensor)
+
+            # Compute L2 norm of client update
+            if is_encrypted:
+                if client_attestations is not None and idx < len(client_attestations):
+                    client_norm = float(client_attestations[idx].update_l2_norm)
+                else:
+                    client_norm = 0.0
+            else:
+                try:
+                    client_norm = sum(torch.norm(t.float()).item() for t in weights.values())
+                except Exception:
+                    client_norm = float("nan")
+            client_update_norms[cid] = client_norm
+
+            # Evaluate or verify validation accuracy
+            if not is_encrypted and test_images is not None and test_labels is not None:
+                # Authentic server-side independent evaluation of plaintext weights
+                measured_acc = self._validate_client_model(weights, test_images, test_labels)
+                val_acc = measured_acc
+                # Check for attestation spoofing if attestation was supplied
+                if client_attestations is not None and idx < len(client_attestations):
+                    att_acc = client_attestations[idx].validation_accuracy
+                    if (att_acc - measured_acc) >= 0.25:
+                        logger.warning(
+                            "[SECURITY ALERT] Node %d attestation spoofing detected! Attested: %.1f%%, Measured: %.1f%%.",
+                            cid, att_acc * 100, measured_acc * 100
+                        )
+                        attestation_spoofed[cid] = True
+            elif client_attestations is not None and idx < len(client_attestations):
+                # Option J Architecture: Under CKKS homomorphic encryption, server relies on signed enclave attestation
+                val_acc = float(client_attestations[idx].validation_accuracy)
+            elif is_encrypted:
+                # Under CKKS without client enclave attestation, server cannot decrypt individual ciphertexts
+                logger.warning(
+                    "[SECURITY AUDIT] Node %d submitted CKKS ciphertext without perimeter enclave attestation. Treating update as unverified.",
+                    cid
+                )
+                val_acc = 0.0
+            else:
+                val_acc = 1.0
+
+            validation_accuracies[cid] = val_acc
+
+        # 2. Statistical Outlier Detection (Norm Scaling + Consensus Performance)
+        # Prevents deadlocks during early warm-up while isolating genuine adversaries without self-incrimination
         val_accs = [validation_accuracies[cid] for cid in client_ids]
         cohort_max = float(np.max(val_accs)) if val_accs else 0.0
         cohort_med = float(np.median(val_accs)) if val_accs else 0.0
 
+        valid_norms = [n for n in client_update_norms.values() if not math.isnan(n) and not math.isinf(n) and n > 0]
+        cohort_med_norm = float(np.median(valid_norms)) if valid_norms else 0.0
+
         for idx, (weights, count, cid) in enumerate(zip(client_weights, sample_counts, client_ids)):
             val_acc = validation_accuracies[cid]
+            norm_val = client_update_norms[cid]
             is_malicious = False
+            block_reason = ""
 
-            if client_attestations is not None and idx < len(client_attestations) and client_attestations[idx].is_malicious:
+            # Check A: NaN / Inf numerical corruption
+            if math.isnan(norm_val) or math.isinf(norm_val) or math.isnan(val_acc):
                 is_malicious = True
+                block_reason = f"Numerical instability (NaN/Inf update norm: {norm_val})"
+            # Check B: Attestation spoofing divergence
+            elif attestation_spoofed.get(cid, False):
+                is_malicious = True
+                block_reason = "Attestation spoofing detected (client attested accuracy diverged from model behavior)"
+            # Check C: Gradient / Weight Scaling Attack (L2 norm outlier)
+            elif len(client_ids) >= 3 and cohort_med_norm > 1e-4 and norm_val > 3.5 * cohort_med_norm:
+                is_malicious = True
+                block_reason = f"Update L2 norm ({norm_val:.2f}) exceeds cohort median ({cohort_med_norm:.2f}) by >3.5x (Gradient scaling attack)"
+            # Check D: Consensus-Relative Performance Outlier Detection
             elif len(client_ids) > 1:
-                # Relative outlier detection against peer consensus
-                if cohort_max >= 0.35 and (cohort_max - val_acc) >= 0.25:
+                if cohort_max >= 0.30 and (cohort_max - val_acc) >= 0.25:
                     is_malicious = True
+                    block_reason = f"Consensus divergence (Acc: {val_acc*100:.1f}% vs Cohort Max: {cohort_max*100:.1f}%)"
                 elif (cohort_med - val_acc) >= 0.20:
                     is_malicious = True
+                    block_reason = f"Cohort median divergence (Acc: {val_acc*100:.1f}% vs Cohort Med: {cohort_med*100:.1f}%)"
                 elif val_acc < 0.10 and cohort_max >= 0.20:
                     is_malicious = True
+                    block_reason = f"Performance collapse below baseline (Acc: {val_acc*100:.1f}%)"
             elif val_acc < 0.10:
                 is_malicious = True
+                block_reason = f"Standalone validation failure (Acc: {val_acc*100:.1f}%)"
 
             if is_malicious:
                 logger.warning(
-                    "[SECURITY ALERT] Node %d failed validation (Acc: %.1f%% vs Cohort: %.1f%%). BLOCKED!",
-                    cid, val_acc * 100, cohort_med * 100
+                    "[SECURITY ALERT] Node %d failed Byzantine validation: %s. BLOCKED!",
+                    cid, block_reason
                 )
                 clients_blocked.append(cid)
                 self.blocked_count += 1
