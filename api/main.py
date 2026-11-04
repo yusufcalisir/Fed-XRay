@@ -1370,8 +1370,8 @@ async def stream_federated_training(
                 t_loss = float(metrics["loss"])
                 t_acc = float(metrics["accuracy"] * 100.0)
 
-                val_acc = float(test_metrics.accuracy * 100.0) if test_metrics else t_acc
-                val_loss = float(test_metrics.loss) if test_metrics else t_loss
+                val_acc = float(test_metrics.accuracy * 100.0) if test_metrics is not None else 0.0
+                val_loss = float(test_metrics.loss) if test_metrics is not None else 0.0
                 prec = float(test_metrics.precision * 100.0) if test_metrics else 0.0
                 rec = float(test_metrics.recall * 100.0) if test_metrics else 0.0
                 f1 = float(test_metrics.f1_score * 100.0) if test_metrics else 0.0
@@ -1591,8 +1591,8 @@ async def start_training_background(
 
                 t_loss = float(metrics["loss"])
                 t_acc = float(metrics["accuracy"] * 100.0)
-                val_acc = float(test_metrics.accuracy * 100.0) if test_metrics else t_acc
-                val_loss = float(test_metrics.loss) if test_metrics else t_loss
+                val_acc = float(test_metrics.accuracy * 100.0) if test_metrics is not None else 0.0
+                val_loss = float(test_metrics.loss) if test_metrics is not None else 0.0
                 prec = float(test_metrics.precision * 100.0) if test_metrics else 0.0
                 rec = float(test_metrics.recall * 100.0) if test_metrics else 0.0
                 f1 = float(test_metrics.f1_score * 100.0) if test_metrics else 0.0
@@ -1819,13 +1819,35 @@ async def start_flower_training_background(
                 # Map 0-based client IDs to 1-based consortium hospital numbers for consistent UI telemetry
                 display_blocked_nodes = [cid + 1 for cid in authentic_blocked_cids]
 
-                t_loss = float(agg_metrics.get("train_loss", val_loss))
-                raw_train_acc = agg_metrics.get("train_accuracy")
+                # Authentic training loss: never substitute validation loss
+                raw_train_loss = (
+                    agg_metrics.get("train_loss")
+                    if agg_metrics.get("train_loss") is not None
+                    else agg_metrics.get("loss")
+                )
+                if raw_train_loss is not None:
+                    t_loss = float(raw_train_loss)
+                elif round_info.get("train_loss") is not None:
+                    t_loss = float(round_info["train_loss"])
+                else:
+                    logger.warning("Flower round %d: train_loss omitted from client fit metrics; reporting 0.0 baseline", round_num)
+                    t_loss = 0.0
+
+                # Authentic training accuracy: never substitute validation accuracy
+                raw_train_acc = (
+                    agg_metrics.get("train_accuracy")
+                    if agg_metrics.get("train_accuracy") is not None
+                    else agg_metrics.get("accuracy")
+                )
                 if raw_train_acc is not None:
                     train_acc_val = float(raw_train_acc)
                     t_acc = train_acc_val * 100.0 if train_acc_val <= 1.0 else train_acc_val
+                elif round_info.get("train_accuracy") is not None:
+                    train_acc_val = float(round_info["train_accuracy"])
+                    t_acc = train_acc_val * 100.0 if train_acc_val <= 1.0 else train_acc_val
                 else:
-                    t_acc = val_acc
+                    logger.warning("Flower round %d: train_accuracy omitted from client fit metrics; reporting 0.0 baseline", round_num)
+                    t_acc = 0.0
 
                 for c in clients:
                     if hasattr(c, "get_spent_epsilon"):

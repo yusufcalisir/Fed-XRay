@@ -154,7 +154,9 @@ class FlowerHospitalClient(fl.client.NumPyClient):
 
         metrics_dict: Dict[str, Scalar] = {
             "loss": float(metrics.loss),
+            "train_loss": float(metrics.loss),
             "accuracy": float(metrics.accuracy),
+            "train_accuracy": float(metrics.accuracy),
             "client_id": self.hospital_client.client_id,
             "samples_trained": metrics.samples_trained,
         }
@@ -335,11 +337,11 @@ class FlowerFedXRayStrategy(Strategy):
         total_train_samples = sum(sample_counts)
         if total_train_samples > 0:
             weighted_train_loss = sum(
-                float(fit_res.metrics.get("loss", 0.0)) * count
+                float(fit_res.metrics.get("train_loss", fit_res.metrics.get("loss", 0.0))) * count
                 for (_, fit_res), count in zip(results, sample_counts)
             ) / total_train_samples
             weighted_train_acc = sum(
-                float(fit_res.metrics.get("accuracy", 0.0)) * count
+                float(fit_res.metrics.get("train_accuracy", fit_res.metrics.get("accuracy", 0.0))) * count
                 for (_, fit_res), count in zip(results, sample_counts)
             ) / total_train_samples
         else:
@@ -580,6 +582,8 @@ def run_flower_federated_orchestration(
             "round": rnd,
             "participating_clients": len(results),
             "metrics": agg_metrics,
+            "train_loss": float(agg_metrics.get("train_loss", 0.0)),
+            "train_accuracy": float(agg_metrics.get("train_accuracy", 0.0)),
             "blocked_nodes": list(getattr(strategy, "last_blocked_nodes", [])),
             "security_report": getattr(strategy, "last_security_report", None),
         }

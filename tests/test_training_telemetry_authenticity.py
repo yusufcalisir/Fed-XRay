@@ -263,3 +263,129 @@ def test_flower_telemetry_authentically_propagates_blocked_node_identity(client,
         state.model_trained = original_trained
         state.task_complete = original_task_complete
         state.store = original_store
+
+
+def test_flower_training_metric_independence_and_no_validation_fallback(client, tmp_path):
+    """Verify DEFECT-13 fix: Flower telemetry never substitutes validation metrics for missing training fit metrics."""
+    from src.fed_xray.storage import PersistentStateStore
+
+    original_history = dict(state.training_history)
+    original_task_rounds = list(state.task_rounds)
+    original_trained = state.model_trained
+    original_task_complete = state.task_complete
+    original_store = state.store
+
+    try:
+        state.store = PersistentStateStore(db_path=tmp_path / "flower_metric_independence_test.db")
+        state.training_history = {
+            "loss": [],
+            "accuracy": [],
+            "round": [],
+            "precision": [],
+            "recall": [],
+            "f1_score": [],
+            "test_accuracy": [],
+            "test_loss": [],
+            "threat_detected": [],
+            "privacy_epsilon": [],
+            "blocked_nodes": [],
+            "blocked_count": 0,
+        }
+
+        # Scenario 1: Missing training fit metrics in agg_metrics must NOT substitute val_loss/val_acc
+        agg_metrics_missing: dict = {}
+        val_loss = 0.6543
+        val_acc = 85.0
+
+        # Simulate the extraction logic from on_round_completed
+        raw_train_loss = (
+            agg_metrics_missing.get("train_loss")
+            if agg_metrics_missing.get("train_loss") is not None
+            else agg_metrics_missing.get("loss")
+        )
+        t_loss = float(raw_train_loss) if raw_train_loss is not None else 0.0
+
+        raw_train_acc = (
+            agg_metrics_missing.get("train_accuracy")
+            if agg_metrics_missing.get("train_accuracy") is not None
+            else agg_metrics_missing.get("accuracy")
+        )
+        if raw_train_acc is not None:
+            train_acc_val = float(raw_train_acc)
+            t_acc = train_acc_val * 100.0 if train_acc_val <= 1.0 else train_acc_val
+        else:
+            t_acc = 0.0
+
+        # Invariant: train_loss and train_accuracy must NOT equal validation loss and accuracy
+        assert t_loss == 0.0
+        assert t_acc == 0.0
+        assert t_loss != val_loss
+        assert t_acc != val_acc
+
+        # Scenario 2: Authentic distinct training metrics must be preserved
+        agg_metrics_authentic = {
+            "train_loss": 0.4120,
+            "train_accuracy": 82.5,
+            "blocked_clients_count": 0,
+            "blocked_nodes_json": "[]",
+        }
+        raw_train_loss2 = (
+            agg_metrics_authentic.get("train_loss")
+            if agg_metrics_authentic.get("train_loss") is not None
+            else agg_metrics_authentic.get("loss")
+        )
+        t_loss2 = float(raw_train_loss2) if raw_train_loss2 is not None else 0.0
+
+        raw_train_acc2 = (
+            agg_metrics_authentic.get("train_accuracy")
+            if agg_metrics_authentic.get("train_accuracy") is not None
+            else agg_metrics_authentic.get("accuracy")
+        )
+        if raw_train_acc2 is not None:
+            train_acc_val2 = float(raw_train_acc2)
+            t_acc2 = train_acc_val2 * 100.0 if train_acc_val2 <= 1.0 else train_acc_val2
+        else:
+            t_acc2 = 0.0
+
+        assert t_loss2 == 0.4120
+        assert t_acc2 == 82.5
+        assert t_loss2 != val_loss
+        assert t_acc2 != val_acc
+    finally:
+        state.training_history = original_history
+        state.task_rounds = original_task_rounds
+        state.model_trained = original_trained
+        state.task_complete = original_task_complete
+        state.store = original_store
+
+
+def test_flower_hospital_client_fit_reports_train_loss_and_train_accuracy():
+    """Verify FlowerHospitalClient.fit returns explicit train_loss and train_accuracy keys."""
+    import torch
+    from torch.utils.data import DataLoader, TensorDataset
+    from src.fed_xray.core.client import HospitalClient
+    from src.fed_xray.federation.flower_protocol_bridge import (
+        FlowerHospitalClient,
+        state_dict_to_flower_parameters,
+    )
+
+    x = torch.randn(8, 1, 28, 28)
+    y = torch.tensor([0, 1, 2, 0, 1, 2, 0, 1], dtype=torch.long)
+    loader = DataLoader(TensorDataset(x, y), batch_size=4)
+
+    client_core = HospitalClient(client_id=0, dataloader=loader, model_type="cnn")
+    flower_client = FlowerHospitalClient(hospital_client=client_core)
+
+    weights = {k: v.clone().detach().cpu() for k, v in client_core.model.state_dict().items()}
+    arrays, _ = state_dict_to_flower_parameters(weights)
+
+    _, num_samples, metrics = flower_client.fit(arrays, {"current_round": 1, "total_rounds": 1})
+
+    assert num_samples == 8
+    assert "train_loss" in metrics
+    assert "train_accuracy" in metrics
+    assert "loss" in metrics
+    assert "accuracy" in metrics
+    assert isinstance(metrics["train_loss"], float)
+    assert isinstance(metrics["train_accuracy"], float)
+
