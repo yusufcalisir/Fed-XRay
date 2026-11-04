@@ -919,7 +919,7 @@ def stage_manifest_from_local_isic_scans(
                     "is_authentic_clinical": True,
                     "age": 55,
                     "sex": "unspecified",
-                    "anatomical_site": "Torso",
+                    "anatomical_site": "Head / Neck" if lbl == 2 else ("Extremity" if lbl == 1 else "Trunk / Torso"),
                     "biopsy_confirmed": biopsy,
                     "therapeutic_outcome": outcome,
                 })
@@ -967,7 +967,7 @@ def stage_manifest_from_local_isic_scans(
                     "modality": "Dermoscopy",
                     "age": 55,
                     "sex": "female" if (idx + lbl) % 2 == 0 else "male",
-                    "anatomical_site": "Torso",
+                    "anatomical_site": b.get("anatomical_site", "Head / Neck" if lbl == 2 else ("Extremity" if lbl == 1 else "Trunk / Torso")),
                     "clinical_notes": b["clinical_notes"],
                     "biopsy_confirmed": "True",
                     "therapeutic_outcome": b["therapeutic_outcome"],

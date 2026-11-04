@@ -80,7 +80,12 @@ export async function fetchClinicalDiagnosis(
   opacity: number = 0.55,
   colormap: string = "Hot",
   imageBase64?: string,
-  language: string = "en"
+  language: string = "en",
+  metadata?: {
+    anatomical_site?: string;
+    biopsy_confirmed?: boolean;
+    provenance?: string;
+  }
 ): Promise<DiagnosisResult> {
   const url = `${baseUrl.replace(/\/$/, "")}/api/cdss/diagnose`;
   const res = await fetch(url, {
@@ -92,6 +97,9 @@ export async function fetchClinicalDiagnosis(
       opacity,
       colormap,
       language,
+      ...(metadata?.anatomical_site ? { anatomical_site: metadata.anatomical_site } : {}),
+      ...(metadata?.biopsy_confirmed !== undefined ? { biopsy_confirmed: metadata.biopsy_confirmed } : {}),
+      ...(metadata?.provenance ? { provenance: metadata.provenance } : {}),
     }),
   });
   if (!res.ok) {

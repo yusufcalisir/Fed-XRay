@@ -95,6 +95,9 @@ class DiagnoseRequest(BaseModel):
     opacity: float = Field(default=0.55, ge=0.0, le=1.0)
     colormap: str = Field(default="Hot")
     language: Optional[str] = Field(default="en")
+    anatomical_site: Optional[str] = None
+    biopsy_confirmed: Optional[bool] = None
+    provenance: Optional[str] = None
 
 
 class DiagnoseResponse(BaseModel):

@@ -355,7 +355,12 @@ class PersistentStateStore:
         probs_json = json.dumps(audit.get("probabilities", []))
         raw_json = json.dumps(audit.get("raw_image")) if audit.get("raw_image") is not None else None
         heatmap_json = json.dumps(audit.get("heatmap")) if audit.get("heatmap") is not None else None
-        is_biopsy = 1 if audit.get("biopsy_confirmed", True) else 0
+        is_biopsy = 1 if bool(audit.get("biopsy_confirmed", False)) else 0
+
+        site = audit.get("anatomical_site")
+        site_str = str(site).strip() if site is not None else None
+        if site_str == "" or (site_str and site_str.lower() in ("none", "null")):
+            site_str = None
 
         with self._connection() as conn:
             cursor = conn.execute(
@@ -376,9 +381,9 @@ class PersistentStateStore:
                     probs_json,
                     str(audit.get("findings", "")),
                     str(audit.get("image_source", "uploaded")),
-                    str(audit.get("provenance", "isic_archive_v2_real_clinical")),
+                    str(audit.get("provenance", "uploaded_custom_scan")),
                     is_biopsy,
-                    str(audit.get("anatomical_site", "Torso")),
+                    site_str,
                     raw_json,
                     heatmap_json,
                     now,
@@ -416,7 +421,7 @@ class PersistentStateStore:
             "findings": row["findings"],
             "image_source": row["image_source"],
             "provenance": row["provenance"],
-            "biopsy_confirmed": bool(row["biopsy_confirmed"]),
+            "biopsy_confirmed": bool(row["biopsy_confirmed"]) if row["biopsy_confirmed"] is not None else None,
             "anatomical_site": row["anatomical_site"],
             "raw_image": json.loads(row["raw_image_json"]) if row["raw_image_json"] else None,
             "heatmap": json.loads(row["heatmap_json"]) if row["heatmap_json"] else None,
@@ -452,7 +457,7 @@ class PersistentStateStore:
                 "findings": r["findings"],
                 "image_source": r["image_source"],
                 "provenance": r["provenance"],
-                "biopsy_confirmed": bool(r["biopsy_confirmed"]),
+                "biopsy_confirmed": bool(r["biopsy_confirmed"]) if r["biopsy_confirmed"] is not None else None,
                 "anatomical_site": r["anatomical_site"],
                 "created_at": r["created_at"],
             })

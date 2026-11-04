@@ -2130,10 +2130,25 @@ async def perform_diagnosis(req: DiagnoseRequest):
 
     true_class = -1
     target_dim = state.image_size
-    provenance: Optional[str] = "uploaded_custom_scan"
-    anatomical_site: Optional[str] = None
-    biopsy_confirmed: Optional[bool] = None
+    provenance: Optional[str] = req.provenance
+    anatomical_site: Optional[str] = req.anatomical_site
+    biopsy_confirmed: Optional[bool] = req.biopsy_confirmed
     modality: Optional[str] = None
+
+    active_dataset = state.data_source.lower()
+    is_derm = any(k in active_dataset for k in ("isic", "derm", "skin", "strategy_e", "disk_manifest"))
+    is_histo = any(k in active_dataset for k in ("nct", "crc", "histo", "colorectal"))
+
+    if is_derm:
+        inferred_modality = "Dermoscopy"
+        default_site = "Cutaneous Lesion (Uploaded)"
+    elif is_histo:
+        inferred_modality = "Histopathology"
+        default_site = "Colorectal Tissue (Uploaded)"
+    else:
+        inferred_modality = "Chest X-Ray"
+        default_site = "Thorax (Uploaded)"
+
     if req.image_base64:
         try:
             header, _, encoded = req.image_base64.partition(",")
@@ -2146,6 +2161,15 @@ async def perform_diagnosis(req: DiagnoseRequest):
             raise HTTPException(status_code=400, detail=f"Invalid base64 image data: {exc}")
         image_source = "uploaded"
         patient_id = f"PAT_UPLOAD_{hashlib.md5(image_np.tobytes()).hexdigest()[:6].upper()}"
+        modality = inferred_modality
+        if anatomical_site is None or str(anatomical_site).strip() in ("", "None", "null"):
+            anatomical_site = default_site
+        if biopsy_confirmed is None:
+            biopsy_confirmed = False
+        else:
+            biopsy_confirmed = bool(biopsy_confirmed)
+        if provenance is None or str(provenance).strip() in ("", "None", "null"):
+            provenance = "uploaded_custom_scan"
     elif req.image_data:
         try:
             raw_arr = np.array(req.image_data, dtype=np.float32)
@@ -2159,6 +2183,15 @@ async def perform_diagnosis(req: DiagnoseRequest):
             raise HTTPException(status_code=400, detail=f"Invalid image_data matrix: {exc}")
         image_source = "uploaded"
         patient_id = f"PAT_UPLOAD_{hashlib.md5(image_np.tobytes()).hexdigest()[:6].upper()}"
+        modality = inferred_modality
+        if anatomical_site is None or str(anatomical_site).strip() in ("", "None", "null"):
+            anatomical_site = default_site
+        if biopsy_confirmed is None:
+            biopsy_confirmed = False
+        else:
+            biopsy_confirmed = bool(biopsy_confirmed)
+        if provenance is None or str(provenance).strip() in ("", "None", "null"):
+            provenance = "uploaded_custom_scan"
     else:
         if state.global_test_set is None:
             state.ensure_cohort_loaded()
@@ -2182,19 +2215,23 @@ async def perform_diagnosis(req: DiagnoseRequest):
         if source_records and pick < len(source_records):
             rec = source_records[pick]
             patient_id = rec.patient_id
-            anatomical_site = getattr(rec, "anatomical_site", None)
-            biopsy_confirmed = getattr(rec, "biopsy_confirmed", None)
-            provenance = getattr(rec, "provenance", state.data_source)
-            modality = getattr(rec, "modality", "Dermoscopy" if ("isic" in str(provenance).lower() or "strategy_e" in str(provenance).lower() or "disk_manifest" in str(provenance).lower()) else "Chest X-Ray")
+            rec_site = getattr(rec, "anatomical_site", None)
+            rec_biopsy = getattr(rec, "biopsy_confirmed", None)
+            rec_prov = getattr(rec, "provenance", None)
+            rec_mod = getattr(rec, "modality", None)
+            anatomical_site = rec_site if (rec_site and str(rec_site).strip() not in ("", "None", "null")) else default_site.replace("(Uploaded)", "(Cohort Holdout)")
+            biopsy_confirmed = bool(rec_biopsy) if rec_biopsy is not None else True
+            provenance = rec_prov or state.data_source
+            modality = rec_mod or inferred_modality
         else:
             patient_id = f"PAT_{state.data_source}_{pick + 1:04d}"
-            anatomical_site = None
-            biopsy_confirmed = None
+            anatomical_site = default_site.replace("(Uploaded)", "(Cohort Holdout)")
+            biopsy_confirmed = True
             provenance = state.data_source
-            modality = "Dermoscopy" if ("isic" in state.data_source.lower() or "strategy_e" in state.data_source.lower() or "disk_manifest" in state.data_source.lower()) else "Chest X-Ray"
+            modality = inferred_modality
 
     if modality is None:
-        modality = "Dermoscopy" if ("isic" in state.data_source.lower() or "strategy_e" in state.data_source.lower() or "disk_manifest" in state.data_source.lower()) else "Chest X-Ray"
+        modality = inferred_modality
 
     if req.class_index is not None and req.class_index >= 0 and true_class == -1:
         true_class = req.class_index
