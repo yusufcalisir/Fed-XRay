@@ -7,11 +7,11 @@ from torch.utils.data import DataLoader, TensorDataset
 
 from src.fed_xray.models.foundation import (
     TextSemanticAnchor,
-    OrthogonalClassAnchor,
     ClinicalTextEncoder,
     MedSAMClientAdapter,
     FedMedCLIPModule,
 )
+from tests.helpers.ablation_anchors import OrthogonalClassAnchor
 from src.fed_xray.core.privacy import (
     CKKSEncryptionEngine,
     SecAggPlusProtocol,
@@ -99,6 +99,8 @@ def test_text_semantic_anchor_custom_prompts():
 
 def test_orthogonal_class_anchor():
     """Verify OrthogonalClassAnchor generates pairwise orthogonal unit vectors as geometric baseline."""
+    import src.fed_xray.models.foundation as foundation_module
+
     anchor = OrthogonalClassAnchor(embed_dim=128, num_classes=4, seed=123)
     protos = anchor.get_prototypes()
     assert protos.shape == (4, 128)
@@ -107,6 +109,11 @@ def test_orthogonal_class_anchor():
 
     # Verify backwards compatibility method
     assert torch.allclose(anchor.get_text_prototypes(), protos)
+
+    # Verify that accessing OrthogonalClassAnchor from foundation models triggers DeprecationWarning
+    with pytest.deprecated_call():
+        deprecated_cls = getattr(foundation_module, "OrthogonalClassAnchor")
+    assert deprecated_cls is OrthogonalClassAnchor
 
 
 def test_clinical_text_encoder_honest_failure():

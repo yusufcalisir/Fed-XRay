@@ -393,44 +393,6 @@ CANONICAL_CLINICAL_PROMPTS: Dict[str, List[str]] = {
 }
 
 
-class OrthogonalClassAnchor(nn.Module):
-    """Purely geometric orthonormal class coordinate anchors on unit hypersphere S^{d-1}.
-
-    Used strictly as an abstract geometric prototype baseline for non-text ablation benchmarks
-    to assess performance when multimodal language supervision is unavailable.
-    For genuine clinical multimodal semantic anchoring, use TextSemanticAnchor (Rule 8, Rule 12).
-    """
-
-    semantic_codebook: torch.Tensor
-
-    def __init__(self, embed_dim: int = 512, num_classes: int = 3, seed: int = 42) -> None:
-        super().__init__()
-        self.embed_dim = embed_dim
-        self.num_classes = num_classes
-        self.seed = seed
-        self.register_buffer("semantic_codebook", torch.empty(num_classes, embed_dim))
-        self._initialize_codebook()
-        self.requires_grad_(False)
-
-    def _initialize_codebook(self) -> None:
-        gen = torch.Generator().manual_seed(self.seed)
-        vectors = torch.randn(self.num_classes, self.embed_dim, generator=gen)
-        q, _ = torch.linalg.qr(vectors.t())
-        orthogonal_anchors = q.t()[: self.num_classes]
-        self.semantic_codebook.copy_(F.normalize(orthogonal_anchors, p=2, dim=-1))
-
-    def get_text_prototypes(self) -> torch.Tensor:
-        """Return the fixed anchor matrix [num_classes, embed_dim] (interface compatibility)."""
-        return self.semantic_codebook.clone()
-
-    def get_prototypes(self) -> torch.Tensor:
-        """Return the fixed anchor matrix [num_classes, embed_dim]."""
-        return self.semantic_codebook.clone()
-
-    def forward(self, class_indices: torch.Tensor) -> torch.Tensor:
-        return self.semantic_codebook[class_indices]
-
-
 class ClinicalTextEncoder(nn.Module):
     """Genuine frozen clinical language encoder (e.g. Bio_ClinicalBERT) for Multimodal RAG/PEFT.
 
@@ -847,4 +809,22 @@ class FedMedCLIPModel(nn.Module):
         """Computes FedMedCLIP mutual distillation and CE loss."""
         feats = self.extract_features(x)
         return self.medclip.compute_local_loss(feats, targets, beta=beta)
+
+
+def __getattr__(name: str) -> Any:
+    if name == "OrthogonalClassAnchor":
+        import warnings
+
+        warnings.warn(
+            "OrthogonalClassAnchor has been relocated from 'src.fed_xray.models.foundation' "
+            "to 'tests.helpers.ablation_anchors' per Rule 12 (Zero Dormant / Disconnected Code). "
+            "For genuine multimodal clinical anchoring, use TextSemanticAnchor.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        from tests.helpers.ablation_anchors import OrthogonalClassAnchor
+
+        return OrthogonalClassAnchor
+    raise AttributeError(f"module '{__name__}' has no attribute '{name}'")
+
 
