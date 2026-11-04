@@ -15,6 +15,7 @@ from src.fed_xray.core.privacy import (
     SecAggPlusProtocol,
     SecAggPeer,
     PatientLevelDPAccountant,
+    compute_subsampled_gaussian_rdp,
     apply_patient_level_dp_clipping,
     clip_and_perturb_state_dict,
 )
@@ -89,7 +90,7 @@ def test_secagg_pairwise_zero_sum_cancellation():
 
 
 def test_patient_level_dp_accountant_rdp_bound():
-    """Verify Patient-Level DP Accountant computes correct Renyi DP bounds."""
+    """Verify Patient-Level DP Accountant computes exact analytical Wang subsampled Renyi DP bounds."""
     accountant = PatientLevelDPAccountant(target_delta=1e-5)
 
     # Simulate 5 federated rounds with subsampling rate q=0.2 and noise multiplier sigma=1.0
@@ -97,7 +98,28 @@ def test_patient_level_dp_accountant_rdp_bound():
         accountant.step(q=0.2, sigma=1.0)
 
     epsilon = accountant.get_epsilon()
-    assert 0.0 < epsilon < 5.0, f"Expected bounded epsilon, got {epsilon}"
+    # Exact analytical Wang et al. (2019) moments yield eps ~ 5.294 (eliminating 20x Taylor truncation error)
+    assert 0.0 < epsilon < 7.0, f"Expected bounded epsilon, got {epsilon}"
+    assert 5.0 < epsilon < 6.0, f"Expected exact Wang analytical epsilon (~5.29), got {epsilon}"
+
+    # Verify analytical subsampled Gaussian RDP properties (Wang, Balle, Kasiviswanathan 2019)
+    # 1. Unsubsampled case (q=1.0) matches textbook Gaussian RDP alpha / (2 * sigma^2) exactly
+    exact_unsubsampled = compute_subsampled_gaussian_rdp(q=1.0, sigma=1.5, alpha=4.0)
+    expected_unsubsampled = 4.0 / (2.0 * (1.5 ** 2))
+    assert abs(exact_unsubsampled - expected_unsubsampled) < 1e-6
+
+    # 2. Zero subsampling case (q=0.0) yields zero privacy expenditure
+    assert compute_subsampled_gaussian_rdp(q=0.0, sigma=1.0, alpha=4.0) == 0.0
+
+    # 3. Higher sampling rates strictly increase privacy expenditure
+    rdp_q01 = compute_subsampled_gaussian_rdp(q=0.1, sigma=1.0, alpha=8.0)
+    rdp_q05 = compute_subsampled_gaussian_rdp(q=0.5, sigma=1.0, alpha=8.0)
+    assert rdp_q05 > rdp_q01
+
+    # 4. Eliminates Taylor truncation error: for alpha=16, exact RDP captures non-linear exponential terms
+    exact_q02_a16 = compute_subsampled_gaussian_rdp(q=0.2, sigma=1.0, alpha=16.0)
+    naive_taylor = (0.2 ** 2 * 16.0) / (2.0 * (1.0 ** 2))
+    assert exact_q02_a16 > naive_taylor * 10.0, "Exact RDP must account for non-linear exponential amplification"
 
 
 def test_patient_level_dp_gradient_clipping():

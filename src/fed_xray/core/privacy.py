@@ -429,13 +429,74 @@ class SecAggPlusProtocol:
         return residual
 
 
+def compute_subsampled_gaussian_rdp(q: float, sigma: float, alpha: float) -> float:
+    """Compute exact analytical Rényi Differential Privacy (RDP) for the Subsampled Gaussian Mechanism.
+
+    Implements the analytical Poisson-subsampled Gaussian moments formula from:
+    Wang, Balle, and Kasiviswanathan (AISTATS 2019):
+    'Subsampled Rényi Differential Privacy and Analytical Moments Accountant'.
+
+    Eliminates first-order Taylor truncation errors (O(q^3) / large alpha degradation) by computing
+    exact binomial expansions in log-space:
+        A_alpha = sum_{j=0}^alpha binom(alpha, j) * (1-q)^{alpha-j} * q^j * exp(j(j-1) / (2 * sigma^2))
+        RDP(alpha) = ln(A_alpha) / (alpha - 1)
+    Non-integer orders alpha are evaluated via the convexity property of (alpha - 1) * RDP(alpha).
+    """
+    if sigma <= 0.0:
+        return float("inf")
+    if q <= 0.0:
+        return 0.0
+    if q >= 1.0:
+        return alpha / (2.0 * (sigma ** 2))
+
+    def _integer_rdp(k: int) -> float:
+        if k < 2:
+            return 0.0
+        log_terms: List[float] = []
+        inv_2_sigma_sq = 1.0 / (2.0 * (sigma ** 2))
+        log_1_minus_q = math.log(1.0 - q)
+        log_q = math.log(q)
+
+        for j in range(k + 1):
+            log_binom = math.lgamma(k + 1) - math.lgamma(j + 1) - math.lgamma(k - j + 1)
+            log_prob = (k - j) * log_1_minus_q + j * log_q
+            log_gauss = j * (j - 1.0) * inv_2_sigma_sq
+            log_terms.append(log_binom + log_prob + log_gauss)
+
+        max_t = max(log_terms)
+        if math.isinf(max_t):
+            return max_t
+        log_sum = max_t + math.log(sum(math.exp(t - max_t) for t in log_terms))
+        return log_sum / (k - 1.0)
+
+    if alpha.is_integer():
+        return _integer_rdp(int(alpha))
+
+    floor_k = math.floor(alpha)
+    ceil_k = math.ceil(alpha)
+
+    if floor_k < 2:
+        return (alpha - 1.0) * _integer_rdp(2)
+
+    # Convex interpolation on (alpha - 1) * epsilon(alpha) (Wang et al. Proposition 12)
+    f1 = (floor_k - 1.0) * _integer_rdp(floor_k)
+    f2 = (ceil_k - 1.0) * _integer_rdp(ceil_k)
+    t = alpha - floor_k
+    f_alpha = (1.0 - t) * f1 + t * f2
+    return f_alpha / (alpha - 1.0)
+
+
 class PatientLevelDPAccountant:
     """Rényi Differential Privacy (RDP) Composition Accountant for Patient-Level DP.
 
     Prevents patient group privacy collapse on multi-patch (WSI) or multi-slice (3D MRI/CT) data.
+    Uses exact Wang, Balle, and Kasiviswanathan (AISTATS 2019) subsampled Gaussian RDP composition.
     """
 
-    ORDERS = [1.5, 1.75, 2.0, 2.5, 3.0, 4.0, 5.0, 6.0, 8.0, 16.0, 32.0, 64.0]
+    ORDERS = [
+        1.5, 1.75, 2.0, 2.5, 3.0, 4.0, 5.0, 6.0, 8.0, 10.0, 12.0, 14.0, 16.0,
+        20.0, 24.0, 28.0, 32.0, 48.0, 64.0, 128.0,
+    ]
 
     def __init__(
         self,
@@ -445,15 +506,11 @@ class PatientLevelDPAccountant:
         self.rdp_history: List[Dict[float, float]] = []
 
     def compute_rdp_step(self, q: float, sigma: float) -> Dict[float, float]:
-        """Compute Rényi divergence under Poisson subsampling amplification with rate q."""
+        """Compute exact Rényi divergence under Poisson subsampling amplification with rate q."""
         rdp_step = {}
         for alpha in self.ORDERS:
-            if sigma == 0:
-                rdp_step[alpha] = float("inf")
-            else:
-                # Subsampled Gaussian mechanism RDP upper bound: (q^2 * alpha) / (2 * sigma^2) + O(q^3)
-                rdp_val = (q ** 2 * alpha) / (2.0 * (sigma ** 2))
-                rdp_step[alpha] = rdp_val
+            rdp_val = compute_subsampled_gaussian_rdp(q=q, sigma=sigma, alpha=alpha)
+            rdp_step[alpha] = rdp_val
         return rdp_step
 
     def step(self, q: float, sigma: float) -> None:
