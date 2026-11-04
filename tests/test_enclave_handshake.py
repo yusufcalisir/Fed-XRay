@@ -108,3 +108,25 @@ def test_differential_privacy_budget_exhaustion_unclamped(client):
         assert privacy["total_rounds_composed"] == 3
     finally:
         state.server = original_server
+
+
+def test_differential_privacy_intermediate_budget_accumulation(client):
+    """Verify that 1 round of DP accumulation reports genuine intermediate epsilon (0.0 < eps < 2.0)."""
+    original_server = state.server
+    try:
+        server = CentralServer(privacy_noise=1.0, defense_mode=False, dp_mode="distributed")
+        server.dp_accountant.step(q=0.1, sigma=1.0)
+        state.server = server
+
+        res = client.get("/api/fl/enclave-handshake")
+        assert res.status_code == 200
+        data = res.json()
+
+        privacy = data["privacy"]
+        assert 0.0 < privacy["epsilon"] < 2.0
+        assert privacy["target_epsilon"] == 2.0
+        assert privacy["budget_exhausted"] is False
+        assert privacy["total_rounds_composed"] == 1
+    finally:
+        state.server = original_server
+

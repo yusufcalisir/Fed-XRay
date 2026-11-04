@@ -17,18 +17,25 @@ def create_dummy_dataloader(n_samples: int = 40, label: int = 0) -> DataLoader:
 
 
 def test_byzantine_poisoning_detection_and_mitigation():
-    """Verify Byzantine poisoning defense intercepts malicious client updates."""
+    """Verify Byzantine poisoning defense intercepts malicious client updates without self-incrimination."""
     device = torch.device("cpu")
     server = CentralServer(device=device, defense_mode=True, model_type="vit_tiny", peft_mode="ffa_lora")
 
-    # 3 honest clients, 1 malicious client
-    c0 = HospitalClient(0, create_dummy_dataloader(30, 0), device=device, model_type="vit_tiny", peft_mode="ffa_lora")
-    c1 = HospitalClient(1, create_dummy_dataloader(30, 1), device=device, model_type="vit_tiny", peft_mode="ffa_lora")
-    c2 = HospitalClient(2, create_dummy_dataloader(30, 2), device=device, malicious=True, model_type="vit_tiny", peft_mode="ffa_lora")
-    c3 = HospitalClient(3, create_dummy_dataloader(30, 0), device=device, model_type="vit_tiny", peft_mode="ffa_lora")
+    init_sd = server.global_model.state_dict()
+    x_train = torch.ones(30, 1, 28, 28) * 2.0
+    y_train = torch.zeros(30, dtype=torch.long)
 
-    test_images = torch.randn(20, 1, 28, 28)
-    test_labels = torch.randint(0, 3, (20,))
+    # 3 honest clients, 1 malicious client
+    c0 = HospitalClient(0, DataLoader(TensorDataset(x_train.clone(), y_train.clone()), batch_size=10), device=device, model_type="vit_tiny", peft_mode="ffa_lora")
+    c1 = HospitalClient(1, DataLoader(TensorDataset(x_train.clone(), y_train.clone()), batch_size=10), device=device, model_type="vit_tiny", peft_mode="ffa_lora")
+    c2 = HospitalClient(2, DataLoader(TensorDataset(x_train.clone(), y_train.clone()), batch_size=10), device=device, malicious=True, model_type="vit_tiny", peft_mode="ffa_lora")
+    c3 = HospitalClient(3, DataLoader(TensorDataset(x_train.clone(), y_train.clone()), batch_size=10), device=device, model_type="vit_tiny", peft_mode="ffa_lora")
+
+    for cl in [c0, c1, c2, c3]:
+        cl.model.load_state_dict(init_sd)
+
+    test_images = torch.ones(20, 1, 28, 28) * 2.0
+    test_labels = torch.zeros(20, dtype=torch.long)
 
     agg_metrics, client_metrics, test_metrics, sec_report = run_federated_round(
         server=server,
@@ -42,8 +49,16 @@ def test_byzantine_poisoning_detection_and_mitigation():
 
     assert sec_report is not None
     assert sec_report.total_clients == 4
-    # Malicious client should be detected or score divergence logged
+    assert sec_report.defense_active is True
+    assert sec_report.threat_detected is True
+    assert 2 in sec_report.clients_blocked
+    assert 0 in sec_report.clients_accepted
+    assert 1 in sec_report.clients_accepted
+    assert 3 in sec_report.clients_accepted
     assert len(sec_report.validation_accuracies) == 4
+
+    m2 = next(m for m in client_metrics if m.client_id == 2)
+    assert m2.was_blocked is True
 
 
 def test_nan_and_inf_gradient_resilience():
@@ -104,7 +119,7 @@ def test_free_rider_and_empty_batch_handling():
 
 
 def test_byzantine_poisoning_under_secagg_and_ckks():
-    """Verify Byzantine poisoning is detected, blocked, and isolated under SecAgg+ and CKKS."""
+    """Verify Byzantine poisoning is detected, blocked, and isolated under SecAgg+ and CKKS without self-incrimination."""
     device = torch.device("cpu")
     server = CentralServer(
         device=device,
@@ -115,14 +130,21 @@ def test_byzantine_poisoning_under_secagg_and_ckks():
         use_ckks=True,
     )
 
-    # 3 honest clients, 1 malicious client
-    c0 = HospitalClient(0, create_dummy_dataloader(30, 0), device=device, model_type="vit_tiny", peft_mode="ffa_lora")
-    c1 = HospitalClient(1, create_dummy_dataloader(30, 1), device=device, model_type="vit_tiny", peft_mode="ffa_lora")
-    c2 = HospitalClient(2, create_dummy_dataloader(30, 2), device=device, malicious=True, model_type="vit_tiny", peft_mode="ffa_lora")
-    c3 = HospitalClient(3, create_dummy_dataloader(30, 0), device=device, model_type="vit_tiny", peft_mode="ffa_lora")
+    init_sd = server.global_model.state_dict()
+    x_train = torch.ones(30, 1, 28, 28) * 2.0
+    y_train = torch.zeros(30, dtype=torch.long)
 
-    test_images = torch.randn(20, 1, 28, 28)
-    test_labels = torch.randint(0, 3, (20,))
+    # 3 honest clients, 1 malicious client
+    c0 = HospitalClient(0, DataLoader(TensorDataset(x_train.clone(), y_train.clone()), batch_size=10), device=device, model_type="vit_tiny", peft_mode="ffa_lora")
+    c1 = HospitalClient(1, DataLoader(TensorDataset(x_train.clone(), y_train.clone()), batch_size=10), device=device, model_type="vit_tiny", peft_mode="ffa_lora")
+    c2 = HospitalClient(2, DataLoader(TensorDataset(x_train.clone(), y_train.clone()), batch_size=10), device=device, malicious=True, model_type="vit_tiny", peft_mode="ffa_lora")
+    c3 = HospitalClient(3, DataLoader(TensorDataset(x_train.clone(), y_train.clone()), batch_size=10), device=device, model_type="vit_tiny", peft_mode="ffa_lora")
+
+    for cl in [c0, c1, c2, c3]:
+        cl.model.load_state_dict(init_sd)
+
+    test_images = torch.ones(20, 1, 28, 28) * 2.0
+    test_labels = torch.zeros(20, dtype=torch.long)
 
     agg_metrics, client_metrics, test_metrics, sec_report = run_federated_round(
         server=server,
@@ -139,12 +161,17 @@ def test_byzantine_poisoning_under_secagg_and_ckks():
     assert sec_report is not None
     assert sec_report.defense_active is True
     assert sec_report.secagg_active is True
+    assert sec_report.threat_detected is True
+    assert 2 in sec_report.clients_blocked
+    assert 0 in sec_report.clients_accepted
+    assert 1 in sec_report.clients_accepted
+    assert 3 in sec_report.clients_accepted
     assert len(sec_report.validation_accuracies) == 4
     # The report must not be a canned fake pass:
     assert sec_report.details != "SecAgg+ pairwise zero-sum masking active (cryptographic privacy preserves node confidentiality)"
-    for m in client_metrics:
-        if m.client_id in sec_report.clients_blocked:
-            assert m.was_blocked is True
+
+    m2 = next(m for m in client_metrics if m.client_id == 2)
+    assert m2.was_blocked is True
 
 
 def test_validate_and_aggregate_with_secagg_masking():
@@ -213,15 +240,10 @@ def test_byzantine_poisoning_blocks_malicious_node_without_self_incrimination():
     for cl in [c0, c1, c2, c3]:
         cl.model.load_state_dict(init_sd)
 
-    # Explicitly tamper c2 so its attestation has is_malicious=False (no self-incrimination)
-    original_generate_attestation = c2.generate_attestation
-
-    def non_incriminating_attestation(*args, **kwargs):
-        att = original_generate_attestation(*args, **kwargs)
-        att.is_malicious = False
-        return att
-
-    c2.generate_attestation = non_incriminating_attestation
+    # Verify that HospitalClient natively generates authentic attestations with is_malicious=False
+    # (In zero-trust enclaves, adversaries never self-incriminate in signed certificates)
+    att_c2 = c2.generate_attestation()
+    assert att_c2.is_malicious is False
 
     test_images = torch.ones(20, 1, 28, 28) * 2.0
     test_labels = torch.zeros(20, dtype=torch.long)

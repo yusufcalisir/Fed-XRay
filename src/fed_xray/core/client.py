@@ -399,7 +399,7 @@ class HospitalClient:
             validation_accuracy=val_acc,
             update_l2_norm=update_norm,
             public_key_bytes=self.get_secagg_public_key(),
-            is_malicious=self.malicious,
+            is_malicious=False,
             sample_count=self.n_samples,
         )
 
