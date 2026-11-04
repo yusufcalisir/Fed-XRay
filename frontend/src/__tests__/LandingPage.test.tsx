@@ -62,8 +62,9 @@ describe("PresentationLandingPage Component", () => {
     const ragTabBtn = screen.getByRole("button", { name: "Case Retrieval" });
     fireEvent.click(ragTabBtn);
     expect(screen.getByText(/Case-Based Reasoning: Digital Twin Matcher/i)).toBeInTheDocument();
-    expect(screen.getByText("REF-ONCO-401")).toBeInTheDocument();
-    expect(screen.getByText("REF-ONCO-402")).toBeInTheDocument();
+    expect(screen.getByText("Federated Reference Bank Standby")).toBeInTheDocument();
+    expect(screen.queryByText("REF-ONCO-401")).not.toBeInTheDocument();
+    expect(screen.queryByText("REF-ONCO-402")).not.toBeInTheDocument();
 
     // Switch to Convergence Tab
     const convTabBtn = screen.getByRole("button", { name: "Training Monitor" });
@@ -118,5 +119,53 @@ describe("PresentationLandingPage Component", () => {
     // Modal should now be open
     expect(screen.getByText("Initializing Federated Consortium Handshake")).toBeInTheDocument();
     expect(screen.getByText("Federated Handshake")).toBeInTheDocument();
+  });
+
+  it("renders authentic federated reference cases when reference_cases are returned from backend", async () => {
+    global.fetch = vi.fn().mockImplementation((url: string) => {
+      const urlStr = String(url);
+      if (urlStr.includes("/api/state")) {
+        return Promise.resolve({
+          ok: true,
+          status: 200,
+          json: async () => ({
+            status: "ok",
+            version: "2.1.0",
+            nodes_online: 4,
+            total_nodes: 4,
+            reference_cases: [
+              {
+                case_id: "REF-HIST-089",
+                diagnosis: "Malignant Melanoma",
+                similarity: 94.2,
+                clinical_notes: "Atypical melanocytic proliferation at dermo-epidermal junction",
+                site_id: "Hospital Clinic Barcelona (BCN_20000)",
+                biopsy_confirmed: true,
+              },
+            ],
+          }),
+        } as any);
+      }
+      return Promise.resolve({
+        ok: true,
+        status: 200,
+        json: async () => ({
+          status: "ok",
+          version: "2.1.0",
+          nodes_online: 4,
+          total_nodes: 4,
+        }),
+      } as any);
+    });
+
+    renderLandingPage();
+
+    const ragTabBtn = screen.getByRole("button", { name: "Case Retrieval" });
+    fireEvent.click(ragTabBtn);
+
+    expect(await screen.findByText("REF-HIST-089")).toBeInTheDocument();
+    expect(screen.getByText("94.2% Match")).toBeInTheDocument();
+    expect(screen.getByText("Malignant Melanoma")).toBeInTheDocument();
+    expect(screen.getByText(/Atypical melanocytic proliferation/)).toBeInTheDocument();
   });
 });

@@ -448,95 +448,86 @@ export default function PresentationLandingPage() {
                 <span className="px-2.5 py-1 rounded-md text-[10px] font-mono font-bold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
                   {systemState?.reference_cases?.length
                     ? `${t("landing_rag_live_bank")} (${systemState.reference_cases.length} ${t("landing_rag_verified_cases")})`
-                    : t("landing_tab2_badge")}
+                    : t("landing_rag_standby_badge")}
                 </span>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {(Array.isArray(systemState?.reference_cases) && systemState.reference_cases.length > 0
-                  ? systemState.reference_cases.slice(0, 2)
-                  : [
-                      {
-                        case_id: "REF-ONCO-401",
-                        diagnosis: t("landing_tab2_c1_diag"),
-                        similarity: 96.4,
-                        clinical_notes: t("landing_tab2_c1_desc"),
-                        site_id: t("landing_tab2_c1_meta"),
-                        biopsy_confirmed: true,
-                        anatomical_site: "Thorax / Left Lobe",
-                      },
-                      {
-                        case_id: "REF-ONCO-402",
-                        diagnosis: t("landing_tab2_c2_diag"),
-                        similarity: 92.1,
-                        clinical_notes: t("landing_tab2_c2_desc"),
-                        site_id: t("landing_tab2_c2_meta"),
-                        biopsy_confirmed: true,
-                        anatomical_site: "Right Lower Lobe",
-                      },
-                    ]
-                ).map((c, idx) => (
-                  <div
-                    key={c.case_id}
-                    className={`card-inner p-4 flex flex-col justify-between border-l-4 ${
-                      idx === 0 ? "border-l-emerald-500" : "border-l-blue-500"
-                    }`}
-                  >
-                    <div className="space-y-2.5">
-                      <div className="flex items-center justify-between">
-                        <span
-                          className={`font-mono text-xs font-bold ${
-                            idx === 0
-                              ? "text-emerald-600 dark:text-emerald-400"
-                              : "text-blue-600 dark:text-blue-400"
-                          }`}
-                        >
-                          {c.case_id}
-                        </span>
-                        <span
-                          className={`px-2 py-0.5 rounded text-[10px] font-bold ${
-                            idx === 0
-                              ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
-                              : "bg-blue-500/10 text-blue-600 dark:text-blue-400"
-                          }`}
-                        >
-                          {c.similarity}% {t("landing_rag_match")}
-                        </span>
+              {Array.isArray(systemState?.reference_cases) && systemState.reference_cases.length > 0 ? (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {systemState.reference_cases.slice(0, 2).map((c, idx) => (
+                    <div
+                      key={c.case_id}
+                      className={`card-inner p-4 flex flex-col justify-between border-l-4 ${
+                        idx === 0 ? "border-l-emerald-500" : "border-l-blue-500"
+                      }`}
+                    >
+                      <div className="space-y-2.5">
+                        <div className="flex items-center justify-between">
+                          <span
+                            className={`font-mono text-xs font-bold ${
+                              idx === 0
+                                ? "text-emerald-600 dark:text-emerald-400"
+                                : "text-blue-600 dark:text-blue-400"
+                            }`}
+                          >
+                            {c.case_id}
+                          </span>
+                          <span
+                            className={`px-2 py-0.5 rounded text-[10px] font-bold ${
+                              idx === 0
+                                ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
+                                : "bg-blue-500/10 text-blue-600 dark:text-blue-400"
+                            }`}
+                          >
+                            {c.similarity && c.similarity > 0
+                              ? `${c.similarity}% ${t("landing_rag_match")}`
+                              : t("landing_rag_reference_twin")}
+                          </span>
+                        </div>
+                        <div className="text-xs font-semibold text-[var(--text-heading)]">
+                          {c.diagnosis}
+                        </div>
+                        <p className="text-xs text-[var(--text-muted)] leading-relaxed line-clamp-3">
+                          {c.clinical_notes || t("rag_no_cases")}
+                        </p>
                       </div>
-                      <div className="text-xs font-semibold text-[var(--text-heading)]">
-                        {language === "TR"
-                          ? c.diagnosis?.toLowerCase().includes("melanoma")
-                            ? "Malign Melanom"
-                            : c.diagnosis?.toLowerCase().includes("basal")
-                            ? "Bazal Hücreli Karsinom"
-                            : c.diagnosis?.toLowerCase().includes("nevus")
-                            ? "Benign Displastik Nevüs"
-                            : c.diagnosis
-                          : c.diagnosis}
-                      </div>
-                      <p className="text-xs text-[var(--text-muted)] leading-relaxed line-clamp-3">
-                        {language === "TR" && (c.case_id.startsWith("PAT_ISIC") || c.clinical_notes?.toLowerCase().includes("melanoma"))
-                          ? idx === 0
-                            ? "Gövde bölgesinde yerleşik, histopatoloji (biyopsi) ile doğrulanmış Malign Melanom. Eksantrik hiperpigmentasyon ve periferik çizgilenmeler mevcut. Geniş lokal eksizyon endikedir."
-                            : "Sırt bölgesinde yerleşik, konkomitant biyopsi ile doğrulanmış yüzeyel yayılan Malign Melanom. Atipik pigmentsel retikülasyon ve lezyon kenarlarında asimetri izlenmektedir."
-                          : c.clinical_notes}
-                      </p>
-                    </div>
-                    <div className="text-[10px] font-mono text-[var(--text-muted)] pt-2 mt-3 border-t border-[var(--border-subtle)] flex items-center justify-between">
-                      <span className="truncate">
-                        {language === "TR" && c.site_id?.includes("BCN-20000")
-                          ? "BCN-20000 Deri Kanseri Merkezi (Barselona)"
-                          : c.site_id || (language === "TR" ? "ISIC Çok Merkezli Bankası" : "ISIC Multi-Center Bank")}
-                      </span>
-                      {c.biopsy_confirmed && (
-                        <span className="text-emerald-600 dark:text-emerald-400 font-semibold shrink-0 ml-1">
-                          {t("landing_rag_biopsy_yes")}
+                      <div className="text-[10px] font-mono text-[var(--text-muted)] pt-2 mt-3 border-t border-[var(--border-subtle)] flex items-center justify-between">
+                        <span className="truncate">
+                          {c.site_id || (language === "TR" ? "Konsorsiyum Referans Merkezi" : "Consortium Reference Center")}
                         </span>
-                      )}
+                        {c.biopsy_confirmed && (
+                          <span className="text-emerald-600 dark:text-emerald-400 font-semibold shrink-0 ml-1">
+                            {t("landing_rag_biopsy_yes")}
+                          </span>
+                        )}
+                      </div>
                     </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="card-inner p-8 text-center flex flex-col items-center justify-center space-y-3 border border-dashed border-[var(--border-subtle)] rounded-xl">
+                  <div className="w-10 h-10 rounded-xl bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-500 dark:text-slate-400">
+                    <Database className="w-5 h-5" />
                   </div>
-                ))}
-              </div>
+                  <div className="space-y-1 max-w-md">
+                    <div className="text-sm font-bold text-[var(--text-heading)]">
+                      {t("landing_rag_standby_title")}
+                    </div>
+                    <p className="text-xs text-[var(--text-muted)] leading-relaxed">
+                      {t("landing_rag_standby_desc")}
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={openLaunchModal}
+                    className="btn-primary text-xs px-4 py-2 mt-2"
+                  >
+                    <Activity className="w-3.5 h-3.5" />
+                    <span>{t("landing_rag_standby_cta")}</span>
+                    <ArrowRight className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              )}
             </div>
           )}
 
