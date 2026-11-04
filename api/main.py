@@ -135,6 +135,7 @@ class AppState:
             "test_accuracy": [],
             "test_loss": [],
             "privacy_epsilon": [],
+            "uplink_bytes": [],
             "threat_detected": [],
             "blocked_nodes": [],
             "blocked_count": 0,
@@ -236,6 +237,7 @@ class AppState:
             threats = self.training_history.get("threat_detected", [])
             epsilons = self.training_history.get("privacy_epsilon", [])
             blocked_nodes_list = self.training_history.get("blocked_nodes", [])
+            uplinks = self.training_history.get("uplink_bytes", [])
             for idx, r in enumerate(round_nums):
                 self.store.record_training_round({
                     "round_num": r,
@@ -247,6 +249,7 @@ class AppState:
                     "recall": recalls[idx] if idx < len(recalls) else (accs[idx] if idx < len(accs) else 0.0),
                     "f1_score": f1s[idx] if idx < len(f1s) else 0.0,
                     "privacy_epsilon": epsilons[idx] if idx < len(epsilons) else (self.server.get_privacy_spent() if self.server else 0.0),
+                    "uplink_bytes": int(uplinks[idx]) if idx < len(uplinks) else 0,
                     "threat_detected": threats[idx] if idx < len(threats) else False,
                     "blocked_nodes": blocked_nodes_list[idx] if idx < len(blocked_nodes_list) else [],
                     "status": "completed",
@@ -392,10 +395,32 @@ class AppState:
             return True
         out_dir = Path(checkpoint_dir)
         model_path = out_dir / "federated_global_model.pt"
+        meta_path = out_dir / "federated_state_metadata.json"
         if not model_path.exists():
             return False
         try:
+            if meta_path.exists():
+                try:
+                    with open(meta_path, "r", encoding="utf-8") as f:
+                        meta = json.load(f)
+                    self.lora_r = int(meta.get("lora_r", self.lora_r))
+                    self.lora_alpha = float(meta.get("lora_alpha", self.lora_alpha))
+                    self.deep_layers_only = bool(meta.get("deep_layers_only", self.deep_layers_only))
+                    self.model_type = meta.get("model_type", self.model_type)
+                    self.peft_mode = meta.get("peft_mode", self.peft_mode)
+                except Exception as meta_exc:
+                    logger.warning("Could not read metadata in restore_model_weights: %s", meta_exc)
+
             saved_weights = torch.load(model_path, map_location=self.device)
+            # Infer LoRA rank and layer targeting directly from checkpoint tensors
+            for k, tensor in saved_weights.items():
+                if "lora_A" in k and hasattr(tensor, "shape") and len(tensor.shape) == 2:
+                    self.lora_r = int(tensor.shape[0])
+                    break
+            lora_keys = [k for k in saved_weights if "lora_A" in k]
+            if lora_keys and not any(k.startswith("blocks.0.") or k.startswith("layers.0.") for k in lora_keys):
+                self.deep_layers_only = True
+
             inferred_classes = len(self.dataset_label_map) if self.dataset_label_map else 3
             if "head.weight" in saved_weights:
                 inferred_classes = int(saved_weights["head.weight"].shape[0])
@@ -761,6 +786,41 @@ def get_default_reference_cases() -> List[Dict[str, Any]]:
     return []
 
 
+def format_telemetry_bandwidth(
+    uplink_bytes: int,
+    server: Optional[Any] = None,
+    peft_mode: Optional[str] = None,
+) -> str:
+    """Format uplink transmission footprint into calibrated engineering units.
+
+    Dynamically converts byte counts to human-readable representations (B, KB, MB)
+    derived from authentic tensor or ciphertext parameter transmission payloads.
+    """
+    effective_bytes = int(uplink_bytes) if uplink_bytes > 0 else 0
+
+    if effective_bytes <= 0 and server is not None:
+        effective_bytes = int(getattr(server, "last_uplink_bytes_per_client", 0))
+
+    if effective_bytes <= 0 and server is not None and getattr(server, "global_model", None) is not None:
+        model = server.global_model
+        if peft_mode in ("ffa_lora", "lora", "fedsa_lora"):
+            effective_bytes = sum(
+                p.numel() * p.element_size() for p in model.parameters() if p.requires_grad
+            )
+        else:
+            effective_bytes = sum(
+                p.numel() * p.element_size() for p in model.parameters()
+            )
+
+    if effective_bytes <= 0:
+        return "0 B"
+    if effective_bytes >= 1024 * 1024:
+        return f"{effective_bytes / (1024 * 1024):.1f} MB"
+    if effective_bytes >= 1024:
+        return f"{effective_bytes / 1024:.1f} KB"
+    return f"{effective_bytes} B"
+
+
 @app.get("/api/state")
 async def get_state():
     if (
@@ -793,6 +853,7 @@ async def get_state():
                 state.training_history.setdefault("f1_score", []).append(tr.get("f1_score", 0.0))
                 state.training_history.setdefault("threat_detected", []).append(tr.get("threat_detected", False))
                 state.training_history.setdefault("privacy_epsilon", []).append(tr.get("privacy_epsilon", 0.0))
+                state.training_history.setdefault("uplink_bytes", []).append(int(tr.get("uplink_bytes_per_client", 0)))
                 state.training_history.setdefault("blocked_nodes", []).append(tr.get("blocked_nodes", []))
             if state.task_complete:
                 state.model_trained = True
@@ -860,6 +921,7 @@ async def get_state():
     f1s = state.training_history.get("f1_score", [])
     threats = state.training_history.get("threat_detected", [])
     blocked_history = state.training_history.get("blocked_nodes", [])
+    uplinks = state.training_history.get("uplink_bytes", [])
     for idx, r in enumerate(round_nums):
         train_loss_val = losses[idx] if idx < len(losses) else 0.0
         train_acc_val = accs[idx] if idx < len(accs) else 0.0
@@ -868,6 +930,7 @@ async def get_state():
         f1_val = f1s[idx] if idx < len(f1s) else 0.0
         threat_val = threats[idx] if idx < len(threats) else False
         blocked_val = blocked_history[idx] if idx < len(blocked_history) else []
+        round_uplink = int(uplinks[idx]) if idx < len(uplinks) else 0
         rounds_list.append({
             "round_num": r,
             "train_loss": round(float(train_loss_val), 4),
@@ -875,7 +938,8 @@ async def get_state():
             "test_loss": round(float(test_loss_val), 4),
             "test_accuracy": round(float(test_acc_val), 2),
             "f1_score": round(float(f1_val), 4) if f1_val <= 1.0 else round(float(f1_val) / 100.0, 4),
-            "bandwidth": "67.1 KB" if state.peft_mode in ("ffa_lora", "lora", "fedsa_lora") else "4.2 MB",
+            "bandwidth": format_telemetry_bandwidth(round_uplink, server=state.server, peft_mode=state.peft_mode),
+            "uplink_bytes": round_uplink,
             "threat_detected": bool(threat_val),
             "blocked_nodes": list(blocked_val),
             "status": "completed",
@@ -973,6 +1037,7 @@ async def reset_state_endpoint():
         "test_accuracy": [],
         "test_loss": [],
         "privacy_epsilon": [],
+        "uplink_bytes": [],
         "threat_detected": [],
         "blocked_nodes": [],
         "blocked_count": 0,
@@ -1366,6 +1431,7 @@ async def stream_federated_training(
                 "f1_score": [],
                 "test_accuracy": [],
                 "test_loss": [],
+                "uplink_bytes": [],
                 "blocked_count": 0,
             }
 
@@ -1419,6 +1485,12 @@ async def stream_federated_training(
                         if state.server is not None and hasattr(state.server, "record_client_epsilon"):
                             state.server.record_client_epsilon(f"node-{c.client_id}", c_eps)
 
+                uplink_bytes_round = int(
+                    metrics.get(
+                        "uplink_bytes_per_client",
+                        getattr(state.server, "last_uplink_bytes_per_client", 0),
+                    )
+                )
                 state.training_history.setdefault("round", []).append(round_num)
                 state.training_history.setdefault("loss", []).append(t_loss)
                 state.training_history.setdefault("accuracy", []).append(t_acc)
@@ -1429,6 +1501,7 @@ async def stream_federated_training(
                 state.training_history.setdefault("f1_score", []).append(f1)
                 state.training_history.setdefault("threat_detected", []).append(threat_detected)
                 state.training_history.setdefault("privacy_epsilon", []).append(float(state.server.get_privacy_spent()) if state.server else 0.0)
+                state.training_history.setdefault("uplink_bytes", []).append(uplink_bytes_round)
                 state.training_history.setdefault("blocked_nodes", []).append([n + 1 for n in blocked_nodes])
                 if blocked_nodes:
                     state.training_history["blocked_count"] = state.training_history.get("blocked_count", 0) + len(blocked_nodes)
@@ -1444,6 +1517,7 @@ async def stream_federated_training(
                         "recall": rec,
                         "f1_score": f1,
                         "privacy_epsilon": float(state.server.get_privacy_spent()) if state.server else 0.0,
+                        "uplink_bytes": uplink_bytes_round,
                         "threat_detected": threat_detected,
                         "blocked_nodes": [n + 1 for n in blocked_nodes],
                         "status": "training" if round_num < num_rounds else "complete",
@@ -1580,6 +1654,7 @@ async def start_training_background(
                 "f1_score": [],
                 "test_accuracy": [],
                 "test_loss": [],
+                "uplink_bytes": [],
                 "blocked_count": 0,
             }
 
@@ -1669,6 +1744,12 @@ async def start_training_background(
                 state.task_rounds.append(round_data)
                 state.task_current_round = round_num
 
+                uplink_bytes_round = int(
+                    metrics.get(
+                        "uplink_bytes_per_client",
+                        getattr(srv, "last_uplink_bytes_per_client", 0),
+                    )
+                )
                 state.training_history.setdefault("round", []).append(round_num)
                 state.training_history.setdefault("loss", []).append(t_loss)
                 state.training_history.setdefault("accuracy", []).append(t_acc)
@@ -1679,6 +1760,7 @@ async def start_training_background(
                 state.training_history.setdefault("f1_score", []).append(f1)
                 state.training_history.setdefault("threat_detected", []).append(len(blocked_nodes) > 0)
                 state.training_history.setdefault("privacy_epsilon", []).append(float(srv.get_privacy_spent()))
+                state.training_history.setdefault("uplink_bytes", []).append(uplink_bytes_round)
                 state.training_history.setdefault("blocked_nodes", []).append([n + 1 for n in blocked_nodes])
                 if blocked_nodes:
                     state.training_history["blocked_count"] = state.training_history.get("blocked_count", 0) + len(blocked_nodes)
@@ -1694,6 +1776,7 @@ async def start_training_background(
                         "recall": rec,
                         "f1_score": f1,
                         "privacy_epsilon": float(srv.get_privacy_spent()),
+                        "uplink_bytes": uplink_bytes_round,
                         "threat_detected": len(blocked_nodes) > 0,
                         "blocked_nodes": [n + 1 for n in blocked_nodes],
                         "status": "training" if round_num < num_rounds else "complete",
@@ -1805,6 +1888,7 @@ async def start_flower_training_background(
                 "f1_score": [],
                 "test_accuracy": [],
                 "test_loss": [],
+                "uplink_bytes": [],
                 "blocked_count": 0,
             }
 
@@ -1927,6 +2011,12 @@ async def start_flower_training_background(
                 state.task_rounds.append(round_data)
                 state.task_current_round = round_num
 
+                uplink_bytes_round = int(
+                    agg_metrics.get(
+                        "uplink_bytes_per_client",
+                        getattr(srv, "last_uplink_bytes_per_client", 0),
+                    )
+                )
                 state.training_history.setdefault("round", []).append(round_num)
                 state.training_history.setdefault("loss", []).append(t_loss)
                 state.training_history.setdefault("accuracy", []).append(t_acc)
@@ -1937,6 +2027,7 @@ async def start_flower_training_background(
                 state.training_history.setdefault("f1_score", []).append(f1)
                 state.training_history.setdefault("threat_detected", []).append(threat_detected)
                 state.training_history.setdefault("privacy_epsilon", []).append(float(srv.get_privacy_spent()))
+                state.training_history.setdefault("uplink_bytes", []).append(uplink_bytes_round)
                 state.training_history.setdefault("blocked_nodes", []).append(display_blocked_nodes)
                 if display_blocked_nodes:
                     state.training_history["blocked_count"] = (
@@ -1954,6 +2045,7 @@ async def start_flower_training_background(
                         "recall": rec,
                         "f1_score": f1,
                         "privacy_epsilon": float(srv.get_privacy_spent()),
+                        "uplink_bytes": uplink_bytes_round,
                         "threat_detected": threat_detected,
                         "blocked_nodes": display_blocked_nodes,
                         "status": "training" if round_num < num_rounds else "complete",

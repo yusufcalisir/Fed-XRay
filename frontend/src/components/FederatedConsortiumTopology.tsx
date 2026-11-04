@@ -106,6 +106,7 @@ export interface FederatedConsortiumTopologyProps {
     train_accuracy: number;
     f1_score: number;
     bandwidth: string;
+    uplink_bytes?: number;
     threat_detected: boolean;
     status: string;
   }[];

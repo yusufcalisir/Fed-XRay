@@ -389,3 +389,93 @@ def test_flower_hospital_client_fit_reports_train_loss_and_train_accuracy():
     assert isinstance(metrics["train_loss"], float)
     assert isinstance(metrics["train_accuracy"], float)
 
+
+def test_dynamic_bandwidth_formatting_and_persistence_integrity(client, tmp_path):
+    """Verify that network bandwidth is dynamically computed from measured uplink bytes and persisted without static mocks."""
+    from api.main import format_telemetry_bandwidth, state
+    from src.fed_xray.storage import PersistentStateStore
+
+    # 1. Direct unit verification of bandwidth formatting logic
+    assert format_telemetry_bandwidth(0) == "0 B"
+    assert format_telemetry_bandwidth(512) == "512 B"
+    assert format_telemetry_bandwidth(1024) == "1.0 KB"
+    assert format_telemetry_bandwidth(68736) == "67.1 KB"
+    assert format_telemetry_bandwidth(1048576) == "1.0 MB"
+    assert format_telemetry_bandwidth(4404019) == "4.2 MB"
+
+    # 2. Integration verification via /api/state with diverse dynamic byte payloads
+    original_history = dict(state.training_history)
+    original_store = state.store
+    try:
+        test_store = PersistentStateStore(db_path=tmp_path / "bandwidth_telemetry_test.db")
+        state.store = test_store
+        state.training_history = {
+            "round": [1, 2, 3],
+            "loss": [0.8500, 0.4200, 0.2100],
+            "accuracy": [65.0, 82.0, 91.5],
+            "test_loss": [0.8900, 0.4500, 0.2300],
+            "test_accuracy": [63.0, 80.5, 90.0],
+            "precision": [64.0, 81.0, 90.5],
+            "recall": [62.0, 80.0, 89.5],
+            "f1_score": [63.0, 80.5, 90.0],
+            "privacy_epsilon": [0.4, 0.8, 1.2],
+            "uplink_bytes": [512, 153600, 3145728],  # 512 B, 150 KB, 3.0 MB
+            "threat_detected": [False, False, False],
+            "blocked_nodes": [[], [], []],
+            "blocked_count": 0,
+            "privacy_spent": 1.2,
+        }
+        state.model_trained = True
+
+        # Query /api/state in memory
+        res = client.get("/api/state")
+        assert res.status_code == 200
+        data = res.json()
+        rounds = data.get("rounds", [])
+        assert len(rounds) == 3
+
+        # Assert dynamic bandwidth calculations without static hardcoding
+        assert rounds[0]["bandwidth"] == "512 B"
+        assert rounds[0]["uplink_bytes"] == 512
+        assert rounds[1]["bandwidth"] == "150.0 KB"
+        assert rounds[1]["uplink_bytes"] == 153600
+        assert rounds[2]["bandwidth"] == "3.0 MB"
+        assert rounds[2]["uplink_bytes"] == 3145728
+
+        # 3. Verify SQLite persistence and hydration round-trip
+        state.save_to_disk(checkpoint_dir=str(tmp_path / "ckpts"))
+        hydrated_history = test_store.get_training_history()
+        assert hydrated_history["uplink_bytes"] == [512, 153600, 3145728]
+
+        # Reset in-memory training history and verify /api/state hydration from SQLite
+        state.training_history = {
+            "loss": [],
+            "accuracy": [],
+            "round": [],
+            "precision": [],
+            "recall": [],
+            "f1_score": [],
+            "test_accuracy": [],
+            "test_loss": [],
+            "privacy_epsilon": [],
+            "uplink_bytes": [],
+            "threat_detected": [],
+            "blocked_nodes": [],
+            "blocked_count": 0,
+            "privacy_spent": 0.0,
+        }
+        res_hydrated = client.get("/api/state")
+        assert res_hydrated.status_code == 200
+        hydrated_rounds = res_hydrated.json().get("rounds", [])
+        assert len(hydrated_rounds) == 3
+        assert hydrated_rounds[0]["bandwidth"] == "512 B"
+        assert hydrated_rounds[0]["uplink_bytes"] == 512
+        assert hydrated_rounds[1]["bandwidth"] == "150.0 KB"
+        assert hydrated_rounds[1]["uplink_bytes"] == 153600
+        assert hydrated_rounds[2]["bandwidth"] == "3.0 MB"
+        assert hydrated_rounds[2]["uplink_bytes"] == 3145728
+    finally:
+        state.training_history = original_history
+        state.store = original_store
+
+

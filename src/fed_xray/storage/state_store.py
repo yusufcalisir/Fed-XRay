@@ -212,7 +212,7 @@ class PersistentStateStore:
             cursor = conn.execute(
                 """
                 SELECT round_num, train_loss, train_accuracy, test_loss, test_accuracy,
-                       precision, recall, f1_score, privacy_epsilon, threat_detected, blocked_nodes
+                       precision, recall, f1_score, privacy_epsilon, uplink_bytes, threat_detected, blocked_nodes
                 FROM training_rounds
                 ORDER BY round_num ASC
                 """
@@ -229,6 +229,7 @@ class PersistentStateStore:
             "recall": [],
             "f1_score": [],
             "privacy_epsilon": [],
+            "uplink_bytes": [],
             "threat_detected": [],
             "blocked_nodes": [],
             "blocked_count": 0,
@@ -244,6 +245,7 @@ class PersistentStateStore:
             history["recall"].append(float(r["recall"]))
             history["f1_score"].append(float(r["f1_score"]))
             history["privacy_epsilon"].append(float(r["privacy_epsilon"]))
+            history["uplink_bytes"].append(int(r["uplink_bytes"]))
             history["threat_detected"].append(bool(r["threat_detected"]))
             try:
                 blocked = json.loads(r["blocked_nodes"])

@@ -73,6 +73,7 @@ def test_in_memory_and_sqlite_history_strict_equivalence(tmp_path: Path):
         "recall",
         "f1_score",
         "privacy_epsilon",
+        "uplink_bytes",
         "threat_detected",
         "blocked_nodes",
         "blocked_count",
@@ -90,6 +91,7 @@ def test_in_memory_and_sqlite_history_strict_equivalence(tmp_path: Path):
     assert history["recall"] == [69.80, 84.00]
     assert history["f1_score"] == [70.93, 83.75]
     assert history["privacy_epsilon"] == [0.4215, 0.8430]
+    assert history["uplink_bytes"] == [0, 0]
     assert history["threat_detected"] == [False, True]
     assert history["blocked_nodes"] == [[], [2]]
     assert history["blocked_count"] == 1
