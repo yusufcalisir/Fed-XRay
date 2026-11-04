@@ -99,3 +99,64 @@ def test_sqlite_state_store_round_trip_preserves_distinct_metrics():
     assert history["test_loss"][idx] == 0.5123
     assert history["test_accuracy"][idx] == 79.0
     assert history["loss"][idx] != history["test_loss"][idx]
+
+
+def test_background_training_populates_state_lineage(client, tmp_path):
+    """Verify DEFECT-04 fix: background task rounds hydrate in-memory state and unlock model_trained."""
+    original_history = dict(state.training_history)
+    original_task_rounds = list(state.task_rounds)
+    original_trained = state.model_trained
+    original_task_complete = state.task_complete
+    original_store = state.store
+    try:
+        from src.fed_xray.storage import PersistentStateStore
+        state.store = PersistentStateStore(db_path=tmp_path / "isolated_consortium.db")
+
+        # Clear in-memory history
+        state.training_history = {
+            "loss": [],
+            "accuracy": [],
+            "round": [],
+            "precision": [],
+            "recall": [],
+            "f1_score": [],
+            "test_accuracy": [],
+            "test_loss": [],
+            "blocked_count": 0,
+        }
+        # Simulate completed background training task
+        state.task_rounds = [
+            {
+                "round_num": 1,
+                "total_rounds": 1,
+                "train_loss": 0.5512,
+                "train_accuracy": 76.5,
+                "test_loss": 0.6214,
+                "test_accuracy": 73.0,
+                "precision": 74.0,
+                "recall": 72.0,
+                "f1_score": 73.0,
+                "threat_detected": False,
+                "blocked_nodes": [],
+                "status": "complete",
+            }
+        ]
+        state.task_complete = True
+        state.model_trained = True
+
+        res = client.get("/api/state")
+        assert res.status_code == 200
+        data = res.json()
+
+        assert data["model_trained"] is True
+        assert data["is_live"] is True
+        assert data["history_rounds"] == 1
+        assert len(data["rounds"]) == 1
+        assert data["rounds"][0]["train_loss"] == 0.5512
+        assert data["rounds"][0]["test_loss"] == 0.6214
+    finally:
+        state.training_history = original_history
+        state.task_rounds = original_task_rounds
+        state.model_trained = original_trained
+        state.task_complete = original_task_complete
+        state.store = original_store

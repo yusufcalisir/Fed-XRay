@@ -709,6 +709,19 @@ async def get_state():
         saved_hist = state.store.get_training_history()
         if saved_hist and saved_hist.get("round"):
             state.training_history = saved_hist
+        elif state.task_rounds:
+            # Fallback hydration from completed in-flight background worker rounds
+            for tr in state.task_rounds:
+                state.training_history["round"].append(tr.get("round_num", 1))
+                state.training_history["loss"].append(tr.get("train_loss", 0.0))
+                state.training_history["accuracy"].append(tr.get("train_accuracy", 0.0))
+                state.training_history["test_loss"].append(tr.get("test_loss", 0.0))
+                state.training_history["test_accuracy"].append(tr.get("test_accuracy", 0.0))
+                state.training_history["precision"].append(tr.get("precision", 0.0))
+                state.training_history["recall"].append(tr.get("recall", 0.0))
+                state.training_history["f1_score"].append(tr.get("f1_score", 0.0))
+            if state.task_complete:
+                state.model_trained = True
 
     hospitals_list: List[Dict[str, Any]] = []
     cohorts_data: List[Dict[str, Any]] = []
