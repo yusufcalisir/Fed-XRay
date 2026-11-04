@@ -101,3 +101,39 @@ def test_federated_rag_case_retrieval_over_real_cohort():
         assert 0.0 <= case["similarity"] <= 1.0
         assert len(case["clinical_notes"]) > 10, "Case must have genuine clinical notes"
 
+
+def test_rag_similar_rejects_unqueried_state_with_http_409(monkeypatch):
+    """Verify /api/cdss/rag-similar rejects unqueried state with honest HTTP 409 rather than injecting fallback probabilities."""
+    from fastapi.testclient import TestClient
+    from api.main import app, state
+
+    client = TestClient(app)
+    monkeypatch.setattr(state, "model_trained", True)
+    monkeypatch.setattr(state, "last_scan", None)
+    monkeypatch.setattr(state, "last_probabilities", None)
+
+    res = client.get("/api/cdss/rag-similar")
+    assert res.status_code == 409
+    assert "No diagnosed scan available" in res.json()["detail"]
+    # Ensure state was not mutated with fabricated probabilities
+    assert state.last_probabilities is None
+
+
+def test_state_reports_neutral_similarity_before_diagnosis(monkeypatch):
+    """Verify /api/state reports 0.0 similarity for reference cases prior to query scan embedding."""
+    from fastapi.testclient import TestClient
+    from api.main import app, state
+
+    client = TestClient(app)
+    monkeypatch.setattr(state, "last_scan", None)
+
+    res = client.get("/api/state")
+    assert res.status_code == 200
+    data = res.json()
+    ref_cases = data.get("reference_cases", [])
+    assert len(ref_cases) > 0
+    for case in ref_cases:
+        # Similarity must be 0.0 unqueried baseline, never hardcoded 95.8 or 96.4
+        assert case["similarity"] == 0.0
+
+

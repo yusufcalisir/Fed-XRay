@@ -2127,24 +2127,10 @@ async def get_similar_rag_cases(top_k: int = Query(default=2, ge=1, le=10)):
     model.eval()
 
     if state.last_scan is None:
-        if state.global_test_set is None:
-            state.ensure_cohort_loaded()
-        if state.global_test_set is not None:
-            sample_img = state.global_test_set[0][0, 0].cpu().numpy()
-            state.last_scan = sample_img
-            state.last_patient_id = "REF_BENCHMARK_001"
-            init_t = torch.tensor(sample_img, dtype=torch.float32).unsqueeze(0).unsqueeze(0)
-            if init_t.shape[-2:] != (state.image_size, state.image_size):
-                init_t = F.interpolate(init_t, size=(state.image_size, state.image_size), mode="bilinear", align_corners=False)
-            with torch.no_grad():
-                init_logits = model(init_t.to(state.device))
-                if isinstance(init_logits, tuple):
-                    init_logits = init_logits[0]
-                init_probs = torch.softmax(init_logits, dim=1).cpu().numpy()[0]
-                state.last_predicted_class = int(np.argmax(init_probs))
-                state.last_probabilities = [round(float(p) * 100.0, 2) for p in init_probs]
-        else:
-            raise HTTPException(status_code=409, detail="Run a diagnosis first; case retrieval embeds the last diagnosed scan.")
+        raise HTTPException(
+            status_code=409,
+            detail="No diagnosed scan available. Execute a clinical diagnosis on a patient scan before querying federated digital twins."
+        )
 
     if state.rag_matcher is None:
         state.rag_matcher = build_rag_matcher(server)
