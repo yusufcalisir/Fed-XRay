@@ -99,13 +99,16 @@ export default function PresentationLandingPage() {
                   <span>{t("landing_hero_badge")}</span>
                 </div>
                 {isConnected ? (
-                  <div className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-mono font-semibold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
-                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                  <div className="inline-flex items-center gap-2 px-2.5 py-0.5 rounded-full text-[11px] font-medium bg-emerald-500/10 dark:bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border border-emerald-500/25 shadow-xs backdrop-blur-xs">
+                    <span className="relative flex h-2 w-2 shrink-0">
+                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
+                      <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500" />
+                    </span>
                     <span>{t("landing_backend_connected")}</span>
                   </div>
                 ) : (
-                  <div className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-mono font-semibold bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20">
-                    <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
+                  <div className="inline-flex items-center gap-2 px-2.5 py-0.5 rounded-full text-[11px] font-medium bg-amber-500/10 dark:bg-amber-500/15 text-amber-700 dark:text-amber-300 border border-amber-500/25 shadow-xs backdrop-blur-xs">
+                    <span className="relative inline-flex rounded-full h-2 w-2 bg-amber-500 shrink-0" />
                     <span>{t("landing_backend_standalone")}</span>
                   </div>
                 )}
