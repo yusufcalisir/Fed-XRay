@@ -686,22 +686,33 @@ docker compose up --build
 
 ## 14. Scientific Anchors and Citations
 
-If you use Fed-XRay in your research, please cite the foundational literature:
+If you use Fed-XRay in your research, please cite the verified foundational literature:
 
-1. **Hu et al.** (ICLR 2022) - *LoRA: Low-Rank Adaptation of Large Language Models.*
-2. **Sun et al.** (ICLR 2024) - *FFA-LoRA: Freezing Factor A in Federated Low-Rank Adaptation.*
-3. **Guo et al.** (ICLR 2025) - *FedSA-LoRA: Factor-Wise Asymmetric Federated Fine-Tuning.*
-4. **Sun et al.** (ICCV 2023) - *FedPerfix: Towards Partial Model Personalization for Vision Transformers.*
-5. **Chen et al.** (Nature Medicine 2024) - *UNI: General-purpose Self-Supervised Vision Transformer for Pathology.*
-6. **Vorontsov et al.** (Nature Medicine 2024) - *Virchow: A Pan-Cancer Pathology Foundation Model.*
-7. **Lu et al.** (Nature Medicine 2024) - *CONCH: Visual Language Foundation Model for Histopathology.*
-8. **Tan et al.** (AAAI 2022) - *FedProto: Federated Prototype Learning across Heterogeneous Clients.*
-9. **Acar et al.** (ICLR 2021) - *Federated Learning Based on Dynamic Regularization (FedDyn).*
-10. **Li et al.** (CVPR 2021) - *Model-Contrastive Federated Learning (MOON).*
-11. **Mironov** (CSF 2017) - *Rényi Differential Privacy.*
-12. **McMahan et al.** (AISTATS 2017) - *Communication-Efficient Learning of Deep Networks from Decentralized Data (FedAvg).*
-13. **Li et al.** (ICLR 2020) - *Federated Optimization in Heterogeneous Networks (FedProx).*
-14. **Karimireddy et al.** (ICML 2020) - *SCAFFOLD: Stochastic Controlled Averaging for Federated Learning.*
-15. **Reddi et al.** (ICLR 2021) - *Adaptive Federated Optimization (FedOpt/FedAdam).*
-16. **Dong et al.** (ICLR 2023) - *FedALA: Federated Adaptive Local Aggregation.*
-17. **Bonawitz et al.** (CCS 2017) - *Practical Secure Aggregation for Privacy-Preserving Machine Learning (SecAgg).*
+### Parameter-Efficient Fine-Tuning & Vision Transformers
+1. **Hu et al.** (ICLR 2022) - Edward J. Hu, Yelong Shen, Phillip Wallis, Zeyuan Allen-Zhu, Yuanzhi Li, Shean Wang, Lu Wang, Weizhu Chen. *LoRA: Low-Rank Adaptation of Large Language Models.* International Conference on Learning Representations (ICLR 2022). [arXiv:2106.09685](https://arxiv.org/abs/2106.09685).
+2. **Sun et al.** (ICLR 2024) - Youbang Sun, Zitao Li, Yaliang Li, Bolin Ding. *Improving LoRA in Privacy-preserving Federated Learning* (FFA-LoRA). International Conference on Learning Representations (ICLR 2024). [arXiv:2403.12504](https://arxiv.org/abs/2403.12504).
+3. **Guo et al.** (ICLR 2025) - Pengxin Guo, Shuang Zeng, Yanran Wang, Huijie Fan, Feifei Wang, Liangqiong Qu. *Selective Aggregation for Low-Rank Adaptation in Federated Learning* (FedSA-LoRA). International Conference on Learning Representations (ICLR 2025). [arXiv:2410.03138](https://arxiv.org/abs/2410.03138).
+4. **Sun et al.** (ICCV 2023) - Guangyu Sun, Matias Mendieta, Jun Luo, Shandong Wu, Chen Chen. *FedPerfix: Towards Partial Model Personalization of Vision Transformers in Federated Learning.* IEEE/CVF International Conference on Computer Vision (ICCV 2023), pp. 4988-4998.
+
+### Medical Foundation Models
+5. **Chen et al.** (Nature Medicine 2024) - Richard J. Chen, Tong Ding, Ming Y. Lu, Drew F. K. Williamson, Guillaume Jaume, Andrew H. Song, Bowen Chen, Andrew Zhang, Daniel Shao, Muhammad Shaban, et al., Faisal Mahmood. *Towards a general-purpose foundation model for computational pathology* (UNI). Nature Medicine, 30(3), pp. 850-862 (2024). DOI: [10.1038/s41591-024-02857-3](https://doi.org/10.1038/s41591-024-02857-3).
+6. **Vorontsov et al.** (Nature Medicine 2024) - Eugene Vorontsov, Alican Bozkurt, Adam Casson, Thomas J. Fuchs, et al. *A foundation model for clinical-grade computational pathology and rare cancers detection* (Virchow). Nature Medicine, 30(10), pp. 2924-2935 (2024). DOI: [10.1038/s41591-024-03141-0](https://doi.org/10.1038/s41591-024-03141-0).
+7. **Lu et al.** (Nature Medicine 2024) - Ming Y. Lu, Bowen Chen, Drew F. K. Williamson, Richard J. Chen, Ivy Liang, Tong Ding, Guillaume Jaume, Igor Odintsov, Long Phi Le, Georg K. Gerber, Anil V. Parwani, Andrew Zhang, Faisal Mahmood. *A visual-language foundation model for computational pathology* (CONCH). Nature Medicine, 30(3), pp. 863-874 (2024). DOI: [10.1038/s41591-024-02856-4](https://doi.org/10.1038/s41591-024-02856-4).
+8. **Ma et al.** (Nature Communications 2024) - Jun Ma, Yuting He, Feifei Li, Lin Han, Chenyu You, Bo Wang. *Segment Anything in Medical Images* (MedSAM). Nature Communications, 15(1), article 654 (2024). DOI: [10.1038/s41467-024-44824-z](https://doi.org/10.1038/s41467-024-44824-z).
+9. **Hatamizadeh et al.** (MICCAI 2022) - Ali Hatamizadeh, Vishwesh Nath, Yucheng Tang, Dong Yang, Holger R. Roth, Daguang Xu. *Swin UNETR: Swin Transformers for Semantic Segmentation of Brain Tumors in MRI Images.* International MICCAI Brainlesion Workshop (BrainLes 2021 / Springer LNCS 12962), pp. 272-284 (2022). DOI: [10.1007/978-3-031-08999-2_22](https://doi.org/10.1007/978-3-031-08999-2_22).
+
+### Distributed Optimization & Prototype Alignment
+10. **McMahan et al.** (AISTATS 2017) - H. Brendan McMahan, Eider Moore, Daniel Ramage, Seth Hampson, Blaise Agüera y Arcas. *Communication-Efficient Learning of Deep Networks from Decentralized Data* (FedAvg). International Conference on Artificial Intelligence and Statistics (AISTATS 2017), PMLR 54:1273-1282.
+11. **Li et al.** (MLSys 2020) - Tian Li, Anit Kumar Sahu, Manzil Zaheer, Maziar Sanjabi, Ameet Talwalkar, Virginia Smith. *Federated Optimization in Heterogeneous Networks* (FedProx). Conference on Machine Learning and Systems (MLSys 2020), pp. 429-450.
+12. **Karimireddy et al.** (ICML 2020) - Sai Praneeth Karimireddy, Satyen Kale, Mehryar Mohri, Sashank J. Reddi, Sebastian U. Stich, Ananda Theertha Suresh. *SCAFFOLD: Stochastic Controlled Averaging for Federated Learning.* International Conference on Machine Learning (ICML 2020), PMLR 119:5132-5143.
+13. **Acar et al.** (ICLR 2021) - Durmus Alp Emre Acar, Yue Zhao, Ramon Matas, Matthew Mattina, Paul N. Whatmough, Venkatesh Saligrama. *Federated Learning Based on Dynamic Regularization* (FedDyn). International Conference on Learning Representations (ICLR 2021).
+14. **Reddi et al.** (ICLR 2021) - Sashank J. Reddi, Zachary Charles, Manzil Zaheer, Zachary Garrett, Keith Rush, Jakub Konečný, Sanjiv Kumar, H. Brendan McMahan. *Adaptive Federated Optimization* (FedOpt / FedAdam). International Conference on Learning Representations (ICLR 2021).
+15. **Li et al.** (CVPR 2021) - Qinbin Li, Bingsheng He, Dawn Song. *Model-Contrastive Federated Learning* (MOON). IEEE/CVF Conference on Computer Vision and Pattern Recognition (CVPR 2021), pp. 10713-10722.
+16. **Tan et al.** (AAAI 2022) - Yue Tan, Guodong Long, Lu Liu, Tianyi Zhou, Qinghua Lu, Jing Jiang, Chengqi Zhang. *FedProto: Federated Prototype Learning across Heterogeneous Clients.* AAAI Conference on Artificial Intelligence (AAAI 2022), 36(8), pp. 8432-8440.
+
+### Privacy, Security & Imbalance Calibration
+17. **Bonawitz et al.** (ACM CCS 2017) - Keith Bonawitz, Vladimir Ivanov, Ben Kreuter, Antonio Marcedone, H. Brendan McMahan, Sarvar Patel, Daniel Ramage, Aaron Segal, Karn Seth. *Practical Secure Aggregation for Privacy-Preserving Machine Learning* (SecAgg). ACM SIGSAC Conference on Computer and Communications Security (CCS 2017), pp. 1175-1191. DOI: [10.1145/3133956.3133982](https://doi.org/10.1145/3133956.3133982).
+18. **Mironov** (IEEE CSF 2017) - Ilya Mironov. *Rényi Differential Privacy.* IEEE 30th Computer Security Foundations Symposium (CSF 2017), pp. 263-275. DOI: [10.1109/CSF.2017.11](https://doi.org/10.1109/CSF.2017.11).
+19. **Selvaraju et al.** (ICCV 2017) - Ramprasaath R. Selvaraju, Michael Cogswell, Abhishek Das, Ramakrishna Vedaldi, Devi Parikh, Dhruv Batra. *Grad-CAM: Visual Explanations from Deep Networks via Gradient-Based Localization.* IEEE International Conference on Computer Vision (ICCV 2017), pp. 618-626.
+20. **Cao et al.** (NeurIPS 2019) - Kaidi Cao, Colin Wei, Adrien Gaidon, Nikos Arechiga, Tengyu Ma. *Learning Imbalanced Datasets with Label-Distribution-Aware Margin Loss* (LDAM). Conference on Neural Information Processing Systems (NeurIPS 2019), pp. 1567-1578.
+21. **Ren et al.** (NeurIPS 2020) - Jiawei Ren, Cunjun Yu, Shunan Sheng, Xiao Ma, Haiyu Zhao, Shuai Yi, Hongsheng Li. *Balanced Meta-Softmax for Long-Tailed Visual Recognition* (Balanced Softmax). Conference on Neural Information Processing Systems (NeurIPS 2020), pp. 4175-4186.
