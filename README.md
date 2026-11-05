@@ -22,7 +22,7 @@
   <img src="https://img.shields.io/badge/Flower_FL-Supported-green?logo=flower" alt="Flower FL">
   <img src="https://img.shields.io/badge/Localization-EN%20%7C%20TR-blue" alt="Bilingual">
   <a href="https://github.com/yusufcalisir/Fed-XRay/actions/workflows/ci.yml"><img src="https://github.com/yusufcalisir/Fed-XRay/actions/workflows/ci.yml/badge.svg" alt="CI Test and Build Pipeline"></a>
-  <img src="https://img.shields.io/badge/Tests-452_Passed_(348_Backend_%2B_104_Frontend)-brightgreen" alt="Tests">
+  <img src="https://img.shields.io/badge/Tests-458_Passed_(354_Backend_%2B_104_Frontend)-brightgreen" alt="Tests">
   <img src="https://img.shields.io/badge/License-MIT-yellow" alt="License">
 </p>
 
@@ -68,9 +68,9 @@
   - [9.3 Flower Framework Federation Bridge](#93-flower-framework-federation-bridge)
   - [9.4 ACID Persistent State Storage (SQLite WAL)](#94-acid-persistent-state-storage-sqlite-wal)
 - [10. REST and Streaming API Reference](#10-rest-and-streaming-api-reference)
-- [11. Verification and Automated Test Suite (452 Tests)](#11-verification-and-automated-test-suite-452-tests)
+- [11. Verification and Automated Test Suite (458 Tests)](#11-verification-and-automated-test-suite-458-tests)
   - [11.1 Static Type Safety and Code Quality](#111-static-type-safety-and-code-quality)
-  - [11.2 Backend Pytest Suites (48 Files, 348 Tests)](#112-backend-pytest-suites-48-files-348-tests)
+  - [11.2 Backend Pytest Suites (49 Files, 354 Tests)](#112-backend-pytest-suites-49-files-354-tests)
   - [11.3 Frontend Vitest Suites (22 Files, 104 Tests)](#113-frontend-vitest-suites-22-files-104-tests)
 - [12. Repository Structure](#12-repository-structure)
 - [13. Installation and Quick Start](#13-installation-and-quick-start)
@@ -595,9 +595,9 @@ The FastAPI backend (`api/main.py`) provides asynchronous REST and streaming end
 
 ---
 
-## 11. Verification and Automated Test Suite (452 Tests)
+## 11. Verification and Automated Test Suite (458 Tests)
 
-Fed-XRay maintains an automated test suite comprising **452 tests** (348 Python Pytest backend tests + 104 TypeScript Vitest frontend tests), achieving a 100% pass rate.
+Fed-XRay maintains an automated test suite comprising **458 tests** (354 Python Pytest backend tests across 49 test files + 104 TypeScript Vitest frontend tests across 22 test files), achieving a 100% pass rate.
 
 ### 11.1 Static Type Safety and Code Quality
 
@@ -605,7 +605,7 @@ Fed-XRay maintains an automated test suite comprising **452 tests** (348 Python 
 - **Automated Linting and Code Hygiene:** Verified via `ruff check .`, ensuring syntax cleanliness, import order, and PEP 8 compliance.
 - **Frontend Strict TypeScript:** Full contract parity verified via `tsc --noEmit` and Vitest across all 22 component and integration suites.
 
-### 11.2 Backend Pytest Suites (48 Files, 348 Tests)
+### 11.2 Backend Pytest Suites (49 Files, 354 Tests)
 
 | Domain Category | Key Test Files | Test Count | Verified Invariants |
 | :--- | :--- | :--- | :--- |
@@ -615,7 +615,7 @@ Fed-XRay maintains an automated test suite comprising **452 tests** (348 Python 
 | **Dual-Layer Privacy (Option J)** | `test_consortium_cryptography_and_zero_plaintext.py`, `test_crypto_privacy_optimizers.py`, `test_enclave_handshake.py`, `test_foundation_privacy.py`, `test_node_level_dp_accounting.py` | 50 | Patient-level L2 DP clipping, analytical Wang et al. (AISTATS 2019) RDP accounting, decentralized (t, n) Threshold CKKS Shamir secret sharing, IsolatedProcessEnclave OS process address space isolation, SecAgg+ zero-sum masking, attestation certificates |
 | **Clinical Decision Support** | `test_cdss_explainability_and_localization.py`, `test_cdss_similarity.py`, `test_cdss_report.py`, `test_cdss_voice.py`, `test_cdss_xai.py`, `test_evidence_grounded_cdss.py` | 46 | Structured clinical text (zero raw asterisks), quadrant spatial localization, dynamic HNSW index retrieval, vector PDF compilation, audio synthesis |
 | **Data Ingestion & Cohorts** | `test_clinical_cohort_authenticity_and_staging.py`, `test_generator_strategy_e.py`, `test_real_world_data_scenarios.py`, `test_strategy_e_real_ingestion.py`, `test_uploaded_scan_metadata_integrity.py` | 41 | Strategy E multi-center dataset ingestion, 7 Non-IID scenarios, 100% leak-free patient isolation, ImageNet standardization |
-| **API, State & Persistence** | `test_api_deep_suite.py`, `test_api_endpoints.py`, `test_api_schemas_contracts.py`, `test_consortium_persistent_state_store.py`, `test_sqlite_memory_state_equivalence.py`, `test_state_persistence.py`, `test_fabricated_output_detection_and_integrity.py`, `test_failure_masking_and_error_propagation.py`, `test_end_to_end_data_lineage_and_execution_trace.py`, `test_database_and_persistence_integrity.py` | 79 | Pydantic v2 validation contracts, SSE streaming limits, path traversal blocks, SQLite WAL persistence, process restart memory equivalence, anti-fabrication invariants, zero error-to-success conversion, unbroken end-to-end data lineage, ACID atomicity, WAL concurrency isolation |
+| **API, Concurrency & State** | `test_api_deep_suite.py`, `test_api_endpoints.py`, `test_api_schemas_contracts.py`, `test_concurrency_and_async_execution.py`, `test_consortium_persistent_state_store.py`, `test_sqlite_memory_state_equivalence.py`, `test_state_persistence.py`, `test_fabricated_output_detection_and_integrity.py`, `test_failure_masking_and_error_propagation.py`, `test_end_to_end_data_lineage_and_execution_trace.py`, `test_database_and_persistence_integrity.py` | 85 | Pydantic v2 validation contracts, SSE streaming limits, atomic task reservation mutex, operator cancellation, PyTorch Grad-CAM inference lock, path traversal blocks, SQLite WAL persistence, process restart memory equivalence, zero error-to-success conversion, unbroken end-to-end data lineage, ACID atomicity, WAL concurrency isolation |
 | **Security & Robustness** | `test_robustness_and_adversarial.py`, `test_network_routing_and_tunnel_resilience.py`, `test_browser_runtime_shield_and_extension_isolation.py`, `test_client_subtree_resilience_and_error_boundaries.py`, `test_e2e_full_federated_pipeline.py` | 26 | Byzantine gradient poisoning rejection without self-incrimination, NaN/Inf resilience, free-rider rejection, tunnel resilience, runtime shield |
 
 ### 11.3 Frontend Vitest Suites (22 Files, 104 Tests)
@@ -680,7 +680,7 @@ Fed-XRay/
 |           `-- i18n.py                # Bilingual Clinical Localization (EN/TR)
 |-- benchmarks/
 |   `-- benchmark_foundation_peft.py   # Foundation PEFT Empirical Benchmark Suite
-|-- tests/                             # Pytest Backend Suites (48 Files, 348 Tests)
+|-- tests/                             # Pytest Backend Suites (49 Files, 354 Tests)
 |-- research/                          # Canonical Scientific Research Foundations (6 Papers)
 |   |-- federated_vision_transformers_for_oncology.md
 |   |-- federated_foundation_models_for_cancer.md
@@ -729,7 +729,7 @@ python -m mypy src api
 # Run code hygiene and linting checks
 python -m ruff check .
 
-# Execute all 336 Python backend tests
+# Execute all 354 Python backend tests
 python -m pytest tests/ -v
 
 # Execute all 104 Next.js frontend tests

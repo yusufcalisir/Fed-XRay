@@ -6,6 +6,7 @@ import {
   BackendSystemState,
   EnclaveHandshakeResponse,
   FederatedTrainingOptions,
+  TrainingCancelResponse,
 } from "@/types";
 
 const DIAG_TO_CLASS: Record<string, number> = {
@@ -320,6 +321,18 @@ export async function streamFederatedTraining(
       if (!signal?.aborted) onError(pollErr.message ?? String(pollErr));
     }
   }
+}
+
+/**
+ * Dispatch an operator cancellation request to terminate an active federated training task.
+ */
+export async function cancelFederatedTraining(baseUrl: string): Promise<TrainingCancelResponse> {
+  const base = baseUrl.replace(/\/$/, "");
+  const res = await fetch(`${base}/api/fl/train-cancel`, { method: "POST" });
+  if (!res.ok) {
+    throw new Error(`Failed to cancel training: HTTP ${res.status}`);
+  }
+  return res.json();
 }
 
 // FIX: backend expects `text=` not `diagnosis=`

@@ -267,7 +267,6 @@ class PersistentStateStore:
                 history["blocked_nodes"].append([])
 
         history["privacy_spent"] = history["privacy_epsilon"][-1] if history["privacy_epsilon"] else 0.0
-        history["rounds"] = history["round"]
         return history
 
     def save_hospital_cohorts(self, cohorts_info: List[Dict[str, Any]]) -> None:

@@ -64,6 +64,8 @@ from api.schemas import (
     HospitalCohortInfo,
     RagSimilarResponse,
     RagTwinCase,
+    TrainingCancelResponse,
+    TrainingStatusResponse,
 )
 
 logger = logging.getLogger("fed_xray.api")
@@ -150,6 +152,12 @@ class AppState:
         self.task_current_round: int = 0
         self.task_complete: bool = False
         self.task_error: Optional[str] = None
+        self.task_type: Optional[str] = None
+
+        # Concurrency and Thread Safety Controls (Audit Section 4.6 / Section 8)
+        self.task_lock = threading.RLock()
+        self.inference_lock = threading.Lock()
+        self.cancel_event = threading.Event()
 
         # Product Grade: ACID-compliant persistent SQLite state store in WAL mode
         db_dir = Path("data/state")
@@ -167,6 +175,75 @@ class AppState:
     def dataset_label_map(self) -> Dict[int, str]:
         """Return the class ontology mapping corresponding to the active dataset."""
         return get_dataset_label_map(self.data_source)
+
+    def try_start_task(self, task_type: str = "federated_training", total_rounds: int = 5) -> bool:
+        """Atomically test and reserve task execution, preventing concurrent training collisions."""
+        with self.task_lock:
+            if self.task_running:
+                return False
+            self.task_running = True
+            self.task_type = task_type
+            self.task_rounds = []
+            self.task_total_rounds = total_rounds
+            self.task_current_round = 0
+            self.task_complete = False
+            self.task_error = None
+            self.cancel_event.clear()
+            return True
+
+    def finish_task(self, error: Optional[str] = None) -> None:
+        """Atomically finalize active task state and record terminal completion status."""
+        with self.task_lock:
+            self.task_running = False
+            self.task_complete = (error is None) and not self.cancel_event.is_set()
+            self.task_error = error
+            self.task_type = None
+
+    def cancel_current_task(self) -> bool:
+        """Signal early termination to active training workers via thread-safe cancellation event."""
+        with self.task_lock:
+            if not self.task_running:
+                return False
+            self.cancel_event.set()
+            return True
+
+    def is_task_cancelled(self) -> bool:
+        """Check whether operator has signaled cancellation for active task."""
+        return self.cancel_event.is_set()
+
+    def append_round_telemetry(
+        self,
+        round_data: Dict[str, Any],
+        history_update: Optional[Dict[str, Any]] = None,
+    ) -> None:
+        """Atomically record round telemetry and synchronized history metrics."""
+        with self.task_lock:
+            self.task_rounds.append(round_data)
+            self.task_current_round = round_data.get("round_num", self.task_current_round)
+            if history_update:
+                for k, v in history_update.items():
+                    if isinstance(v, list):
+                        self.training_history.setdefault(k, []).extend(v)
+                    else:
+                        self.training_history[k] = v
+
+    def get_training_history_snapshot(self) -> Dict[str, Any]:
+        """Return a thread-safe decoupled snapshot of training telemetry history."""
+        with self.task_lock:
+            snapshot: Dict[str, Any] = {}
+            for k, v in self.training_history.items():
+                if isinstance(v, list):
+                    snapshot[k] = list(v)
+                elif isinstance(v, dict):
+                    snapshot[k] = dict(v)
+                else:
+                    snapshot[k] = v
+            return snapshot
+
+    def get_task_rounds_snapshot(self, from_round: int = 0) -> List[Dict[str, Any]]:
+        """Return a thread-safe slice snapshot of task telemetry rounds."""
+        with self.task_lock:
+            return [dict(r) for r in self.task_rounds[from_round:]]
 
     def get_or_create_consortium_peer(self, client_id: int) -> SecAggPeer:
         """Return stable, deterministic SecAggPeer for consortium hospital node."""
@@ -858,25 +935,30 @@ async def get_state():
         else float(state.training_history.get("privacy_spent", 0.0))
     )
 
-    if not state.training_history.get("round"):
+    snapshot_hist = state.get_training_history_snapshot()
+    if not snapshot_hist.get("round"):
         saved_hist = state.store.get_training_history()
         if saved_hist and saved_hist.get("round"):
-            state.training_history = saved_hist
+            with state.task_lock:
+                state.training_history = saved_hist
+            snapshot_hist = saved_hist
         elif state.task_rounds:
             # Fallback hydration from completed in-flight background worker rounds
-            for tr in state.task_rounds:
-                state.training_history.setdefault("round", []).append(tr.get("round_num", 1))
-                state.training_history.setdefault("loss", []).append(tr.get("train_loss", 0.0))
-                state.training_history.setdefault("accuracy", []).append(tr.get("train_accuracy", 0.0))
-                state.training_history.setdefault("test_loss", []).append(tr.get("test_loss", 0.0))
-                state.training_history.setdefault("test_accuracy", []).append(tr.get("test_accuracy", 0.0))
-                state.training_history.setdefault("precision", []).append(tr.get("precision", 0.0))
-                state.training_history.setdefault("recall", []).append(tr.get("recall", 0.0))
-                state.training_history.setdefault("f1_score", []).append(tr.get("f1_score", 0.0))
-                state.training_history.setdefault("threat_detected", []).append(tr.get("threat_detected", False))
-                state.training_history.setdefault("privacy_epsilon", []).append(tr.get("privacy_epsilon", 0.0))
-                state.training_history.setdefault("uplink_bytes", []).append(int(tr.get("uplink_bytes_per_client", 0)))
-                state.training_history.setdefault("blocked_nodes", []).append(tr.get("blocked_nodes", []))
+            with state.task_lock:
+                for tr in state.task_rounds:
+                    state.training_history.setdefault("round", []).append(tr.get("round_num", 1))
+                    state.training_history.setdefault("loss", []).append(tr.get("train_loss", 0.0))
+                    state.training_history.setdefault("accuracy", []).append(tr.get("train_accuracy", 0.0))
+                    state.training_history.setdefault("test_loss", []).append(tr.get("test_loss", 0.0))
+                    state.training_history.setdefault("test_accuracy", []).append(tr.get("test_accuracy", 0.0))
+                    state.training_history.setdefault("precision", []).append(tr.get("precision", 0.0))
+                    state.training_history.setdefault("recall", []).append(tr.get("recall", 0.0))
+                    state.training_history.setdefault("f1_score", []).append(tr.get("f1_score", 0.0))
+                    state.training_history.setdefault("threat_detected", []).append(tr.get("threat_detected", False))
+                    state.training_history.setdefault("privacy_epsilon", []).append(tr.get("privacy_epsilon", 0.0))
+                    state.training_history.setdefault("uplink_bytes", []).append(int(tr.get("uplink_bytes_per_client", 0)))
+                    state.training_history.setdefault("blocked_nodes", []).append(tr.get("blocked_nodes", []))
+            snapshot_hist = state.get_training_history_snapshot()
             if state.task_complete:
                 state.model_trained = True
 
@@ -937,15 +1019,15 @@ async def get_state():
         )
 
     rounds_list: List[Dict[str, Any]] = []
-    round_nums = state.training_history.get("round", [])
-    losses = state.training_history.get("loss", [])
-    accs = state.training_history.get("accuracy", [])
-    test_losses = state.training_history.get("test_loss", [])
-    test_accs = state.training_history.get("test_accuracy", [])
-    f1s = state.training_history.get("f1_score", [])
-    threats = state.training_history.get("threat_detected", [])
-    blocked_history = state.training_history.get("blocked_nodes", [])
-    uplinks = state.training_history.get("uplink_bytes", [])
+    round_nums = snapshot_hist.get("round", [])
+    losses = snapshot_hist.get("loss", [])
+    accs = snapshot_hist.get("accuracy", [])
+    test_losses = snapshot_hist.get("test_loss", [])
+    test_accs = snapshot_hist.get("test_accuracy", [])
+    f1s = snapshot_hist.get("f1_score", [])
+    threats = snapshot_hist.get("threat_detected", [])
+    blocked_history = snapshot_hist.get("blocked_nodes", [])
+    uplinks = snapshot_hist.get("uplink_bytes", [])
     for idx, r in enumerate(round_nums):
         train_loss_val = losses[idx] if idx < len(losses) else 0.0
         train_acc_val = accs[idx] if idx < len(accs) else 0.0
@@ -973,15 +1055,19 @@ async def get_state():
     if state.reference_records:
         active_labels = get_dataset_label_map(state.data_source)
         for r in state.reference_records[:2]:
+            rec_id = r.patient_id if hasattr(r, "patient_id") else r.get("patient_id", r.get("case_id", "REF_001"))
+            rec_label = r.label if hasattr(r, "label") else r.get("label", 0)
+            rec_notes = r.clinical_notes if hasattr(r, "clinical_notes") else r.get("clinical_notes", "")
+            rec_site_id = r.site_id if hasattr(r, "site_id") else r.get("site_id", "")
             reference_cases.append({
-                "case_id": r.patient_id,
-                "diagnosis": active_labels.get(r.label, f"Class {r.label}"),
+                "case_id": rec_id,
+                "diagnosis": active_labels.get(rec_label, f"Class {rec_label}"),
                 "similarity": 0.0,
-                "clinical_notes": r.clinical_notes,
-                "site_id": r.site_id,
-                "biopsy_confirmed": getattr(r, "biopsy_confirmed", True),
-                "anatomical_site": getattr(r, "anatomical_site", "Thorax / Cutaneous"),
-                "provenance": getattr(r, "provenance", "isic_archive_v2_real_clinical"),
+                "clinical_notes": rec_notes,
+                "site_id": rec_site_id,
+                "biopsy_confirmed": getattr(r, "biopsy_confirmed", r.get("biopsy_confirmed", True) if isinstance(r, dict) else True),
+                "anatomical_site": getattr(r, "anatomical_site", r.get("anatomical_site", "Thorax / Cutaneous") if isinstance(r, dict) else "Thorax / Cutaneous"),
+                "provenance": getattr(r, "provenance", r.get("provenance", "isic_archive_v2_real_clinical") if isinstance(r, dict) else "isic_archive_v2_real_clinical"),
             })
     else:
         reference_cases = get_default_reference_cases()
@@ -1384,6 +1470,12 @@ async def stream_federated_training(
     """Server-Sent Events (SSE) streaming federated ViT training in real time."""
     active_dataloaders, active_global_test_set = require_cohort()
 
+    if not state.try_start_task(task_type="stream_training", total_rounds=num_rounds):
+        raise HTTPException(
+            status_code=409,
+            detail="A federated training task is already active. Please wait for completion or cancel it before starting another.",
+        )
+
     actual_peft = None if peft_mode.lower() in ("none", "false", "off") else peft_mode
     state.model_type = model_type
     state.peft_mode = peft_mode
@@ -1456,20 +1548,26 @@ async def stream_federated_training(
             state.model_type = model_type
             test_images, test_labels = active_global_test_set
 
-            state.training_history = {
-                "loss": [],
-                "accuracy": [],
-                "round": [],
-                "precision": [],
-                "recall": [],
-                "f1_score": [],
-                "test_accuracy": [],
-                "test_loss": [],
-                "uplink_bytes": [],
-                "blocked_count": 0,
-            }
+            with state.task_lock:
+                state.training_history = {
+                    "loss": [],
+                    "accuracy": [],
+                    "round": [],
+                    "precision": [],
+                    "recall": [],
+                    "f1_score": [],
+                    "test_accuracy": [],
+                    "test_loss": [],
+                    "uplink_bytes": [],
+                    "blocked_count": 0,
+                }
 
             for round_num in range(1, num_rounds + 1):
+                if state.is_task_cancelled():
+                    logger.info("Federated training stream cancelled by operator at round %d", round_num)
+                    yield f"data: {json.dumps({'error': 'Training cancelled by operator', 'status': 'cancelled'})}\n\n"
+                    break
+
                 round_task = asyncio.create_task(
                     asyncio.to_thread(
                         run_federated_round,
@@ -1494,10 +1592,17 @@ async def stream_federated_training(
                 )
 
                 while not round_task.done():
+                    if state.is_task_cancelled():
+                        round_task.cancel()
+                        break
                     try:
                         await asyncio.wait_for(asyncio.shield(round_task), timeout=1.0)
                     except asyncio.TimeoutError:
                         yield ": ping\n\n"
+
+                if state.is_task_cancelled():
+                    yield f"data: {json.dumps({'error': 'Training cancelled by operator', 'status': 'cancelled'})}\n\n"
+                    break
 
                 metrics, client_metrics, test_metrics, sec_report = await round_task
 
@@ -1526,41 +1631,8 @@ async def stream_federated_training(
                         getattr(state.server, "last_uplink_bytes_per_client", 0),
                     )
                 )
-                state.training_history.setdefault("round", []).append(round_num)
-                state.training_history.setdefault("loss", []).append(t_loss)
-                state.training_history.setdefault("accuracy", []).append(t_acc)
-                state.training_history.setdefault("test_accuracy", []).append(val_acc)
-                state.training_history.setdefault("test_loss", []).append(val_loss)
-                state.training_history.setdefault("precision", []).append(prec)
-                state.training_history.setdefault("recall", []).append(rec)
-                state.training_history.setdefault("f1_score", []).append(f1)
-                state.training_history.setdefault("threat_detected", []).append(threat_detected)
-                state.training_history.setdefault("privacy_epsilon", []).append(float(state.server.get_privacy_spent()) if state.server else 0.0)
-                state.training_history.setdefault("uplink_bytes", []).append(uplink_bytes_round)
-                state.training_history.setdefault("blocked_nodes", []).append([n + 1 for n in blocked_nodes])
-                if blocked_nodes:
-                    state.training_history["blocked_count"] = state.training_history.get("blocked_count", 0) + len(blocked_nodes)
 
-                try:
-                    state.store.record_training_round({
-                        "round_num": round_num,
-                        "train_loss": t_loss,
-                        "train_accuracy": t_acc,
-                        "test_loss": val_loss,
-                        "test_accuracy": val_acc,
-                        "precision": prec,
-                        "recall": rec,
-                        "f1_score": f1,
-                        "privacy_epsilon": float(state.server.get_privacy_spent()) if state.server else 0.0,
-                        "uplink_bytes": uplink_bytes_round,
-                        "threat_detected": threat_detected,
-                        "blocked_nodes": [n + 1 for n in blocked_nodes],
-                        "status": "training" if round_num < num_rounds else "complete",
-                    })
-                except Exception as db_exc:
-                    logger.warning("Failed to persist training round %d to SQLite: %s", round_num, db_exc)
-
-                data_payload = {
+                round_data = {
                     "round_num": round_num,
                     "total_rounds": num_rounds,
                     "train_loss": round(t_loss, 4),
@@ -1582,24 +1654,75 @@ async def stream_federated_training(
                     "model_provenance": state.server.get_model_provenance() if state.server else {},
                 }
 
+                state.append_round_telemetry(
+                    round_data=round_data,
+                    history_update={
+                        "round": [round_num],
+                        "loss": [t_loss],
+                        "accuracy": [t_acc],
+                        "test_accuracy": [val_acc],
+                        "test_loss": [val_loss],
+                        "precision": [prec],
+                        "recall": [rec],
+                        "f1_score": [f1],
+                        "threat_detected": [threat_detected],
+                        "privacy_epsilon": [float(state.server.get_privacy_spent()) if state.server else 0.0],
+                        "uplink_bytes": [uplink_bytes_round],
+                        "blocked_nodes": [[n + 1 for n in blocked_nodes]],
+                    },
+                )
+                if blocked_nodes:
+                    with state.task_lock:
+                        state.training_history["blocked_count"] = (
+                            state.training_history.get("blocked_count", 0) + len(blocked_nodes)
+                        )
+
+                try:
+                    state.store.record_training_round({
+                        "round_num": round_num,
+                        "train_loss": t_loss,
+                        "train_accuracy": t_acc,
+                        "test_loss": val_loss,
+                        "test_accuracy": val_acc,
+                        "precision": prec,
+                        "recall": rec,
+                        "f1_score": f1,
+                        "privacy_epsilon": float(state.server.get_privacy_spent()) if state.server else 0.0,
+                        "uplink_bytes": uplink_bytes_round,
+                        "threat_detected": threat_detected,
+                        "blocked_nodes": [n + 1 for n in blocked_nodes],
+                        "status": "training" if round_num < num_rounds else "complete",
+                    })
+                except Exception as db_exc:
+                    logger.warning("Failed to persist training round %d to SQLite: %s", round_num, db_exc)
+
+                data_payload = round_data
+
                 if round_num >= num_rounds:
                     state.model_trained = True
                     if state.server is not None and state.reference_records:
-                        state.rag_matcher = await asyncio.to_thread(build_rag_matcher, state.server)
+                        with state.inference_lock:
+                            state.rag_matcher = await asyncio.to_thread(build_rag_matcher, state.server)
 
                 yield f"data: {json.dumps(data_payload)}\n\n"
                 await asyncio.sleep(0.05)
 
-            state.model_trained = True
-            if state.server is not None and state.reference_records and state.rag_matcher is None:
-                state.rag_matcher = await asyncio.to_thread(build_rag_matcher, state.server)
-            await asyncio.to_thread(state.save_to_disk)
+            if not state.is_task_cancelled():
+                state.model_trained = True
+                if state.server is not None and state.reference_records and state.rag_matcher is None:
+                    with state.inference_lock:
+                        state.rag_matcher = await asyncio.to_thread(build_rag_matcher, state.server)
+                await asyncio.to_thread(state.save_to_disk)
 
         except (asyncio.CancelledError, GeneratorExit):
             logger.info("Federated training stream client disconnected cleanly.")
+            state.cancel_current_task()
         except Exception as exc:
             logger.error("Error during streaming federated training: %s", exc, exc_info=True)
+            state.task_error = str(exc)
             yield f"data: {json.dumps({'error': str(exc), 'status': 'failed'})}\n\n"
+        finally:
+            state.finish_task(error=state.task_error)
 
     return StreamingResponse(
         event_generator(),
@@ -1635,16 +1758,8 @@ async def start_training_background(
 ):
     """Launch federated training as a background thread (Render SSE proxy fallback)."""
     require_cohort()
-    if state.task_running:
+    if not state.try_start_task(task_type="background_training", total_rounds=num_rounds):
         return {"status": "already_running", "current_round": state.task_current_round}
-
-    # Reset task state
-    state.task_running = True
-    state.task_rounds = []
-    state.task_total_rounds = num_rounds
-    state.task_current_round = 0
-    state.task_complete = False
-    state.task_error = None
 
     def run_training():
         try:
@@ -1684,18 +1799,19 @@ async def start_training_background(
             state.secure_aggregation = secure_aggregation
             state.peft_mode = actual_peft
             state.model_type = model_type
-            state.training_history = {
-                "loss": [],
-                "accuracy": [],
-                "round": [],
-                "precision": [],
-                "recall": [],
-                "f1_score": [],
-                "test_accuracy": [],
-                "test_loss": [],
-                "uplink_bytes": [],
-                "blocked_count": 0,
-            }
+            with state.task_lock:
+                state.training_history = {
+                    "loss": [],
+                    "accuracy": [],
+                    "round": [],
+                    "precision": [],
+                    "recall": [],
+                    "f1_score": [],
+                    "test_accuracy": [],
+                    "test_loss": [],
+                    "uplink_bytes": [],
+                    "blocked_count": 0,
+                }
 
             clients = [
                 HospitalClient(
@@ -1725,6 +1841,11 @@ async def start_training_background(
             ]
 
             for round_num in range(1, num_rounds + 1):
+                if state.is_task_cancelled():
+                    logger.info("Federated training cancelled by operator at round %d", round_num)
+                    state.task_error = "Training cancelled by operator"
+                    break
+
                 metrics, _, test_metrics, sec_report = run_federated_round(
                     server=srv,
                     clients=clients,
@@ -1781,8 +1902,6 @@ async def start_training_background(
                     "full_model_bytes": int(metrics["full_model_bytes"]),
                     "model_provenance": state.server.get_model_provenance() if state.server else {},
                 }
-                state.task_rounds.append(round_data)
-                state.task_current_round = round_num
 
                 uplink_bytes_round = int(
                     metrics.get(
@@ -1790,20 +1909,29 @@ async def start_training_background(
                         getattr(srv, "last_uplink_bytes_per_client", 0),
                     )
                 )
-                state.training_history.setdefault("round", []).append(round_num)
-                state.training_history.setdefault("loss", []).append(t_loss)
-                state.training_history.setdefault("accuracy", []).append(t_acc)
-                state.training_history.setdefault("test_accuracy", []).append(val_acc)
-                state.training_history.setdefault("test_loss", []).append(val_loss)
-                state.training_history.setdefault("precision", []).append(prec)
-                state.training_history.setdefault("recall", []).append(rec)
-                state.training_history.setdefault("f1_score", []).append(f1)
-                state.training_history.setdefault("threat_detected", []).append(len(blocked_nodes) > 0)
-                state.training_history.setdefault("privacy_epsilon", []).append(float(srv.get_privacy_spent()))
-                state.training_history.setdefault("uplink_bytes", []).append(uplink_bytes_round)
-                state.training_history.setdefault("blocked_nodes", []).append([n + 1 for n in blocked_nodes])
+
+                state.append_round_telemetry(
+                    round_data=round_data,
+                    history_update={
+                        "round": [round_num],
+                        "loss": [t_loss],
+                        "accuracy": [t_acc],
+                        "test_accuracy": [val_acc],
+                        "test_loss": [val_loss],
+                        "precision": [prec],
+                        "recall": [rec],
+                        "f1_score": [f1],
+                        "threat_detected": [len(blocked_nodes) > 0],
+                        "privacy_epsilon": [float(srv.get_privacy_spent())],
+                        "uplink_bytes": [uplink_bytes_round],
+                        "blocked_nodes": [[n + 1 for n in blocked_nodes]],
+                    },
+                )
                 if blocked_nodes:
-                    state.training_history["blocked_count"] = state.training_history.get("blocked_count", 0) + len(blocked_nodes)
+                    with state.task_lock:
+                        state.training_history["blocked_count"] = (
+                            state.training_history.get("blocked_count", 0) + len(blocked_nodes)
+                        )
 
                 try:
                     state.store.record_training_round({
@@ -1824,35 +1952,54 @@ async def start_training_background(
                 except Exception as db_exc:
                     logger.warning("Failed to persist training round %d to SQLite: %s", round_num, db_exc)
 
-            state.model_trained = True
-            state.rag_matcher = build_rag_matcher(srv)
-            state.task_complete = True
-            state.save_to_disk()
+            if not state.is_task_cancelled():
+                state.model_trained = True
+                with state.inference_lock:
+                    state.rag_matcher = build_rag_matcher(srv)
+                state.save_to_disk()
 
         except Exception as e:
             logger.error("Federated training background task failed: %s", e, exc_info=True)
             state.task_error = str(e)
             state.task_complete = False
         finally:
-            state.task_running = False
+            state.finish_task(error=state.task_error)
 
     t = threading.Thread(target=run_training, daemon=True)
     t.start()
     return {"status": "started", "total_rounds": num_rounds}
 
 
-@app.get("/api/fl/train-status")
+@app.get("/api/fl/train-status", response_model=TrainingStatusResponse)
 async def get_training_status(from_round: int = Query(default=0)):
     """Poll training progress - returns new rounds since from_round (Render proxy fallback)."""
-    new_rounds = state.task_rounds[from_round:]
-    return {
-        "is_running": state.task_running,
-        "is_complete": state.task_complete and state.task_error is None,
-        "current_round": state.task_current_round,
-        "total_rounds": state.task_total_rounds,
-        "error": state.task_error,
-        "new_rounds": new_rounds,
-    }
+    new_rounds = state.get_task_rounds_snapshot(from_round=from_round)
+    with state.task_lock:
+        return TrainingStatusResponse(
+            is_running=state.task_running,
+            is_complete=state.task_complete and state.task_error is None,
+            is_cancelled=state.is_task_cancelled(),
+            task_type=state.task_type,
+            current_round=state.task_current_round,
+            total_rounds=state.task_total_rounds,
+            error=state.task_error,
+            new_rounds=new_rounds,
+        )
+
+
+@app.post("/api/fl/train-cancel", response_model=TrainingCancelResponse)
+async def cancel_training():
+    """Cancel currently running federated training task (streaming or background)."""
+    cancelled = state.cancel_current_task()
+    if not cancelled:
+        return TrainingCancelResponse(
+            status="not_running",
+            message="No active training task to cancel.",
+        )
+    return TrainingCancelResponse(
+        status="cancelling",
+        message="Cancellation signal dispatched to training worker.",
+    )
 
 
 @app.post("/api/fl/flower-start")
@@ -1876,15 +2023,8 @@ async def start_flower_training_background(
 ):
     """Launch federated training via Flower orchestration protocol as a background thread."""
     require_cohort()
-    if state.task_running:
+    if not state.try_start_task(task_type="flower_training", total_rounds=num_rounds):
         return {"status": "already_running", "current_round": state.task_current_round}
-
-    state.task_running = True
-    state.task_rounds = []
-    state.task_total_rounds = num_rounds
-    state.task_current_round = 0
-    state.task_complete = False
-    state.task_error = None
 
     def run_flower_training():
         try:
@@ -1924,18 +2064,19 @@ async def start_flower_training_background(
             state.secure_aggregation = secure_aggregation
             state.peft_mode = actual_peft
             state.model_type = model_type
-            state.training_history = {
-                "loss": [],
-                "accuracy": [],
-                "round": [],
-                "precision": [],
-                "recall": [],
-                "f1_score": [],
-                "test_accuracy": [],
-                "test_loss": [],
-                "uplink_bytes": [],
-                "blocked_count": 0,
-            }
+            with state.task_lock:
+                state.training_history = {
+                    "loss": [],
+                    "accuracy": [],
+                    "round": [],
+                    "precision": [],
+                    "recall": [],
+                    "f1_score": [],
+                    "test_accuracy": [],
+                    "test_loss": [],
+                    "uplink_bytes": [],
+                    "blocked_count": 0,
+                }
 
             clients = [
                 HospitalClient(
@@ -1965,6 +2106,11 @@ async def start_flower_training_background(
             ]
 
             def on_round_completed(round_num: int, round_info: Dict[str, Any]):
+                if state.is_task_cancelled():
+                    logger.info("Flower federated training cancelled by operator at round %d", round_num)
+                    state.task_error = "Training cancelled by operator"
+                    raise RuntimeError("Training cancelled by operator")
+
                 agg_metrics = round_info.get("metrics", {})
                 eval_metrics = round_info.get("eval_metrics", {})
                 val_loss = float(round_info.get("eval_loss", 0.0))
@@ -2053,8 +2199,6 @@ async def start_flower_training_background(
                     "full_model_bytes": int(agg_metrics.get("full_model_bytes", srv.last_full_model_bytes)),
                     "orchestrator": "flower",
                 }
-                state.task_rounds.append(round_data)
-                state.task_current_round = round_num
 
                 uplink_bytes_round = int(
                     agg_metrics.get(
@@ -2062,22 +2206,29 @@ async def start_flower_training_background(
                         getattr(srv, "last_uplink_bytes_per_client", 0),
                     )
                 )
-                state.training_history.setdefault("round", []).append(round_num)
-                state.training_history.setdefault("loss", []).append(t_loss)
-                state.training_history.setdefault("accuracy", []).append(t_acc)
-                state.training_history.setdefault("test_accuracy", []).append(val_acc)
-                state.training_history.setdefault("test_loss", []).append(val_loss)
-                state.training_history.setdefault("precision", []).append(prec)
-                state.training_history.setdefault("recall", []).append(rec)
-                state.training_history.setdefault("f1_score", []).append(f1)
-                state.training_history.setdefault("threat_detected", []).append(threat_detected)
-                state.training_history.setdefault("privacy_epsilon", []).append(float(srv.get_privacy_spent()))
-                state.training_history.setdefault("uplink_bytes", []).append(uplink_bytes_round)
-                state.training_history.setdefault("blocked_nodes", []).append(display_blocked_nodes)
+
+                state.append_round_telemetry(
+                    round_data=round_data,
+                    history_update={
+                        "round": [round_num],
+                        "loss": [t_loss],
+                        "accuracy": [t_acc],
+                        "test_accuracy": [val_acc],
+                        "test_loss": [val_loss],
+                        "precision": [prec],
+                        "recall": [rec],
+                        "f1_score": [f1],
+                        "threat_detected": [threat_detected],
+                        "privacy_epsilon": [float(srv.get_privacy_spent())],
+                        "uplink_bytes": [uplink_bytes_round],
+                        "blocked_nodes": [display_blocked_nodes],
+                    },
+                )
                 if display_blocked_nodes:
-                    state.training_history["blocked_count"] = (
-                        state.training_history.get("blocked_count", 0) + len(display_blocked_nodes)
-                    )
+                    with state.task_lock:
+                        state.training_history["blocked_count"] = (
+                            state.training_history.get("blocked_count", 0) + len(display_blocked_nodes)
+                        )
 
                 try:
                     state.store.record_training_round({
@@ -2113,17 +2264,18 @@ async def start_flower_training_background(
                 on_round_end=on_round_completed,
             )
 
-            state.model_trained = True
-            state.rag_matcher = build_rag_matcher(srv)
-            state.task_complete = True
-            state.save_to_disk()
+            if not state.is_task_cancelled():
+                state.model_trained = True
+                with state.inference_lock:
+                    state.rag_matcher = build_rag_matcher(srv)
+                state.save_to_disk()
 
         except Exception as e:
             logger.error("Flower federated training failed: %s", e, exc_info=True)
             state.task_error = str(e)
             state.task_complete = False
         finally:
-            state.task_running = False
+            state.finish_task(error=state.task_error)
 
     t = threading.Thread(target=run_flower_training, daemon=True)
     t.start()
@@ -2516,23 +2668,24 @@ async def perform_diagnosis(req: DiagnoseRequest):
         )
     image_tensor = img_t.to(state.device)
 
-    with torch.no_grad():
-        logits = model(image_tensor)
-        if isinstance(logits, tuple):
-            logits = logits[0]
-        probs = torch.softmax(logits, dim=1).cpu().numpy()[0]
-        predicted_class = int(np.argmax(probs))
-        confidence = float(probs[predicted_class])
+    with state.inference_lock:
+        with torch.no_grad():
+            logits = model(image_tensor)
+            if isinstance(logits, tuple):
+                logits = logits[0]
+            probs = torch.softmax(logits, dim=1).cpu().numpy()[0]
+            predicted_class = int(np.argmax(probs))
+            confidence = float(probs[predicted_class])
 
-    heatmap: Optional[np.ndarray] = None
-    heatmap_error: Optional[str] = None
-    gradcam = GradCAM(model)
-    try:
-        heatmap, _, _ = gradcam.generate_heatmap(image_tensor, target_class=predicted_class)
-    except GradCAMUnavailableError as exc:
-        heatmap_error = str(exc)
-    finally:
-        gradcam.remove_hooks()
+        heatmap: Optional[np.ndarray] = None
+        heatmap_error: Optional[str] = None
+        gradcam = GradCAM(model)
+        try:
+            heatmap, _, _ = gradcam.generate_heatmap(image_tensor, target_class=predicted_class)
+        except GradCAMUnavailableError as exc:
+            heatmap_error = str(exc)
+        finally:
+            gradcam.remove_hooks()
 
     active_labels = get_dataset_label_map(state.data_source)
     findings = get_explanation_text(
@@ -2635,13 +2788,14 @@ async def get_similar_rag_cases(top_k: int = Query(default=2, ge=1, le=10)):
         )
     image_tensor = img_t.to(state.device)
 
-    with torch.no_grad():
-        logits = model(image_tensor)
-        if isinstance(logits, tuple):
-            logits = logits[0]
-        query_class = int(torch.argmax(logits, dim=1).item())
+    with state.inference_lock:
+        with torch.no_grad():
+            logits = model(image_tensor)
+            if isinstance(logits, tuple):
+                logits = logits[0]
+            query_class = int(torch.argmax(logits, dim=1).item())
 
-    query_embedding = extract_embedding(model, image_tensor)
+        query_embedding = extract_embedding(model, image_tensor)
     similar = state.rag_matcher.find_similar(query_embedding, top_k=top_k)
 
     active_labels = get_dataset_label_map(state.data_source)

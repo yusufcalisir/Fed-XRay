@@ -88,6 +88,22 @@ class RoundTelemetryUpdate(BaseModel):
     full_model_bytes: int = 0
 
 
+class TrainingStatusResponse(BaseModel):
+    is_running: bool
+    is_complete: bool
+    is_cancelled: bool = False
+    task_type: Optional[str] = None
+    current_round: int
+    total_rounds: int
+    error: Optional[str] = None
+    new_rounds: List[Dict[str, Any]] = Field(default_factory=list)
+
+
+class TrainingCancelResponse(BaseModel):
+    status: str
+    message: str
+
+
 class DiagnoseRequest(BaseModel):
     class_index: Optional[int] = None
     image_data: Optional[List[List[float]]] = None

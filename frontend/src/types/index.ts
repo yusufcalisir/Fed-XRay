@@ -67,6 +67,22 @@ export interface TelemetryRound {
   full_model_bytes?: number;
 }
 
+export interface TrainingStatusResponse {
+  is_running: boolean;
+  is_complete: boolean;
+  is_cancelled?: boolean;
+  task_type?: string | null;
+  current_round: number;
+  total_rounds: number;
+  error?: string | null;
+  new_rounds: TelemetryRound[];
+}
+
+export interface TrainingCancelResponse {
+  status: string;
+  message: string;
+}
+
 export interface DiagnosisResult {
   patient_id?: string;
   predicted_class: number;

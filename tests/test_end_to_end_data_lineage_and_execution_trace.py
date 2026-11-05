@@ -47,6 +47,7 @@ def clean_app_state(tmp_path):
     original_last_patient = state.last_patient_id
     original_rag = state.rag_matcher
     original_source = state.data_source
+    original_reference_records = state.reference_records
 
     test_db = tmp_path / "test_lineage_store.db"
     store = PersistentStateStore(str(test_db))
@@ -71,6 +72,7 @@ def clean_app_state(tmp_path):
         state.last_patient_id = original_last_patient
         state.rag_matcher = original_rag
         state.data_source = original_source
+        state.reference_records = original_reference_records
         if test_db.exists():
             try:
                 test_db.unlink()
@@ -249,7 +251,7 @@ def test_federated_training_round_and_telemetry_lineage():
 
     # 5. Verify retrieved telemetry history matches persisted round exactly
     history = state.store.get_training_history()
-    assert history["rounds"] == [1]
+    assert history["round"] == [1]
     assert history["accuracy"] == [82.5]
     assert history["test_accuracy"] == [81.0]
     assert history["f1_score"] == [81.0]
