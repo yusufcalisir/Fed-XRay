@@ -80,12 +80,22 @@ class FlowerHospitalClient(fl.client.NumPyClient):
         loss_fn_name: str = "CE",
         enable_prototypes: bool = False,
         proto_weight: float = 0.1,
+        prox_mu: float = 0.01,
+        feddyn_alpha: float = 0.01,
+        moon_mu: float = 0.1,
+        moon_temp: float = 0.5,
     ) -> None:
         self.hospital_client = hospital_client
         self.algorithm = algorithm
         self.loss_fn_name = loss_fn_name
         self.enable_prototypes = enable_prototypes
         self.proto_weight = proto_weight
+        self.prox_mu = prox_mu
+        self.feddyn_alpha = feddyn_alpha
+        self.moon_mu = moon_mu
+        self.moon_temp = moon_temp
+        self.c_global: Optional[Dict[str, torch.Tensor]] = None
+        self.last_delta_c: Optional[Dict[str, torch.Tensor]] = None
 
         # Cache key ordering from initial model weights
         if self.hospital_client.peft_mode:
@@ -122,6 +132,15 @@ class FlowerHospitalClient(fl.client.NumPyClient):
         algorithm = str(config.get("algorithm", self.algorithm))
         loss_fn = str(config.get("loss_fn", self.loss_fn_name))
 
+        prox_mu_default = self.prox_mu if algorithm.upper() in ("FEDPROX", "PROX") else 0.0
+        feddyn_alpha_default = self.feddyn_alpha if algorithm.upper() == "FEDDYN" else 0.0
+        moon_mu_default = self.moon_mu if algorithm.upper() == "MOON" else 0.0
+
+        prox_mu = float(config.get("prox_mu", prox_mu_default))
+        feddyn_alpha = float(config.get("feddyn_alpha", feddyn_alpha_default))
+        moon_mu = float(config.get("moon_mu", moon_mu_default))
+        moon_temp = float(config.get("moon_temp", self.moon_temp))
+
         dp_enabled = bool(config.get("dp_enabled", self.hospital_client.dp_enabled))
         dp_clipping_bound = float(config.get("dp_clipping_bound", self.hospital_client.dp_clipping_bound))
         dp_noise_multiplier = float(config.get("dp_noise_multiplier", self.hospital_client.dp_noise_multiplier))
@@ -135,12 +154,17 @@ class FlowerHospitalClient(fl.client.NumPyClient):
         )
 
         # Execute genuine local training round
-        updated_weights, metrics, _ = self.hospital_client.train(
+        updated_weights, metrics, delta_c = self.hospital_client.train(
             global_weights=global_weights,
             loss_fn_name=loss_fn,
             current_round=current_round,
             total_rounds=total_rounds,
             algorithm=algorithm,
+            prox_mu=prox_mu,
+            feddyn_alpha=feddyn_alpha,
+            moon_mu=moon_mu,
+            moon_temp=moon_temp,
+            c_global=self.c_global,
             dp_enabled=dp_enabled,
             dp_clipping_bound=dp_clipping_bound,
             dp_noise_multiplier=dp_noise_multiplier,
@@ -148,6 +172,7 @@ class FlowerHospitalClient(fl.client.NumPyClient):
             num_consortium_clients=num_consortium_clients,
             proto_weight=proto_weight,
         )
+        self.last_delta_c = delta_c
 
         arrays, _ = state_dict_to_flower_parameters(updated_weights)
         num_samples = self.hospital_client.get_num_samples()
@@ -267,17 +292,30 @@ class FlowerFedXRayStrategy(Strategy):
             self.central_server.privacy_noise > 0.0
             and getattr(self.central_server, "dp_mode", "off") != "off"
         )
+        algo_name = self.algorithm.upper()
         config: Dict[str, Scalar] = {
             "current_round": server_round,
             "total_rounds": self.total_rounds,
             "algorithm": self.algorithm,
             "loss_fn": self.loss_fn_name,
+            "prox_mu": 0.01 if algo_name in ("FEDPROX", "PROX") else 0.0,
+            "feddyn_alpha": 0.01 if algo_name == "FEDDYN" else 0.0,
+            "moon_mu": 0.1 if algo_name == "MOON" else 0.0,
+            "moon_temp": 0.5,
             "dp_enabled": dp_active,
             "dp_clipping_bound": float(getattr(self.central_server, "dp_clipping_bound", 1.0)),
             "dp_noise_multiplier": float(self.central_server.privacy_noise),
             "dp_mode": str(getattr(self.central_server, "dp_mode", "distributed")),
             "num_consortium_clients": sample_size,
         }
+
+        # Synchronize SCAFFOLD server control variate to participating clients
+        if algo_name == "SCAFFOLD" and hasattr(self.central_server, "c_global") and self.central_server.c_global:
+            for client in clients:
+                target_proxy = getattr(client, "client", None)
+                if target_proxy is not None and hasattr(target_proxy, "c_global"):
+                    target_proxy.c_global = self.central_server.c_global
+
         fit_ins = FitIns(parameters, config)
         return [(client, fit_ins) for client in clients]
 
@@ -294,8 +332,9 @@ class FlowerFedXRayStrategy(Strategy):
         client_weights: List[Dict[str, torch.Tensor]] = []
         sample_counts: List[int] = []
         client_ids: List[int] = []
+        client_delta_cs: List[Optional[Dict[str, torch.Tensor]]] = []
 
-        for idx, (_, fit_res) in enumerate(results):
+        for idx, (proxy, fit_res) in enumerate(results):
             ndarrays = parameters_to_ndarrays(fit_res.parameters)
             weights = flower_parameters_to_state_dict(
                 ndarrays, self.param_keys, device=self.central_server.device
@@ -305,8 +344,20 @@ class FlowerFedXRayStrategy(Strategy):
             cid = int(fit_res.metrics.get("client_id", idx))
             client_ids.append(cid)
 
+            # Collect authentic SCAFFOLD control variate deltas
+            d_c = getattr(proxy, "last_delta_c", None)
+            if d_c is None:
+                inner_client = getattr(proxy, "client", None)
+                d_c = getattr(inner_client, "last_delta_c", None)
+            client_delta_cs.append(d_c)
+
         total_hospitals = self.total_consortium_hospitals or len(results)
         client_q = min(1.0, len(results) / max(1, total_hospitals))
+
+        has_valid_delta_cs = any(d is not None for d in client_delta_cs)
+        clean_delta_cs: Optional[List[Dict[str, torch.Tensor]]] = (
+            [d for d in client_delta_cs if d is not None] if has_valid_delta_cs else None
+        )
 
         # Aggregate using CentralServer
         if self.central_server.defense_mode and self.test_images is not None and self.test_labels is not None:
@@ -317,6 +368,7 @@ class FlowerFedXRayStrategy(Strategy):
                 test_images=self.test_images,
                 test_labels=self.test_labels,
                 algorithm=self.algorithm,
+                delta_cs=client_delta_cs if has_valid_delta_cs else None,
                 use_secagg=self.secure_aggregation,
                 use_ckks=self.use_ckks,
                 client_subsampling_q=client_q,
@@ -328,6 +380,7 @@ class FlowerFedXRayStrategy(Strategy):
                 client_weights=client_weights,
                 sample_counts=sample_counts,
                 algorithm=self.algorithm,
+                delta_cs=clean_delta_cs,
                 use_ckks=self.use_ckks,
                 client_subsampling_q=client_q,
             )
@@ -478,6 +531,7 @@ class InProcessClientProxy(ClientProxy):
     ) -> FitRes:
         ndarrays = parameters_to_ndarrays(ins.parameters)
         updated_ndarrays, num_samples, metrics = self.client.fit(ndarrays, ins.config)
+        self.last_delta_c = self.client.last_delta_c
         return FitRes(
             status=Status(code=Code.OK, message="Success"),
             parameters=ndarrays_to_parameters(updated_ndarrays),

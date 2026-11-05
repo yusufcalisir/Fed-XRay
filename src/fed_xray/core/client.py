@@ -643,11 +643,12 @@ class HospitalClient:
                 loss.backward()
 
                 # 5. SCAFFOLD Control Variates Gradient Correction
-                if algorithm.upper() == "SCAFFOLD" and c_global is not None and self.c_client is not None:
+                if algorithm.upper() == "SCAFFOLD" and self.c_client is not None:
+                    c_global_map = c_global if c_global is not None else {}
                     for name, param in self.model.named_parameters():
                         if param.requires_grad and param.grad is not None and name in self.c_client:
                             c_k = self.c_client[name].to(self.device)
-                            c_g = c_global.get(name, torch.zeros_like(c_k)).to(self.device)
+                            c_g = c_global_map.get(name, torch.zeros_like(c_k)).to(self.device)
                             param.grad.data.add_(c_g - c_k)
 
                 torch.nn.utils.clip_grad_norm_(trainable_params, max_norm=1.0)
@@ -660,15 +661,16 @@ class HospitalClient:
 
         # Update SCAFFOLD client control variates
         delta_c = None
-        if algorithm.upper() == "SCAFFOLD" and c_global is not None and self.c_client is not None:
+        if algorithm.upper() == "SCAFFOLD" and self.c_client is not None:
+            c_global_map = c_global if c_global is not None else {}
             delta_c = {}
             new_c_client = {}
             total_steps = max(1, self.local_epochs * len(self.dataloader))
             step_scale = 1.0 / (total_steps * self.learning_rate)
             for name, param in self.model.named_parameters():
-                if name in initial_params:
-                    c_g = c_global.get(name, torch.zeros_like(param)).to(self.device)
+                if name in initial_params and name in self.c_client:
                     c_k = self.c_client[name].to(self.device)
+                    c_g = c_global_map.get(name, torch.zeros_like(c_k)).to(self.device)
                     # c_k^{t+1} = c_k^t - c^t + 1/(K*eta) (theta_init - theta_curr)
                     c_new = c_k - c_g + step_scale * (initial_params[name] - param.data)
                     delta_c[name] = (c_new - c_k).detach().cpu()
@@ -689,6 +691,8 @@ class HospitalClient:
             self.prev_local_model = self._create_local_model().to(self.device)
             self.prev_local_model.load_state_dict(self.model.state_dict())
             self.prev_local_model.eval()
+            for p in self.prev_local_model.parameters():
+                p.requires_grad = False
 
         avg_loss = total_loss / max(total_samples, 1)
         accuracy = correct / max(total_samples, 1)
