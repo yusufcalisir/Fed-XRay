@@ -22,7 +22,7 @@
   <img src="https://img.shields.io/badge/Flower_FL-Supported-green?logo=flower" alt="Flower FL">
   <img src="https://img.shields.io/badge/Localization-EN%20%7C%20TR-blue" alt="Bilingual">
   <a href="https://github.com/yusufcalisir/Fed-XRay/actions/workflows/ci.yml"><img src="https://github.com/yusufcalisir/Fed-XRay/actions/workflows/ci.yml/badge.svg" alt="CI Test and Build Pipeline"></a>
-  <img src="https://img.shields.io/badge/Tests-411_Passed_(309_Backend_%2B_102_Frontend)-brightgreen" alt="Tests">
+  <img src="https://img.shields.io/badge/Tests-412_Passed_(309_Backend_%2B_103_Frontend)-brightgreen" alt="Tests">
   <img src="https://img.shields.io/badge/License-MIT-yellow" alt="License">
 </p>
 
@@ -68,10 +68,10 @@
   - [9.3 Flower Framework Federation Bridge](#93-flower-framework-federation-bridge)
   - [9.4 ACID Persistent State Storage (SQLite WAL)](#94-acid-persistent-state-storage-sqlite-wal)
 - [10. REST and Streaming API Reference](#10-rest-and-streaming-api-reference)
-- [11. Verification and Automated Test Suite (411 Tests)](#11-verification-and-automated-test-suite-411-tests)
+- [11. Verification and Automated Test Suite (412 Tests)](#11-verification-and-automated-test-suite-412-tests)
   - [11.1 Static Type Safety and Code Quality](#111-static-type-safety-and-code-quality)
   - [11.2 Backend Pytest Suites (43 Files, 309 Tests)](#112-backend-pytest-suites-43-files-309-tests)
-  - [11.3 Frontend Vitest Suites (22 Files, 102 Tests)](#113-frontend-vitest-suites-22-files-102-tests)
+  - [11.3 Frontend Vitest Suites (22 Files, 103 Tests)](#113-frontend-vitest-suites-22-files-103-tests)
 - [12. Repository Structure](#12-repository-structure)
 - [13. Installation and Quick Start](#13-installation-and-quick-start)
 - [14. Scientific Anchors and Citations](#14-scientific-anchors-and-citations)
@@ -595,9 +595,9 @@ The FastAPI backend (`api/main.py`) provides asynchronous REST and streaming end
 
 ---
 
-## 11. Verification and Automated Test Suite (411 Tests)
+## 11. Verification and Automated Test Suite (412 Tests)
 
-Fed-XRay maintains an automated test suite comprising **411 tests** (309 Python Pytest backend tests + 102 TypeScript Vitest frontend tests), achieving a 100% pass rate.
+Fed-XRay maintains an automated test suite comprising **412 tests** (309 Python Pytest backend tests + 103 TypeScript Vitest frontend tests), achieving a 100% pass rate.
 
 ### 11.1 Static Type Safety and Code Quality
 
@@ -618,13 +618,13 @@ Fed-XRay maintains an automated test suite comprising **411 tests** (309 Python 
 | **API, State & Persistence** | `test_api_deep_suite.py`, `test_api_endpoints.py`, `test_api_schemas_contracts.py`, `test_consortium_persistent_state_store.py`, `test_sqlite_memory_state_equivalence.py`, `test_state_persistence.py` | 55 | Pydantic v2 validation contracts, SSE streaming limits, path traversal blocks, SQLite WAL persistence, process restart memory equivalence |
 | **Security & Robustness** | `test_robustness_and_adversarial.py`, `test_network_routing_and_tunnel_resilience.py`, `test_browser_runtime_shield_and_extension_isolation.py`, `test_client_subtree_resilience_and_error_boundaries.py`, `test_e2e_full_federated_pipeline.py` | 26 | Byzantine gradient poisoning rejection without self-incrimination, NaN/Inf resilience, free-rider rejection, tunnel resilience, runtime shield |
 
-### 11.3 Frontend Vitest Suites (22 Files, 102 Tests)
+### 11.3 Frontend Vitest Suites (22 Files, 103 Tests)
 
 | Component / Utility | Test File | Tests | Verified Contracts |
 | :--- | :--- | :--- | :--- |
 | **API Client & Gateway** | `api.test.ts`, `backendGateway.test.ts` | 17 | SSE streaming parser, polling fallbacks, honest HTTP 502/503 propagation without mock fallbacks |
 | **Error Handling & Shield** | `runtimeShield.test.ts`, `ClinicalErrorBoundary.test.tsx`, `subtreeIsolation.test.tsx` | 17 | Chrome/Edge extension isolation, port drop handling, error boundaries, null payload defenses |
-| **Diagnostic Studio & 3D** | `DiagnosticStudio.test.tsx`, `LungViewer3D.test.tsx`, `lungGeometry.test.ts`, `RagDigitalTwins.test.tsx` | 16 | Inference lifecycle, Three.js container cleanup, coordinate scaling, biopsy twin rendering |
+| **Diagnostic Studio & 3D** | `DiagnosticStudio.test.tsx`, `LungViewer3D.test.tsx`, `lungGeometry.test.ts`, `RagDigitalTwins.test.tsx` | 17 | Inference lifecycle, Three.js container cleanup, coordinate scaling, biopsy twin rendering |
 | **Consortium & Enclave** | `ConsortiumLaunchOverlay.test.tsx`, `FederatedTopologyMap.test.tsx`, `LiveHud.test.tsx` | 11 | 4-stage cryptographic handshake, ECDH fingerprints, SVG topology rendering, attestation badge |
 | **Telemetry & Reporting** | `TelemetryCockpit.test.tsx`, `ReportDownload.test.tsx`, `VoiceAssistant.test.tsx` | 10 | Loss/accuracy convergence charts, client drift tracking, PDF trigger, audio briefing controls |
 | **Navigation & Pages** | `Navbar.test.tsx`, `Hero.test.tsx`, `LandingPage.test.tsx`, `DashboardPage.test.tsx`, `HospitalStudio.test.tsx`, `WorkflowStepper.test.tsx`, `translations.test.ts` | 31 | Bilingual EN/TR parity, dark mode, responsive mobile drawer, Non-IID breakdown, 4-step stepper |
@@ -645,7 +645,7 @@ Fed-XRay/
 |   |   |-- context/                   # Language (EN/TR) and API Connection Providers
 |   |   |-- lib/                       # API Client, Runtime Shield, Translations, Utilities
 |   |   |-- types/                     # TypeScript Strict Interface Definitions
-|   |   `-- __tests__/                 # Vitest Component and Integration Tests (22 Files, 102 Tests)
+|   |   `-- __tests__/                 # Vitest Component and Integration Tests (22 Files, 103 Tests)
 |   |-- package.json
 |   `-- tailwind.config.js             # Clinical SaaS HSL Design Token System
 |-- scripts/
