@@ -2658,16 +2658,23 @@ async def get_similar_rag_cases(top_k: int = Query(default=2, ge=1, le=10)):
     return RagSimilarResponse(query_class=query_class, matched_cases=cases)
 
 
+@app.get("/api/cdss/voice/status")
+async def get_voice_assistant_status():
+    """Return operational health, persistent cache metrics, and air-gapped readiness of the CDSS voice engine."""
+    from src.fed_xray.cdss.voice import get_voice_engine_status
+    return get_voice_engine_status()
+
+
 @app.get("/api/cdss/voice")
 async def stream_voice_briefing(
     text: str = Query(..., description="Text to synthesize"),
     lang: str = Query(default="en"),
 ):
-    """Generate audio MP3 briefing using gTTS (offloaded to thread pool).
+    """Generate audio MP3 briefing using gTTS with persistent caching and thread pool offloading.
 
-    gTTS makes blocking HTTP requests to Google TTS API.
-    Running it via async worker keeps the event loop free so
-    Render / uvicorn can still serve other requests during synthesis.
+    gTTS makes blocking HTTP requests to Google TTS API. Running it via an async worker keeps
+    the event loop free. If the external network is unreachable and the utterance is not
+    cached, raises HTTP 503 with explicit instructions for offline browser Web Speech API.
     """
     try:
         audio_bytes = await get_or_create_audio(text, lang)
@@ -2681,7 +2688,10 @@ async def stream_voice_briefing(
     except HTTPException:
         raise
     except Exception as exc:
-        raise HTTPException(status_code=503, detail=f"TTS unavailable: {exc}")
+        raise HTTPException(
+            status_code=503,
+            detail=f"TTS unavailable: {exc}. In air-gapped clinical environments, client may invoke local browser Web Speech API.",
+        )
 
 
 @app.get("/api/cdss/report-pdf")

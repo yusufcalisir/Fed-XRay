@@ -11,6 +11,8 @@ from src.fed_xray.cdss.voice import (
     _cache_path,
     get_cached_audio_path,
     get_or_create_audio,
+    get_voice_engine_status,
+    prewarm_clinical_voice_cache,
     generate_diagnosis_audio,
 )
 
@@ -60,3 +62,57 @@ def test_generate_diagnosis_audio_legacy_shim(monkeypatch):
     )
     res = generate_diagnosis_audio("Pneumonia", 96.0, "en")
     assert res == b"MOCK_MP3_AUDIO_STREAM"
+
+
+def test_get_voice_engine_status():
+    """Verify voice engine status reports operational metrics and air-gapped readiness."""
+    status = get_voice_engine_status()
+    assert status["service"] == "CDSS Voice Assistant Engine"
+    assert status["cloud_provider"] == "Google Text-to-Speech (gTTS)"
+    assert "cache_directory" in status
+    assert isinstance(status["cached_files_count"], int)
+    assert status["supported_languages"] == ["en", "tr"]
+    assert status["client_offline_synthesis_supported"] is True
+    assert status["air_gapped_compatible"] is True
+    assert status["status"] == "ready"
+
+
+def test_prewarm_clinical_voice_cache(monkeypatch):
+    """Verify pre-warming voice cache generates and populates audio files."""
+    monkeypatch.setattr(
+        "src.fed_xray.cdss.voice._generate_audio_sync",
+        lambda text, lang: b"PREWARMED_AUDIO_MP3_PAYLOAD",
+    )
+    res = prewarm_clinical_voice_cache(
+        texts=["Normal diagnosis test."],
+        languages=("en",),
+    )
+    assert res["newly_generated"] >= 0
+    assert "already_cached" in res
+
+
+@pytest.mark.asyncio
+async def test_air_gapped_offline_error_handling(monkeypatch):
+    """Verify honest failure reporting when network is down and cache misses."""
+    monkeypatch.setattr(
+        "src.fed_xray.cdss.voice._generate_audio_sync",
+        lambda text, lang: None,
+    )
+    with pytest.raises(RuntimeError) as excinfo:
+        await get_or_create_audio("Uncached phrase under simulated offline mode.", "en")
+    assert "gTTS synthesis failed" in str(excinfo.value)
+    assert "air-gapped" in str(excinfo.value).lower()
+
+
+def test_voice_status_api_endpoint():
+    """Verify GET /api/cdss/voice/status returns 200 with engine metrics."""
+    from fastapi.testclient import TestClient
+    from api.main import app
+    client = TestClient(app)
+    res = client.get("/api/cdss/voice/status")
+    assert res.status_code == 200
+    data = res.json()
+    assert data["service"] == "CDSS Voice Assistant Engine"
+    assert data["air_gapped_compatible"] is True
+
+

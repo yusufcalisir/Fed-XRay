@@ -162,6 +162,9 @@ export const TRANSLATIONS: Record<Language, Record<string, string>> = {
     sec3_voice_title: "Hands-Free Voice Diagnostic Assistant",
     sec3_voice_desc: "Automated audio synthesis for clinical dictation and surgical hands-free review",
     sec3_voice_listen: "Play Audio Briefing",
+    sec3_voice_offline_fallback: "Cloud speech unavailable (air-gapped workstation mode).",
+    sec3_voice_speak_browser: "Speak via Local Browser",
+    sec3_voice_speaking: "Speaking...",
     
     sec3_report_title: "Official Single-Page Medical Intelligence Report",
     sec3_report_desc: "Strictly bounded single-page A4 medical documentation with embedded Grad-CAM evidence",
@@ -724,6 +727,9 @@ export const TRANSLATIONS: Record<Language, Record<string, string>> = {
     sec3_voice_title: "Sesli Klinik Asistan ve Dikte Desteği",
     sec3_voice_desc: "Steril ameliyathane ve girişimsel radyoloji ortamları için otomatik sesli klinik bilgilendirme",
     sec3_voice_listen: "Sesli Klinik Özeti Dinle",
+    sec3_voice_offline_fallback: "Bulut ses servisi çevrimdışı (izole klinik iş istasyonu).",
+    sec3_voice_speak_browser: "Yerel Tarayıcı ile Seslendir",
+    sec3_voice_speaking: "Seslendiriliyor...",
     
     sec3_report_title: "Klinik Karar Destek ve Radyoloji Raporu",
     sec3_report_desc: "Grad-CAM açıklanabilirlik çıktılarını, kohort metriklerini ve model güven skorlarını içeren A4 formatında klinik rapor",

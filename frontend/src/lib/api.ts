@@ -346,6 +346,25 @@ export function getVoiceBriefingUrl(
   return `${baseUrl.replace(/\/$/, "")}/api/cdss/voice?text=${encodeURIComponent(text)}&lang=${isTr ? "tr" : "en"}`;
 }
 
+export interface VoiceEngineStatus {
+  service: string;
+  cloud_provider: string;
+  cache_directory: string;
+  cached_files_count: number;
+  supported_languages: string[];
+  client_offline_synthesis_supported: boolean;
+  air_gapped_compatible: boolean;
+  status: string;
+}
+
+export async function fetchVoiceEngineStatus(baseUrl: string): Promise<VoiceEngineStatus> {
+  const res = await fetch(`${baseUrl.replace(/\/$/, "")}/api/cdss/voice/status`);
+  if (!res.ok) {
+    throw new Error(`Failed to fetch voice engine status: HTTP ${res.status}`);
+  }
+  return res.json();
+}
+
 export function getPdfReportUrl(
   baseUrl: string,
   diagnosis: string = "Normal",
