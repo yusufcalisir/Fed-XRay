@@ -692,11 +692,13 @@ async def root_index():
 
 @app.get("/api/health")
 async def health_check():
+    db_integrity = state.store.verify_database_integrity()
     return {
-        "status": "healthy",
+        "status": "healthy" if db_integrity.get("is_healthy", True) else "degraded",
         "timestamp": time.time(),
         "device": str(state.device),
         "cuda_available": torch.cuda.is_available(),
+        "database": db_integrity,
     }
 
 

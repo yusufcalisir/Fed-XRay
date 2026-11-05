@@ -213,6 +213,10 @@ class PersistentStateStore:
                 ),
             )
 
+    def save_training_round(self, round_data: Dict[str, Any]) -> None:
+        """Alias for record_training_round to maintain method naming consistency."""
+        self.record_training_round(round_data)
+
     def get_training_history(self) -> Dict[str, Any]:
         """Reconstruct the canonical training_history dictionary from SQLite records."""
         with self._connection() as conn:
@@ -263,6 +267,7 @@ class PersistentStateStore:
                 history["blocked_nodes"].append([])
 
         history["privacy_spent"] = history["privacy_epsilon"][-1] if history["privacy_epsilon"] else 0.0
+        history["rounds"] = history["round"]
         return history
 
     def save_hospital_cohorts(self, cohorts_info: List[Dict[str, Any]]) -> None:
@@ -503,6 +508,10 @@ class PersistentStateStore:
                 ),
             )
 
+    def save_checkpoint(self, checkpoint_info: Dict[str, Any]) -> None:
+        """Alias for record_checkpoint to maintain method naming consistency."""
+        self.record_checkpoint(checkpoint_info)
+
     def get_latest_checkpoint(self) -> Optional[Dict[str, Any]]:
         """Retrieve the latest registered model checkpoint record."""
         with self._connection() as conn:
@@ -542,10 +551,51 @@ class PersistentStateStore:
             DELETE FROM diagnostic_audits;
             DELETE FROM model_checkpoints;
             """)
+            try:
+                conn.execute("DELETE FROM sqlite_sequence WHERE name IN ('diagnostic_audits', 'model_checkpoints')")
+            except sqlite3.OperationalError:
+                pass
         logger.info("Persistent state database cleared at %s", self.db_path)
 
+    def verify_database_integrity(self) -> Dict[str, Any]:
+        """Perform comprehensive ACID and structural integrity checks on the SQLite database."""
+        with self._connection() as conn:
+            # 1. PRAGMA integrity_check
+            integrity_row = conn.execute("PRAGMA integrity_check;").fetchone()
+            integrity_status = str(integrity_row[0]) if integrity_row else "unknown"
+
+            # 2. PRAGMA foreign_key_check
+            fk_violations = conn.execute("PRAGMA foreign_key_check;").fetchall()
+
+            # 3. Verify all expected tables and indexes
+            tables_rows = conn.execute("SELECT name FROM sqlite_master WHERE type='table'").fetchall()
+            existing_tables = {r[0] for r in tables_rows}
+            required_tables = {"system_state", "training_rounds", "hospital_cohorts", "diagnostic_audits", "model_checkpoints"}
+            missing_tables = required_tables - existing_tables
+
+            # 4. Check journal mode
+            mode_row = conn.execute("PRAGMA journal_mode;").fetchone()
+            journal_mode = str(mode_row[0]).lower() if mode_row else "unknown"
+
+        is_healthy = (
+            integrity_status.lower() == "ok"
+            and len(fk_violations) == 0
+            and len(missing_tables) == 0
+            and journal_mode == "wal"
+        )
+
+        return {
+            "is_healthy": is_healthy,
+            "integrity_check": integrity_status,
+            "foreign_key_violations": len(fk_violations),
+            "journal_mode": journal_mode,
+            "wal_enabled": journal_mode == "wal",
+            "missing_tables": list(missing_tables),
+            "tables_verified": list(required_tables),
+        }
+
     def get_database_stats(self) -> Dict[str, Any]:
-        """Return diagnostic metrics of the SQLite database."""
+        """Return diagnostic metrics and integrity status of the SQLite database."""
         with self._connection() as conn:
             mode_row = conn.execute("PRAGMA journal_mode;").fetchone()
             mode = str(mode_row[0]).lower() if mode_row else "unknown"
@@ -553,6 +603,8 @@ class PersistentStateStore:
             n_cohorts = conn.execute("SELECT COUNT(*) FROM hospital_cohorts").fetchone()[0]
             n_audits = conn.execute("SELECT COUNT(*) FROM diagnostic_audits").fetchone()[0]
             n_checkpoints = conn.execute("SELECT COUNT(*) FROM model_checkpoints").fetchone()[0]
+            integrity_row = conn.execute("PRAGMA integrity_check(1);").fetchone()
+            integrity_status = str(integrity_row[0]) if integrity_row else "unknown"
 
         file_size = self.db_path.stat().st_size if self.db_path.exists() else 0
         return {
@@ -560,6 +612,8 @@ class PersistentStateStore:
             "file_size_bytes": file_size,
             "journal_mode": mode,
             "wal_mode_enabled": mode == "wal",
+            "integrity_check": integrity_status,
+            "is_healthy": integrity_status.lower() == "ok",
             "persisted_rounds_count": n_rounds,
             "persisted_cohorts_count": n_cohorts,
             "persisted_audits_count": n_audits,
