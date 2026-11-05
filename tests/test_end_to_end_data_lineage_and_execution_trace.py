@@ -37,7 +37,17 @@ from src.fed_xray.storage.state_store import PersistentStateStore
 
 @pytest.fixture(autouse=True)
 def clean_app_state(tmp_path):
-    """Ensure each test runs with a fresh, isolated state and database."""
+    """Ensure each test runs with a fresh, isolated state and database, cleanly restored."""
+    original_store = state.store
+    original_server = state.server
+    original_last_scan = state.last_scan
+    original_last_heatmap = state.last_heatmap
+    original_last_probs = state.last_probabilities
+    original_last_pred = state.last_predicted_class
+    original_last_patient = state.last_patient_id
+    original_rag = state.rag_matcher
+    original_source = state.data_source
+
     test_db = tmp_path / "test_lineage_store.db"
     store = PersistentStateStore(str(test_db))
     state.store = store
@@ -49,12 +59,23 @@ def clean_app_state(tmp_path):
     state.last_patient_id = None
     state.rag_matcher = None
     state.data_source = "chexpert_v2"
-    yield
-    if test_db.exists():
-        try:
-            test_db.unlink()
-        except OSError:
-            pass
+    try:
+        yield
+    finally:
+        state.store = original_store
+        state.server = original_server
+        state.last_scan = original_last_scan
+        state.last_heatmap = original_last_heatmap
+        state.last_probabilities = original_last_probs
+        state.last_predicted_class = original_last_pred
+        state.last_patient_id = original_last_patient
+        state.rag_matcher = original_rag
+        state.data_source = original_source
+        if test_db.exists():
+            try:
+                test_db.unlink()
+            except OSError:
+                pass
 
 
 def test_cdss_diagnostic_inference_and_audit_data_lineage():
