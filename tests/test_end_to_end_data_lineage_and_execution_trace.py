@@ -40,6 +40,7 @@ def clean_app_state(tmp_path):
     """Ensure each test runs with a fresh, isolated state and database, cleanly restored."""
     original_store = state.store
     original_server = state.server
+    original_model_trained = state.model_trained
     original_last_scan = state.last_scan
     original_last_heatmap = state.last_heatmap
     original_last_probs = state.last_probabilities
@@ -53,6 +54,7 @@ def clean_app_state(tmp_path):
     store = PersistentStateStore(str(test_db))
     state.store = store
     state.server = None
+    state.model_trained = False
     state.last_scan = None
     state.last_heatmap = None
     state.last_probabilities = []
@@ -65,6 +67,7 @@ def clean_app_state(tmp_path):
     finally:
         state.store = original_store
         state.server = original_server
+        state.model_trained = original_model_trained
         state.last_scan = original_last_scan
         state.last_heatmap = original_last_heatmap
         state.last_probabilities = original_last_probs
@@ -85,6 +88,7 @@ def test_cdss_diagnostic_inference_and_audit_data_lineage():
     # 1. Set up a genuine trained server model
     server = CentralServer(model_type="vit_tiny", num_classes=3, img_size=224, patch_size=16, device=torch.device("cpu"))
     state.server = server
+    state.model_trained = True
     state.active_model_name = "vit_tiny"
     state.image_size = 224
 
@@ -144,6 +148,7 @@ def test_federated_rag_case_retrieval_lineage():
     # 1. Set up server and model
     server = CentralServer(model_type="vit_tiny", num_classes=3, img_size=224, patch_size=16, device=torch.device("cpu"))
     state.server = server
+    state.model_trained = True
     state.image_size = 224
 
     # 2. Stage reference cohort cases with biopsy verification

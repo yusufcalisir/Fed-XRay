@@ -1055,19 +1055,15 @@ async def get_state():
     if state.reference_records:
         active_labels = get_dataset_label_map(state.data_source)
         for r in state.reference_records[:2]:
-            rec_id = r.patient_id if hasattr(r, "patient_id") else r.get("patient_id", r.get("case_id", "REF_001"))
-            rec_label = r.label if hasattr(r, "label") else r.get("label", 0)
-            rec_notes = r.clinical_notes if hasattr(r, "clinical_notes") else r.get("clinical_notes", "")
-            rec_site_id = r.site_id if hasattr(r, "site_id") else r.get("site_id", "")
             reference_cases.append({
-                "case_id": rec_id,
-                "diagnosis": active_labels.get(rec_label, f"Class {rec_label}"),
+                "case_id": r.patient_id,
+                "diagnosis": active_labels.get(r.label, f"Class {r.label}"),
                 "similarity": 0.0,
-                "clinical_notes": rec_notes,
-                "site_id": rec_site_id,
-                "biopsy_confirmed": getattr(r, "biopsy_confirmed", r.get("biopsy_confirmed", True) if isinstance(r, dict) else True),
-                "anatomical_site": getattr(r, "anatomical_site", r.get("anatomical_site", "Thorax / Cutaneous") if isinstance(r, dict) else "Thorax / Cutaneous"),
-                "provenance": getattr(r, "provenance", r.get("provenance", "isic_archive_v2_real_clinical") if isinstance(r, dict) else "isic_archive_v2_real_clinical"),
+                "clinical_notes": r.clinical_notes,
+                "site_id": r.site_id,
+                "biopsy_confirmed": getattr(r, "biopsy_confirmed", True),
+                "anatomical_site": getattr(r, "anatomical_site", "Thorax / Cutaneous"),
+                "provenance": getattr(r, "provenance", "isic_archive_v2_real_clinical"),
             })
     else:
         reference_cases = get_default_reference_cases()
