@@ -2572,6 +2572,7 @@ async def perform_diagnosis(req: DiagnoseRequest):
             "provenance": provenance,
             "anatomical_site": anatomical_site,
             "biopsy_confirmed": biopsy_confirmed,
+            "modality": modality,
         })
     except Exception as db_exc:
         logger.warning("Failed to record diagnostic audit in SQLite: %s", db_exc)

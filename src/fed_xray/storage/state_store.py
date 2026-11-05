@@ -104,6 +104,7 @@ class PersistentStateStore:
                 anatomical_site TEXT,
                 raw_image_json TEXT,
                 heatmap_json TEXT,
+                modality TEXT,
                 created_at TEXT NOT NULL
             );
 
@@ -123,6 +124,12 @@ class PersistentStateStore:
             CREATE INDEX IF NOT EXISTS idx_diagnostic_audits_patient ON diagnostic_audits(patient_id);
             CREATE INDEX IF NOT EXISTS idx_checkpoints_created ON model_checkpoints(created_at);
             """)
+
+            # Ensure modality column exists in diagnostic_audits if table was pre-existing
+            try:
+                conn.execute("ALTER TABLE diagnostic_audits ADD COLUMN modality TEXT")
+            except sqlite3.OperationalError:
+                pass
         logger.info("Persistent state database initialized at %s", self.db_path)
 
     def save_system_state(self, state_dict: Dict[str, Any]) -> None:
@@ -364,14 +371,18 @@ class PersistentStateStore:
         if site_str == "" or (site_str and site_str.lower() in ("none", "null")):
             site_str = None
 
+        modality = audit.get("modality")
+        modality_str = str(modality).strip() if modality is not None else "Radiology (X-Ray)"
+
         with self._connection() as conn:
             cursor = conn.execute(
                 """
                 INSERT INTO diagnostic_audits (
                     patient_id, predicted_class, predicted_name, true_class, true_name,
                     confidence, probabilities_json, findings, image_source, provenance,
-                    biopsy_confirmed, anatomical_site, raw_image_json, heatmap_json, created_at
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    biopsy_confirmed, anatomical_site, raw_image_json, heatmap_json,
+                    modality, created_at
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
                 (
                     str(audit.get("patient_id", "PAT_UNKNOWN")),
@@ -388,6 +399,7 @@ class PersistentStateStore:
                     site_str,
                     raw_json,
                     heatmap_json,
+                    modality_str,
                     now,
                 ),
             )
@@ -400,7 +412,8 @@ class PersistentStateStore:
                 """
                 SELECT id, patient_id, predicted_class, predicted_name, true_class, true_name,
                        confidence, probabilities_json, findings, image_source, provenance,
-                       biopsy_confirmed, anatomical_site, raw_image_json, heatmap_json, created_at
+                       biopsy_confirmed, anatomical_site, raw_image_json, heatmap_json,
+                       modality, created_at
                 FROM diagnostic_audits
                 ORDER BY id DESC
                 LIMIT 1
@@ -427,6 +440,7 @@ class PersistentStateStore:
             "anatomical_site": row["anatomical_site"],
             "raw_image": json.loads(row["raw_image_json"]) if row["raw_image_json"] else None,
             "heatmap": json.loads(row["heatmap_json"]) if row["heatmap_json"] else None,
+            "modality": row["modality"] if ("modality" in row.keys() and row["modality"]) else "Radiology (X-Ray)",
             "created_at": row["created_at"],
         }
 
@@ -437,7 +451,7 @@ class PersistentStateStore:
                 """
                 SELECT id, patient_id, predicted_class, predicted_name, true_class, true_name,
                        confidence, findings, image_source, provenance, biopsy_confirmed,
-                       anatomical_site, created_at
+                       anatomical_site, modality, created_at
                 FROM diagnostic_audits
                 ORDER BY id DESC
                 LIMIT ?
@@ -461,6 +475,7 @@ class PersistentStateStore:
                 "provenance": r["provenance"],
                 "biopsy_confirmed": bool(r["biopsy_confirmed"]) if r["biopsy_confirmed"] is not None else None,
                 "anatomical_site": r["anatomical_site"],
+                "modality": r["modality"] if ("modality" in r.keys() and r["modality"]) else "Radiology (X-Ray)",
                 "created_at": r["created_at"],
             })
         return result
