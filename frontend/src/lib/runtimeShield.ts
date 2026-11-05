@@ -36,6 +36,9 @@ const EXTENSION_FILE_PATTERNS = [
 
 const EXTENSION_MESSAGE_PATTERNS = [
   "could not establish connection",
+  "receiving end does not exist",
+  "unchecked runtime.lasterror",
+  "runtime.lasterror",
   "the message port closed before a response was received",
   "cannot read properties of undefined (reading 'usecache')",
   "cannot read properties of null (reading 'usecache')",
@@ -153,6 +156,15 @@ export function installRuntimeShield(): () => void {
   }
 
   telemetryState.isShieldActive = true;
+
+  // Defensive check on chrome.runtime.lastError to clear Chromium unhandled error flag
+  try {
+    if (typeof (window as any).chrome?.runtime !== "undefined") {
+      const _ = (window as any).chrome.runtime.lastError;
+    }
+  } catch {
+    // Ignore restricted access
+  }
 
   const recordBlockedEvent = (matchedPattern: string) => {
     telemetryState.blockedCount += 1;
