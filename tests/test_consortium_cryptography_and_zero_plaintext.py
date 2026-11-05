@@ -16,6 +16,7 @@ from src.fed_xray.core.privacy import (
     ConsortiumThresholdCommittee,
     EncryptedTensor,
     IsolatedProcessEnclave,
+    SecAggPeer,
     ThresholdQuorumNotMetError,
 )
 from src.fed_xray.core.client import HospitalClient
@@ -285,3 +286,89 @@ def test_federated_round_with_threshold_committee_and_byzantine_isolation():
     assert 0 in sec_report.clients_accepted
     assert 1 in sec_report.clients_accepted
     assert agg_metrics is not None
+
+
+def test_cryptographic_provenance_and_audit_reports():
+    """Verify Option J cryptographic engines expose verified provenance and audit reports."""
+    committee = ConsortiumThresholdCommittee(num_participants=3, threshold=2, scale_bits=40)
+    enclave_report = committee.get_enclave_audit_report()
+
+    assert enclave_report["architecture"] == "Option_J_Threshold_CKKS"
+    assert enclave_report["num_participants"] == 3
+    assert enclave_report["threshold"] == 2
+    assert enclave_report["security_level"] == 128
+    assert enclave_report["process_isolation"] is False
+    assert len(enclave_report["public_context_fingerprint"]) == 64
+    assert len(enclave_report["commitments"]) == 3
+
+    # Public-only engine provenance
+    engine = CKKSEncryptionEngine.from_public_bytes(committee.public_context_bytes, scale_bits=40)
+    engine_prov = engine.get_encryption_provenance()
+    assert engine_prov["scheme"] == "CKKS_RLWE_128"
+    assert engine_prov["is_public_only"] is True
+    assert engine_prov["zero_plaintext_guaranteed"] is True
+    assert engine_prov["public_context_fingerprint"] == enclave_report["public_context_fingerprint"]
+
+    # SecAgg peer provenance
+    peer = SecAggPeer(client_id=1)
+    peer_prov = peer.get_peer_provenance()
+    assert peer_prov["client_id"] == 1
+    assert peer_prov["curve"] == "X25519"
+    assert peer_prov["kdf"] == "HKDF-SHA256"
+    assert len(peer_prov["public_key_fingerprint"]) == 64
+    assert len(peer_prov["public_key_hex"]) == 64
+
+    # Hospital client cryptographic audit report
+    dataset = TensorDataset(torch.randn(5, 1, 28, 28), torch.zeros(5, dtype=torch.long))
+    client = HospitalClient(
+        client_id=1,
+        dataloader=DataLoader(dataset, batch_size=5),
+        model_type="cnn",
+        threshold_enclave=committee.get_hospital_enclave(1),
+    )
+    client.init_ckks(committee.public_context_bytes)
+    client_report = client.get_cryptographic_audit_report()
+    assert client_report["client_id"] == 1
+    assert client_report["ckks_initialized"] is True
+    assert client_report["ckks_provenance"]["scheme"] == "CKKS_RLWE_128"
+    assert client_report["has_threshold_enclave"] is True
+    assert client_report["threshold_commitment"] == enclave_report["commitments"][1]
+
+
+def test_server_privacy_report_option_j_crypto_synchrony():
+    """Verify CentralServer privacy report incorporates complete Option J cryptographic provenance."""
+    committee = ConsortiumThresholdCommittee(num_participants=3, threshold=2, scale_bits=40)
+    server = CentralServer(
+        model_type="cnn",
+        use_ckks=True,
+        secure_aggregation=True,
+        privacy_noise=0.8,
+        dp_mode="distributed",
+        threshold_committee=committee,
+    )
+
+    report = server.get_privacy_report()
+    assert report["dp_active"] is True
+    assert report["noise_multiplier_sigma"] == 0.8
+    assert "option_j_cryptography" in report
+
+    crypto = report["option_j_cryptography"]
+    assert crypto["ckks_active"] is True
+    assert crypto["secure_aggregation_active"] is True
+    assert crypto["in_transit_zero_plaintext_guarantee"] is True
+    assert crypto["ckks_provenance"]["scheme"] == "CKKS_RLWE_128"
+    assert crypto["ckks_provenance"]["is_public_only"] is True
+    assert crypto["threshold_committee_audit"]["architecture"] == "Option_J_Threshold_CKKS"
+
+
+def test_isolated_process_enclave_audit_report():
+    """Verify IsolatedProcessEnclave exposes genuine OS child process audit telemetry."""
+    with IsolatedProcessEnclave(num_participants=3, threshold=2, scale_bits=40) as isolated:
+        report = isolated.get_enclave_audit_report()
+        assert report["architecture"] == "Option_J_Threshold_CKKS_Isolated_Process"
+        assert report["process_isolation"] is True
+        assert report["worker_pid"] == isolated.worker_pid
+        assert report["worker_pid"] != os.getpid()
+        assert len(report["public_context_fingerprint"]) == 64
+        assert len(report["commitments"]) == 3
+

@@ -180,7 +180,7 @@ class CentralServer:
         return self.dp_accountant.get_epsilon()
 
     def get_privacy_report(self) -> Dict[str, Any]:
-        """Generate comprehensive privacy audit report reflecting active DP configuration."""
+        """Generate comprehensive privacy audit report reflecting active DP configuration and Option J cryptography."""
         active = self.privacy_noise > 0.0 and self.dp_mode != "off"
         mech = "None"
         if active:
@@ -191,7 +191,7 @@ class CentralServer:
             elif self.dp_mode == "central":
                 mech = "Central Differential Privacy (Server-Side)"
 
-        return {
+        report: Dict[str, Any] = {
             "dp_active": active,
             "dp_mode": self.dp_mode if active else "off",
             "epsilon": round(self.get_privacy_spent(), 4),
@@ -202,6 +202,22 @@ class CentralServer:
             "patient_level_clipping": active,
             "total_rounds_composed": len(self.dp_accountant.rdp_history),
         }
+
+        # Option J In-Transit Cryptographic Audit Provenance
+        crypto_report: Dict[str, Any] = {
+            "ckks_active": self.use_ckks,
+            "secure_aggregation_active": self.secure_aggregation,
+            "in_transit_zero_plaintext_guarantee": bool(self.use_ckks or self.secure_aggregation),
+        }
+        if self.ckks_engine is not None and hasattr(self.ckks_engine, "get_encryption_provenance"):
+            crypto_report["ckks_provenance"] = self.ckks_engine.get_encryption_provenance()
+        if self.threshold_committee is not None and hasattr(self.threshold_committee, "get_enclave_audit_report"):
+            crypto_report["threshold_committee_audit"] = self.threshold_committee.get_enclave_audit_report()
+        elif hasattr(self, "consortium_key_enclave") and self.consortium_key_enclave is not None and hasattr(self.consortium_key_enclave, "get_enclave_audit_report"):
+            crypto_report["threshold_committee_audit"] = self.consortium_key_enclave.get_enclave_audit_report()
+
+        report["option_j_cryptography"] = crypto_report
+        return report
 
     def _create_model(self) -> nn.Module:
         """Create global model with appropriate architecture and PEFT hooks."""

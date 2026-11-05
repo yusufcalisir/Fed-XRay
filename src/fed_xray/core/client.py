@@ -336,6 +336,22 @@ class HospitalClient:
             raise RuntimeError(f"Client {self.client_id} does not possess a threshold enclave.")
         return self.threshold_enclave.sign_partial_decryption_authorization(round_num, ciphertext_digest)
 
+    def get_cryptographic_audit_report(self) -> Dict[str, Any]:
+        """Generate audit report of client-side cryptographic enclaves and key commitments."""
+        report: Dict[str, Any] = {
+            "client_id": self.client_id,
+            "secagg_peer": self.secagg_peer.get_peer_provenance(),
+            "ckks_initialized": self.ckks_engine is not None,
+            "ckks_provenance": self.ckks_engine.get_encryption_provenance() if self.ckks_engine is not None else None,
+            "has_threshold_enclave": self.threshold_enclave is not None,
+            "threshold_commitment": (
+                getattr(self.threshold_enclave.share, "commitment", None)
+                if self.threshold_enclave is not None
+                else None
+            ),
+        }
+        return report
+
     def evaluate_local_model(
         self,
         test_images: torch.Tensor,

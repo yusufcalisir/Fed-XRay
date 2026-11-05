@@ -237,6 +237,13 @@ class FlowerFedXRayStrategy(Strategy):
         self.last_blocked_nodes: List[int] = []
         self.last_security_report: Optional[Any] = None
 
+        if self.use_ckks or self.secure_aggregation:
+            priv_report = self.central_server.get_privacy_report()
+            logger.info(
+                "[CRYPTO AUDIT] Flower Fed-XRay Strategy initialized with Option J In-Transit Privacy: %s",
+                priv_report.get("option_j_cryptography", {}),
+            )
+
         init_weights = self.central_server.get_global_weights()
         self.arrays, self.param_keys = state_dict_to_flower_parameters(init_weights)
 
@@ -605,6 +612,7 @@ def run_flower_federated_orchestration(
         "round_history": round_history,
         "final_metrics": round_history[-1] if round_history else {},
         "privacy_epsilon": float(server.get_privacy_spent()),
+        "option_j_cryptography": server.get_privacy_report().get("option_j_cryptography", {}),
     }
 
 

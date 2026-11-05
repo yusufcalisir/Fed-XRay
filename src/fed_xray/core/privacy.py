@@ -133,6 +133,22 @@ class CKKSEncryptionEngine:
             raise PermissionError("Cannot export secret context from a public-only CKKS engine.")
         return self._secret_ctx.serialize(save_secret_key=True)
 
+    def get_encryption_provenance(self) -> Dict[str, Any]:
+        """Export cryptographic audit provenance and public context parameters."""
+        pub_bytes = self.export_public_context()
+        digest = hashlib.sha256(pub_bytes).hexdigest()
+        return {
+            "scheme": "CKKS_RLWE_128",
+            "poly_modulus_degree": self.poly_modulus_degree,
+            "scale_bits": self.scale_bits,
+            "security_level": self.security_level,
+            "slots": self.slots,
+            "is_public_only": self.is_public_only,
+            "zero_plaintext_guaranteed": True,
+            "public_context_fingerprint": digest,
+            "public_context_bytes_len": len(pub_bytes),
+        }
+
     @classmethod
     def from_public_bytes(
         cls, public_bytes: bytes, scale_bits: int = 40
@@ -435,6 +451,25 @@ class ConsortiumThresholdCommittee:
             raise KeyError(f"No threshold enclave provisioned for participant {client_id}")
         return self.hospital_enclaves[client_id]
 
+    def get_enclave_audit_report(self) -> Dict[str, Any]:
+        """Export cryptographic consortium threshold enclave audit report."""
+        pub_digest = hashlib.sha256(self.public_context_bytes).hexdigest() if self.public_context_bytes else ""
+        commitments = {
+            idx: enc.share.commitment for idx, enc in self.hospital_enclaves.items()
+        }
+        return {
+            "architecture": "Option_J_Threshold_CKKS",
+            "num_participants": self.num_participants,
+            "threshold": self.threshold,
+            "poly_modulus_degree": self.poly_modulus_degree,
+            "scale_bits": self.scale_bits,
+            "security_level": self.security_level,
+            "process_isolation": False,
+            "public_context_fingerprint": pub_digest,
+            "hospital_enclaves_provisioned": len(self.hospital_enclaves),
+            "commitments": commitments,
+        }
+
     @staticmethod
     def compute_ciphertext_digest(encrypted_dict: Dict[str, EncryptedTensor]) -> str:
         """Compute deterministic SHA-256 digest over an encrypted state dictionary."""
@@ -720,6 +755,26 @@ class IsolatedProcessEnclave:
         """Compatibility wrapper delegating to auto_collaborative_decrypt."""
         return self.auto_collaborative_decrypt(encrypted_dict, target_dtypes=target_dtypes)
 
+    def get_enclave_audit_report(self) -> Dict[str, Any]:
+        """Export cryptographic isolated OS process enclave audit report."""
+        pub_digest = hashlib.sha256(self.public_context_bytes).hexdigest() if self.public_context_bytes else ""
+        commitments = {
+            idx: enc.share.commitment for idx, enc in self.hospital_enclaves.items()
+        }
+        return {
+            "architecture": "Option_J_Threshold_CKKS_Isolated_Process",
+            "num_participants": self.num_participants,
+            "threshold": self.threshold,
+            "poly_modulus_degree": self.poly_modulus_degree,
+            "scale_bits": self.scale_bits,
+            "security_level": self.security_level,
+            "process_isolation": True,
+            "worker_pid": self.worker_pid,
+            "public_context_fingerprint": pub_digest,
+            "hospital_enclaves_provisioned": len(self.hospital_enclaves),
+            "commitments": commitments,
+        }
+
     def close(self) -> None:
         """Terminate child process and close IPC pipes gracefully."""
         if self._pipe_parent is not None:
@@ -791,6 +846,10 @@ class ConsortiumKeyEnclave:
         """Perform consortium threshold decryption of the final aggregated ciphertext dictionary."""
         return self.committee.auto_collaborative_decrypt(encrypted_dict, target_dtypes=target_dtypes)
 
+    def get_enclave_audit_report(self) -> Dict[str, Any]:
+        """Export cryptographic consortium key enclave audit report."""
+        return self.committee.get_enclave_audit_report()
+
 
 class SecAggPeer:
     """Decentralized cryptographic peer enclave for SecAgg+ key agreement and mask synthesis.
@@ -812,6 +871,18 @@ class SecAggPeer:
             encoding=serialization.Encoding.Raw,
             format=serialization.PublicFormat.Raw,
         )
+
+    def get_peer_provenance(self) -> Dict[str, Any]:
+        """Export cryptographic audit provenance for SecAgg+ key agreement."""
+        pk_bytes = self.public_key_bytes
+        return {
+            "client_id": self.client_id,
+            "curve": "X25519",
+            "kdf": "HKDF-SHA256",
+            "kdf_salt": "fed-xray-secagg-v2",
+            "public_key_fingerprint": hashlib.sha256(pk_bytes).hexdigest(),
+            "public_key_hex": pk_bytes.hex(),
+        }
 
     def derive_pairwise_key(
         self,

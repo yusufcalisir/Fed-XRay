@@ -22,6 +22,7 @@ import torch  # noqa: E402
 from torch.utils.data import DataLoader  # noqa: E402
 
 from src.fed_xray.core.client import HospitalClient  # noqa: E402
+from src.fed_xray.core.privacy import ConsortiumThresholdCommittee  # noqa: E402
 from src.fed_xray.core.server import CentralServer  # noqa: E402
 from src.fed_xray.data.real_world import (  # noqa: E402
     RealWorldPatientRecord,
@@ -298,6 +299,14 @@ def main(raw_args: Optional[List[str]] = None) -> int:
         num_classes = max(3, int(test_labels.max().item()) + 1)
 
     if args.mode == "orchestrate":
+        committee: Optional[ConsortiumThresholdCommittee] = None
+        if args.use_ckks:
+            committee = ConsortiumThresholdCommittee(
+                num_participants=args.num_clients,
+                threshold=max(2, (args.num_clients // 2) + 1),
+                scale_bits=40,
+            )
+
         server = CentralServer(
             model_type=args.model_type,
             peft_mode=peft_mode,
@@ -309,6 +318,7 @@ def main(raw_args: Optional[List[str]] = None) -> int:
             dp_clipping_bound=args.dp_clipping_bound,
             img_size=img_size,
             num_classes=num_classes,
+            threshold_committee=committee,
         )
 
         clients = [
@@ -323,9 +333,14 @@ def main(raw_args: Optional[List[str]] = None) -> int:
                 dp_mode=args.dp_mode,
                 img_size=img_size,
                 num_classes=num_classes,
+                threshold_enclave=committee.get_hospital_enclave(i) if committee is not None else None,
             )
             for i in range(args.num_clients)
         ]
+
+        if committee is not None and committee.public_context_bytes is not None:
+            for c in clients:
+                c.init_ckks(committee.public_context_bytes)
 
         def on_round(rnd: int, info: Dict):
             logger.info(
@@ -355,6 +370,13 @@ def main(raw_args: Optional[List[str]] = None) -> int:
         return 0
 
     elif args.mode == "server":
+        committee = None
+        if args.use_ckks:
+            committee = ConsortiumThresholdCommittee(
+                num_participants=args.num_clients,
+                threshold=max(2, (args.num_clients // 2) + 1),
+                scale_bits=40,
+            )
         server = CentralServer(
             model_type=args.model_type,
             peft_mode=peft_mode,
@@ -366,6 +388,7 @@ def main(raw_args: Optional[List[str]] = None) -> int:
             dp_clipping_bound=args.dp_clipping_bound,
             img_size=img_size,
             num_classes=num_classes,
+            threshold_committee=committee,
         )
         start_flower_server(
             central_server=server,
