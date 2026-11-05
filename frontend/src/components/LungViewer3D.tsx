@@ -1,10 +1,15 @@
 "use client";
 
 import React, { Component, ReactNode, Suspense, useEffect, useRef, useState } from "react";
+import dynamic from "next/dynamic";
+import { AlertCircle, RefreshCw } from "lucide-react";
 import { useLanguage } from "@/context/LanguageContext";
 import type { LungViewMode } from "@/lib/scanTexture";
 
-const LungScene = React.lazy(() => import("./LungScene"));
+const LungScene = dynamic(() => import("./LungScene"), {
+  ssr: false,
+  loading: () => null,
+});
 
 export interface LungViewer3DProps {
   rawImage?: number[][] | null;
@@ -27,13 +32,33 @@ function detectWebGL(): boolean {
   }
 }
 
-class SceneBoundary extends Component<{ fallback: ReactNode; children: ReactNode }, { failed: boolean }> {
-  state = { failed: false };
-  static getDerivedStateFromError() {
-    return { failed: true };
+interface SceneBoundaryProps {
+  fallback: (error: Error | null, reset: () => void) => ReactNode;
+  children: ReactNode;
+}
+
+interface SceneBoundaryState {
+  failed: boolean;
+  error: Error | null;
+}
+
+class SceneBoundary extends Component<SceneBoundaryProps, SceneBoundaryState> {
+  state: SceneBoundaryState = { failed: false, error: null };
+
+  static getDerivedStateFromError(error: Error): SceneBoundaryState {
+    return { failed: true, error };
   }
+
+  componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
+    console.error("[LungViewer3D SceneBoundary Caught]", error, errorInfo);
+  }
+
+  reset = () => {
+    this.setState({ failed: false, error: null });
+  };
+
   render() {
-    return this.state.failed ? this.props.fallback : this.props.children;
+    return this.state.failed ? this.props.fallback(this.state.error, this.reset) : this.props.children;
   }
 }
 
@@ -70,7 +95,24 @@ export default function LungViewer3D({
       {webgl === null && message(t("lung3d_loading"))}
       {webgl === false && message(t("lung3d_webgl_error"))}
       {webgl && (
-        <SceneBoundary fallback={message(t("lung3d_webgl_error"))}>
+        <SceneBoundary
+          fallback={(_error, reset) => (
+            <div className="flex h-full w-full flex-col items-center justify-center p-6 text-center text-xs text-[var(--text-muted)] gap-2">
+              <AlertCircle className="w-5 h-5 text-amber-500 mb-0.5" />
+              <p className="max-w-xs text-[11px] leading-relaxed">
+                {t("lung3d_render_error")}
+              </p>
+              <button
+                type="button"
+                onClick={reset}
+                className="mt-1 inline-flex items-center gap-1.5 px-3 py-1 rounded-lg border border-[var(--border-card)] bg-[var(--bg-card)] text-[11px] font-semibold text-[var(--text-heading)] hover:bg-[var(--bg-card-inner)] transition-colors shadow-xs"
+              >
+                <RefreshCw className="w-3.5 h-3.5" />
+                <span>{t("lung3d_retry")}</span>
+              </button>
+            </div>
+          )}
+        >
           <Suspense fallback={message(t("lung3d_loading"))}>
             <LungScene
               containerRef={containerRef}

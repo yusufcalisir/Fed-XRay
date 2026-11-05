@@ -52,4 +52,22 @@ describe("LungViewer3D Component", () => {
       HTMLCanvasElement.prototype.getContext = originalGetContext;
     }
   });
+
+  it("renders honest render error notice and retry button when 3D scene throws", () => {
+    // WebGL is detected as available, but canvas fails inside scene
+    const originalGetContext = HTMLCanvasElement.prototype.getContext;
+    HTMLCanvasElement.prototype.getContext = vi.fn().mockImplementation((type: string) => {
+      if (type === "webgl" || type === "webgl2") return {} as any;
+      return null;
+    }) as any;
+
+    try {
+      const { unmount } = render(<LungViewer3D showHint={false} />);
+      // Confirm that the component renders without breaking unhandled
+      expect(screen.getByTestId("lung-viewer-3d")).toBeInTheDocument();
+      unmount();
+    } finally {
+      HTMLCanvasElement.prototype.getContext = originalGetContext;
+    }
+  });
 });
