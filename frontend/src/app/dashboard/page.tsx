@@ -82,8 +82,13 @@ export default function DashboardPage() {
     let isCancelled = false;
 
     const syncState = async () => {
-      const candidates = [apiUrl, "", "http://127.0.0.1:8000", "http://localhost:8000"]
-        .filter((c, idx, arr) => arr.indexOf(c) === idx);
+      const candidates = [
+        apiUrl,
+        "",
+        "http://127.0.0.1:8000",
+        "http://localhost:8000",
+        "https://fed-xray-api.onrender.com",
+      ].filter((c, idx, arr) => Boolean(c !== undefined && c !== null) && arr.indexOf(c) === idx);
 
       let fetchedData: any = null;
       let workingBase = apiUrl;
@@ -92,7 +97,10 @@ export default function DashboardPage() {
         try {
           const cleanUrl = cand.replace(/\/+$/, "");
           const endpoint = cleanUrl ? `${cleanUrl}/api/state` : "/api/state";
-          const res = await fetch(endpoint, { cache: "no-store" });
+          const controller = new AbortController();
+          const timer = setTimeout(() => controller.abort(), 2000);
+          const res = await fetch(endpoint, { signal: controller.signal, cache: "no-store" });
+          clearTimeout(timer);
           if (res.ok) {
             fetchedData = await res.json();
             workingBase = cand;

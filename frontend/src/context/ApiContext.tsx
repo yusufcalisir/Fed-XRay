@@ -199,49 +199,45 @@ export function ApiProvider({ children }: { children: React.ReactNode }) {
       ...(envUrlClean && !deadTunnelsRef.current.has(envUrlClean) && !isEphemeralTunnel(envUrlClean) && (!isHttps || envUrlClean.startsWith("https://")) ? [envUrlClean] : []),
       ...(saved && !deadTunnelsRef.current.has(saved) && !isEphemeralTunnel(saved) && (!isHttps || saved.startsWith("https://")) ? [saved] : []),
       ...candidates,
+      "https://fed-xray-api.onrender.com",
     ];
     const prioritized = Array.from(new Set(candidateList.filter((c) => typeof c === "string")));
+    const viable = prioritized.filter((c) => !deadTunnelsRef.current.has(c));
 
-    for (const cand of prioritized) {
-      if (deadTunnelsRef.current.has(cand)) continue;
-      const ok = await pingEndpoint(cand, 1200);
-      if (ok) {
-        setApiUrlState(cand);
-        setIsTunnelExpired(false);
-        if (typeof window !== "undefined") {
-          try {
-            localStorage.setItem("fedxray_api_url", cand);
-          } catch {
-            // Ignore storage quota or access errors
-          }
-        }
-        setIsConnected(true);
-        setIsChecking(false);
-        setLastError(null);
-        setReconnectAttempts(0);
-        return cand;
-      } else {
-        // If an ephemeral tunnel domain failed, blacklist it and prune from localStorage
-        if (isEphemeralTunnel(cand)) {
-          deadTunnelsRef.current.add(cand);
-          setIsTunnelExpired(true);
-          if (typeof window !== "undefined") {
-            try {
-              localStorage.removeItem("fedxray_api_url");
-            } catch {
-              // Ignore storage error
-            }
-          }
+    // Fast parallel probe across viable candidate endpoints
+    const probeCandidate = async (cand: string): Promise<string> => {
+      const isCloud = cand.includes("onrender.com");
+      const isLocal = cand.includes("127.0.0.1") || cand.includes("localhost");
+      const timeoutMs = isCloud ? 2500 : isLocal ? 1000 : 1800;
+      const ok = await pingEndpoint(cand, timeoutMs);
+      if (ok) return cand;
+      throw new Error(`Endpoint ${cand} unreachable`);
+    };
+
+    try {
+      const winner = await Promise.any(viable.map(probeCandidate));
+      setApiUrlState(winner);
+      setIsTunnelExpired(false);
+      if (typeof window !== "undefined") {
+        try {
+          localStorage.setItem("fedxray_api_url", winner);
+        } catch {
+          // Ignore storage quota or access errors
         }
       }
+      setIsConnected(true);
+      setIsChecking(false);
+      setLastError(null);
+      setReconnectAttempts(0);
+      return winner;
+    } catch {
+      // Crucial fallback: preserve relative route on HTTPS to avoid Mixed Content errors
+      setApiUrlState(isHttps ? "" : "http://127.0.0.1:8000");
+      setIsConnected(false);
+      setIsChecking(false);
+      setLastError("Unable to reach FastAPI backend on candidate ports");
+      return null;
     }
-
-    // Crucial fallback: preserve relative route on HTTPS to avoid Mixed Content errors
-    setApiUrlState(isHttps ? "" : "http://127.0.0.1:8000");
-    setIsConnected(false);
-    setIsChecking(false);
-    setLastError("Unable to reach FastAPI backend on candidate ports");
-    return null;
   }, [getCandidateUrls]);
 
   // Set URL manually (e.g. from UI modal)

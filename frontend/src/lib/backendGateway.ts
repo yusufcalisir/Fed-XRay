@@ -25,10 +25,23 @@ export function resolveUpstreamBackendUrl(): string {
     )
   );
 
+  const isLoopback = Boolean(
+    envUrl && (
+      envUrl.includes("127.0.0.1") ||
+      envUrl.includes("localhost") ||
+      envUrl.includes("0.0.0.0")
+    )
+  );
+
   const defaultBackend =
     process.env.NODE_ENV === "production"
       ? "https://fed-xray-api.onrender.com"
       : "http://127.0.0.1:8000";
+
+  // In production cloud deployments (e.g. Vercel), server cannot reach client loopback
+  if (process.env.NODE_ENV === "production" && isLoopback) {
+    return defaultBackend;
+  }
 
   return isDead || !envUrl ? defaultBackend : envUrl;
 }

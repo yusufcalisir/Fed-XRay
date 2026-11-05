@@ -41,6 +41,7 @@ export default function ConsortiumLaunchOverlay({
   const [privacySummary, setPrivacySummary] = useState<string | null>(null);
   const [showUrlEditor, setShowUrlEditor] = useState(false);
   const [customUrlInput, setCustomUrlInput] = useState("");
+  const hasTriggeredRef = React.useRef(false);
 
   const runHandshake = useCallback(async (manualUrl?: string) => {
     if (!isOpen) return;
@@ -49,12 +50,14 @@ export default function ConsortiumLaunchOverlay({
     setProgress(15);
     setActiveStage(0);
 
+    const isHttps = typeof window !== "undefined" && window.location?.protocol === "https:";
+
     const candidates = [
       manualUrl,
       apiUrl,
-      "http://127.0.0.1:8000",
-      "http://localhost:8000",
       "",
+      ...(!isHttps ? ["http://127.0.0.1:8000", "http://localhost:8000"] : []),
+      "https://fed-xray-api.onrender.com",
     ].filter((u): u is string => typeof u === "string");
 
     let effectiveBase = (manualUrl || apiUrl || "").trim().replace(/\/+$/, "");
@@ -67,8 +70,11 @@ export default function ConsortiumLaunchOverlay({
       const probe = async (cand: string) => {
         const clean = cand.trim().replace(/\/+$/, "");
         const testUrl = clean ? `${clean}/api/health` : "/api/health";
+        const isCloud = clean.includes("onrender.com");
+        const isLocal = clean.includes("127.0.0.1") || clean.includes("localhost");
+        const timeoutMs = isCloud ? 2500 : isLocal ? 1000 : 1800;
         const controller = new AbortController();
-        const tId = setTimeout(() => controller.abort(), 1000);
+        const tId = setTimeout(() => controller.abort(), timeoutMs);
         try {
           const res = await fetch(testUrl, { signal: controller.signal, cache: "no-store" });
           clearTimeout(tId);
@@ -81,7 +87,7 @@ export default function ConsortiumLaunchOverlay({
         } catch {
           clearTimeout(tId);
         }
-        throw new Error("unreachable");
+        throw new Error(`Endpoint ${clean || "/"} unreachable`);
       };
 
       try {
@@ -89,11 +95,11 @@ export default function ConsortiumLaunchOverlay({
         workingBase = winner.base;
         healthData = winner.data;
       } catch {
-        // Fallback to auto-discovery if direct candidates failed
+        // Fast fallback to auto-discovery
         const discovered = await autoDiscoverApi();
         if (discovered) {
           const cleanDisc = discovered.trim().replace(/\/+$/, "");
-          const res = await fetch(`${cleanDisc}/api/health`, { cache: "no-store" }).catch(() => null);
+          const res = await fetch(`${cleanDisc ? cleanDisc : ""}/api/health`, { cache: "no-store" }).catch(() => null);
           if (res && res.ok) {
             healthData = await res.json().catch(() => null);
             workingBase = cleanDisc;
@@ -103,7 +109,9 @@ export default function ConsortiumLaunchOverlay({
 
       if (workingBase !== null) {
         effectiveBase = workingBase;
-        setApiUrl(workingBase);
+        if (workingBase !== apiUrl) {
+          setApiUrl(workingBase);
+        }
       }
 
       if (!healthData || (healthData.status !== "healthy" && healthData.status !== "ok")) {
@@ -116,7 +124,7 @@ export default function ConsortiumLaunchOverlay({
       setActiveStage(1);
 
       // Step 2: Cryptographic Consortium Enclave Handshake (X25519 ECDH + CKKS + Patient DP)
-      const handshake = await fetchEnclaveHandshake(effectiveBase);
+      const handshake = await fetchEnclaveHandshake(effectiveBase, 4000);
       setAttestationData(handshake);
 
       try {
@@ -163,6 +171,7 @@ export default function ConsortiumLaunchOverlay({
 
   useEffect(() => {
     if (!isOpen) {
+      hasTriggeredRef.current = false;
       setProgress(0);
       setActiveStage(0);
       setError(null);
@@ -170,7 +179,10 @@ export default function ConsortiumLaunchOverlay({
       return;
     }
 
-    runHandshake();
+    if (!hasTriggeredRef.current) {
+      hasTriggeredRef.current = true;
+      runHandshake();
+    }
   }, [isOpen, runHandshake]);
 
   if (!isOpen) return null;
@@ -419,7 +431,7 @@ export default function ConsortiumLaunchOverlay({
             <div className="flex items-center gap-2 min-w-0 pr-2">
               <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse shrink-0" />
               <span className="font-semibold text-[var(--text-heading)] text-[11px] sm:text-xs truncate">
-                {activeStage === 0 && t("launch_fl_phase1")}
+                {activeStage === 0 && (isVerifying && progress === 15 ? (t("overlay_probing") || t("launch_fl_phase1")) : t("launch_fl_phase1"))}
                 {activeStage === 1 && t("launch_fl_phase2")}
                 {activeStage >= 2 && t("launch_fl_phase3")}
               </span>
@@ -486,6 +498,18 @@ export default function ConsortiumLaunchOverlay({
                     className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-md text-[11px] font-semibold bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 transition-colors disabled:opacity-50"
                   >
                     <span>{t("overlay_connect_localhost")}</span>
+                  </button>
+
+                  <button
+                    onClick={() => {
+                      const cloudUrl = "https://fed-xray-api.onrender.com";
+                      setApiUrl(cloudUrl);
+                      runHandshake(cloudUrl);
+                    }}
+                    disabled={isVerifying}
+                    className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-md text-[11px] font-semibold bg-emerald-700/80 hover:bg-emerald-600 text-white border border-emerald-600 transition-colors disabled:opacity-50"
+                  >
+                    <span>{t("overlay_connect_cloud")}</span>
                   </button>
 
                   <button

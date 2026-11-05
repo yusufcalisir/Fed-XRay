@@ -43,37 +43,74 @@ const DIAG_TO_CLASS: Record<string, number> = {
 };
 
 export async function fetchEnclaveHandshake(
-  baseUrl: string = "http://127.0.0.1:8000"
+  baseUrl: string = "http://127.0.0.1:8000",
+  timeoutMs: number = 5000
 ): Promise<EnclaveHandshakeResponse> {
-  const url = `${baseUrl.replace(/\/$/, "")}/api/fl/enclave-handshake`;
-  const res = await fetch(url, { cache: "no-store" });
-  if (!res.ok) {
-    throw new Error(`Enclave handshake failed with HTTP ${res.status}`);
+  const clean = (baseUrl || "").trim().replace(/\/+$/, "");
+  const url = clean ? `${clean}/api/fl/enclave-handshake` : "/api/fl/enclave-handshake";
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    const res = await fetch(url, { signal: controller.signal, cache: "no-store" });
+    clearTimeout(timer);
+    if (!res.ok) {
+      throw new Error(`Enclave handshake failed with HTTP ${res.status}`);
+    }
+    return await res.json();
+  } catch (err: any) {
+    clearTimeout(timer);
+    throw err;
   }
-  return await res.json();
 }
 
-export async function fetchSystemState(baseUrl: string = "http://127.0.0.1:8000"): Promise<BackendSystemState> {
-  const url = `${baseUrl.replace(/\/$/, "")}/api/state`;
-  const res = await fetch(url);
-  if (!res.ok) {
-    throw new Error(`Failed to fetch system state (HTTP ${res.status})`);
+export async function fetchSystemState(
+  baseUrl: string = "http://127.0.0.1:8000",
+  timeoutMs: number = 4000
+): Promise<BackendSystemState> {
+  const clean = (baseUrl || "").trim().replace(/\/+$/, "");
+  const url = clean ? `${clean}/api/state` : "/api/state";
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    const res = await fetch(url, { signal: controller.signal, cache: "no-store" });
+    clearTimeout(timer);
+    if (!res.ok) {
+      throw new Error(`Failed to fetch system state (HTTP ${res.status})`);
+    }
+    return await res.json();
+  } catch (err: any) {
+    clearTimeout(timer);
+    throw err;
   }
-  return await res.json();
 }
 
-export async function fetchHospitalCohorts(baseUrl: string, numHospitals: number = 4, samplesPerHospital: number = 200) {
-  const url = `${baseUrl.replace(/\/$/, "")}/api/cohorts/generate`;
-  const res = await fetch(url, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ num_hospitals: numHospitals, samples_per_hospital: samplesPerHospital }),
-  });
-  if (!res.ok) {
-    const body = await res.json().catch(() => null);
-    throw new Error(body?.detail || body?.error || `Failed to generate cohorts from backend (HTTP ${res.status})`);
+export async function fetchHospitalCohorts(
+  baseUrl: string,
+  numHospitals: number = 4,
+  samplesPerHospital: number = 200,
+  timeoutMs: number = 10000
+) {
+  const clean = (baseUrl || "").trim().replace(/\/+$/, "");
+  const url = clean ? `${clean}/api/cohorts/generate` : "/api/cohorts/generate";
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    const res = await fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ num_hospitals: numHospitals, samples_per_hospital: samplesPerHospital }),
+      signal: controller.signal,
+    });
+    clearTimeout(timer);
+    if (!res.ok) {
+      const body = await res.json().catch(() => null);
+      throw new Error(body?.detail || body?.error || `Failed to generate cohorts from backend (HTTP ${res.status})`);
+    }
+    return await res.json();
+  } catch (err: any) {
+    clearTimeout(timer);
+    throw err;
   }
-  return await res.json();
 }
 
 export async function fetchClinicalDiagnosis(

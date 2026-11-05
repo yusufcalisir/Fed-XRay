@@ -88,4 +88,18 @@ describe("ConsortiumLaunchOverlay Component", () => {
     expect(screen.getByText("128-bit RLWE CKKS Homomorphic Key Exchange Complete")).toBeInTheDocument();
     expect(screen.getByText("FFA-LoRA Parameter Subspace Synchronized")).toBeInTheDocument();
   });
+
+  it("renders honest error alert and cloud / standby buttons when enclave probe fails", async () => {
+    global.fetch = vi.fn().mockRejectedValue(new Error("Network failure on all candidate endpoints"));
+
+    render(
+      <ConsortiumLaunchOverlay isOpen={true} onClose={vi.fn()} />
+    );
+
+    const errorHeading = await screen.findByText("Enclave Verification Handshake Failed");
+    expect(errorHeading).toBeInTheDocument();
+    expect(screen.getByText("Proceed to Dashboard (Standby Mode)")).toBeInTheDocument();
+    expect(screen.getByText("Connect Cloud Backend (Render)")).toBeInTheDocument();
+    expect(screen.getByText("Connect Localhost (8000)")).toBeInTheDocument();
+  });
 });
