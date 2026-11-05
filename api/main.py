@@ -587,8 +587,8 @@ class AppState:
             # Persist to SQLite
             try:
                 self.store.save_hospital_cohorts([hi.model_dump() for hi in hospitals_info])
-            except Exception:
-                pass
+            except Exception as db_exc:
+                logger.warning("Failed to persist hospital cohorts to SQLite: %s", db_exc)
             import gc
             gc.collect()
             return True
@@ -801,8 +801,8 @@ def get_default_reference_cases() -> List[Dict[str, Any]]:
                         "provenance": r1.get("provenance", "isic_archive_v2_real_clinical"),
                     },
                 ]
-        except Exception:
-            pass
+        except Exception as exc:
+            logger.warning("Failed to parse reference cases from Strategy E manifest: %s", exc)
     return []
 
 
@@ -1828,8 +1828,9 @@ async def start_training_background(
             state.save_to_disk()
 
         except Exception as e:
+            logger.error("Federated training background task failed: %s", e, exc_info=True)
             state.task_error = str(e)
-            state.task_complete = True
+            state.task_complete = False
         finally:
             state.task_running = False
 
@@ -1844,7 +1845,7 @@ async def get_training_status(from_round: int = Query(default=0)):
     new_rounds = state.task_rounds[from_round:]
     return {
         "is_running": state.task_running,
-        "is_complete": state.task_complete,
+        "is_complete": state.task_complete and state.task_error is None,
         "current_round": state.task_current_round,
         "total_rounds": state.task_total_rounds,
         "error": state.task_error,
@@ -2118,7 +2119,7 @@ async def start_flower_training_background(
         except Exception as e:
             logger.error("Flower federated training failed: %s", e, exc_info=True)
             state.task_error = str(e)
-            state.task_complete = True
+            state.task_complete = False
         finally:
             state.task_running = False
 

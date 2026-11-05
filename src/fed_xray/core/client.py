@@ -10,6 +10,7 @@ Supports:
 
 from __future__ import annotations
 import copy
+import logging
 from typing import Any, Dict, List, Optional, Tuple
 import torch
 import torch.nn as nn
@@ -54,6 +55,8 @@ from .privacy import (
     HospitalThresholdEnclave,
     PatientLevelDPAccountant,
 )
+
+logger = logging.getLogger(__name__)
 
 
 class HospitalClient:
@@ -113,8 +116,9 @@ class HospitalClient:
             try:
                 first_batch = next(iter(dataloader))[0]
                 self.img_size = int(first_batch.shape[-1])
-            except Exception:
-                self.img_size = 28
+            except Exception as exc:
+                logger.warning("Could not infer img_size from dataloader (%s); defaulting to standard 224", exc)
+                self.img_size = 224
         self.patch_size = patch_size or (16 if self.img_size == 224 else 4)
 
         # Initialize local architecture
