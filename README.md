@@ -22,7 +22,7 @@
   <img src="https://img.shields.io/badge/Flower_FL-Supported-green?logo=flower" alt="Flower FL">
   <img src="https://img.shields.io/badge/Localization-EN%20%7C%20TR-blue" alt="Bilingual">
   <a href="https://github.com/yusufcalisir/Fed-XRay/actions/workflows/ci.yml"><img src="https://github.com/yusufcalisir/Fed-XRay/actions/workflows/ci.yml/badge.svg" alt="CI Test and Build Pipeline"></a>
-  <img src="https://img.shields.io/badge/Tests-412_Passed_(309_Backend_%2B_103_Frontend)-brightgreen" alt="Tests">
+  <img src="https://img.shields.io/badge/Tests-414_Passed_(311_Backend_%2B_103_Frontend)-brightgreen" alt="Tests">
   <img src="https://img.shields.io/badge/License-MIT-yellow" alt="License">
 </p>
 
@@ -68,9 +68,9 @@
   - [9.3 Flower Framework Federation Bridge](#93-flower-framework-federation-bridge)
   - [9.4 ACID Persistent State Storage (SQLite WAL)](#94-acid-persistent-state-storage-sqlite-wal)
 - [10. REST and Streaming API Reference](#10-rest-and-streaming-api-reference)
-- [11. Verification and Automated Test Suite (412 Tests)](#11-verification-and-automated-test-suite-412-tests)
+- [11. Verification and Automated Test Suite (414 Tests)](#11-verification-and-automated-test-suite-414-tests)
   - [11.1 Static Type Safety and Code Quality](#111-static-type-safety-and-code-quality)
-  - [11.2 Backend Pytest Suites (43 Files, 309 Tests)](#112-backend-pytest-suites-43-files-309-tests)
+  - [11.2 Backend Pytest Suites (43 Files, 311 Tests)](#112-backend-pytest-suites-43-files-311-tests)
   - [11.3 Frontend Vitest Suites (22 Files, 103 Tests)](#113-frontend-vitest-suites-22-files-103-tests)
 - [12. Repository Structure](#12-repository-structure)
 - [13. Installation and Quick Start](#13-installation-and-quick-start)
@@ -595,9 +595,9 @@ The FastAPI backend (`api/main.py`) provides asynchronous REST and streaming end
 
 ---
 
-## 11. Verification and Automated Test Suite (412 Tests)
+## 11. Verification and Automated Test Suite (414 Tests)
 
-Fed-XRay maintains an automated test suite comprising **412 tests** (309 Python Pytest backend tests + 103 TypeScript Vitest frontend tests), achieving a 100% pass rate.
+Fed-XRay maintains an automated test suite comprising **414 tests** (311 Python Pytest backend tests + 103 TypeScript Vitest frontend tests), achieving a 100% pass rate.
 
 ### 11.1 Static Type Safety and Code Quality
 
@@ -605,11 +605,11 @@ Fed-XRay maintains an automated test suite comprising **412 tests** (309 Python 
 - **Automated Linting and Code Hygiene:** Verified via `ruff check .`, ensuring syntax cleanliness, import order, and PEP 8 compliance.
 - **Frontend Strict TypeScript:** Full contract parity verified via `tsc --noEmit` and Vitest across all 22 component and integration suites.
 
-### 11.2 Backend Pytest Suites (43 Files, 309 Tests)
+### 11.2 Backend Pytest Suites (43 Files, 311 Tests)
 
 | Domain Category | Key Test Files | Test Count | Verified Invariants |
 | :--- | :--- | :--- | :--- |
-| **Model Architectures & PEFT** | `test_vit_tiny_ffa_lora.py`, `test_vit_peft_optimizers.py`, `test_asymmetric_foundation_peft.py`, `test_swin_unetr_radiology_backbone.py`, `test_multimodal_foundation_peft_adapters.py`, `test_foundation_checkpoint_integrity_and_provenance.py` | 37 | Zero bilinear LoRA error, FFA-LoRA / FedSA-LoRA mathematical consistency, Swin UNETR shifted windows, MedSAM FCA, SHA-256 weight digests |
+| **Model Architectures & PEFT** | `test_vit_tiny_ffa_lora.py`, `test_vit_peft_optimizers.py`, `test_asymmetric_foundation_peft.py`, `test_swin_unetr_radiology_backbone.py`, `test_multimodal_foundation_peft_adapters.py`, `test_foundation_checkpoint_integrity_and_provenance.py` | 39 | Zero bilinear LoRA error, FFA-LoRA / FedSA-LoRA mathematical consistency, Swin UNETR shifted windows, MedSAM FCA, SHA-256 weight digests |
 | **Distributed Optimization** | `test_all.py`, `test_benchmarking_engine.py`, `test_flower_and_sota_enhancements.py`, `test_flower_federation_runner_dataset_integrity.py`, `test_training_telemetry_authenticity.py`, `test_streamlit_dashboard_architecture_wiring.py` | 34 | FedDyn dynamic objectives, FedAdam momentum, SCAFFOLD control variates, MOON contrastive loss, Flower bridge synchronization |
 | **Class Imbalance & Prototypes** | `test_core_imbalance_losses.py`, `test_numerical_stability_losses.py`, `test_prototypes.py`, `test_multiclass_oncology_integrity.py` | 28 | DAFL dynamic recall adjustment, BSM logit correction, LDAM margins, missing-class repel loss, FedProto covariance trace weighting |
 | **Dual-Layer Privacy (Option J)** | `test_consortium_cryptography_and_zero_plaintext.py`, `test_crypto_privacy_optimizers.py`, `test_enclave_handshake.py`, `test_foundation_privacy.py`, `test_node_level_dp_accounting.py` | 47 | Patient-level L2 DP clipping, analytical Wang et al. (AISTATS 2019) RDP accounting, decentralized (t, n) Threshold CKKS Shamir secret sharing, IsolatedProcessEnclave OS process address space isolation, SecAgg+ zero-sum masking, attestation certificates |
@@ -680,7 +680,7 @@ Fed-XRay/
 |           `-- i18n.py                # Bilingual Clinical Localization (EN/TR)
 |-- benchmarks/
 |   `-- benchmark_foundation_peft.py   # Foundation PEFT Empirical Benchmark Suite
-|-- tests/                             # Pytest Backend Suites (43 Files, 309 Tests)
+|-- tests/                             # Pytest Backend Suites (43 Files, 311 Tests)
 |-- research/                          # Canonical Scientific Research Foundations (6 Papers)
 |   |-- federated_vision_transformers_for_oncology.md
 |   |-- federated_foundation_models_for_cancer.md
@@ -729,10 +729,10 @@ python -m mypy src api
 # Run code hygiene and linting checks
 python -m ruff check .
 
-# Execute all 309 Python backend tests
+# Execute all 311 Python backend tests
 python -m pytest tests/ -v
 
-# Execute all 102 Next.js frontend tests
+# Execute all 103 Next.js frontend tests
 cd frontend
 npm ci
 npm test

@@ -229,14 +229,24 @@ class HospitalClient:
         """Audit report of client model weight provenance and authenticity (MOD-02)."""
         m = self.model
         base = getattr(m, "base_model", m)
+        fn = getattr(base, "get_model_provenance", None)
+        if callable(fn):
+            prov_dict: Dict[str, Any] = fn()
+            prov_dict["client_id"] = self.client_id
+            prov_dict["peft_mode"] = self.peft_mode
+            prov_dict["model_type"] = self.model_type
+            return prov_dict
+        prov = getattr(base, "checkpoint_provenance", getattr(m, "checkpoint_provenance", "uninitialized_scratch_weights"))
         return {
             "client_id": self.client_id,
             "model_type": self.model_type,
             "is_pretrained": getattr(base, "is_pretrained", getattr(m, "is_pretrained", False)),
-            "checkpoint_provenance": getattr(base, "checkpoint_provenance", getattr(m, "checkpoint_provenance", "uninitialized_scratch_weights")),
+            "checkpoint_provenance": prov,
             "checkpoint_hash": getattr(base, "checkpoint_hash", getattr(m, "checkpoint_hash", None)),
             "strict_checkpoint": self.strict_checkpoint,
             "peft_mode": self.peft_mode,
+            "is_fallback_distilled": "torchvision" in str(prov),
+            "last_load_error": getattr(base, "last_load_error", getattr(m, "last_load_error", None)),
         }
 
     def _compute_class_counts(self) -> List[int]:

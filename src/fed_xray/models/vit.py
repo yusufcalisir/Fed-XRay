@@ -219,9 +219,12 @@ class VisionTransformer(nn.Module):
         self.head = nn.Linear(embed_dim, num_classes) if num_classes > 0 else nn.Identity()
 
         # Weight authenticity & provenance tracking (Rule 12, MOD-02)
+        self.model_type: str = "vit"
         self.is_pretrained: bool = False
         self.checkpoint_provenance: str = "uninitialized_scratch_weights"
         self.checkpoint_hash: Optional[str] = None
+        self.strict_checkpoint: bool = False
+        self.last_load_error: Optional[str] = None
 
         self._init_weights()
 
@@ -268,6 +271,18 @@ class VisionTransformer(nn.Module):
         if return_features:
             return logits, features
         return logits
+
+    def get_model_provenance(self) -> Dict[str, Any]:
+        """Return structured weight authenticity and provenance metadata (MOD-02)."""
+        return {
+            "model_type": getattr(self, "model_type", "vit"),
+            "is_pretrained": self.is_pretrained,
+            "checkpoint_provenance": self.checkpoint_provenance,
+            "checkpoint_hash": self.checkpoint_hash,
+            "strict_checkpoint": self.strict_checkpoint,
+            "is_fallback_distilled": "torchvision" in str(self.checkpoint_provenance),
+            "last_load_error": self.last_load_error,
+        }
 
 
 def load_pretrained_vit_weights(
@@ -420,11 +435,13 @@ def load_pretrained_vit_weights(
         model.is_pretrained = True
         model.checkpoint_provenance = provenance
         model.checkpoint_hash = hashlib.sha256(model.patch_embed.proj.weight.data.cpu().numpy().tobytes()).hexdigest()[:16]
+        model.last_load_error = None
         return True
     except Exception as exc:
         model.is_pretrained = False
         model.checkpoint_provenance = "uninitialized_scratch_weights"
         model.checkpoint_hash = None
+        model.last_load_error = str(exc)
         if strict:
             raise RuntimeError(f"Failed to load pretrained ViT weights: {exc}") from exc
         logger.warning("Failed to load pretrained ViT weights: %s", exc)
@@ -461,6 +478,8 @@ def create_medical_vit(
         depth=cfg["depth"],
         num_heads=cfg["num_heads"],
     )
+    model.model_type = model_type
+    model.strict_checkpoint = strict_checkpoint
     if pretrained:
         success = load_pretrained_vit_weights(
             model,

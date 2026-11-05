@@ -20,6 +20,11 @@ from src.fed_xray.models.peft import (
     extract_peft_state_dict,
     load_peft_state_dict,
 )
+from src.fed_xray.models.foundation import (
+    UNIFoundationBackbone,
+    SwinUNETRRadiologyBackbone,
+    ensure_foundation_checkpoints,
+)
 
 __all__ = [
     "XRayClassifier",
@@ -36,4 +41,7 @@ __all__ = [
     "inject_lora_to_model",
     "extract_peft_state_dict",
     "load_peft_state_dict",
+    "UNIFoundationBackbone",
+    "SwinUNETRRadiologyBackbone",
+    "ensure_foundation_checkpoints",
 ]

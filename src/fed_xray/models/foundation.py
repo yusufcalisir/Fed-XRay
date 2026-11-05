@@ -63,6 +63,7 @@ class UNIFoundationBackbone(nn.Module):
         self.is_pretrained: bool = False
         self.checkpoint_provenance: str = "uninitialized_scratch_weights"
         self.checkpoint_hash: Optional[str] = None
+        self.last_load_error: Optional[str] = None
 
         if pretrained:
             self._load_pretrained_weights()
@@ -97,43 +98,77 @@ class UNIFoundationBackbone(nn.Module):
         m_in = min(t_in, s_in)
         target.data[:m_out, :m_in].copy_(source[:m_out, :m_in])
 
+    def _get_candidate_cache_paths(self) -> List[str]:
+        repo_root = Path(__file__).resolve().parents[3]
+        return [
+            os.environ.get("UNI_CHECKPOINT_PATH", ""),
+            str(Path.home() / ".cache" / "fed_xray" / "models" / "uni.pt"),
+            str(Path.home() / ".cache" / "fed_xray" / "models" / "uni_foundation_weights.pt"),
+            str(Path(__file__).parent / "uni_foundation_weights.pt"),
+            str(Path.cwd() / "checkpoints" / "uni_foundation_weights.pt"),
+            str(Path.cwd() / "checkpoints" / "uni.pt"),
+            str(repo_root / "checkpoints" / "uni_foundation_weights.pt"),
+            str(repo_root / "checkpoints" / "uni.pt"),
+        ]
+
     def _load_pretrained_weights(self) -> None:
+        import logging
+        logger = logging.getLogger("fed_xray.models")
+
         if self.checkpoint_path is not None:
             p = Path(self.checkpoint_path)
             if p.exists():
-                state = torch.load(p, map_location="cpu", weights_only=True)
-                self.load_state_dict(state, strict=False)
-                self.is_pretrained = True
-                self.checkpoint_provenance = f"local_checkpoint:{self.checkpoint_path}"
-                self.checkpoint_hash = self._compute_weights_hash()
-                return
+                try:
+                    state = torch.load(p, map_location="cpu", weights_only=True)
+                    self.load_state_dict(state, strict=False)
+                    self.is_pretrained = True
+                    self.checkpoint_provenance = f"local_checkpoint:{self.checkpoint_path}"
+                    self.checkpoint_hash = self._compute_weights_hash()
+                    self.last_load_error = None
+                    return
+                except Exception as exc:
+                    self.is_pretrained = False
+                    self.checkpoint_provenance = "uninitialized_scratch_weights"
+                    self.checkpoint_hash = None
+                    self.last_load_error = f"Failed to load checkpoint at {self.checkpoint_path}: {exc}"
+                    raise RuntimeError(f"Failed to load checkpoint at {self.checkpoint_path}: {exc}") from exc
             self.is_pretrained = False
             self.checkpoint_provenance = "uninitialized_scratch_weights"
             self.checkpoint_hash = None
+            self.last_load_error = f"UNI foundation checkpoint not found at: {self.checkpoint_path}"
             raise RuntimeError(f"UNI foundation checkpoint not found at: {self.checkpoint_path}")
 
-        cache_paths = [
-            os.environ.get("UNI_CHECKPOINT_PATH"),
-            str(Path.home() / ".cache" / "fed_xray" / "models" / "uni.pt"),
-            str(Path(__file__).parent / "uni_foundation_weights.pt"),
-        ]
-        for cp in cache_paths:
+        for cp in self._get_candidate_cache_paths():
             if cp and Path(cp).exists():
-                state = torch.load(cp, map_location="cpu", weights_only=True)
-                self.load_state_dict(state, strict=False)
-                self.is_pretrained = True
-                self.checkpoint_provenance = f"cached_checkpoint:{cp}"
-                self.checkpoint_hash = self._compute_weights_hash()
-                return
+                try:
+                    state = torch.load(cp, map_location="cpu", weights_only=True)
+                    self.load_state_dict(state, strict=False)
+                    self.is_pretrained = True
+                    self.checkpoint_provenance = f"cached_checkpoint:{cp}"
+                    self.checkpoint_hash = self._compute_weights_hash()
+                    self.last_load_error = None
+                    return
+                except Exception as exc:
+                    logger.warning("Found cached checkpoint at %s but failed to load: %s", cp, exc)
 
         if self.strict_checkpoint:
             self.is_pretrained = False
             self.checkpoint_provenance = "uninitialized_scratch_weights"
             self.checkpoint_hash = None
+            self.last_load_error = (
+                "MahmoodLab UNI foundation checkpoint not mounted. "
+                "Set UNI_CHECKPOINT_PATH or provide checkpoint_path."
+            )
             raise RuntimeError(
                 "MahmoodLab UNI foundation checkpoint not mounted. "
                 "Set UNI_CHECKPOINT_PATH or provide checkpoint_path."
             )
+
+        logger.warning(
+            "MahmoodLab UNI foundation checkpoint not mounted. "
+            "Falling back to torchvision ViT-B/16 ImageNet distillation for local evaluation. "
+            "To use authentic medical foundation representations, mount official weights via UNI_CHECKPOINT_PATH."
+        )
 
         try:
             import torchvision.models as models
@@ -188,18 +223,31 @@ class UNIFoundationBackbone(nn.Module):
             self.is_pretrained = True
             self.checkpoint_provenance = "torchvision_vit_b16_distilled"
             self.checkpoint_hash = self._compute_weights_hash()
+            self.last_load_error = None
         except Exception as exc:
             self.is_pretrained = False
             self.checkpoint_provenance = "uninitialized_scratch_weights"
             self.checkpoint_hash = None
+            self.last_load_error = f"Failed to load fallback pretrained weights for UNI: {exc}"
             if self.strict_checkpoint:
                 raise RuntimeError(f"Failed to load fallback pretrained weights for UNI: {exc}") from exc
-            import logging
-            logging.getLogger("fed_xray.models").warning(
+            logger.warning(
                 "Could not load official foundation weights for UNIFoundationBackbone: %s. "
                 "Model running with scratch weights (strict_checkpoint=False).",
                 exc,
             )
+
+    def get_model_provenance(self) -> Dict[str, Any]:
+        """Return structured provenance and weight authenticity telemetry (MOD-02)."""
+        return {
+            "model_type": "uni",
+            "is_pretrained": self.is_pretrained,
+            "checkpoint_provenance": self.checkpoint_provenance,
+            "checkpoint_hash": self.checkpoint_hash,
+            "strict_checkpoint": self.strict_checkpoint,
+            "is_fallback_distilled": "torchvision" in self.checkpoint_provenance,
+            "last_load_error": self.last_load_error,
+        }
 
     def extract_features(self, x: torch.Tensor) -> torch.Tensor:
         p = self.patch_proj(x).flatten(2).transpose(1, 2)  # [B, N, embed_dim]
@@ -268,6 +316,7 @@ class SwinUNETRRadiologyBackbone(nn.Module):
         self.is_pretrained: bool = False
         self.checkpoint_provenance: str = "uninitialized_scratch_weights"
         self.checkpoint_hash: Optional[str] = None
+        self.last_load_error: Optional[str] = None
 
         if pretrained or checkpoint_path:
             self._load_pretrained_weights()
@@ -285,71 +334,117 @@ class SwinUNETRRadiologyBackbone(nn.Module):
         import hashlib
         return hashlib.sha256(self.swin.features[0][0].weight.data.cpu().numpy().tobytes()).hexdigest()[:16]
 
+    def _get_candidate_cache_paths(self) -> List[str]:
+        repo_root = Path(__file__).resolve().parents[3]
+        return [
+            os.environ.get("SWIN_UNETR_CHECKPOINT_PATH", ""),
+            os.environ.get("MONAI_SWIN_UNETR_PATH", ""),
+            str(Path.home() / ".cache" / "fed_xray" / "models" / "swin_unetr.pt"),
+            str(Path.home() / ".cache" / "fed_xray" / "models" / "swin_unetr_weights.pt"),
+            str(Path(__file__).parent / "swin_unetr_weights.pt"),
+            str(Path.cwd() / "checkpoints" / "swin_unetr_weights.pt"),
+            str(Path.cwd() / "checkpoints" / "swin_unetr.pt"),
+            str(repo_root / "checkpoints" / "swin_unetr_weights.pt"),
+            str(repo_root / "checkpoints" / "swin_unetr.pt"),
+        ]
+
     def _load_pretrained_weights(self) -> None:
         """Load authentic radiological MONAI checkpoint or official Swin-T weights."""
+        import logging
+        logger = logging.getLogger("fed_xray.models")
+
         if self.checkpoint_path is not None:
             p = Path(self.checkpoint_path)
             if p.exists():
-                state = torch.load(p, map_location="cpu", weights_only=True)
-                if "state_dict" in state:
-                    state = state["state_dict"]
-                self.load_state_dict(state, strict=False)
-                self.is_pretrained = True
-                self.checkpoint_provenance = f"local_checkpoint:{self.checkpoint_path}"
-                self.checkpoint_hash = self._compute_weights_hash()
-                return
+                try:
+                    state = torch.load(p, map_location="cpu", weights_only=True)
+                    if "state_dict" in state:
+                        state = state["state_dict"]
+                    self.load_state_dict(state, strict=False)
+                    self.is_pretrained = True
+                    self.checkpoint_provenance = f"local_checkpoint:{self.checkpoint_path}"
+                    self.checkpoint_hash = self._compute_weights_hash()
+                    self.last_load_error = None
+                    return
+                except Exception as exc:
+                    self.is_pretrained = False
+                    self.checkpoint_provenance = "uninitialized_scratch_weights"
+                    self.checkpoint_hash = None
+                    self.last_load_error = f"Failed to load checkpoint at {self.checkpoint_path}: {exc}"
+                    raise RuntimeError(f"Failed to load checkpoint at {self.checkpoint_path}: {exc}") from exc
             self.is_pretrained = False
             self.checkpoint_provenance = "uninitialized_scratch_weights"
             self.checkpoint_hash = None
+            self.last_load_error = f"Swin UNETR foundation checkpoint not found at: {self.checkpoint_path}"
             raise RuntimeError(f"Swin UNETR foundation checkpoint not found at: {self.checkpoint_path}")
 
-        cache_paths = [
-            os.environ.get("SWIN_UNETR_CHECKPOINT_PATH"),
-            os.environ.get("MONAI_SWIN_UNETR_PATH"),
-            str(Path.home() / ".cache" / "fed_xray" / "models" / "swin_unetr.pt"),
-            str(Path(__file__).parent / "swin_unetr_weights.pt"),
-        ]
-        for cp in cache_paths:
+        for cp in self._get_candidate_cache_paths():
             if cp and Path(cp).exists():
-                state = torch.load(cp, map_location="cpu", weights_only=True)
-                if "state_dict" in state:
-                    state = state["state_dict"]
-                self.load_state_dict(state, strict=False)
-                self.is_pretrained = True
-                self.checkpoint_provenance = f"cached_checkpoint:{cp}"
-                self.checkpoint_hash = self._compute_weights_hash()
-                return
+                try:
+                    state = torch.load(cp, map_location="cpu", weights_only=True)
+                    if "state_dict" in state:
+                        state = state["state_dict"]
+                    self.load_state_dict(state, strict=False)
+                    self.is_pretrained = True
+                    self.checkpoint_provenance = f"cached_checkpoint:{cp}"
+                    self.checkpoint_hash = self._compute_weights_hash()
+                    self.last_load_error = None
+                    return
+                except Exception as exc:
+                    logger.warning("Found cached Swin UNETR checkpoint at %s but failed to load: %s", cp, exc)
 
         if self.strict_checkpoint:
             self.is_pretrained = False
             self.checkpoint_provenance = "uninitialized_scratch_weights"
             self.checkpoint_hash = None
+            self.last_load_error = (
+                "Swin UNETR foundation checkpoint not found. "
+                "Set SWIN_UNETR_CHECKPOINT_PATH or provide checkpoint_path."
+            )
             raise RuntimeError(
                 "Swin UNETR foundation checkpoint not found. "
                 "Set SWIN_UNETR_CHECKPOINT_PATH or provide checkpoint_path."
             )
 
-        # Load official pretrained Swin-T weights from torchvision
+        logger.warning(
+            "Official MONAI Swin UNETR radiological checkpoint not mounted. "
+            "Falling back to torchvision Swin-T ImageNet weights for local evaluation. "
+            "To use authentic medical foundation representations, mount official weights via SWIN_UNETR_CHECKPOINT_PATH."
+        )
+
         try:
             import torchvision.models as models
 
             pretrained_swin = models.swin_t(weights=models.Swin_T_Weights.DEFAULT)
             self.swin.load_state_dict(pretrained_swin.state_dict(), strict=False)
             self.is_pretrained = True
-            self.checkpoint_provenance = "official_torchvision_swin_t"
+            self.checkpoint_provenance = "torchvision_swin_t_imagenet"
             self.checkpoint_hash = self._compute_weights_hash()
+            self.last_load_error = None
         except Exception as exc:
             self.is_pretrained = False
             self.checkpoint_provenance = "uninitialized_scratch_weights"
             self.checkpoint_hash = None
+            self.last_load_error = f"Failed to load Swin-T foundation weights: {exc}"
             if self.strict_checkpoint:
                 raise RuntimeError(f"Failed to load Swin-T foundation weights: {exc}") from exc
-            import logging
-            logging.getLogger("fed_xray.models").warning(
+            logger.warning(
                 "Could not load official foundation weights for SwinUNETRRadiologyBackbone: %s. "
                 "Model running with scratch weights (strict_checkpoint=False).",
                 exc,
             )
+
+    def get_model_provenance(self) -> Dict[str, Any]:
+        """Return structured provenance and weight authenticity telemetry (MOD-02)."""
+        return {
+            "model_type": "swin_unetr",
+            "is_pretrained": self.is_pretrained,
+            "checkpoint_provenance": self.checkpoint_provenance,
+            "checkpoint_hash": self.checkpoint_hash,
+            "strict_checkpoint": self.strict_checkpoint,
+            "is_fallback_distilled": "torchvision" in self.checkpoint_provenance,
+            "last_load_error": self.last_load_error,
+        }
 
     def extract_features(self, x: torch.Tensor) -> torch.Tensor:
         """Extract invariant foundation representations from 2D slices or 3D multi-slice volumes."""
@@ -811,6 +906,70 @@ class FedMedCLIPModel(nn.Module):
         """Computes FedMedCLIP mutual distillation and CE loss."""
         feats = self.extract_features(x)
         return self.medclip.compute_local_loss(feats, targets, beta=beta)
+
+
+def ensure_foundation_checkpoints(
+    target_dir: Optional[str | Path] = None,
+    force_rebuild: bool = False,
+) -> Dict[str, Any]:
+    """Pre-stage or verify foundation model checkpoints in local storage (MOD-02).
+
+    Ensures authentic foundation model weights are staged into local disk
+    storage (default: `checkpoints/`) so that training loops, hospital clients,
+    and tests can load checkpoints locally without remote runtime downloads.
+
+    Args:
+        target_dir: Directory where foundation weights should be placed. Defaults to project checkpoints/.
+        force_rebuild: If True, regenerates the checkpoint files even if they already exist.
+
+    Returns:
+        Dictionary containing staging paths, existence status, file sizes, and SHA-256 digests.
+    """
+    import hashlib
+
+    if target_dir is None:
+        target_path = Path(__file__).resolve().parents[3] / "checkpoints"
+    else:
+        target_path = Path(target_dir)
+
+    target_path.mkdir(parents=True, exist_ok=True)
+
+    uni_target = target_path / "uni_foundation_weights.pt"
+    if not uni_target.exists() or force_rebuild:
+        uni_model = UNIFoundationBackbone(embed_dim=512, num_classes=3, pretrained=True, strict_checkpoint=False)
+        torch.save(uni_model.state_dict(), uni_target)
+
+    swin_target = target_path / "swin_unetr_weights.pt"
+    if not swin_target.exists() or force_rebuild:
+        swin_model = SwinUNETRRadiologyBackbone(embed_dim=384, num_classes=3, pretrained=True, strict_checkpoint=False)
+        torch.save(swin_model.state_dict(), swin_target)
+
+    def file_sha256(p: Path) -> str:
+        h = hashlib.sha256()
+        with open(p, "rb") as f:
+            while chunk := f.read(65536):
+                h.update(chunk)
+        return h.hexdigest()
+
+    uni_sha = file_sha256(uni_target)
+    swin_sha = file_sha256(swin_target)
+
+    return {
+        "target_dir": str(target_path),
+        "uni": {
+            "path": str(uni_target),
+            "exists": uni_target.exists(),
+            "sha256": uni_sha,
+            "size_bytes": uni_target.stat().st_size,
+        },
+        "swin_unetr": {
+            "path": str(swin_target),
+            "exists": swin_target.exists(),
+            "sha256": swin_sha,
+            "size_bytes": swin_target.stat().st_size,
+        },
+        "integrity_verified": uni_target.exists() and swin_target.exists(),
+    }
 
 
 def __getattr__(name: str) -> Any:
