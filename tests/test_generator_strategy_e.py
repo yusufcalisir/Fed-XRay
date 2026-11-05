@@ -29,7 +29,11 @@ class TestMedicalDataGeneratorResolutionScaling:
     def test_legacy_28x28_fixture(self):
         generator = MedicalDataGenerator(image_size=28, seed=42)
         assert generator.is_legacy_fixture is True
+        assert generator.is_authentic_clinical is False
         assert generator.provenance == MedicalDataGenerator.PROVENANCE_LEGACY_28
+        prov_dict = generator.get_generator_provenance()
+        assert prov_dict["is_authentic_clinical"] is False
+        assert prov_dict["quarantine_status"] == "in_silico_offline_calibration_suite"
 
         for label in range(3):
             img = generator.generate_synthetic_xray(label=label, apply_augmentation=False)
@@ -173,3 +177,38 @@ class TestHospitalDataloadersAndGlobalTestSet:
         dist = get_distribution_info(0, 4)
         assert len(dist) == 3
         assert np.isclose(sum(dist.values()), 1.0)
+
+    def test_strict_real_data_guards_block_in_silico_fallback(self, tmp_path):
+        import pytest
+        from src.fed_xray.data.real_world import DiskMedicalDataset
+        from PIL import Image
+
+        # 1. create_global_test_set with strict_real_data=True and missing manifest must raise RuntimeError
+        with pytest.raises(RuntimeError) as exc_info1:
+            create_global_test_set(
+                n_samples=10,
+                manifest_path=str(tmp_path / "nonexistent_manifest.csv"),
+                use_strategy_e=True,
+                strict_real_data=True,
+            )
+        assert "In-silico generation is strictly prohibited" in str(exc_info1.value) or "strict mode" in str(exc_info1.value)
+
+        # 2. create_hospital_dataloaders with strict_real_data=True and missing manifest must raise RuntimeError
+        with pytest.raises(RuntimeError) as exc_info2:
+            create_hospital_dataloaders(
+                n_hospitals=2,
+                manifest_path=str(tmp_path / "nonexistent_manifest.csv"),
+                use_strategy_e=True,
+                strict_real_data=True,
+            )
+        assert "In-silico procedural generation is strictly prohibited" in str(exc_info2.value) or "strict mode" in str(exc_info2.value)
+
+        # 3. Unstructured directory scan under strict_real_data=True must raise ValueError
+        dummy_img_dir = tmp_path / "scanned_images"
+        dummy_img_dir.mkdir(parents=True, exist_ok=True)
+        img = Image.fromarray(np.full((224, 224), 128, dtype=np.uint8))
+        img.save(dummy_img_dir / "unstructured_001.png")
+
+        with pytest.raises(ValueError) as exc_info3:
+            DiskMedicalDataset(images_dir=str(dummy_img_dir), strict_real_data=True)
+        assert "Strict real data violation" in str(exc_info3.value)

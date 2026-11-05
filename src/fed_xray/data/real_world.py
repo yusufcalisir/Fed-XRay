@@ -210,6 +210,11 @@ class DiskMedicalDataset(Dataset):
         return samples
 
     def _scan_directory(self, images_dir: Path) -> List[Dict[str, Any]]:
+        if self.strict_real_data:
+            raise ValueError(
+                "Strict real data violation: Loading via unstructured directory scan without verified manifest provenance "
+                "is prohibited when strict_real_data=True (Rule 9 & Rule 12)."
+            )
         samples = []
         valid_extensions = {".png", ".jpg", ".jpeg", ".bmp", ".tiff", ".tif", ".npy"}
         for root, _, files in os.walk(images_dir):
@@ -229,6 +234,8 @@ class DiskMedicalDataset(Dataset):
                         "lesion_id": patient_id,
                         "label": label,
                         "clinical_notes": f"Scanned from {p.name}",
+                        "provenance": "unstructured_directory_scan",
+                        "is_authentic_clinical": False,
                     })
         return samples
 
@@ -410,6 +417,15 @@ class StrategyEDatasetEcosystem:
             strict_real_data=strict_real_data,
         )
         return dataset.to_patient_records()
+
+    @staticmethod
+    def verify_manifest_authenticity(
+        manifest_path: str | Path,
+        images_dir: Optional[str | Path] = None,
+    ) -> Dict[str, Any]:
+        """Perform forensic verification of dataset authenticity, integrity, and clinical provenance."""
+        from .ingest_real_world import verify_cohort_authenticity
+        return verify_cohort_authenticity(manifest_path=manifest_path, images_dir=images_dir)
 
     @staticmethod
     def create_manifest_template(

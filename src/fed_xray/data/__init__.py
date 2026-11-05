@@ -11,6 +11,10 @@ from src.fed_xray.data.real_world import (
     RealWorldPatientRecord,
     StrategyEDatasetEcosystem,
 )
+from src.fed_xray.data.ingest_real_world import (
+    verify_cohort_authenticity,
+    ensure_strategy_e_dataset,
+)
 
 __all__ = [
     "MedicalDataGenerator",
@@ -20,4 +24,6 @@ __all__ = [
     "DiskMedicalDataset",
     "RealWorldPatientRecord",
     "StrategyEDatasetEcosystem",
+    "verify_cohort_authenticity",
+    "ensure_strategy_e_dataset",
 ]

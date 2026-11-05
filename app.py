@@ -1022,11 +1022,26 @@ with col_gen_btn:
 
 with col_gen_info:
     if getattr(st.session_state, "data_source", None):
-        st.markdown(f"""
-        <div style="padding: 0.5rem 0.8rem; background: rgba(2,132,199,0.12); border: 1px solid rgba(56,189,248,0.25); border-radius: 8px; font-size: 0.82rem; color: #38BDF8;">
-            Active Cohort: <strong>{st.session_state.data_source}</strong>
-        </div>
-        """, unsafe_allow_html=True)
+        is_auth = getattr(st.session_state, "is_authentic_clinical", None)
+        if is_auth is True:
+            badge_html = f"""
+            <div style="padding: 0.5rem 0.8rem; background: rgba(16,185,129,0.12); border: 1px solid rgba(52,211,153,0.3); border-radius: 8px; font-size: 0.82rem; color: #34D399;">
+                Active Cohort: <strong>{st.session_state.data_source}</strong> &bull; <span style="font-weight:600;">Authentic Clinical (ISIC 2019)</span>
+            </div>
+            """
+        elif is_auth is False:
+            badge_html = f"""
+            <div style="padding: 0.5rem 0.8rem; background: rgba(245,158,11,0.12); border: 1px solid rgba(251,191,36,0.3); border-radius: 8px; font-size: 0.82rem; color: #FBBF24;">
+                Active Cohort: <strong>{st.session_state.data_source}</strong> &bull; <span style="font-weight:600;">In Silico Calibration Suite (Non-Clinical)</span>
+            </div>
+            """
+        else:
+            badge_html = f"""
+            <div style="padding: 0.5rem 0.8rem; background: rgba(2,132,199,0.12); border: 1px solid rgba(56,189,248,0.25); border-radius: 8px; font-size: 0.82rem; color: #38BDF8;">
+                Active Cohort: <strong>{st.session_state.data_source}</strong>
+            </div>
+            """
+        st.markdown(badge_html, unsafe_allow_html=True)
 
 if btn_generate:
     st.session_state.case_bank = None
@@ -1101,7 +1116,9 @@ if btn_generate:
             st.session_state.global_test_set = (test_imgs, test_lbls)
             st.session_state.reference_records = test_recs
             st.session_state.hospital_data_generated = True
-            st.session_state.data_source = "Strategy E Real-World Benchmark (224x224)"
+            is_auth = all(getattr(r, "is_authentic_clinical", False) for r in records)
+            st.session_state.is_authentic_clinical = is_auth
+            st.session_state.data_source = "Strategy E Real-World Benchmark (224x224)" if is_auth else "Strategy E In-Silico Calibration Suite (224x224)"
 
         st.success(f"Ingested {len(records)} clinical records across {n_hospitals} institutions. Patient-level isolated.")
         st.rerun()
@@ -1141,6 +1158,7 @@ if btn_generate:
             st.session_state.global_test_set = (test_images, test_labels)
             st.session_state.reference_records = None
             st.session_state.hospital_data_generated = True
+            st.session_state.is_authentic_clinical = False
             st.session_state.data_source = "Clinical In Silico Benchmark (224x224 Resolution)"
 
         st.info("Ingested high-resolution 224x224 clinical benchmark cohort. ViT tokenization (196 patches) fully supported.")

@@ -53,6 +53,7 @@ class MedicalDataGenerator:
         self.rotation_range = rotation_range
         self.in_channels = in_channels
         self.is_legacy_fixture = (image_size < 128)
+        self.is_authentic_clinical = False
 
         if self.is_legacy_fixture:
             self.provenance = self.PROVENANCE_LEGACY_28
@@ -61,6 +62,17 @@ class MedicalDataGenerator:
 
         if seed is not None:
             np.random.seed(seed)
+
+    def get_generator_provenance(self) -> Dict[str, Any]:
+        """Return structured calibration and provenance metadata (Rule 12, AUD-INT-03)."""
+        return {
+            "image_size": self.image_size,
+            "in_channels": self.in_channels,
+            "provenance": self.provenance,
+            "is_legacy_fixture": self.is_legacy_fixture,
+            "is_authentic_clinical": False,
+            "quarantine_status": "in_silico_offline_calibration_suite",
+        }
 
     def generate_synthetic_xray(
         self,
@@ -324,12 +336,14 @@ def create_global_test_set(
     use_strategy_e: bool = True,
     in_channels: int = 1,
     manifest_path: Optional[str] = None,
+    strict_real_data: bool = False,
 ) -> Tuple[torch.Tensor, torch.Tensor]:
     """Create a global hold-out test set adhering to Strategy E and Rule 9.
 
     If use_strategy_e is True and strategy_e_manifest.csv exists, loads authentic
     patient records with strict patient-level isolation.
     Otherwise, generates calibrated clinical benchmark arrays at the specified resolution.
+    If strict_real_data is True, raises RuntimeError if authentic clinical data cannot be loaded.
     """
     target_manifest = Path(manifest_path) if manifest_path else Path("data/manifests/strategy_e_manifest.csv")
     if use_strategy_e and target_manifest.exists():
@@ -341,6 +355,7 @@ def create_global_test_set(
                 images_dir=str(target_manifest.parent.parent),
                 target_size=(image_size, image_size),
                 in_channels=in_channels,
+                strict_real_data=strict_real_data,
             )
             _, _, test_recs = ecosystem.leak_free_patient_split(records)
             if len(test_recs) > n_samples:
@@ -350,9 +365,18 @@ def create_global_test_set(
                 test_imgs = test_imgs.repeat(1, 3, 1, 1)
             test_lbls = torch.tensor([r.label for r in test_recs], dtype=torch.long)
             return test_imgs, test_lbls
-        except Exception:
-            # Fall back to high-resolution benchmark generator if file parsing encounters an issue
-            pass
+        except Exception as exc:
+            if strict_real_data:
+                raise RuntimeError(
+                    f"Failed to load authentic Strategy E global test set in strict mode: {exc}. "
+                    "In-silico procedural generation is strictly prohibited when strict_real_data=True (Rule 12)."
+                ) from exc
+
+    if strict_real_data:
+        raise RuntimeError(
+            "Failed to load authentic Strategy E global test set in strict mode: Manifest not found at "
+            f"'{target_manifest}'. In-silico generation is strictly prohibited when strict_real_data=True (Rule 12)."
+        )
 
     generator = MedicalDataGenerator(
         image_size=image_size,
@@ -396,6 +420,7 @@ def create_hospital_dataloaders(
     use_strategy_e: bool = True,
     in_channels: int = 1,
     manifest_path: Optional[str] = None,
+    strict_real_data: bool = False,
 ) -> List[DataLoader]:
     """Create DataLoaders for multiple hospitals with Non-IID distributions.
 
@@ -403,6 +428,7 @@ def create_hospital_dataloaders(
     1. If use_strategy_e=True and data/manifests/strategy_e_manifest.csv exists,
        ingests genuine multi-center clinical studies partitioned at the patient level.
     2. Otherwise, constructs calibrated high-resolution (default 224x224) clinical benchmark cohorts.
+    3. If strict_real_data=True, raises RuntimeError if authentic clinical data cannot be loaded.
     """
     target_manifest = Path(manifest_path) if manifest_path else Path("data/manifests/strategy_e_manifest.csv")
     if use_strategy_e and target_manifest.exists():
@@ -414,6 +440,7 @@ def create_hospital_dataloaders(
                 images_dir=str(target_manifest.parent.parent),
                 target_size=(image_size, image_size),
                 in_channels=in_channels,
+                strict_real_data=strict_real_data,
             )
             train_recs, _, _ = ecosystem.leak_free_patient_split(records)
             client_partitions = ecosystem.partition_into_scenarios(
@@ -431,9 +458,18 @@ def create_hospital_dataloaders(
                 )
                 for h in range(n_hospitals)
             ]
-        except Exception:
-            # Fall back to high-resolution benchmark generator if manifest load fails
-            pass
+        except Exception as exc:
+            if strict_real_data:
+                raise RuntimeError(
+                    f"Failed to stage authentic Strategy E hospital dataloaders in strict mode: {exc}. "
+                    "In-silico procedural generation is strictly prohibited when strict_real_data=True (Rule 12)."
+                ) from exc
+
+    if strict_real_data:
+        raise RuntimeError(
+            "Failed to stage authentic Strategy E hospital dataloaders in strict mode: Manifest not found at "
+            f"'{target_manifest}'. In-silico generation is strictly prohibited when strict_real_data=True (Rule 12)."
+        )
 
     dataloaders: List[DataLoader] = []
 
