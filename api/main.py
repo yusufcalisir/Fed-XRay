@@ -128,7 +128,10 @@ class AppState:
         self.data_source: str = "none"
         self.data_provenance: str = "isic_archive_v2_real_clinical"
         self.is_authentic_clinical: bool = True
-        self.strict_real_data: bool = False
+        self.strict_real_data: bool = (
+            os.environ.get("FED_XRAY_STRICT_REAL_DATA", os.environ.get("STRICT_REAL_DATA", "0")).lower()
+            in ("1", "true", "yes")
+        )
         self.training_history: Dict[str, Any] = {
             "loss": [],
             "accuracy": [],
@@ -1182,11 +1185,12 @@ async def generate_cohorts(req: CohortGenerateRequest):
     """Generate multi-center real-world cohort partitions adhering to Strategy E scenarios."""
     ecosystem = StrategyEDatasetEcosystem(seed=42)
     default_manifest = Path("data/manifests/strategy_e_manifest.csv")
+    strict_mode = req.strict_real_data or state.strict_real_data
     if not default_manifest.exists():
         ensure_strategy_e_dataset(
             base_data_dir="data",
             patients_per_hospital=40,
-            strict_real_data=req.strict_real_data,
+            strict_real_data=strict_mode,
         )
 
     target_dim = req.image_size if req.image_size is not None else 224
@@ -1201,7 +1205,7 @@ async def generate_cohorts(req: CohortGenerateRequest):
                 images_dir=str(images_dir) if images_dir else None,
                 target_size=(target_dim, target_dim),
                 in_channels=1,
-                strict_real_data=req.strict_real_data,
+                strict_real_data=strict_mode,
             )
         except Exception as exc:
             raise HTTPException(status_code=422, detail=f"Manifest could not be loaded: {exc}")
@@ -1216,7 +1220,7 @@ async def generate_cohorts(req: CohortGenerateRequest):
             images_dir=str(Path("data")),
             target_size=(target_dim, target_dim),
             in_channels=1,
-            strict_real_data=req.strict_real_data,
+            strict_real_data=strict_mode,
         )
         data_source = getattr(records[0], "provenance", "isic_archive_v2_real_clinical") if records else "strategy_e_disk_manifest"
     else:
@@ -1224,19 +1228,19 @@ async def generate_cohorts(req: CohortGenerateRequest):
         ensure_strategy_e_dataset(
             base_data_dir="data",
             patients_per_hospital=40,
-            strict_real_data=req.strict_real_data,
+            strict_real_data=strict_mode,
         )
         records = ecosystem.load_from_disk_manifest(
             manifest_path=str(default_manifest),
             images_dir=str(Path("data")),
             target_size=(target_dim, target_dim),
             in_channels=1,
-            strict_real_data=req.strict_real_data,
+            strict_real_data=strict_mode,
         )
         data_source = getattr(records[0], "provenance", "isic_archive_v2_real_clinical") if records else "strategy_e_disk_manifest"
 
     is_authentic_clinical = all(getattr(r, "is_authentic_clinical", False) for r in records) if records else False
-    if req.strict_real_data and not is_authentic_clinical:
+    if strict_mode and not is_authentic_clinical:
         raise HTTPException(
             status_code=422,
             detail="Strict real data requested, but loaded cohort contains synthetic or in-silico calibration data.",
@@ -1363,7 +1367,7 @@ async def generate_cohorts(req: CohortGenerateRequest):
     state.data_source = data_source
     state.data_provenance = data_source
     state.is_authentic_clinical = is_authentic_clinical
-    state.strict_real_data = req.strict_real_data
+    state.strict_real_data = strict_mode
     state.rag_matcher = None
     state.model_trained = False
 
@@ -1413,7 +1417,21 @@ async def verify_cohort_authenticity_endpoint():
     from src.fed_xray.data.ingest_real_world import verify_cohort_authenticity
     manifest_path = Path("data/manifests/strategy_e_manifest.csv")
     images_dir = Path("data")
-    return verify_cohort_authenticity(manifest_path=manifest_path, images_dir=images_dir)
+    report = verify_cohort_authenticity(manifest_path=manifest_path, images_dir=images_dir)
+    report["strict_real_data_enforced"] = state.strict_real_data
+    return report
+
+
+@app.post("/api/cohorts/set-strict-mode")
+async def set_strict_real_data_mode(
+    enabled: bool = Query(..., description="Enable or disable strict authentic clinical data enforcement"),
+):
+    """Configure runtime strict authentic clinical data enforcement (Rule 9 & Rule 12)."""
+    state.strict_real_data = enabled
+    return {
+        "strict_real_data": state.strict_real_data,
+        "message": f"Strict real clinical data enforcement set to {enabled}.",
+    }
 
 
 @app.post("/api/cohorts/stage-real-isic")

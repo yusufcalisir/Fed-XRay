@@ -21,6 +21,7 @@ import hashlib
 import io
 import json
 import logging
+import os
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Set, Tuple
 import urllib.parse
@@ -1087,17 +1088,35 @@ def ensure_strategy_e_dataset(
     patients_per_hospital: int = 40,
     force_rebuild: bool = False,
     seed: int = 42,
-    strict_real_data: bool = False,
+    strict_real_data: Optional[bool] = None,
     allow_in_silico_fallback: bool = True,
 ) -> Dict[str, Any]:
     """Ensure genuine ISIC 2019 Strategy E dataset is staged on disk.
 
-    Attempts downloading authentic ISIC Archive v2 clinical cases.
-    If the network is unavailable:
-    - If strict_real_data=True or allow_in_silico_fallback=False: raises honest RuntimeError.
-    - Otherwise: falls back to deterministic in-silico calibration phantoms,
-      explicitly tagged as an offline calibration suite with is_authentic_clinical=False.
+    Production-Grade Multi-Tier Clinical Ingestion:
+    1. Inspects disk cache for an existing valid Strategy E manifest. If cached and authentic, reuses it.
+       If cached manifest is non-clinical in-silico and strict_real_data is enabled, forces re-staging.
+    2. Inspects local images directory for pre-staged authentic ISIC clinical scans (e.g. isic_*.png/jpg).
+       If sufficient authentic clinical scans exist locally, stages manifest directly from local cache.
+       This guarantees that air-gapped and offline clinical deployments operate seamlessly.
+    3. Attempts authentic download from the official ISIC Archive API v2.
+    4. If network download fails or is unreachable, inspects local images directory as an air-gapped
+       fail-safe before raising or falling back.
+    5. If authentic clinical scans cannot be acquired and strict_real_data=True (or allow_in_silico_fallback=False),
+       raises an informative RuntimeError without fabricating dummy data (Rule 9 & Rule 12).
+    6. Only when strict_real_data=False and allow_in_silico_fallback=True, falls back to deterministic
+       in-silico calibration phantoms, explicitly tagged as an offline calibration suite.
     """
+    effective_strict = (
+        strict_real_data
+        if strict_real_data is not None
+        else (
+            os.environ.get("FED_XRAY_STRICT_REAL_DATA", os.environ.get("STRICT_REAL_DATA", "0")).lower()
+            in ("1", "true", "yes")
+        )
+    )
+    effective_allow_fallback = allow_in_silico_fallback and not effective_strict
+
     base_path = Path(base_data_dir).resolve()
     images_dir = base_path / "images"
     manifests_dir = base_path / "manifests"
@@ -1110,7 +1129,7 @@ def ensure_strategy_e_dataset(
     if manifest_csv.exists() and ref_csv.exists() and not force_rebuild:
         auth_report = verify_cohort_authenticity(manifest_csv, images_dir=base_path)
         if auth_report["integrity_verified"] and auth_report["total_records"] >= total_needed:
-            if strict_real_data and not auth_report["is_authentic_clinical"]:
+            if effective_strict and not auth_report["is_authentic_clinical"]:
                 logger.warning(
                     "Cached manifest is in-silico calibration suite. Strict real data mode requested; triggering rebuild."
                 )
@@ -1126,8 +1145,13 @@ def ensure_strategy_e_dataset(
                     "authenticity_report": auth_report,
                 }
 
-    # Check for pre-staged authentic ISIC scans on local disk
-    local_isic = list(images_dir.glob("isic_*.png")) + list(images_dir.glob("isic_*.jpg")) if images_dir.exists() else []
+    # Check for pre-staged authentic ISIC scans on local disk (case-insensitive search)
+    local_isic: List[Path] = []
+    if images_dir.exists():
+        for pattern in ("isic_*.png", "isic_*.jpg", "isic_*.jpeg", "ISIC_*.png", "ISIC_*.jpg", "ISIC_*.jpeg"):
+            local_isic.extend(images_dir.glob(pattern))
+        local_isic = sorted(list({p.resolve() for p in local_isic}))
+
     if len(local_isic) >= total_needed and not force_rebuild:
         logger.info(
             "Found %d existing authentic ISIC scans in %s. Staging authentic manifest from local disk cache.",
@@ -1154,14 +1178,34 @@ def ensure_strategy_e_dataset(
         res["is_authentic_clinical"] = True
         return res
     except Exception as exc:
-        if strict_real_data or not allow_in_silico_fallback:
+        # Air-gapped / offline fail-safe: if authentic scans exist locally, stage manifest from them
+        if len(local_isic) >= total_needed:
+            logger.info(
+                "ISIC Archive download failed or network is offline (%s), but %d authentic ISIC scans exist locally. "
+                "Staging authentic clinical manifest from local disk cache.",
+                exc,
+                len(local_isic),
+            )
+            try:
+                res = stage_manifest_from_local_isic_scans(
+                    base_data_dir=base_data_dir,
+                    patients_per_hospital=patients_per_hospital,
+                    seed=seed,
+                )
+                res["is_authentic_clinical"] = True
+                return res
+            except Exception as stage_exc:
+                logger.warning("Local authentic staging fail-safe also failed: %s", stage_exc)
+
+        if effective_strict or not effective_allow_fallback:
             raise RuntimeError(
                 f"Failed to stage authentic ISIC 2019 clinical dataset in strict mode: {exc}. "
-                "In-silico procedural generation is strictly prohibited when strict_real_data=True (Rule 12)."
+                "In-silico procedural generation is strictly prohibited when strict_real_data=True (Rule 9 & Rule 12). "
+                f"Please ensure network access to the official ISIC Archive API or mount authentic clinical scans into {images_dir}."
             ) from exc
 
         logger.warning(
-            "CRITICAL NOTICE: ISIC Archive real cohort acquisition failed (%s). "
+            "CRITICAL NOTICE: ISIC Archive real cohort acquisition failed (%s) and insufficient local authentic scans found. "
             "Falling back to offline in-silico calibration suite for testing ONLY. "
             "These scans are NOT physical clinical patient radiographs.",
             exc,

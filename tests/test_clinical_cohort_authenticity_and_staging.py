@@ -259,6 +259,7 @@ def test_fastapi_cohort_authenticity_telemetry():
     assert "clinical_records" in auth_data
     assert "in_silico_records" in auth_data
     assert "integrity_verified" in auth_data
+    assert "strict_real_data_enforced" in auth_data
     # Staged dataset in data/ has 160 real clinical ISIC scans
     assert auth_data["is_authentic_clinical"] is True
     assert auth_data["clinical_records"] >= 160
@@ -276,3 +277,67 @@ def test_fastapi_cohort_authenticity_telemetry():
     assert gen_data["provenance"] == "isic_archive_v2_real_clinical"
     for h in gen_data["hospitals"]:
         assert h["is_authentic_clinical"] is True
+
+
+def test_strict_real_data_environment_variable_enforcement(tmp_path: Path, monkeypatch):
+    """Verify that FED_XRAY_STRICT_REAL_DATA=1 enforces strict clinical data without explicit flag."""
+    monkeypatch.setenv("FED_XRAY_STRICT_REAL_DATA", "1")
+    (tmp_path / "images").mkdir(parents=True, exist_ok=True)
+
+    with patch(
+        "src.fed_xray.data.ingest_real_world.download_and_stage_isic_real_cohort",
+        side_effect=RuntimeError("Simulated offline air-gapped environment"),
+    ):
+        with pytest.raises(RuntimeError) as exc_info:
+            ensure_strategy_e_dataset(
+                base_data_dir=tmp_path,
+                patients_per_hospital=2,
+            )
+
+        assert "In-silico procedural generation is strictly prohibited" in str(exc_info.value)
+
+
+def test_offline_local_authentic_cache_failsafe(tmp_path: Path):
+    """Verify that when network is offline, existing local authentic scans are staged successfully."""
+    images_dir = tmp_path / "images"
+    images_dir.mkdir(parents=True, exist_ok=True)
+
+    # Pre-stage 8 authentic ISIC scans locally
+    for idx in range(8):
+        im = Image.fromarray(np.full((224, 224), fill_value=100 + idx, dtype=np.uint8))
+        im.save(images_dir / f"isic_{idx:07d}.png")
+
+    # Simulate network download failure during a forced rebuild
+    with patch(
+        "src.fed_xray.data.ingest_real_world.download_and_stage_isic_real_cohort",
+        side_effect=RuntimeError("Air-gapped clinical network isolation"),
+    ):
+        result = ensure_strategy_e_dataset(
+            base_data_dir=tmp_path,
+            patients_per_hospital=2,
+            force_rebuild=True,
+            strict_real_data=True,
+        )
+
+    assert result["is_authentic_clinical"] is True
+    assert result["provenance"] == "isic_archive_v2_real_clinical"
+    assert result["total_records"] == 8
+
+
+def test_fastapi_strict_real_data_toggle_endpoint():
+    """Verify runtime toggling of strict authentic clinical data enforcement via API."""
+    client = TestClient(app)
+
+    # 1. Enable strict mode
+    enable_resp = client.post("/api/cohorts/set-strict-mode?enabled=true")
+    assert enable_resp.status_code == 200
+    assert enable_resp.json()["strict_real_data"] is True
+
+    auth_resp = client.get("/api/cohorts/verify-authenticity")
+    assert auth_resp.status_code == 200
+    assert auth_resp.json()["strict_real_data_enforced"] is True
+
+    # 2. Re-disable strict mode for test neutrality
+    disable_resp = client.post("/api/cohorts/set-strict-mode?enabled=false")
+    assert disable_resp.status_code == 200
+    assert disable_resp.json()["strict_real_data"] is False
