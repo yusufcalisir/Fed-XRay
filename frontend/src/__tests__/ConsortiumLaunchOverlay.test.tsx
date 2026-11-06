@@ -89,11 +89,11 @@ describe("ConsortiumLaunchOverlay Component", () => {
     expect(screen.getByText("FFA-LoRA Parameter Subspace Synchronized")).toBeInTheDocument();
   });
 
-  it("renders honest error alert and cloud / standby buttons when enclave probe fails", async () => {
+  it("renders honest error alert and cloud / standby buttons when enclave probe fails in strict mode", async () => {
     global.fetch = vi.fn().mockRejectedValue(new Error("Network failure on all candidate endpoints"));
 
     render(
-      <ConsortiumLaunchOverlay isOpen={true} onClose={vi.fn()} />
+      <ConsortiumLaunchOverlay isOpen={true} onClose={vi.fn()} strict={true} />
     );
 
     const errorHeading = await screen.findByText("Enclave Verification Handshake Failed");
@@ -101,5 +101,17 @@ describe("ConsortiumLaunchOverlay Component", () => {
     expect(screen.getByText("Proceed to Dashboard (Standby Mode)")).toBeInTheDocument();
     expect(screen.getByText("Connect Cloud Backend (Render)")).toBeInTheDocument();
     expect(screen.getByText("Connect Localhost (8000)")).toBeInTheDocument();
+  });
+
+  it("smoothly plays launch demo animation without displaying error barrier when offline in demo mode", async () => {
+    global.fetch = vi.fn().mockRejectedValue(new Error("Network offline"));
+
+    render(
+      <ConsortiumLaunchOverlay isOpen={true} onClose={vi.fn()} strict={false} />
+    );
+
+    // Zero error banners in standard demo launch mode
+    expect(screen.queryByText("Enclave Verification Handshake Failed")).not.toBeInTheDocument();
+    expect(screen.getByText("Consortium Server")).toBeInTheDocument();
   });
 });
