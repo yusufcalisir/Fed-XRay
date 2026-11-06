@@ -9,6 +9,7 @@ Provides isotropic Vision Transformer backbones with:
 
 from __future__ import annotations
 import math
+import os
 from pathlib import Path
 from typing import Any, Optional, Tuple, Dict
 import torch
@@ -274,12 +275,21 @@ class VisionTransformer(nn.Module):
 
     def get_model_provenance(self) -> Dict[str, Any]:
         """Return structured weight authenticity and provenance metadata (MOD-02)."""
+        is_authentic = (
+            self.is_pretrained
+            and (
+                str(self.checkpoint_provenance).startswith("local_checkpoint:")
+                or str(self.checkpoint_provenance).startswith("cached_checkpoint:")
+            )
+            and not ("torchvision" in str(self.checkpoint_provenance) or "scratch" in str(self.checkpoint_provenance))
+        )
         return {
             "model_type": getattr(self, "model_type", "vit"),
             "is_pretrained": self.is_pretrained,
             "checkpoint_provenance": self.checkpoint_provenance,
             "checkpoint_hash": self.checkpoint_hash,
             "strict_checkpoint": self.strict_checkpoint,
+            "is_authentic_foundation_model": is_authentic,
             "is_fallback_distilled": "torchvision" in str(self.checkpoint_provenance),
             "last_load_error": self.last_load_error,
         }
@@ -460,9 +470,17 @@ def create_medical_vit(
     num_classes: int = 3,
     pretrained: bool = True,
     checkpoint_path: Optional[str] = None,
-    strict_checkpoint: bool = False,
+    strict_checkpoint: Optional[bool] = None,
 ) -> VisionTransformer:
     """Factory helper to build scaled Vision Transformers suited for medical benchmarks."""
+    effective_strict = (
+        strict_checkpoint
+        if strict_checkpoint is not None
+        else (
+            os.environ.get("FED_XRAY_STRICT_CHECKPOINT", os.environ.get("STRICT_CHECKPOINT", "0")).lower()
+            in ("1", "true", "yes")
+        )
+    )
     configs = {
         "vit_tiny": {"embed_dim": 128, "depth": 4, "num_heads": 4},
         "vit_small": {"embed_dim": 256, "depth": 6, "num_heads": 8},
@@ -479,14 +497,14 @@ def create_medical_vit(
         num_heads=cfg["num_heads"],
     )
     model.model_type = model_type
-    model.strict_checkpoint = strict_checkpoint
+    model.strict_checkpoint = effective_strict
     if pretrained:
         success = load_pretrained_vit_weights(
             model,
             checkpoint_path=checkpoint_path,
-            strict=strict_checkpoint,
+            strict=effective_strict,
         )
-        if not success and strict_checkpoint:
+        if not success and effective_strict:
             raise RuntimeError(
                 f"Failed to initialize {model_type} with authenticated pretrained weights in strict mode."
             )

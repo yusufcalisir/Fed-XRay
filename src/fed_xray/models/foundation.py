@@ -39,7 +39,7 @@ class UNIFoundationBackbone(nn.Module):
         patch_size: int = 16,
         pretrained: bool = True,
         checkpoint_path: Optional[str] = None,
-        strict_checkpoint: bool = False,
+        strict_checkpoint: Optional[bool] = None,
     ) -> None:
         super().__init__()
         self.embed_dim = embed_dim
@@ -47,7 +47,14 @@ class UNIFoundationBackbone(nn.Module):
         self.patch_size = patch_size
         self.pretrained = pretrained
         self.checkpoint_path = checkpoint_path
-        self.strict_checkpoint = strict_checkpoint
+        self.strict_checkpoint: bool = (
+            strict_checkpoint
+            if strict_checkpoint is not None
+            else (
+                os.environ.get("FED_XRAY_STRICT_CHECKPOINT", os.environ.get("STRICT_CHECKPOINT", "0")).lower()
+                in ("1", "true", "yes")
+            )
+        )
 
         # Patch projection layer (patch_size x patch_size patch downsampling for medical scans)
         self.patch_proj = nn.Conv2d(1, embed_dim, kernel_size=patch_size, stride=patch_size)
@@ -120,6 +127,11 @@ class UNIFoundationBackbone(nn.Module):
             if p.exists():
                 try:
                     state = torch.load(p, map_location="cpu", weights_only=True)
+                    if isinstance(state, dict):
+                        if "state_dict" in state:
+                            state = state["state_dict"]
+                        elif "model" in state:
+                            state = state["model"]
                     self.load_state_dict(state, strict=False)
                     self.is_pretrained = True
                     self.checkpoint_provenance = f"local_checkpoint:{self.checkpoint_path}"
@@ -142,6 +154,11 @@ class UNIFoundationBackbone(nn.Module):
             if cp and Path(cp).exists():
                 try:
                     state = torch.load(cp, map_location="cpu", weights_only=True)
+                    if isinstance(state, dict):
+                        if "state_dict" in state:
+                            state = state["state_dict"]
+                        elif "model" in state:
+                            state = state["model"]
                     self.load_state_dict(state, strict=False)
                     self.is_pretrained = True
                     self.checkpoint_provenance = f"cached_checkpoint:{cp}"
@@ -157,12 +174,10 @@ class UNIFoundationBackbone(nn.Module):
             self.checkpoint_hash = None
             self.last_load_error = (
                 "MahmoodLab UNI foundation checkpoint not mounted. "
-                "Set UNI_CHECKPOINT_PATH or provide checkpoint_path."
+                "Set UNI_CHECKPOINT_PATH or provide checkpoint_path to mount authentic pathology foundation weights (Rule 2 & Rule 12). "
+                "Synthetic or unauthenticated fallback distillation is strictly prohibited when strict_checkpoint=True."
             )
-            raise RuntimeError(
-                "MahmoodLab UNI foundation checkpoint not mounted. "
-                "Set UNI_CHECKPOINT_PATH or provide checkpoint_path."
-            )
+            raise RuntimeError(self.last_load_error)
 
         logger.warning(
             "MahmoodLab UNI foundation checkpoint not mounted. "
@@ -239,12 +254,21 @@ class UNIFoundationBackbone(nn.Module):
 
     def get_model_provenance(self) -> Dict[str, Any]:
         """Return structured provenance and weight authenticity telemetry (MOD-02)."""
+        is_authentic = (
+            self.is_pretrained
+            and (
+                self.checkpoint_provenance.startswith("local_checkpoint:")
+                or self.checkpoint_provenance.startswith("cached_checkpoint:")
+            )
+            and not ("torchvision" in self.checkpoint_provenance or "scratch" in self.checkpoint_provenance)
+        )
         return {
             "model_type": "uni",
             "is_pretrained": self.is_pretrained,
             "checkpoint_provenance": self.checkpoint_provenance,
             "checkpoint_hash": self.checkpoint_hash,
             "strict_checkpoint": self.strict_checkpoint,
+            "is_authentic_foundation_model": is_authentic,
             "is_fallback_distilled": "torchvision" in self.checkpoint_provenance,
             "last_load_error": self.last_load_error,
         }
@@ -283,14 +307,21 @@ class SwinUNETRRadiologyBackbone(nn.Module):
         num_classes: int = 3,
         pretrained: bool = True,
         checkpoint_path: Optional[str] = None,
-        strict_checkpoint: bool = False,
+        strict_checkpoint: Optional[bool] = None,
     ) -> None:
         super().__init__()
         self.embed_dim = embed_dim
         self.num_classes = num_classes
         self.pretrained = pretrained
         self.checkpoint_path = checkpoint_path
-        self.strict_checkpoint = strict_checkpoint
+        self.strict_checkpoint: bool = (
+            strict_checkpoint
+            if strict_checkpoint is not None
+            else (
+                os.environ.get("FED_XRAY_STRICT_CHECKPOINT", os.environ.get("STRICT_CHECKPOINT", "0")).lower()
+                in ("1", "true", "yes")
+            )
+        )
 
         import torchvision.models as models
 
@@ -358,8 +389,11 @@ class SwinUNETRRadiologyBackbone(nn.Module):
             if p.exists():
                 try:
                     state = torch.load(p, map_location="cpu", weights_only=True)
-                    if "state_dict" in state:
-                        state = state["state_dict"]
+                    if isinstance(state, dict):
+                        if "state_dict" in state:
+                            state = state["state_dict"]
+                        elif "model" in state:
+                            state = state["model"]
                     self.load_state_dict(state, strict=False)
                     self.is_pretrained = True
                     self.checkpoint_provenance = f"local_checkpoint:{self.checkpoint_path}"
@@ -382,8 +416,11 @@ class SwinUNETRRadiologyBackbone(nn.Module):
             if cp and Path(cp).exists():
                 try:
                     state = torch.load(cp, map_location="cpu", weights_only=True)
-                    if "state_dict" in state:
-                        state = state["state_dict"]
+                    if isinstance(state, dict):
+                        if "state_dict" in state:
+                            state = state["state_dict"]
+                        elif "model" in state:
+                            state = state["model"]
                     self.load_state_dict(state, strict=False)
                     self.is_pretrained = True
                     self.checkpoint_provenance = f"cached_checkpoint:{cp}"
@@ -398,13 +435,11 @@ class SwinUNETRRadiologyBackbone(nn.Module):
             self.checkpoint_provenance = "uninitialized_scratch_weights"
             self.checkpoint_hash = None
             self.last_load_error = (
-                "Swin UNETR foundation checkpoint not found. "
-                "Set SWIN_UNETR_CHECKPOINT_PATH or provide checkpoint_path."
+                "Official MONAI Swin UNETR radiological checkpoint not mounted. "
+                "Set SWIN_UNETR_CHECKPOINT_PATH or provide checkpoint_path to mount authentic radiological foundation weights (Rule 2 & Rule 12). "
+                "Synthetic or unauthenticated fallback distillation is strictly prohibited when strict_checkpoint=True."
             )
-            raise RuntimeError(
-                "Swin UNETR foundation checkpoint not found. "
-                "Set SWIN_UNETR_CHECKPOINT_PATH or provide checkpoint_path."
-            )
+            raise RuntimeError(self.last_load_error)
 
         logger.warning(
             "Official MONAI Swin UNETR radiological checkpoint not mounted. "
@@ -436,12 +471,21 @@ class SwinUNETRRadiologyBackbone(nn.Module):
 
     def get_model_provenance(self) -> Dict[str, Any]:
         """Return structured provenance and weight authenticity telemetry (MOD-02)."""
+        is_authentic = (
+            self.is_pretrained
+            and (
+                self.checkpoint_provenance.startswith("local_checkpoint:")
+                or self.checkpoint_provenance.startswith("cached_checkpoint:")
+            )
+            and not ("torchvision" in self.checkpoint_provenance or "scratch" in self.checkpoint_provenance)
+        )
         return {
             "model_type": "swin_unetr",
             "is_pretrained": self.is_pretrained,
             "checkpoint_provenance": self.checkpoint_provenance,
             "checkpoint_hash": self.checkpoint_hash,
             "strict_checkpoint": self.strict_checkpoint,
+            "is_authentic_foundation_model": is_authentic,
             "is_fallback_distilled": "torchvision" in self.checkpoint_provenance,
             "last_load_error": self.last_load_error,
         }
@@ -822,7 +866,7 @@ class FedMedCLIPModel(nn.Module):
         num_classes: int = 3,
         pretrained: bool = False,
         checkpoint_path: Optional[str] = None,
-        strict_checkpoint: bool = False,
+        strict_checkpoint: Optional[bool] = None,
         text_embed_dim: int = 512,
         dataset_name: str = "isic",
         device: Optional[torch.device] = None,
@@ -831,6 +875,14 @@ class FedMedCLIPModel(nn.Module):
         self.device = device or torch.device("cpu")
         self.backbone_type = backbone_type
         self.num_classes = num_classes
+        effective_strict: bool = (
+            strict_checkpoint
+            if strict_checkpoint is not None
+            else (
+                os.environ.get("FED_XRAY_STRICT_CHECKPOINT", os.environ.get("STRICT_CHECKPOINT", "0")).lower()
+                in ("1", "true", "yes")
+            )
+        )
 
         # Instantiate backbone
         if backbone_type == "uni":
@@ -840,7 +892,7 @@ class FedMedCLIPModel(nn.Module):
                 patch_size=patch_size,
                 pretrained=pretrained,
                 checkpoint_path=checkpoint_path,
-                strict_checkpoint=strict_checkpoint,
+                strict_checkpoint=effective_strict,
             )
             embed_dim = 512
         elif backbone_type in ("swin_unetr", "swin"):
@@ -849,7 +901,7 @@ class FedMedCLIPModel(nn.Module):
                 num_classes=0,
                 pretrained=pretrained,
                 checkpoint_path=checkpoint_path,
-                strict_checkpoint=strict_checkpoint,
+                strict_checkpoint=effective_strict,
             )
             embed_dim = 384
         else:
@@ -860,7 +912,7 @@ class FedMedCLIPModel(nn.Module):
                 num_classes=0,
                 pretrained=pretrained,
                 checkpoint_path=checkpoint_path,
-                strict_checkpoint=strict_checkpoint,
+                strict_checkpoint=effective_strict,
             )
             embed_dim = self.backbone.embed_dim
 

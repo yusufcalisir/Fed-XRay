@@ -132,6 +132,10 @@ class AppState:
             os.environ.get("FED_XRAY_STRICT_REAL_DATA", os.environ.get("STRICT_REAL_DATA", "0")).lower()
             in ("1", "true", "yes")
         )
+        self.strict_checkpoint: bool = (
+            os.environ.get("FED_XRAY_STRICT_CHECKPOINT", os.environ.get("STRICT_CHECKPOINT", "0")).lower()
+            in ("1", "true", "yes")
+        )
         self.training_history: Dict[str, Any] = {
             "loss": [],
             "accuracy": [],
@@ -1462,6 +1466,53 @@ async def stage_real_isic_cohort(
         raise HTTPException(status_code=500, detail=f"Failed to stage real ISIC cohort: {exc}")
 
 
+@app.post("/api/models/set-strict-checkpoint-mode")
+async def set_strict_checkpoint_mode(
+    enabled: bool = Query(..., description="Enable or disable strict foundation checkpoint enforcement"),
+):
+    """Configure runtime strict foundation checkpoint enforcement (Rule 2 & Rule 12)."""
+    state.strict_checkpoint = enabled
+    return {
+        "strict_checkpoint": state.strict_checkpoint,
+        "message": f"Strict foundation checkpoint enforcement set to {enabled}.",
+    }
+
+
+@app.get("/api/models/verify-checkpoint-authenticity")
+async def verify_checkpoint_authenticity():
+    """Audit global model weight provenance, checkpoint integrity, and authenticity telemetry (Rule 2 & Rule 12)."""
+    if state.server is not None:
+        prov = state.server.get_model_provenance()
+    else:
+        prov = {
+            "model_type": state.model_type,
+            "is_pretrained": False,
+            "checkpoint_provenance": "server_not_initialized",
+            "checkpoint_hash": None,
+            "strict_checkpoint": state.strict_checkpoint,
+            "is_authentic_foundation_model": False,
+            "is_fallback_distilled": False,
+            "last_load_error": None,
+        }
+    prov["strict_checkpoint_enforced"] = state.strict_checkpoint
+    return prov
+
+
+@app.post("/api/models/stage-foundation-checkpoints")
+async def stage_foundation_checkpoints_endpoint(
+    force_rebuild: bool = Query(default=False, description="Force regeneration of staged foundation weights"),
+):
+    """Stage or verify foundation model checkpoints in local storage (Rule 2 & Rule 12)."""
+    from src.fed_xray.models.foundation import ensure_foundation_checkpoints
+
+    try:
+        res = await asyncio.to_thread(ensure_foundation_checkpoints, force_rebuild=force_rebuild)
+        res["strict_checkpoint_enforced"] = state.strict_checkpoint
+        return res
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"Failed to stage foundation checkpoints: {exc}")
+
+
 @app.get("/api/fl/train-stream")
 async def stream_federated_training(
     num_rounds: int = Query(default=5, ge=1, le=20),
@@ -1501,6 +1552,7 @@ async def stream_federated_training(
             await asyncio.sleep(0.01)
 
             active_num_classes = len(state.dataset_label_map) if state.dataset_label_map else 3
+            strict_checkpoint_mode = strict_checkpoint or state.strict_checkpoint
 
             def _init_fl():
                 threshold_comm = None
@@ -1524,7 +1576,7 @@ async def stream_federated_training(
                     pretrained=pretrained,
                     dp_mode=dp_mode,
                     dp_clipping_bound=dp_clipping_bound,
-                    strict_checkpoint=strict_checkpoint,
+                    strict_checkpoint=strict_checkpoint_mode,
                     num_classes=active_num_classes,
                 )
                 clts = [
@@ -1546,7 +1598,7 @@ async def stream_federated_training(
                         dp_clipping_bound=dp_clipping_bound,
                         dp_noise_multiplier=privacy_noise,
                         dp_mode=dp_mode,
-                        strict_checkpoint=strict_checkpoint,
+                        strict_checkpoint=strict_checkpoint_mode,
                         secagg_peer=state.get_or_create_consortium_peer(i),
                         threshold_enclave=enclaves.get(i),
                         num_classes=active_num_classes,
@@ -1783,6 +1835,7 @@ async def start_training_background(
             state.model_type = model_type
             state.peft_mode = peft_mode
             active_num_classes = len(state.dataset_label_map) if state.dataset_label_map else 3
+            strict_checkpoint_mode = strict_checkpoint or state.strict_checkpoint
 
             threshold_comm = None
             enclaves = {}
@@ -1805,7 +1858,7 @@ async def start_training_background(
                 pretrained=pretrained,
                 dp_mode=dp_mode,
                 dp_clipping_bound=dp_clipping_bound,
-                strict_checkpoint=strict_checkpoint,
+                strict_checkpoint=strict_checkpoint_mode,
                 num_classes=active_num_classes,
             )
             state.server = srv
@@ -1846,7 +1899,7 @@ async def start_training_background(
                     dp_clipping_bound=dp_clipping_bound,
                     dp_noise_multiplier=privacy_noise,
                     dp_mode=dp_mode,
-                    strict_checkpoint=strict_checkpoint,
+                    strict_checkpoint=strict_checkpoint_mode,
                     secagg_peer=state.get_or_create_consortium_peer(i),
                     threshold_enclave=enclaves.get(i),
                     num_classes=active_num_classes,
@@ -2048,6 +2101,7 @@ async def start_flower_training_background(
             state.model_type = model_type
             state.peft_mode = peft_mode
             active_num_classes = len(state.dataset_label_map) if state.dataset_label_map else 3
+            strict_checkpoint_mode = strict_checkpoint or state.strict_checkpoint
 
             threshold_comm = None
             enclaves = {}
@@ -2070,7 +2124,7 @@ async def start_flower_training_background(
                 pretrained=pretrained,
                 dp_mode=dp_mode,
                 dp_clipping_bound=dp_clipping_bound,
-                strict_checkpoint=strict_checkpoint,
+                strict_checkpoint=strict_checkpoint_mode,
                 num_classes=active_num_classes,
             )
             state.server = srv
@@ -2111,7 +2165,7 @@ async def start_flower_training_background(
                     dp_clipping_bound=dp_clipping_bound,
                     dp_noise_multiplier=privacy_noise,
                     dp_mode=dp_mode,
-                    strict_checkpoint=strict_checkpoint,
+                    strict_checkpoint=strict_checkpoint_mode,
                     secagg_peer=state.get_or_create_consortium_peer(i),
                     threshold_enclave=enclaves.get(i),
                     num_classes=active_num_classes,

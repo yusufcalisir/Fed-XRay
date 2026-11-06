@@ -11,6 +11,7 @@ Supports:
 from __future__ import annotations
 import copy
 import logging
+import os
 from typing import Any, Dict, List, Optional, Tuple
 import torch
 import torch.nn as nn
@@ -85,7 +86,7 @@ class HospitalClient:
         dp_clipping_bound: float = 1.0,
         dp_noise_multiplier: float = 0.0,
         dp_mode: str = "distributed",  # "distributed", "local", "central", "off"
-        strict_checkpoint: bool = False,
+        strict_checkpoint: Optional[bool] = None,
         secagg_peer: Optional[SecAggPeer] = None,
         threshold_enclave: Optional[HospitalThresholdEnclave] = None,
         num_classes: int = 3,
@@ -107,7 +108,14 @@ class HospitalClient:
         self.dp_clipping_bound = dp_clipping_bound
         self.dp_noise_multiplier = dp_noise_multiplier
         self.dp_mode = dp_mode
-        self.strict_checkpoint = strict_checkpoint
+        self.strict_checkpoint: bool = (
+            strict_checkpoint
+            if strict_checkpoint is not None
+            else (
+                os.environ.get("FED_XRAY_STRICT_CHECKPOINT", os.environ.get("STRICT_CHECKPOINT", "0")).lower()
+                in ("1", "true", "yes")
+            )
+        )
         self.num_classes = num_classes
 
         if img_size is not None:
@@ -239,17 +247,24 @@ class HospitalClient:
             prov_dict["client_id"] = self.client_id
             prov_dict["peft_mode"] = self.peft_mode
             prov_dict["model_type"] = self.model_type
+            prov_dict["is_authentic_foundation_model"] = prov_dict.get(
+                "is_authentic_foundation_model",
+                prov_dict.get("is_pretrained", False) and not prov_dict.get("is_fallback_distilled", False),
+            )
             return prov_dict
         prov = getattr(base, "checkpoint_provenance", getattr(m, "checkpoint_provenance", "uninitialized_scratch_weights"))
+        is_fallback = "torchvision" in str(prov)
+        is_pre = getattr(base, "is_pretrained", getattr(m, "is_pretrained", False))
         return {
             "client_id": self.client_id,
             "model_type": self.model_type,
-            "is_pretrained": getattr(base, "is_pretrained", getattr(m, "is_pretrained", False)),
+            "is_pretrained": is_pre,
             "checkpoint_provenance": prov,
             "checkpoint_hash": getattr(base, "checkpoint_hash", getattr(m, "checkpoint_hash", None)),
             "strict_checkpoint": self.strict_checkpoint,
             "peft_mode": self.peft_mode,
-            "is_fallback_distilled": "torchvision" in str(prov),
+            "is_authentic_foundation_model": is_pre and not (is_fallback or "scratch" in str(prov)),
+            "is_fallback_distilled": is_fallback,
             "last_load_error": getattr(base, "last_load_error", getattr(m, "last_load_error", None)),
         }
 

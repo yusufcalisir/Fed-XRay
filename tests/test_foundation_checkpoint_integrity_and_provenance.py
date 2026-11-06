@@ -229,3 +229,132 @@ def test_ensure_foundation_checkpoints_staging(tmp_path):
     assert uni_loaded.is_pretrained is True
     assert "local_checkpoint" in uni_loaded.checkpoint_provenance
 
+
+def test_uni_strict_checkpoint_environment_variable_enforcement(monkeypatch):
+    """Verify that FED_XRAY_STRICT_CHECKPOINT=1 enforces strict checkpointing without explicit parameter."""
+    monkeypatch.setenv("FED_XRAY_STRICT_CHECKPOINT", "1")
+    monkeypatch.setattr(UNIFoundationBackbone, "_get_candidate_cache_paths", lambda self: [])
+
+    with pytest.raises(RuntimeError) as exc_info:
+        UNIFoundationBackbone(
+            embed_dim=512,
+            num_classes=3,
+            pretrained=True,
+        )
+    assert "strict_checkpoint=True" in str(exc_info.value) or "MahmoodLab UNI foundation" in str(exc_info.value)
+
+
+def test_swin_unetr_strict_checkpoint_environment_variable_enforcement(monkeypatch):
+    """Verify that FED_XRAY_STRICT_CHECKPOINT=1 enforces strict mode on Swin UNETR."""
+    monkeypatch.setenv("FED_XRAY_STRICT_CHECKPOINT", "1")
+    monkeypatch.setattr(SwinUNETRRadiologyBackbone, "_get_candidate_cache_paths", lambda self: [])
+
+    with pytest.raises(RuntimeError) as exc_info:
+        SwinUNETRRadiologyBackbone(
+            embed_dim=384,
+            num_classes=3,
+            pretrained=True,
+        )
+    assert "strict_checkpoint=True" in str(exc_info.value) or "Swin UNETR foundation" in str(exc_info.value)
+
+
+def test_uni_checkpoint_dictionary_unwrapping(tmp_path):
+    """Verify that UNI checkpoint wrapped under 'model' or 'state_dict' unrolls correctly."""
+    m_temp = UNIFoundationBackbone(embed_dim=512, num_classes=3, pretrained=False)
+    raw_sd = m_temp.state_dict()
+
+    # Wrapped under 'model' (MahmoodLab / timm official packaging)
+    p_model = tmp_path / "uni_wrapped_model.pt"
+    torch.save({"model": raw_sd}, p_model)
+    loaded_model = UNIFoundationBackbone(
+        embed_dim=512,
+        num_classes=3,
+        pretrained=True,
+        checkpoint_path=str(p_model),
+        strict_checkpoint=True,
+    )
+    assert loaded_model.is_pretrained is True
+    assert loaded_model.get_model_provenance()["is_authentic_foundation_model"] is True
+
+    # Wrapped under 'state_dict' (PyTorch Lightning / standard packaging)
+    p_sd = tmp_path / "uni_wrapped_sd.pt"
+    torch.save({"state_dict": raw_sd}, p_sd)
+    loaded_sd = UNIFoundationBackbone(
+        embed_dim=512,
+        num_classes=3,
+        pretrained=True,
+        checkpoint_path=str(p_sd),
+        strict_checkpoint=True,
+    )
+    assert loaded_sd.is_pretrained is True
+    assert loaded_sd.get_model_provenance()["is_authentic_foundation_model"] is True
+
+
+def test_swin_unetr_checkpoint_dictionary_unwrapping(tmp_path):
+    """Verify that Swin UNETR checkpoint wrapped under 'model' unrolls correctly."""
+    m_temp = SwinUNETRRadiologyBackbone(embed_dim=384, num_classes=3, pretrained=False)
+    p_model = tmp_path / "swin_wrapped_model.pt"
+    torch.save({"model": m_temp.state_dict()}, p_model)
+
+    loaded = SwinUNETRRadiologyBackbone(
+        embed_dim=384,
+        num_classes=3,
+        pretrained=True,
+        checkpoint_path=str(p_model),
+        strict_checkpoint=True,
+    )
+    assert loaded.is_pretrained is True
+    assert loaded.get_model_provenance()["is_authentic_foundation_model"] is True
+
+
+def test_authentic_foundation_model_telemetry_flag(tmp_path):
+    """Verify is_authentic_foundation_model accurately distinguishes authentic vs fallback weights."""
+    # 1. Scratch model: False
+    uni_scratch = UNIFoundationBackbone(embed_dim=512, num_classes=3, pretrained=False)
+    assert uni_scratch.get_model_provenance()["is_authentic_foundation_model"] is False
+
+    # 2. Authentic local checkpoint: True
+    valid_ck = tmp_path / "authentic_uni.pt"
+    torch.save(uni_scratch.state_dict(), valid_ck)
+    uni_auth = UNIFoundationBackbone(
+        embed_dim=512,
+        num_classes=3,
+        pretrained=True,
+        checkpoint_path=str(valid_ck),
+        strict_checkpoint=True,
+    )
+    assert uni_auth.get_model_provenance()["is_authentic_foundation_model"] is True
+
+    # 3. Server with authentic checkpoint: True
+    server = CentralServer(
+        model_type="uni",
+        img_size=224,
+        pretrained=True,
+        foundation_checkpoint=str(valid_ck),
+        strict_checkpoint=True,
+    )
+    assert server.get_model_provenance()["is_authentic_foundation_model"] is True
+
+
+def test_fastapi_model_authenticity_and_strict_toggle_endpoints():
+    """Verify runtime toggling of strict foundation checkpoint mode via FastAPI endpoints."""
+    from fastapi.testclient import TestClient
+    from api.main import app
+
+    client = TestClient(app)
+
+    # 1. Enable strict checkpoint mode
+    enable_resp = client.post("/api/models/set-strict-checkpoint-mode?enabled=true")
+    assert enable_resp.status_code == 200
+    assert enable_resp.json()["strict_checkpoint"] is True
+
+    auth_resp = client.get("/api/models/verify-checkpoint-authenticity")
+    assert auth_resp.status_code == 200
+    assert auth_resp.json()["strict_checkpoint_enforced"] is True
+
+    # 2. Re-disable strict checkpoint mode for test neutrality
+    disable_resp = client.post("/api/models/set-strict-checkpoint-mode?enabled=false")
+    assert disable_resp.status_code == 200
+    assert disable_resp.json()["strict_checkpoint"] is False
+
+
