@@ -241,3 +241,111 @@ def test_dataset_label_mappings():
     assert get_dataset_label_map("mimic_cxr_jpg") == CHEST_XRAY_LABEL_NAMES
 
 
+def test_rag_matcher_backend_selection_and_telemetry():
+    """Verify explicit selection between exact NumPy cosine and approximate HNSW backends."""
+    from src.fed_xray.cdss.similarity import HNSW_AVAILABLE
+
+    recs = _make_test_patient_records(12)
+
+    # 1. Exact NumPy backend
+    exact_matcher = FederatedRAGCaseMatcher(reference_records=recs, backend="exact_numpy")
+    assert exact_matcher.active_engine == "exact_numpy_cosine"
+    telemetry = exact_matcher.get_index_telemetry()
+    assert telemetry["active_engine"] == "exact_numpy_cosine"
+    assert telemetry["is_exact_search"] is True
+    assert telemetry["total_cases"] == 12
+
+    # 2. Runtime backend switching
+    if HNSW_AVAILABLE:
+        exact_matcher.set_backend("hnsw")
+        assert exact_matcher.active_engine == "hnsw"
+        assert exact_matcher.get_index_telemetry()["is_exact_search"] is False
+
+        exact_matcher.set_backend("exact_numpy")
+        assert exact_matcher.active_engine == "exact_numpy_cosine"
+        assert exact_matcher.get_index_telemetry()["is_exact_search"] is True
+
+
+def test_rag_matcher_strict_hnsw_failure_when_unavailable(monkeypatch):
+    """Verify that requesting HNSW backend when hnswlib is unavailable raises honest RuntimeError."""
+    import pytest
+    import src.fed_xray.cdss.similarity as sim_mod
+
+    monkeypatch.setattr(sim_mod, "HNSW_AVAILABLE", False)
+    monkeypatch.setattr(sim_mod, "hnswlib", None)
+
+    recs = _make_test_patient_records(5)
+    with pytest.raises(RuntimeError) as exc_info:
+        FederatedRAGCaseMatcher(reference_records=recs, backend="hnsw")
+
+    assert "Requested HNSW backend" in str(exc_info.value)
+    assert "hnswlib C++ extension is unavailable" in str(exc_info.value)
+
+
+def test_rag_matcher_search_consistency_verification():
+    """Verify mathematical ranking consistency between HNSW index and exact NumPy cosine."""
+    recs = _make_test_patient_records(20)
+    matcher = FederatedRAGCaseMatcher(reference_records=recs, backend="auto")
+
+    query_vec = matcher.embeddings_matrix[0]
+    report = matcher.verify_search_consistency(query_vec, top_k=5)
+
+    assert report["consistency_verified"] is True
+    assert report["top1_match"] is True
+    assert report["rank_overlap"] >= 0.8
+    assert report["max_absolute_error"] < 1e-3
+
+
+def test_rag_matcher_save_and_load_index(tmp_path):
+    """Verify serialization and re-loading of RAG index embeddings and metadata."""
+    recs = _make_test_patient_records(10)
+    original_matcher = FederatedRAGCaseMatcher(reference_records=recs, backend="exact_numpy")
+
+    save_dir = tmp_path / "rag_index_cache"
+    saved_files = original_matcher.save_index(save_dir)
+    assert "embeddings" in saved_files
+    assert "metadata" in saved_files
+    assert (save_dir / "embeddings.npy").exists()
+    assert (save_dir / "metadata.json").exists()
+
+    # Create fresh empty matcher and load persisted state
+    restored_matcher = FederatedRAGCaseMatcher(reference_records=None, backend="exact_numpy")
+    loaded_count = restored_matcher.load_index(save_dir)
+
+    assert loaded_count == 10
+    assert len(restored_matcher) == 10
+    assert restored_matcher.embedding_dim == original_matcher.embedding_dim
+
+    # Verify query results on original and restored matchers are identical
+    query_vec = original_matcher.embeddings_matrix[2]
+    res_orig = original_matcher.find_similar(query_vec, top_k=3)
+    res_rest = restored_matcher.find_similar(query_vec, top_k=3)
+
+    assert len(res_orig) == len(res_rest) == 3
+    for o, r in zip(res_orig, res_rest):
+        assert o["case_id"] == r["case_id"]
+        assert abs(o["similarity"] - r["similarity"]) < 1e-5
+
+
+def test_fastapi_rag_status_and_backend_endpoints():
+    """Verify FastAPI endpoints for RAG index status and runtime backend switching."""
+    from fastapi.testclient import TestClient
+    from api.main import app
+
+    client = TestClient(app)
+
+    # 1. Query RAG index status
+    status_resp = client.get("/api/cdss/rag-status")
+    assert status_resp.status_code == 200
+    data = status_resp.json()
+    assert "active_engine" in data
+    assert "hnsw_available" in data
+    assert "metric" in data
+
+    # 2. Configure RAG backend
+    backend_resp = client.post("/api/cdss/rag-backend?backend=exact_numpy")
+    assert backend_resp.status_code == 200
+    assert backend_resp.json()["configured_backend"] == "exact_numpy"
+
+
+

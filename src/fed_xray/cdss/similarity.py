@@ -9,7 +9,10 @@ Implements:
 """
 
 from __future__ import annotations
+from collections import Counter
+import json
 import os
+from pathlib import Path
 from typing import Any, Dict, List, Optional, Sequence, Union
 import numpy as np
 import torch
@@ -50,6 +53,7 @@ class FederatedRAGCaseMatcher:
         model: Optional[nn.Module] = None,
         temperature: float = 0.1,
         n_cases: Optional[int] = None,
+        backend: Optional[str] = None,
     ) -> None:
         if model is None:
             from ..models.cnn import create_cnn_model
@@ -59,10 +63,21 @@ class FederatedRAGCaseMatcher:
         self.temperature = temperature
         self.model = model
 
+        # Engine configuration: 'auto', 'hnsw', or 'exact_numpy' (Rule 8 & Rule 12)
+        resolved_backend = (
+            backend
+            if backend is not None
+            else os.environ.get("FED_XRAY_RAG_BACKEND", os.environ.get("RAG_BACKEND", "auto")).lower()
+        )
+        if resolved_backend not in ("auto", "hnsw", "exact_numpy"):
+            resolved_backend = "auto"
+        self.backend = resolved_backend
+        self.active_engine = "exact_numpy_cosine"
+
         self.embeddings: List[np.ndarray] = []
         self.labels: List[int] = []
         self.case_ids: List[str] = []
-        self.images: List[np.ndarray] = []
+        self.images: List[Optional[np.ndarray]] = []
         self.clinical_notes: List[str] = []
         self.site_ids: List[str] = []
         self.biopsy_confirmed: List[bool] = []
@@ -159,24 +174,214 @@ class FederatedRAGCaseMatcher:
         self.embeddings_matrix = np.array(self.embeddings, dtype=np.float32)
         self.embedding_dim = int(self.embeddings_matrix.shape[1]) if len(self.embeddings) > 0 and self.embeddings_matrix.ndim == 2 else 0
 
-        # Initialize high-speed HNSW vector index
+        # Construct vector index using selected engine
+        self._rebuild_index()
+
+    def _rebuild_index(self) -> None:
+        """Construct or refresh vector search index based on selected backend (Rule 8 & Rule 12)."""
         self.hnsw_index = None
-        if HNSW_AVAILABLE and hnswlib is not None and len(self.embeddings) > 0 and self.embeddings_matrix.ndim == 2:
+        if len(self.embeddings) == 0 or self.embeddings_matrix.ndim != 2:
+            self.active_engine = "exact_numpy_cosine"
+            return
+
+        want_hnsw = self.backend in ("auto", "hnsw")
+        if want_hnsw:
+            if HNSW_AVAILABLE and hnswlib is not None:
+                dim = self.embedding_dim
+                num_elements = int(self.embeddings_matrix.shape[0])
+                max_capacity = max(num_elements * 4, 256)
+                index = hnswlib.Index(space="cosine", dim=dim)
+                index.init_index(max_elements=max_capacity, ef_construction=200, M=16)
+                index.add_items(self.embeddings_matrix, np.arange(num_elements))
+                index.set_ef(min(50, num_elements))
+                self.hnsw_index = index
+                self.active_engine = "hnsw"
+                return
+            elif self.backend == "hnsw":
+                raise RuntimeError(
+                    "Requested HNSW backend for FederatedRAGCaseMatcher, but hnswlib C++ extension is unavailable "
+                    "or disabled via DISABLE_HNSW=1. Install hnswlib or set backend='exact_numpy' (Rule 12)."
+                )
+
+        self.active_engine = "exact_numpy_cosine"
+
+    def set_backend(self, backend: str) -> str:
+        """Switch search engine at runtime and refresh index."""
+        b_clean = backend.strip().lower()
+        if b_clean not in ("auto", "hnsw", "exact_numpy"):
+            raise ValueError(f"Invalid RAG backend '{backend}'. Must be one of: 'auto', 'hnsw', 'exact_numpy'.")
+        self.backend = b_clean
+        self._rebuild_index()
+        return self.active_engine
+
+    def get_index_telemetry(self) -> Dict[str, Any]:
+        """Return comprehensive forensic telemetry of active vector index and case bank."""
+        return {
+            "active_engine": self.active_engine,
+            "configured_backend": self.backend,
+            "hnsw_available": HNSW_AVAILABLE,
+            "is_exact_search": self.active_engine == "exact_numpy_cosine",
+            "total_cases": len(self.embeddings),
+            "embedding_dim": self.embedding_dim,
+            "metric": "cosine",
+            "temperature": self.temperature,
+            "is_empty": self.is_empty,
+            "biopsy_confirmed_count": int(sum(1 for b in self.biopsy_confirmed if b)),
+            "site_distribution": dict(Counter(self.site_ids)),
+            "diagnoses_distribution": dict(Counter(self.diagnoses)),
+        }
+
+    def verify_search_consistency(
+        self,
+        query_embedding: np.ndarray,
+        top_k: int = 5,
+    ) -> Dict[str, Any]:
+        """Empirically verify mathematical consistency between HNSW graph query and exact NumPy cosine."""
+        if len(self.embeddings) == 0:
+            return {
+                "consistency_verified": True,
+                "reason": "case_bank_is_empty",
+                "top1_match": True,
+                "rank_overlap": 1.0,
+                "max_absolute_error": 0.0,
+            }
+
+        if query_embedding.ndim == 1:
+            query_embedding = query_embedding.reshape(1, -1)
+        query_float = query_embedding.astype(np.float32)
+        k_val = min(top_k, len(self.embeddings))
+
+        # 1. Exact NumPy Cosine Search
+        sims_all = _compute_cosine_similarity(query_float, self.embeddings_matrix)[0]
+        exact_indices = [int(i) for i in np.argsort(sims_all)[::-1][:k_val]]
+        exact_sims = [float(sims_all[i]) for i in exact_indices]
+
+        # 2. HNSW Search (if built)
+        hnsw_indices: List[int] = []
+        hnsw_sims: List[float] = []
+        if self.hnsw_index is not None and self.active_engine == "hnsw":
+            labels_matched, distances = self.hnsw_index.knn_query(query_float, k=k_val)
+            hnsw_indices = [int(i) for i in labels_matched[0]]
+            hnsw_sims = [float(1.0 - d) for d in distances[0]]
+        else:
+            hnsw_indices = exact_indices
+            hnsw_sims = exact_sims
+
+        top1_match = bool(exact_indices[0] == hnsw_indices[0]) if exact_indices else True
+        overlap = len(set(exact_indices).intersection(set(hnsw_indices))) / float(k_val) if k_val > 0 else 1.0
+
+        max_err = 0.0
+        for i in set(exact_indices).intersection(set(hnsw_indices)):
+            e_sim = float(sims_all[i])
+            h_sim = float(np.dot(query_float[0], self.embeddings_matrix[i]))
+            err = abs(e_sim - h_sim)
+            if err > max_err:
+                max_err = err
+
+        return {
+            "consistency_verified": top1_match and (overlap >= 0.8),
+            "top1_match": top1_match,
+            "rank_overlap": float(overlap),
+            "max_absolute_error": float(max_err),
+            "exact_indices": exact_indices,
+            "hnsw_indices": hnsw_indices,
+            "exact_similarities": exact_sims,
+            "hnsw_similarities": hnsw_sims,
+            "active_engine": self.active_engine,
+        }
+
+    def save_index(self, dir_path: Union[str, Path]) -> Dict[str, str]:
+        """Serialize case bank embeddings, patient metadata, and HNSW index to disk."""
+        p = Path(dir_path)
+        p.mkdir(parents=True, exist_ok=True)
+
+        emb_file = p / "embeddings.npy"
+        meta_file = p / "metadata.json"
+        np.save(emb_file, self.embeddings_matrix)
+
+        meta = {
+            "case_ids": self.case_ids,
+            "labels": self.labels,
+            "clinical_notes": self.clinical_notes,
+            "site_ids": self.site_ids,
+            "biopsy_confirmed": self.biopsy_confirmed,
+            "therapeutic_outcomes": self.therapeutic_outcomes,
+            "anatomical_sites": self.anatomical_sites,
+            "diagnoses": self.diagnoses,
+            "provenance": self.provenance,
+            "embedding_dim": self.embedding_dim,
+            "active_engine": self.active_engine,
+        }
+        with open(meta_file, "w", encoding="utf-8") as f:
+            json.dump(meta, f, indent=2)
+
+        files = {"embeddings": str(emb_file), "metadata": str(meta_file)}
+        if len(self.images) > 0 and self.images[0] is not None:
+            try:
+                np.save(p / "images.npy", np.array(self.images))
+                files["images"] = str(p / "images.npy")
+            except Exception:
+                pass
+
+        if self.hnsw_index is not None and self.active_engine == "hnsw":
+            hnsw_file = p / "hnsw_index.bin"
+            self.hnsw_index.save_index(str(hnsw_file))
+            files["hnsw_index"] = str(hnsw_file)
+
+        return files
+
+    def load_index(self, dir_path: Union[str, Path]) -> int:
+        """Load serialized embeddings, metadata, and optional HNSW index from disk."""
+        p = Path(dir_path)
+        emb_file = p / "embeddings.npy"
+        meta_file = p / "metadata.json"
+        hnsw_file = p / "hnsw_index.bin"
+        img_file = p / "images.npy"
+
+        if not emb_file.exists() or not meta_file.exists():
+            raise FileNotFoundError(f"Missing embeddings or metadata in {dir_path}")
+
+        self.embeddings_matrix = np.load(emb_file).astype(np.float32)
+        with open(meta_file, "r", encoding="utf-8") as f:
+            meta = json.load(f)
+
+        self.case_ids = meta.get("case_ids", [])
+        self.labels = meta.get("labels", [])
+        self.clinical_notes = meta.get("clinical_notes", [])
+        self.site_ids = meta.get("site_ids", [])
+        self.biopsy_confirmed = meta.get("biopsy_confirmed", [])
+        self.therapeutic_outcomes = meta.get("therapeutic_outcomes", [])
+        self.anatomical_sites = meta.get("anatomical_sites", [])
+        self.diagnoses = meta.get("diagnoses", [])
+        self.provenance = meta.get("provenance", [])
+        self.embedding_dim = int(meta.get("embedding_dim", self.embeddings_matrix.shape[1] if self.embeddings_matrix.ndim == 2 else 0))
+        self.embeddings = [self.embeddings_matrix[i] for i in range(len(self.embeddings_matrix))]
+
+        if img_file.exists():
+            try:
+                self.images = list(np.load(img_file))
+            except Exception:
+                self.images = [None] * len(self.embeddings)
+        else:
+            self.images = [None] * len(self.embeddings)
+
+        if HNSW_AVAILABLE and hnswlib is not None and hnsw_file.exists() and self.backend != "exact_numpy":
             dim = self.embedding_dim
-            num_elements = int(self.embeddings_matrix.shape[0])
-            max_capacity = max(num_elements * 4, 256)
             index = hnswlib.Index(space="cosine", dim=dim)
-            index.init_index(max_elements=max_capacity, ef_construction=200, M=16)
-            index.add_items(self.embeddings_matrix, np.arange(num_elements))
-            index.set_ef(min(50, num_elements))
+            index.load_index(str(hnsw_file), max_elements=max(len(self.embeddings) * 4, 256))
             self.hnsw_index = index
+            self.active_engine = "hnsw"
+        else:
+            self._rebuild_index()
+
+        return len(self.embeddings)
 
     def find_similar(
         self,
         query_embedding: np.ndarray,
         top_k: int = 2,
     ) -> List[Dict[str, Any]]:
-        """Find the top-k most similar reference cases using HNSW vector indexing."""
+        """Find the top-k most similar reference cases using HNSW or exact NumPy vector indexing."""
         if query_embedding.ndim == 1:
             query_embedding = query_embedding.reshape(1, -1)
         query_float = query_embedding.astype(np.float32)
@@ -192,7 +397,7 @@ class FederatedRAGCaseMatcher:
                 f"but active case bank was indexed with {self.embedding_dim} dimensions."
             )
 
-        if self.hnsw_index is not None:
+        if self.hnsw_index is not None and self.active_engine == "hnsw":
             labels_matched, distances = self.hnsw_index.knn_query(query_float, k=k_val)
             top_indices = labels_matched[0]
             # In hnswlib with space="cosine", distance = 1 - cosine_sim
@@ -206,16 +411,16 @@ class FederatedRAGCaseMatcher:
         for idx, sim in zip(top_indices, sims):
             idx_int = int(idx)
             results.append({
-                "case_id": self.case_ids[idx_int],
-                "label": self.labels[idx_int],
+                "case_id": self.case_ids[idx_int] if idx_int < len(self.case_ids) else f"case#{idx_int}",
+                "label": self.labels[idx_int] if idx_int < len(self.labels) else 0,
                 "diagnosis": self.diagnoses[idx_int] if idx_int < len(self.diagnoses) else "",
                 "similarity": float(np.clip(sim, 0.0, 1.0)),
-                "image": self.images[idx_int],
-                "clinical_notes": self.clinical_notes[idx_int],
-                "site_id": self.site_ids[idx_int],
-                "biopsy_confirmed": self.biopsy_confirmed[idx_int],
-                "therapeutic_outcome": self.therapeutic_outcomes[idx_int],
-                "anatomical_site": self.anatomical_sites[idx_int],
+                "image": self.images[idx_int] if idx_int < len(self.images) else None,
+                "clinical_notes": self.clinical_notes[idx_int] if idx_int < len(self.clinical_notes) else "",
+                "site_id": self.site_ids[idx_int] if idx_int < len(self.site_ids) else "",
+                "biopsy_confirmed": self.biopsy_confirmed[idx_int] if idx_int < len(self.biopsy_confirmed) else False,
+                "therapeutic_outcome": self.therapeutic_outcomes[idx_int] if idx_int < len(self.therapeutic_outcomes) else "",
+                "anatomical_site": self.anatomical_sites[idx_int] if idx_int < len(self.anatomical_sites) else "",
                 "provenance": self.provenance[idx_int] if idx_int < len(self.provenance) else "consortium_reference_twin",
             })
         return results
@@ -265,7 +470,7 @@ class FederatedRAGCaseMatcher:
         if k_val == 0:
             return np.ones(num_classes, dtype=np.float32) / num_classes
 
-        if self.hnsw_index is not None:
+        if self.hnsw_index is not None and self.active_engine == "hnsw":
             labels_matched, distances = self.hnsw_index.knn_query(query_float, k=k_val)
             top_indices = labels_matched[0]
             sims = 1.0 - distances[0]

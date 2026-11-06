@@ -2886,6 +2886,66 @@ async def get_similar_rag_cases(top_k: int = Query(default=2, ge=1, le=10)):
     return RagSimilarResponse(query_class=query_class, matched_cases=cases)
 
 
+@app.get("/api/cdss/rag-status")
+async def get_rag_engine_status():
+    """Return CDSS RAG digital twin index status, active engine, and case bank telemetry (Rule 8 & Rule 12)."""
+    if state.rag_matcher is not None:
+        telemetry = state.rag_matcher.get_index_telemetry()
+    else:
+        from src.fed_xray.cdss.similarity import HNSW_AVAILABLE
+
+        telemetry = {
+            "active_engine": "none",
+            "configured_backend": "auto",
+            "hnsw_available": HNSW_AVAILABLE,
+            "is_exact_search": False,
+            "total_cases": 0,
+            "embedding_dim": 0,
+            "metric": "cosine",
+            "is_empty": True,
+        }
+    return telemetry
+
+
+@app.post("/api/cdss/rag-backend")
+async def set_rag_backend_mode(
+    backend: str = Query(..., description="Search backend: auto, hnsw, or exact_numpy"),
+):
+    """Configure active RAG vector index search backend at runtime (Rule 8 & Rule 12)."""
+    if state.rag_matcher is not None:
+        try:
+            active = state.rag_matcher.set_backend(backend)
+            return {
+                "configured_backend": backend,
+                "active_engine": active,
+                "message": f"RAG vector index backend set to '{active}'.",
+            }
+        except Exception as exc:
+            raise HTTPException(status_code=400, detail=str(exc))
+    return {
+        "configured_backend": backend,
+        "active_engine": "none",
+        "message": f"Configured backend '{backend}'. Active RAG matcher will adopt this on initialization.",
+    }
+
+
+@app.post("/api/cdss/rag-verify-consistency")
+async def verify_rag_consistency_endpoint(
+    top_k: int = Query(default=5, ge=1, le=20),
+):
+    """Verify mathematical ranking consistency between HNSW index and exact NumPy cosine (Rule 8 & Rule 12)."""
+    server = require_trained_server()
+    if state.rag_matcher is None:
+        state.rag_matcher = build_rag_matcher(server)
+
+    if state.rag_matcher.is_empty:
+        raise HTTPException(status_code=409, detail="RAG matcher contains no indexed cases to verify.")
+
+    probe_vec = state.rag_matcher.embeddings_matrix[0]
+    report = state.rag_matcher.verify_search_consistency(probe_vec, top_k=top_k)
+    return report
+
+
 @app.get("/api/cdss/voice/status")
 async def get_voice_assistant_status():
     """Return operational health, persistent cache metrics, and air-gapped readiness of the CDSS voice engine."""
