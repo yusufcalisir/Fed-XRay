@@ -6,7 +6,6 @@ import ConsortiumLaunchOverlay from "@/components/ConsortiumLaunchOverlay";
 import LungViewer3D from "@/components/LungViewer3D";
 import FederatedConsortiumTopology from "@/components/FederatedConsortiumTopology";
 import Footer from "@/components/Footer";
-import FedXRayLogo from "@/components/FedXRayLogo";
 import { useLanguage } from "@/context/LanguageContext";
 import { useApi } from "@/context/ApiContext";
 import {

@@ -20,13 +20,11 @@ export default function Footer({ maxWidth = "max-w-[1360px]" }: FooterProps) {
         <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6 pb-6 border-b border-[var(--border-subtle)]">
           {/* Brand Identity */}
           <div className="flex items-start sm:items-center gap-3.5">
-            <div className="w-9 h-9 rounded-xl bg-slate-900 text-white dark:bg-white/[0.08] border border-slate-700/50 dark:border-white/[0.12] flex items-center justify-center shrink-0 shadow-sm">
-              <FedXRayLogo size={20} />
-            </div>
+            <FedXRayLogo size={32} className="shrink-0 mt-0.5 sm:mt-0" />
             <div>
               <div className="flex flex-wrap items-center gap-2">
                 <span className="font-display font-black text-base text-[var(--text-heading)] tracking-tight">
-                  Fed<span className="text-emerald-500">-</span>XRay
+                  Fed<span className="text-emerald-500 font-semibold">-</span>XRay
                 </span>
                 <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-md border border-emerald-500/20">
                   PPFL Core v2.4

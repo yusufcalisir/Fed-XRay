@@ -120,12 +120,10 @@ export default function Navbar({ mode = "landing", onLaunchDemo }: NavbarProps) 
 
           {/* Brand / Logo */}
           <div className="flex items-center gap-3 shrink-0">
-            <Link href="/" className="flex items-center gap-2.5 group">
-              <div className="w-7 h-7 rounded-lg bg-slate-900 text-white dark:bg-white/[0.08] border border-slate-700/50 dark:border-white/[0.12] flex items-center justify-center shrink-0 group-hover:border-emerald-500/60 transition-colors">
-                <FedXRayLogo size={18} />
-              </div>
-              <span className="font-display font-extrabold text-[15px] tracking-tight text-[var(--text-heading)] whitespace-nowrap">
-                Fed<span className="text-emerald-500">-</span>XRay
+            <Link href="/" className="flex items-center gap-2.5 group" aria-label="Fed-XRay Home">
+              <FedXRayLogo size={24} className="shrink-0 transition-transform duration-200 group-hover:scale-105" />
+              <span className="font-display font-extrabold text-[15px] sm:text-[16px] tracking-tight text-[var(--text-heading)] whitespace-nowrap">
+                Fed<span className="text-emerald-500 font-semibold">-</span>XRay
               </span>
             </Link>
 
@@ -273,13 +271,12 @@ export default function Navbar({ mode = "landing", onLaunchDemo }: NavbarProps) 
               href="/"
               onClick={() => setIsMobileMenuOpen(false)}
               className="flex items-center gap-2.5"
+              aria-label="Fed-XRay Home"
             >
-              <div className="w-8 h-8 rounded-lg bg-slate-900 text-white dark:bg-white/[0.08] border border-slate-700/50 dark:border-white/[0.12] flex items-center justify-center shrink-0">
-                <FedXRayLogo size={20} />
-              </div>
+              <FedXRayLogo size={26} className="shrink-0" />
               <div className="flex items-center gap-2">
                 <span className="font-display font-extrabold text-base tracking-tight text-[var(--text-heading)]">
-                  Fed<span className="text-emerald-500">-</span>XRay
+                  Fed<span className="text-emerald-500 font-semibold">-</span>XRay
                 </span>
                 <span className="text-[10px] font-semibold uppercase tracking-wider text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 px-1.5 py-0.5 rounded border border-emerald-500/20">
                   CDSS

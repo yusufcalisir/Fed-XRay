@@ -1,11 +1,72 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" fill="none">
-  <rect width="32" height="32" rx="8" fill="#0f172a"/>
   <defs>
-    <linearGradient id="favShieldGrad" x1="16" y1="4" x2="16" y2="28" gradientUnits="userSpaceOnUse">
-      <stop offset="0%" stop-color="#10b981"/>
-      <stop offset="100%" stop-color="#06b6d4"/>
+    <linearGradient id="favGradPrimary" x1="4" y1="4" x2="28" y2="28" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#10b981" />
+      <stop offset="50%" stop-color="#06b6d4" />
+      <stop offset="100%" stop-color="#3b82f6" />
+    </linearGradient>
+    <linearGradient id="favGradSecondary" x1="28" y1="4" x2="4" y2="28" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#34d399" />
+      <stop offset="50%" stop-color="#06b6d4" />
+      <stop offset="100%" stop-color="#0ea5e9" />
+    </linearGradient>
+    <linearGradient id="favLungL" x1="4.8" y1="5.5" x2="10.5" y2="26.5" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#10b981" stop-opacity="0.9" />
+      <stop offset="100%" stop-color="#06b6d4" stop-opacity="0.75" />
+    </linearGradient>
+    <linearGradient id="favLungR" x1="27.2" y1="5.5" x2="21.5" y2="26.5" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#34d399" stop-opacity="0.9" />
+      <stop offset="100%" stop-color="#0ea5e9" stop-opacity="0.75" />
     </linearGradient>
   </defs>
-  <path d="M16 4.5L24.5 8.2V15C24.5 20.8 20.8 25.2 16 27.5C11.2 25.2 7.5 20.8 7.5 15V8.2L16 4.5Z" stroke="url(#favShieldGrad)" stroke-width="2.2" stroke-linejoin="round"/>
-  <path d="M11 15H13.2L14.8 11.8L17.2 18.2L18.8 15H21" stroke="#34d399" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+
+  <!-- Bilateral Thoracic Radiography Arcs (Chest X-Ray Pulmonary Contour) -->
+  <path
+    d="M10.5 5.5C6.8 8.8 4.8 12.2 4.8 16C4.8 19.8 6.8 23.2 10.5 26.5"
+    stroke="url(#favLungL)"
+    stroke-width="2.2"
+    stroke-linecap="round"
+  />
+  <path
+    d="M21.5 5.5C25.2 8.8 27.2 12.2 27.2 16C27.2 19.8 25.2 23.2 21.5 26.5"
+    stroke="url(#favLungR)"
+    stroke-width="2.2"
+    stroke-linecap="round"
+  />
+
+  <!-- Dynamic Diagonal X-Ray Beams (The Federated 'X') -->
+  <path
+    d="M7.5 7.5L12.5 12.5M19.5 19.5L24.5 24.5"
+    stroke="url(#favGradPrimary)"
+    stroke-width="2.8"
+    stroke-linecap="round"
+  />
+  <path
+    d="M24.5 7.5L19.5 12.5M12.5 19.5L7.5 24.5"
+    stroke="url(#favGradSecondary)"
+    stroke-width="2.8"
+    stroke-linecap="round"
+  />
+
+  <!-- Central Consensus Aperture Ring & Radiance Sensor -->
+  <circle
+    cx="16"
+    cy="16"
+    r="4.6"
+    stroke="url(#favGradPrimary)"
+    stroke-width="1.8"
+    fill="none"
+  />
+  <circle
+    cx="16"
+    cy="16"
+    r="2.2"
+    fill="#10b981"
+  />
+
+  <!-- 4 Decentralized Institutional Hospital Nodes -->
+  <circle cx="7.5" cy="7.5" r="2.4" fill="#10b981" />
+  <circle cx="24.5" cy="7.5" r="2.4" fill="#34d399" />
+  <circle cx="7.5" cy="24.5" r="2.4" fill="#06b6d4" />
+  <circle cx="24.5" cy="24.5" r="2.4" fill="#3b82f6" />
 </svg>
