@@ -368,13 +368,13 @@ $$
 Rather than relying on first-order Taylor approximations $((q^2 \alpha)/(2\sigma^2))$ that degrade rapidly for higher moments $\alpha$, `PatientLevelDPAccountant` implements the exact analytical Poisson-subsampled Gaussian moments formula (Wang, Balle, and Kasiviswanathan, AISTATS 2019) via log-space binomial expansions:
 
 $$
-A_\alpha = \sum_{j=0}^\alpha \binom{\alpha}{j} (1-q)^{\alpha-j} q^j \exp\left(\frac{j(j-1)}{2\sigma^2}\right), \quad \operatorname{RDP}(\alpha) = \frac{\ln(A_\alpha)}{\alpha - 1}
+A_\alpha = \sum_{j=0}^\alpha \binom{\alpha}{j} (1-q)^{\alpha-j} q^j \exp\left(\frac{j(j-1)}{2\sigma^2}\right), \quad \mathrm{RDP}(\alpha) = \frac{\ln(A_\alpha)}{\alpha - 1}
 $$
 
 Total composed privacy loss is converted to canonical $(\epsilon, \delta)$-DP bounds via:
 
 $$
-\epsilon(\delta) = \min_{\alpha \in \mathcal{A}} \left\{ \sum_{t=1}^T \operatorname{RDP}_t(\alpha) + \frac{\ln(1/\delta)}{\alpha - 1} \right\} \le 2.0, \quad \text{with } \delta \le 10^{-5}
+\epsilon(\delta) = \min_{\alpha \in \mathcal{A}} \left\{ \sum_{t=1}^T \mathrm{RDP}_t(\alpha) + \frac{\ln(1/\delta)}{\alpha - 1} \right\} \le 2.0, \quad \text{with } \delta \le 10^{-5}
 $$
 
 ### 6.2 Decentralized (t, n) Threshold CKKS and SecAgg+
