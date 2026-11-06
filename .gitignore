@@ -8,6 +8,12 @@ research/
 skills/
 .skills/
 
+# ===== Local Dev Launch Scripts (Untracked) =====
+start_dev.bat
+run_dev.bat
+dev.bat
+*.local.bat
+
 # ===== Credentials & Sensitive Files =====
 cookies.txt
 *.cookie
