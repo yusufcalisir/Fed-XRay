@@ -385,16 +385,16 @@ export default function TelemetryCockpit({
                 <TrendingUp className="w-4 h-4 text-accent-500" />
                 <span className="text-xs font-bold text-[var(--text-heading)]">{t("sec2_convergence_title")}</span>
               </div>
-              <div className="h-48 sm:h-56 w-full flex-1 min-h-[190px]">
+              <div className="h-52 sm:h-60 w-full flex-1 min-h-[210px]">
                 {safeHistory.length > 0 ? (
                   <ResponsiveContainer width="100%" height="100%">
-                    <LineChart data={safeHistory} margin={{ top: 5, right: 10, left: -15, bottom: 0 }}>
+                    <LineChart data={safeHistory} margin={{ top: 20, right: 14, left: -8, bottom: 4 }}>
                       <CartesianGrid strokeDasharray="3 3" stroke="rgba(148, 163, 184, 0.2)" />
                       <XAxis dataKey="round_num" stroke="#64748b" tick={{ fontSize: 10 }} />
                       <YAxis yAxisId="acc" domain={[0, 100]} stroke="#64748b" tick={{ fontSize: 10 }} />
                       <YAxis yAxisId="loss" orientation="right" stroke="#64748b" tick={{ fontSize: 10 }} />
                       <Tooltip contentStyle={{ background: "var(--bg-card)", border: "1px solid var(--border-card)", borderRadius: "12px", fontSize: "11px", color: "var(--text-main)", boxShadow: "0 4px 12px rgba(0,0,0,0.1)" }} />
-                      <Legend wrapperStyle={{ fontSize: "10px" }} />
+                      <Legend wrapperStyle={{ fontSize: "10px", paddingTop: "4px" }} />
                       <Line yAxisId="acc" type="monotone" dataKey="test_accuracy" name={t("sec2_acc")} stroke="#10b981" strokeWidth={2} dot={{ r: 3 }} />
                       <Line yAxisId="loss" type="monotone" dataKey="test_loss" name={t("sec2_loss")} stroke="#ef4444" strokeWidth={2} dot={{ r: 3 }} />
                     </LineChart>
