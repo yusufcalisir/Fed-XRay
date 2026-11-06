@@ -255,7 +255,7 @@ export default function DashboardPage() {
         dpClippingBound: selectedClip,
         privacyNoise: selectedNoise,
       },
-      (roundData) => {
+      (roundData: TelemetryRound) => {
         setCurrentRound(roundData.round_num);
         setHistory((prev) => [...prev, roundData]);
         if (roundData.model_type) setActiveModel(roundData.model_type);
@@ -265,7 +265,7 @@ export default function DashboardPage() {
         setIsTraining(false);
         setIsTrained(true);
       },
-      (err) => {
+      (err: string) => {
         setIsTraining(false);
         setErrorMessage(err);
       },
