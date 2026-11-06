@@ -374,7 +374,7 @@ $$
 Total composed privacy loss is converted to canonical $(\epsilon, \delta)$-DP bounds via:
 
 $$
-\epsilon(\delta) = \min_{\alpha \in \mathcal{A}} \left\{ \sum_{t=1}^T \mathrm{RDP}_t(\alpha) + \frac{\ln(1/\delta)}{\alpha - 1} \right\} \le 2.0, \quad \text{with } \delta \le 10^{-5}
+\epsilon(\delta) = \min_{\alpha \in \mathcal{A}} \left[ \sum_{t=1}^T \mathrm{RDP}_t(\alpha) + \frac{\ln(1/\delta)}{\alpha - 1} \right] \le 2.0, \quad \text{with } \delta \le 10^{-5}
 $$
 
 ### 6.2 Decentralized (t, n) Threshold CKKS and SecAgg+
