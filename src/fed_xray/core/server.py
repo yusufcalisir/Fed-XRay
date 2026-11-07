@@ -144,6 +144,7 @@ class CentralServer:
 
         # Instantiate global architecture
         self.global_model = self._create_model().to(self.device)
+        self._val_model: Optional[nn.Module] = None
 
         # FedDyn server dynamic state vector: h
         self.feddyn_alpha = feddyn_alpha
@@ -426,7 +427,9 @@ class CentralServer:
         Returns:
             Tuple of (overall_accuracy, max_per_class_accuracy).
         """
-        temp_model = self._create_model().to(self.device)
+        if self._val_model is None:
+            self._val_model = self._create_model().to(self.device)
+        temp_model = self._val_model
         if self.peft_mode:
             temp_model.load_state_dict(self.global_model.state_dict())
             load_peft_state_dict(temp_model, client_weights, mode=self.peft_mode)

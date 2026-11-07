@@ -31,6 +31,8 @@ class UNIFoundationBackbone(nn.Module):
     from local checkpoint path or Hugging Face repository, and provides transfer-adapted pathology features.
     """
 
+    _FALLBACK_WARNED: bool = False
+
     def __init__(
         self,
         embed_dim: int = 1024,
@@ -179,11 +181,13 @@ class UNIFoundationBackbone(nn.Module):
             )
             raise RuntimeError(self.last_load_error)
 
-        logger.warning(
-            "MahmoodLab UNI foundation checkpoint not mounted. "
-            "Falling back to torchvision ViT-B/16 ImageNet distillation for local evaluation. "
-            "To use authentic medical foundation representations, mount official weights via UNI_CHECKPOINT_PATH."
-        )
+        if not UNIFoundationBackbone._FALLBACK_WARNED:
+            logger.warning(
+                "MahmoodLab UNI foundation checkpoint not mounted. "
+                "Falling back to torchvision ViT-B/16 ImageNet distillation for local evaluation. "
+                "To use authentic medical foundation representations, mount official weights via UNI_CHECKPOINT_PATH."
+            )
+            UNIFoundationBackbone._FALLBACK_WARNED = True
 
         try:
             import torchvision.models as models
@@ -300,6 +304,8 @@ class SwinUNETRRadiologyBackbone(nn.Module):
       SWIN_UNETR_CHECKPOINT_PATH) as well as official Swin-T pretrained weights.
     - Supports 2D / 2.5D radiological slices and 3D volumetric multi-slice CT/MRI scans.
     """
+
+    _FALLBACK_WARNED: bool = False
 
     def __init__(
         self,
@@ -441,11 +447,13 @@ class SwinUNETRRadiologyBackbone(nn.Module):
             )
             raise RuntimeError(self.last_load_error)
 
-        logger.warning(
-            "Official MONAI Swin UNETR radiological checkpoint not mounted. "
-            "Falling back to torchvision Swin-T ImageNet weights for local evaluation. "
-            "To use authentic medical foundation representations, mount official weights via SWIN_UNETR_CHECKPOINT_PATH."
-        )
+        if not SwinUNETRRadiologyBackbone._FALLBACK_WARNED:
+            logger.warning(
+                "Official MONAI Swin UNETR radiological checkpoint not mounted. "
+                "Falling back to torchvision Swin-T ImageNet weights for local evaluation. "
+                "To use authentic medical foundation representations, mount official weights via SWIN_UNETR_CHECKPOINT_PATH."
+            )
+            SwinUNETRRadiologyBackbone._FALLBACK_WARNED = True
 
         try:
             import torchvision.models as models

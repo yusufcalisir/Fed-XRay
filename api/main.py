@@ -1284,9 +1284,10 @@ async def generate_cohorts(req: CohortGenerateRequest):
 
     for h in range(req.num_hospitals):
         part = client_partitions[h]
+        effective_bs = min(8, max(2, len(part) // 4)) if len(part) > 0 else 16
         loader = ecosystem.records_to_dataloader(
             part,
-            batch_size=32,
+            batch_size=effective_bs,
             shuffle=True,
             target_size=(224, 224),
             in_channels=1,

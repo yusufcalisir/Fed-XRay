@@ -547,16 +547,62 @@ class HospitalClient:
             global_model_ref.eval()
 
         # Optimizer targeting trainable parameters
-        trainable_params = [p for p in self.model.parameters() if p.requires_grad]
-        if algorithm.upper() == "FEDCOLA" or loss_fn_name.upper() == "FEDCOLA":
-            if self.cola_bridge is None:
-                feat_dim = getattr(self.model, "embed_dim", 128)
-                self.cola_bridge = FedColaModalityBridge(
-                    image_dim=feat_dim, text_dim=512, shared_dim=256
-                ).to(self.device)
-            trainable_params.extend([p for p in self.cola_bridge.parameters() if p.requires_grad])
+        if self.peft_mode:
+            # Under PEFT with frozen representation backbones (Rule 2 & Rule 3),
+            # adaptively scale head and adapter learning rates so the linear projection
+            # converges rapidly without representation collapse
+            head_params = []
+            adapter_params = []
+            other_params = []
+            for name, param in self.model.named_parameters():
+                if not param.requires_grad:
+                    continue
+                if any(k in name.lower() for k in ("head", "fc", "classifier")):
+                    head_params.append(param)
+                elif any(k in name.lower() for k in ("lora_", "adapter")):
+                    adapter_params.append(param)
+                else:
+                    other_params.append(param)
 
-        optimizer = optim.Adam(trainable_params, lr=self.learning_rate)
+            param_groups: List[Dict[str, Any]] = []
+            if head_params:
+                # 5x-10x learning rate for classification head to align with frozen features
+                param_groups.append({
+                    "params": head_params,
+                    "lr": max(self.learning_rate * 5.0, 1e-3),
+                })
+            if adapter_params:
+                param_groups.append({
+                    "params": adapter_params,
+                    "lr": max(self.learning_rate * 2.0, 5e-4),
+                })
+            if other_params:
+                param_groups.append({
+                    "params": other_params,
+                    "lr": self.learning_rate,
+                })
+            if algorithm.upper() == "FEDCOLA" or loss_fn_name.upper() == "FEDCOLA":
+                if self.cola_bridge is None:
+                    feat_dim = getattr(self.model, "embed_dim", 128)
+                    self.cola_bridge = FedColaModalityBridge(
+                        image_dim=feat_dim, text_dim=512, shared_dim=256
+                    ).to(self.device)
+                param_groups.append({
+                    "params": [p for p in self.cola_bridge.parameters() if p.requires_grad],
+                    "lr": max(self.learning_rate * 2.0, 5e-4),
+                })
+            optimizer = optim.Adam(param_groups)
+            trainable_params = [p for pg in param_groups for p in pg["params"]]
+        else:
+            trainable_params = [p for p in self.model.parameters() if p.requires_grad]
+            if algorithm.upper() == "FEDCOLA" or loss_fn_name.upper() == "FEDCOLA":
+                if self.cola_bridge is None:
+                    feat_dim = getattr(self.model, "embed_dim", 128)
+                    self.cola_bridge = FedColaModalityBridge(
+                        image_dim=feat_dim, text_dim=512, shared_dim=256
+                    ).to(self.device)
+                trainable_params.extend([p for p in self.cola_bridge.parameters() if p.requires_grad])
+            optimizer = optim.Adam(trainable_params, lr=self.learning_rate)
         criterion = self._get_loss_function(loss_fn_name, current_round, total_rounds)
         repel_criterion = PrototypeRepelLoss(margin=1.0)
 
